@@ -1,0 +1,27 @@
+{
+  "name": "iigs-game-engine",
+  "version": "1.0.0",
+  "description": "A game engine for the Applie IIgs written in 65816 assembly language",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32.exe"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "%npm_package_config_merlin32% -V macros src/Tool.s",
+    "build:watch": "watch \"npm run build\" src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+    "watch": "latest"
+  }
+}
