@@ -5,13 +5,16 @@
   "main": "index.js",
   "config": {
     "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32.exe",
-    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe"
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run build:test && npm run build:test:copy && %npm_package_config_gsport%",
+    "build:test": "%npm_package_config_merlin32% -V macros test/App.s",
+    "build:test:copy": "%npm_package_config_cadius% ADDFILE emu\\Target.2mg /GTEDEV test/GTETestApp",
     "build": "npm run build:tool && npm run build:copy",
-    "build:copy": "%npm_package_config_cadius% ADDFILE emu\\Target.2mg /GTEDEV/GTETool src\\GTETool",
-    "build:tool": "%npm_package_config_merlin32% -V macros src/Tool.s",
+    "build:copy": "%npm_package_config_cadius% ADDFILE emu\\Target.2mg /GTEDEV src\\GTETool",
+    "build:tool": "%npm_package_config_merlin32% -V C:\\Programs\\BrutalDeluxe\\Merlin32\\Library src\\Tool.s",
     "build:watch": "watch \"npm run build\" src"
   },
   "repository": {
