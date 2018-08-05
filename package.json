@@ -4,11 +4,14 @@
   "description": "A game engine for the Applie IIgs written in 65816 assembly language",
   "main": "index.js",
   "config": {
-    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32.exe"
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "%npm_package_config_merlin32% -V macros src/Tool.s",
+    "build": "npm run build:tool && npm run build:copy",
+    "build:copy": "%npm_package_config_cadius% ADDFILE emu\\Target.2mg /GTEDEV/GTETool src\\GTETool",
+    "build:tool": "%npm_package_config_merlin32% -V macros src/Tool.s",
     "build:watch": "watch \"npm run build\" src"
   },
   "repository": {
