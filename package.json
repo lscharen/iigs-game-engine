@@ -9,11 +9,9 @@
     "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe"
   },
   "scripts": {
-    "test": "npm run build:test && npm run build:test:copy && %npm_package_config_gsport%",
+    "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+    "build": "npm run build:tool && npm run build:test",
     "build:test": "%npm_package_config_merlin32% -V macros test/App.s",
-    "build:test:copy": "%npm_package_config_cadius% ADDFILE emu\\Target.2mg /GTEDEV test/GTETestApp",
-    "build": "npm run build:tool && npm run build:copy",
-    "build:copy": "%npm_package_config_cadius% ADDFILE emu\\Target.2mg /GTEDEV src\\GTETool",
     "build:tool": "%npm_package_config_merlin32% -V C:\\Programs\\BrutalDeluxe\\Merlin32\\Library src\\Tool.s",
     "build:watch": "watch \"npm run build\" src"
   },
