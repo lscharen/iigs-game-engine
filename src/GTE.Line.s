@@ -37,7 +37,7 @@
 ; things to be fast and complex things to not be slow.  That is, the developer has a lot
 ; of control over the time taken to render the full screen based on how complex it can be.
 ;
-; That said, I'll cover three cases, ranging from the simple (a single background) and
+; That said, I'll cover three cases, ranging from the simple (a single background) to the
 ; complex (2 backgrounds, 50% mixed).  The even- and odd-aligned cases are also broken out.
 ;
 ; Simple case; all elements of the code field are PEA instructions
@@ -74,14 +74,16 @@
 ;    - Final JMP to next line = 3 cycles
 ;      -- total of 1,517 cycles / line of which 700 were spent doing necessary instructions
 ;      -- theoretically about 8 fps
-
+;
+;  Odd:
+             MX    %00
 entry_1      ldx   #0000          ; patch with the address of the direct page tiles. Fixed.
 entry_2      ldy   #0000          ; patch with the address of the line in the second layer. Set when BG1 scroll position changes.
 entry_3      lda   #0000          ; patch with the address of the right edge of the line. Set when origin position changes.
              tcs
 
 entry_jmp    jmp   $2000
-             dfb   00             ; of the screen is odd-aligned, then the opcode is set to 
+             dfb   00             ; if the screen is odd-aligned, then the opcode is set to 
 ;                                 ; $AF to convert to a LDA long instruction.  This puts the
 ;                                 ; first two bytes of the instruction field in the accumulator
 ;                                 ; and falls through to the next instruction.
@@ -117,7 +119,7 @@ r_is_pea     xba                  ; fast code for PEA
 r_is_jmp     sep   #$41           ; Set the C and V flags which tells a snippet to push only the low byte
              ldal  entry_jmp+1
              stal  r_jmp_patch+1
-r_jmp_patch  dfb   $4C,$00,$00    ; Jump back to address in entry_jmp (this takes 13 cycles, is there a better way?)
+r_jmp_patch  dfb   $4C,$00,$00    ; Jump back to address in entry_jmp (this takes 16 cycles, is there a better way?)
 
 ; This is the spot that needs to be page-aligned. In addition to simplifying the entry address
 ; and only needing to update a byte instad of a word, because the code breaks out of the
@@ -132,7 +134,7 @@ loop         lup   82             ; +6   Set up 82 PEA instructions, which is 32
              jmp   loop           ; +252 Ensure execution continues to loop around
              jmp   even_exit      ; +255
 
-odd_exit     lda   #patch         ; This operabd field is *always* used to hold the original 2 bytes of the code field
+odd_exit     lda   #0000          ; This operand field is *always* used to hold the original 2 bytes of the code field
 ;                                 ; that are replaced by the needed BRA instruction to exit the code field.  When the
 ;                                 ; left edge is odd-aligned, we are able to immediately load the value and perform
 ;                                 ; similar logic to the right_odd code path above
@@ -150,12 +152,12 @@ l_is_pea     xba
              pha
              rep   #$30
              bra   even_exit
-r_is_jmp     sep   #$01           ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
+l_is_jmp     sep   #$01           ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
              ldal  entry_jmp+1
-             stal  r_jmp_patch+1
-r_jmp_patch  dfb   $4C,$00,$00    ; Jump back to address in entry_jmp (this takes 13 cycles, is there a better way?)
+             stal  l_jmp_patch+1
+l_jmp_patch  dfb   $4C,$00,$00    ; Jump back to address in entry_jmp (this takes 13 cycles, is there a better way?)
 
-even_exit    jmp   next_entry     ; Jump to the next line.  We set up the blitter to do 8 or 16 lines at a time
+even_exit    jmp   $0000          ; Jump to the next line.  We set up the blitter to do 8 or 16 lines at a time
 ;                                 ; before restoring the machine state and re-enabling interrupts.  This makes
 ;                                 ; the blitter interrupt friendly to allow things like music player to continue
 ;                                 ; to function.
@@ -204,5 +206,18 @@ even_exit    jmp   next_entry     ; Jump to the next line.  We set up the blitte
 ;                               ;
 ;                               ; The slow paths have 21 and 22 cycles for the right and left
 ;                               ; odd-aligned cases respectively.
+
+snippets     ds    32*82
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -1,0 +1,21 @@
+{
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "\\.s$",
+                "isAsync": true,
+                "cmd": "C:\\\\Programs\\\\IIgsXDev\\\\bin\\\\Cadius.exe INDENTFILE ${file}"
+            },
+            {
+                "match": "\\.S$",
+                "isAsync": true,
+                "cmd": "C:\\\\Programs\\\\IIgsXDev\\\\bin\\\\Cadius.exe INDENTFILE ${file}"
+            },
+            {
+                "match": "\\.MACS\\.S$",
+                "isAsync": true,
+                "cmd": "C:\\\\Programs\\\\IIgsXDev\\\\bin\\\\Cadius.exe INDENTFILE ${file}"
+            }
+        ]    
+    }
+}

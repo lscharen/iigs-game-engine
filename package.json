@@ -6,13 +6,14 @@
   "config": {
     "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32.exe",
     "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
-    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe"
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "C:\\Programs\\BrutalDeluxe\\Merlin32\\Library"
   },
   "scripts": {
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
     "build": "npm run build:tool && npm run build:test",
-    "build:test": "%npm_package_config_merlin32% -V macros test/App.s",
-    "build:tool": "%npm_package_config_merlin32% -V C:\\Programs\\BrutalDeluxe\\Merlin32\\Library src\\Tool.s",
+    "build:test": "%npm_package_config_merlin32% -V %npm_package_config_macros% test\\App.s",
+    "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% src\\Tool.s",
     "build:watch": "watch \"npm run build\" src"
   },
   "repository": {

@@ -1,13 +1,15 @@
 *-------------------------------------*
 *               GTE Tool              *
 *-------------------------------------*
-    DSK GTETool
-    TYP $BA
-    XPL
+            DSK   GTETool
+            TYP   $BA
+            XPL
 
 *-------------------------------------*
 *  Segment #1                         *
 *-------------------------------------*
 
-    ASM GTE.Main.s
-    SNA Main
+            ASM   GTE.Main.s
+            ASM   GTE.Line.s
+            SNA   Main
+
