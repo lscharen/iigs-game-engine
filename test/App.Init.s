@@ -14,49 +14,93 @@
 ;   - 1 page for pointer to the second background
 ;   - 8 pages for the dynamic tiles
 
-            mx        %00
+              mx        %00
 
-MemInit     PushLong  #0                   ; space for result
-            PushLong  #$008000             ; size (32k)
-            PushWord  UserId
-            PushWord  #%11000000_00010111  ; Fixed location
-            PushLong  #$002000
-            _NewHandle                     ; returns LONG Handle on stack
-            plx                            ; base address of the new handle
-            pla                            ; high address 00XX of the new handle (bank)
-            _Deref
-            sta       Buff00+2
-            stx       Buff00
+MemInit       PushLong  #0                   ; space for result
+              PushLong  #$008000             ; size (32k)
+              PushWord  UserId
+              PushWord  #%11000000_00010111  ; Fixed location
+              PushLong  #$002000
+              _NewHandle                     ; returns LONG Handle on stack
+              plx                            ; base address of the new handle
+              pla                            ; high address 00XX of the new handle (bank)
+              _Deref
+              stx       Buff00
+              sta       Buff00+2
 
-            PushLong  #0                   ; space for result
-            PushLong  #$008000             ; size (32k)
-            PushWord  UserId
-            PushWord  #%11000000_00010111  ; Fixed location
-            PushLong  #$012000
-            _NewHandle                     ; returns LONG Handle on stack
-            plx                            ; base address of the new handle
-            pla                            ; high address 00XX of the new handle (bank)
-            _Deref
-            sta       Buff01+2
-            stx       Buff01
+              PushLong  #0                   ; space for result
+              PushLong  #$008000             ; size (32k)
+              PushWord  UserId
+              PushWord  #%11000000_00010111  ; Fixed location
+              PushLong  #$012000
+              _NewHandle                     ; returns LONG Handle on stack
+              plx                            ; base address of the new handle
+              pla                            ; high address 00XX of the new handle (bank)
+              _Deref
+              stx       Buff01
+              sta       Buff01+2
 
-            PushLong  #0                   ; space for result
-            PushLong  #$000A00             ; size (10 pages)
-            PushWord  UserId
-            PushWord  #%11000000_00010101  ; Page-aligned, fixed bank
-            PushLong  #$000000
-            _NewHandle                     ; returns LONG Handle on stack
-            plx                            ; base address of the new handle
-            pla                            ; high address 00XX of the new handle (bank)
-            _Deref
-            sta       ZeroPage+2
-            stx       ZeroPage
+              PushLong  #0                   ; space for result
+              PushLong  #$000A00             ; size (10 pages)
+              PushWord  UserId
+              PushWord  #%11000000_00010101  ; Page-aligned, fixed bank
+              PushLong  #$000000
+              _NewHandle                     ; returns LONG Handle on stack
+              plx                            ; base address of the new handle
+              pla                            ; high address 00XX of the new handle (bank)
+              _Deref
+              stx       ZeroPage
+              sta       ZeroPage+2
 
-            rts
+              PushLong  #0
+              PushLong  #$10000
+              PushWord  UserId
+              PushWord  #%11000000_00011100
+              PushLong  #0
+              _NewHandle
+              plx                            ; base address of the new handle
+              pla                            ; high address 00XX of the new handle (bank)
+              _Deref
+              stx       BlitBuff
+              sta       BlitBuff+2
 
-Buff00      ds        4
-Buff01      ds        4
-ZeroPage    ds        4
+              rts
+
+Buff00        ds        4
+Buff01        ds        4
+ZeroPage      ds        4
+BlitBuff      ds        4
+
+; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
+
+AllocOneBank  PushLong  #0
+              PushLong  #$10000
+              PushWord  UserId
+              PushWord  #%11000000_00011100
+              PushLong  #0
+              _NewHandle                     ; returns LONG Handle on stack
+              plx                            ; base address of the new handle
+              pla                            ; high address 00XX of the new handle (bank)
+              xba                            ; swap accumulator bytes to XX00	
+              sta       :bank+2              ; store as bank for next op (overwrite $XX00)
+:bank         ldal      $000001,X            ; recover the bank address in A=XX/00	
+              rts
+
+; Set up the interrupts
+;
+; oldOneVect = GetVector( oneSecHnd );
+; SetVector( oneSecHnd, (Pointer) ONEHANDLER );
+; IntSource( oSecEnable );
+;  SetHeartBeat( VBLTASK );
+IntInit       rts
+
+
+; IntSource( oSecDisable );		/* disable one second interrupts */
+; SetVector( oneSecHnd, oldOneVect );   /* reset to the old handler */
+ShutDown      rts
+
+
+
 
 
 
