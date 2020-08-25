@@ -12,14 +12,18 @@
                      mx         %00
 
 SHADOW_REG           equ        $E0C035
+STATE_REG            equ        $E0C068
 NEW_VIDEO_REG        equ        $E0C029
-BORDER_REG           equ        $E0C034           ; 0-3 = border 4-7 Text color
+BORDER_REG           equ        $E0C034              ; 0-3 = border 4-7 Text color
 VBL_VERT_REG         equ        $E0C02E
 VBL_HORZ_REG         equ        $E0C02F
 
 KBD_REG              equ        $E0C000
 KBD_STROBE_REG       equ        $E0C010
 VBL_STATE_REG        equ        $E0C019
+
+SHR_SCREEN           equ        $E12000
+SHR_SCB              equ        $E19D00
 
 ; Typical init
 
@@ -28,48 +32,46 @@ VBL_STATE_REG        equ        $E0C019
 
 ; Tool startup
 
-                     _TLStartUp                   ; normal tool initialization
+                     _TLStartUp                      ; normal tool initialization
                      pha
                      _MMStartUp
-                     _Err                         ; should never happen
+                     _Err                            ; should never happen
                      pla
-                     sta        MasterId          ; our master handle references the memory allocated to us
-                     ora        #$0100            ; set auxID = $01  (valid values $01-0f)
-                     sta        UserId            ; any memory we request must use our own id 
+                     sta        MasterId             ; our master handle references the memory allocated to us
+                     ora        #$0100               ; set auxID = $01  (valid values $01-0f)
+                     sta        UserId               ; any memory we request must use our own id 
 
                      _MTStartUp
 
 ; Install interrupt handlers
 
                      PushLong   #0
-                     pea        $0015             ; Get the existing 1-second interrupt handler and save
+                     pea        $0015                ; Get the existing 1-second interrupt handler and save
                      _GetVector
                      PullLong   OldOneSecVec
 
-                     pea        $0015             ; Set the new handler and enable interrupts
+                     pea        $0015                ; Set the new handler and enable interrupts
                      PushLong   #OneSecHandler
                      _SetVector
 
                      pea        $0006
                      _IntSource
 
-                     PushLong   #VBLTASK          ; Also register a Heart Beat Task
+                     PushLong   #VBLTASK             ; Also register a Heart Beat Task
                      _SetHeartBeat
 
 ; Start up the graphics engine...
 
                      jsr        MemInit
+                     jsr        GrafInit
 
-                     lda        BlitBuff+2        ; Fill in this bank
+                     lda        BlitBuff+2           ; Fill in this bank
                      jsr        BuildBank
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
-                     jsr        AllocOneBank      ; Alloc 64KB for Load/Unpack
-                     sta        BankLoad          ; Store "Bank Pointer"
-
-                     jsr        GrafOn
-
+                     jsr        AllocOneBank         ; Alloc 64KB for Load/Unpack
+                     sta        BankLoad             ; Store "Bank Pointer"
 EvtLoop
                      jsr        WaitForKey
                      cmp        #'q'
@@ -79,8 +81,72 @@ EvtLoop
                      bne        :2
                      brl        DoLoadPic
 :2                   cmp        #'m'
-                     beq        DoMessage
-                     bra        EvtLoop
+                     bne        :3
+                     brl        DoMessage
+:3                   cmp        #'f'                 ; render a 'f'rame
+                     bne        :4
+                     brl        DoFrame
+:4                   bra        EvtLoop
+
+; Set up the code field and render it
+DoFrame
+
+; This sets up the environment for calling the blitter. The blitter code takes care of moving from
+; line to line and should be set up ahead of time with appropriate epilougs for lines to periodically
+; enable interrupts and other stuff.  In short, we call into the code once and, when it returns, all of
+; the lines set up to render will be finished.
+
+                     tsc                             ; save the stack pointer
+                     sta        stk_save+1           ; save a cycle by storing while bank is set
+
+                     ldx        #80*2                ; This is the word to exit from
+                     ldy        Tile2CodeOffset,x    ; Get the offset
+
+                     lda        BlitBuff+1           ; set the data bank to the code field
+                     sta        blt_entry+2          ; Patch into the long jump
+                     pha
+                     plb
+                     plb
+
+                     ldal       CodeFieldEvenBRA,x   ; Get the value to place there
+                     ldx        #16*2
+                     jsr        SetConst
+
+                     jsr        SetNextLine          ; Link the lines together
+
+                     lda        #{$2000+159+15*160}  ; Set the stack address to the right edge of the screen
+                     ldy        #0
+                     ldx        #16*2
+                     jsr        SetScreenAddrs
+
+                     sep        #$20                 ; only need to do an 8-bit store
+                     lda        #$06                 ; This is the entry address to start drawing
+                     ldy        #CODE_ENTRY          ; don't actually need to set these again
+                     ldx        #16*2
+                     jsr        SetConst
+                     rep        #$30
+
+                     ldy        #$F000
+                     jsr        SetReturn
+
+                     sei                             ; disable interrupts
+
+                     ldal       STATE_REG
+                     ora        #$0010               ; Read Bank 0 / Write Bank 1
+                     stal       STATE_REG
+
+blt_entry            jml        $000006              ; Jump into the blitter code $XX/YY06
+
+blt_return           ldal       STATE_REG            ; Read Bank 0 / Write Bank 0
+                     and        #$FFCF
+                     stal       STATE_REG
+stk_save             lda        #0000                ; load the stack
+                     tcs
+                     cli                             ; re-enable interrupts
+
+                     phk                             ; restore data bank
+                     plb
+                     jmp        EvtLoop
 
 HexToChar            dfb        '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
 DoMessage
@@ -144,33 +210,33 @@ DoMessage
 
 DoLoadPic
                      lda        BankLoad
-                     ldx        #ImageName        ; Load+Unpack Boot Picture
-                     jsr        LoadPicture       ; X=Name, A=Bank to use for loading
+                     ldx        #ImageName           ; Load+Unpack Boot Picture
+                     jsr        LoadPicture          ; X=Name, A=Bank to use for loading
 
-                     lda        BankLoad          ; get address of loaded/uncompressed picture
+                     lda        BankLoad             ; get address of loaded/uncompressed picture
                      clc
-                     adc        #$0080            ; skip header? 
-                     sta        :copySHR+2        ;  and store that over the 'ldal' address below
-                     ldx        #$7FFE            ; copy all image data
-:copySHR             ldal       $000000,x         ; load from BankLoad we allocated
-                     stal       $E12000,x         ; store to SHR screen
+                     adc        #$0080               ; skip header? 
+                     sta        :copySHR+2           ;  and store that over the 'ldal' address below
+                     ldx        #$7FFE               ; copy all image data
+:copySHR             ldal       $000000,x            ; load from BankLoad we allocated
+                     stal       $E12000,x            ; store to SHR screen
                      dex
                      dex
                      bpl        :copySHR
                      jmp        EvtLoop
 
 Exit
-                     pea        $0007             ; disable 1-second interrupts
+                     pea        $0007                ; disable 1-second interrupts
                      _IntSource
 
-                     PushLong   #VBLTASK          ; Remove our heartbeat task
+                     PushLong   #VBLTASK             ; Remove our heartbeat task
                      _DelHeartBeat
 
                      pea        $0015
-                     PushLong   OldOneSecVec      ; Reset the interrupt vector
+                     PushLong   OldOneSecVec         ; Reset the interrupt vector
                      _SetVector
 
-                     PushWord   UserId            ; Deallocate all of our memory
+                     PushWord   UserId               ; Deallocate all of our memory
                      _DisposeAll
 
                      _QuitGS    qtRec
@@ -208,7 +274,7 @@ OneSecHandler        mx         %11
                      sep        #$20
 
                      ldal       $E0C032
-                     and        #%10111111        ;clear IRQ source
+                     and        #%10111111           ;clear IRQ source
                      stal       $E0C032
 
                      pla
@@ -226,12 +292,10 @@ VBLTASK              hex        00000000
 
 ; Graphic screen initialization
 
-GrafInit             ldx        #$7FFE
-                     lda        #0000
-:loop                stal       $E12000,x
-                     dex
-                     dex
-                     bne        :loop
+GrafInit             lda        #$8888
+                     jsr        ClearToColor
+                     jsr        GrafOn
+                     jsr        ShadowOn
                      rts
 
 ; Return the current border color ($0 - $F) in the accumulator
@@ -243,12 +307,28 @@ GetBorderColor       lda        #0000
                      rts
 
 ; Set the border color to the accumulator value.
-SetBorderColor       sep        #$20              ; ACC = $X_Y, REG = $W_Z
-                     eorl       BORDER_REG        ; ACC = $(X^Y)_(Y^Z)
-                     and        #$0F              ; ACC = $0_(Y^Z)
-                     eorl       BORDER_REG        ; ACC = $W_(Y^Z^Z) = $W_Y
+SetBorderColor       sep        #$20                 ; ACC = $X_Y, REG = $W_Z
+                     eorl       BORDER_REG           ; ACC = $(X^Y)_(Y^Z)
+                     and        #$0F                 ; ACC = $0_(Y^Z)
+                     eorl       BORDER_REG           ; ACC = $W_(Y^Z^Z) = $W_Y
                      stal       BORDER_REG
                      rep        #$20
+                     rts
+
+; Clear to SHR screen to a specific color
+ClearToColor         ldx        #$7D00               ;start at top of pixel data! ($2000-9D00)
+:clearloop           dex
+                     dex
+                     stal       SHR_SCREEN,x         ;screen location
+                     bne        :clearloop           ;loop until we've worked our way down to 0
+                     rts
+
+; Initialize the SCB
+SetSCBs              ldx        #$0100               ;set all $100 scbs to A
+:scbloop             dex
+                     dex
+                     stal       SHR_SCB,x
+                     bne        :scbloop
                      rts
 
 ; Turn SHR screen On/Off
@@ -283,21 +363,21 @@ GetVBL               sep        #$20
                      ldal       VBL_HORZ_REG
                      asl
                      ldal       VBL_VERT_REG
-                     rol                          ; put V5 into carry bit, if needed. See TN #39 for details.
+                     rol                             ; put V5 into carry bit, if needed. See TN #39 for details.
                      rep        #$20
                      and        #$00FF
                      rts
 
 WaitForVBL           sep        #$20
-:wait1               ldal       VBL_STATE_REG     ; If we are already in VBL, then wait
+:wait1               ldal       VBL_STATE_REG        ; If we are already in VBL, then wait
                      bmi        :wait1
 :wait2               ldal       VBL_STATE_REG
-                     bpl        :wait2            ; spin until transition into VBL
+                     bpl        :wait2               ; spin until transition into VBL
                      rep        #$20
                      rts
 
 WaitForKey           sep        #$20
-                     stal       KBD_STROBE_REG    ; clear the strobe
+                     stal       KBD_STROBE_REG       ; clear the strobe
 :WFK                 ldal       KBD_REG
                      bpl        :WFK
                      rep        #$20
@@ -312,42 +392,42 @@ ClearKeyboardStrobe  sep        #$20
 ; Graphics helpers
 
 LoadPicture
-                     jsr        LoadFile          ; X=Nom Image, A=Banc de chargement XX/00
+                     jsr        LoadFile             ; X=Nom Image, A=Banc de chargement XX/00
                      bcc        :loadOK
                      rts
 :loadOK
-                     jsr        UnpackPicture     ; A=Packed Size
+                     jsr        UnpackPicture        ; A=Packed Size
                      rts
 
 
-UnpackPicture        sta        UP_PackedSize     ; Size of Packed Data
-                     lda        #$8000            ; Size of output Data Buffer
+UnpackPicture        sta        UP_PackedSize        ; Size of Packed Data
+                     lda        #$8000               ; Size of output Data Buffer
                      sta        UP_UnPackedSize
-                     lda        BankLoad          ; Banc de chargement / Decompression
-                     sta        UP_Packed+1       ; Packed Data
+                     lda        BankLoad             ; Banc de chargement / Decompression
+                     sta        UP_Packed+1          ; Packed Data
                      clc
                      adc        #$0080
-                     stz        UP_UnPacked       ; On remet a zero car modifie par l'appel
+                     stz        UP_UnPacked          ; On remet a zero car modifie par l'appel
                      stz        UP_UnPacked+2
-                     sta        UP_UnPacked+1     ; Unpacked Data buffer
+                     sta        UP_UnPacked+1        ; Unpacked Data buffer
 
-                     PushWord   #0                ; Space for Result : Number of bytes unpacked 
-                     PushLong   UP_Packed         ; Pointer to buffer containing the packed data
-                     PushWord   UP_PackedSize     ; Size of the Packed Data
-                     PushLong   #UP_UnPacked      ; Pointer to Pointer to unpacked buffer
-                     PushLong   #UP_UnPackedSize  ; Pointer to a Word containing size of unpacked data
+                     PushWord   #0                   ; Space for Result : Number of bytes unpacked 
+                     PushLong   UP_Packed            ; Pointer to buffer containing the packed data
+                     PushWord   UP_PackedSize        ; Size of the Packed Data
+                     PushLong   #UP_UnPacked         ; Pointer to Pointer to unpacked buffer
+                     PushLong   #UP_UnPackedSize     ; Pointer to a Word containing size of unpacked data
                      _UnPackBytes
-                     pla                          ; Number of byte unpacked
+                     pla                             ; Number of byte unpacked
                      rts
 
-UP_Packed            hex        00000000          ; Address of Packed Data
-UP_PackedSize        hex        0000              ; Size of Packed Data
-UP_UnPacked          hex        00000000          ; Address of Unpacked Data Buffer (modified)
-UP_UnPackedSize      hex        0000              ; Size of Unpacked Data Buffer (modified)
+UP_Packed            hex        00000000             ; Address of Packed Data
+UP_PackedSize        hex        0000                 ; Size of Packed Data
+UP_UnPacked          hex        00000000             ; Address of Unpacked Data Buffer (modified)
+UP_UnPackedSize      hex        0000                 ; Size of Unpacked Data Buffer (modified)
 
 ; Basic I/O function to load files
 
-LoadFile             stx        openRec+4         ; X=File, A=Bank/Page XX/00
+LoadFile             stx        openRec+4            ; X=File, A=Bank/Page XX/00
                      sta        readRec+5
 
 :openFile            _OpenGS    openRec
@@ -367,7 +447,7 @@ LoadFile             stx        openRec+4         ; X=File, A=Bank/Page XX/00
 
 :closeFile           _CloseGS   closeRec
                      clc
-                     lda        eofRec+4          ; File Size
+                     lda        eofRec+4             ; File Size
                      rts
 
 :openReadErr         jsr        :closeFile
@@ -398,22 +478,22 @@ MasterId             ds         2
 UserId               ds         2
 BankLoad             hex        0000
 
-openRec              dw         2                 ; pCount
-                     ds         2                 ; refNum
-                     adrl       ImageName         ; pathname
+openRec              dw         2                    ; pCount
+                     ds         2                    ; refNum
+                     adrl       ImageName            ; pathname
 
-eofRec               dw         2                 ; pCount
-                     ds         2                 ; refNum
-                     ds         4                 ; eof
+eofRec               dw         2                    ; pCount
+                     ds         2                    ; refNum
+                     ds         4                    ; eof
 
-readRec              dw         4                 ; pCount
-                     ds         2                 ; refNum
-                     ds         4                 ; dataBuffer
-                     ds         4                 ; requestCount
-                     ds         4                 ; transferCount
+readRec              dw         4                    ; pCount
+                     ds         2                    ; refNum
+                     ds         4                    ; dataBuffer
+                     ds         4                    ; requestCount
+                     ds         4                    ; transferCount
 
-closeRec             dw         1                 ; pCount
-                     ds         2                 ; refNum
+closeRec             dw         1                    ; pCount
+                     ds         2                    ; refNum
 
 qtRec                adrl       $0000
                      da         $00
@@ -422,23 +502,4 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
-
-                     lda        #BG1_ADDR
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
