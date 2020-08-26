@@ -92,22 +92,36 @@ EvtLoop
 DoFrame
 
 ; This sets up the environment for calling the blitter. The blitter code takes care of moving from
-; line to line and should be set up ahead of time with appropriate epilougs for lines to periodically
+; line to line and should be set up ahead of time with appropriate epilogues for lines to periodically
 ; enable interrupts and other stuff.  In short, we call into the code once and, when it returns, all of
 ; the lines set up to render will be finished.
 
+                     sep        #$20                 ; 8-bit acc
+                     lda        BlitBuff+2           ; set the data bank to the code field
+                     sta        blt_entry+3          ; Patch into the long jump
+                     pha
+                     pha                             ; push twice because we will use it later
+                     rep        #$20
+
                      tsc                             ; save the stack pointer
+                     inc                             ; adjust for the plb below
                      sta        stk_save+1           ; save a cycle by storing while bank is set
 
                      ldx        #80*2                ; This is the word to exit from
-                     ldy        Tile2CodeOffset,x    ; Get the offset
+                     ldy        Col2CodeOffset,x     ; Get the offset
 
-                     lda        BlitBuff+1           ; set the data bank to the code field
-                     sta        blt_entry+2          ; Patch into the long jump
-                     pha
-                     plb
-                     plb
+                     sep        #$20                 ; 8-bit acc
+                     lda        BlitBuff+2           ; set the data bank to the code field
+                     sta        blt_entry+3          ; Patch into the long jump
+                     rep        #$20
 
+                     plb                             ; set the data bank to the code field
+
+                     ldx        #16*2                ; Y-register is set correctly
+                     lda        #OPCODE_SAVE
+                     jsr        SaveOpcode
+
+                     ldx        #80*2                ; X-register is overwritten by SaveOpcode
                      ldal       CodeFieldEvenBRA,x   ; Get the value to place there
                      ldx        #16*2
                      jsr        SetConst
@@ -143,6 +157,14 @@ blt_return           ldal       STATE_REG            ; Read Bank 0 / Write Bank 
 stk_save             lda        #0000                ; load the stack
                      tcs
                      cli                             ; re-enable interrupts
+
+                     plb                             ; set the bank back to the code field
+                     ldx        #80*2                ; This is the word to exit from
+                     ldal       Col2CodeOffset,x     ; Get the offset
+                     tay
+                     ldx        #16*2
+                     lda        #OPCODE_SAVE
+;                     jsr        RestoreOpcode
 
                      phk                             ; restore data bank
                      plb
@@ -294,6 +316,8 @@ VBLTASK              hex        00000000
 
 GrafInit             lda        #$8888
                      jsr        ClearToColor
+                     lda        #0000
+                     jsr        SetSCBs
                      jsr        GrafOn
                      jsr        ShadowOn
                      rts
@@ -502,4 +526,26 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

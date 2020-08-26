@@ -19,7 +19,7 @@
 
 PER_TILE_SIZE     equ   3
 ]step             equ   0
-Tile2CodeOffset   lup   82
+Col2CodeOffset    lup   82
                   dw    CODE_TOP+{]step*PER_TILE_SIZE}
 ]step             equ   ]step+1
                   --^
@@ -194,3 +194,4 @@ CodeFieldOddBRA
                   bra   *+15        ; 79
                   bra   *+12        ; 80
                   bra   *+9         ; 81 -- need to skip over two JMP instructions
+

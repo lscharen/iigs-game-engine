@@ -10,6 +10,7 @@ CODE_ENTRY      equ   entry_jmp-base+1       ; low byte of the page-aligned jump
 CODE_TOP        equ   loop-base
 CODE_LEN        equ   top-base
 CODE_EXIT       equ   even_exit-base
+OPCODE_SAVE     equ   odd_exit-base+1        ; spot to save the code field opcode when patching exit BRA
 
 ; Locations that need the page offset added
 PagePatches     da    {long_0-base+2}
@@ -35,6 +36,41 @@ BankPatches     da    {long_0-base+3}
                 da    {long_5-base+3}
                 da    {long_6-base+3}
 BankPatchNum    equ   *-BankPatches
+
+; Copy tile data into code field.  Their are specialized copy routines
+;
+; CopyTileConst -- the first 16 tile numbers are reserved and can be used
+;                  to draw a solid tile block
+CopyTile        cmp   #$0010
+                bcs   :invalid
+                asl
+                tax
+                ldal  TilePatterns,x
+                bra   CopyTileConst
+:invalid        rts
+
+TilePatterns    dw    $0000,$1111,$2222,$3333
+                dw    $4444,$5555,$6666,$7777
+                dw    $8888,$9999,$AAAA,$BBBB
+                dw    $CCCC,$DDDD,$EEEE,$FFFF
+
+CopyTileConst   sta:  $0000,y
+                sta:  $0003,y
+                sta   $1000,y
+                sta   $1003,y
+                sta   $2000,y
+                sta   $2003,y
+                sta   $3000,y
+                sta   $3003,y
+                sta   $4000,y
+                sta   $4003,y
+                sta   $5000,y
+                sta   $5003,y
+                sta   $6000,y
+                sta   $6003,y
+                sta   $7000,y
+                sta   $7003,y
+                rts
 
 ; Patch out the final JMP to jump to the long JML return code
 ;
@@ -88,7 +124,116 @@ SetConst        jmp   (:tbl,x)
                 sta   $3000,y
                 sta   $2000,y
                 sta   $1000,y
-                sta   $0000,y
+                sta:  $0000,y
+:bottom         rts
+
+; SaveOpcode
+;
+; Save the values to the restore location.  This should only be used to patch the
+; code field since the save location is fixed.  
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = store location * $1000
+SaveOpcode      pha                          ; save the accumulator
+                ldal  :tbl,x
+                dec
+                plx                          ; put the accumulator into X
+                pha                          ; push the address into the stack
+                rts                          ; and jump
+
+:tbl            da    :bottom-00,:bottom-06,:bottom-12,:bottom-18
+                da    :bottom-24,:bottom-30,:bottom-36,:bottom-42
+                da    :bottom-48,:bottom-54,:bottom-60,:bottom-66
+                da    :bottom-72,:bottom-78,:bottom-84,:bottom-90
+                da    :bottom-96
+:top            lda   $F000,y
+                sta   $F000,x
+                lda   $E000,y
+                sta   $E000,x
+                lda   $D000,y
+                sta   $D000,x
+                lda   $C000,y
+                sta   $C000,x
+                lda   $B000,y
+                sta   $B000,x
+                lda   $A000,y
+                sta   $A000,x
+                lda   $9000,y
+                sta   $9000,x
+                lda   $8000,y
+                sta   $8000,x
+                lda   $7000,y
+                sta   $7000,x
+                lda   $6000,y
+                sta   $6000,x
+                lda   $5000,y
+                sta   $5000,x
+                lda   $4000,y
+                sta   $4000,x
+                lda   $3000,y
+                sta   $3000,x
+                lda   $2000,y
+                sta   $2000,x
+                lda   $1000,y
+                sta   $1000,x
+                lda:  $0000,y
+                sta:  $0000,x
+:bottom         rts
+
+; RestoreOpcode
+;
+; Restore the values to the opcode location.  This should only be used to restore the
+; code field.
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = store location * $1000
+RestoreOpcode   pha                          ; save the accumulator
+                ldal  :tbl,x
+                dec
+                plx                          ; put the accumulator into X
+                pha                          ; push the address into the stack
+                rts                          ; and jump
+
+:tbl            da    :bottom-00,:bottom-06,:bottom-12,:bottom-18
+                da    :bottom-24,:bottom-30,:bottom-36,:bottom-42
+                da    :bottom-48,:bottom-54,:bottom-60,:bottom-66
+                da    :bottom-72,:bottom-78,:bottom-84,:bottom-90
+                da    :bottom-96
+
+:top            lda   $F000,x
+                sta   $F000,y
+                lda   $E000,x
+                sta   $E000,y
+                lda   $D000,x
+                sta   $D000,y
+                lda   $C000,x
+                sta   $C000,y
+                lda   $B000,x
+                sta   $B000,y
+                lda   $A000,x
+                sta   $A000,y
+                lda   $9000,x
+                sta   $9000,y
+                lda   $8000,x
+                sta   $8000,y
+                lda   $7000,x
+                sta   $7000,y
+                lda   $6000,x
+                sta   $6000,y
+                lda   $5000,x
+                sta   $5000,y
+                lda   $4000,x
+                sta   $4000,y
+                lda   $3000,x
+                sta   $3000,y
+                lda   $2000,x
+                sta   $2000,y
+                lda   $1000,x
+                sta   $1000,y
+                lda:  $0000,x
+                sta:  $0000,y
 :bottom         rts
 
 ; SetScreenAddrs
@@ -135,7 +280,7 @@ SetScreenAddrs  sec
                 sbc   #160
                 sta   STK_ADDR+$1000,y
                 sbc   #160
-                sta   STK_ADDR+$0000,y
+                sta:  STK_ADDR+$0000,y
 :bottom         rts
 
 ; SetAbsAddres
@@ -182,7 +327,7 @@ SetAbsAddrs     sec
                 sbc   #$1000
                 sta   $1000,y
                 sbc   #$1000
-                sta   $0000,y
+                sta:  $0000,y
 :bottom         rts
 
 ; Full up a full bank with blitter templates.  Currently we can fit 16 lines per bank, so need
@@ -414,6 +559,23 @@ epilogue_2      ldal  STATE_REG              ; Read Bank 0 / Write Bank 0
 
 ; snippets      ds    32*82
 top
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
