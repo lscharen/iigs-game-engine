@@ -91,6 +91,51 @@ EvtLoop
 ; Set up the code field and render it
 DoFrame
 
+; Render some tiles
+
+                     lda        BlitBuff+1           ; set the data bank to the code field
+                     pha
+                     plb
+                     plb
+
+                     ldx        #0
+                     ldal       Col2CodeOffset,x
+                     tay
+                     iny
+                     lda        #1                   ; draw tile #1
+                     jsr        CopyTile
+
+                     ldx        #4
+                     ldal       Col2CodeOffset,x
+                     tay
+                     iny
+                     lda        #2                   ; draw tile #1
+                     jsr        CopyTile
+
+                     ldx        #8
+                     ldal       Col2CodeOffset,x
+                     tay
+                     iny
+                     lda        #3                   ; draw tile #1
+                     jsr        CopyTile
+
+                     ldx        #12
+                     ldal       Col2CodeOffset,x
+                     tay
+                     iny
+                     lda        #4                   ; draw tile #1
+                     jsr        CopyTile
+
+                     ldx        #16
+                     ldal       Col2CodeOffset,x
+                     tay
+                     iny
+                     lda        #5                   ; draw tile #1
+                     jsr        CopyTile
+
+                     phk
+                     plb
+
 ; This sets up the environment for calling the blitter. The blitter code takes care of moving from
 ; line to line and should be set up ahead of time with appropriate epilogues for lines to periodically
 ; enable interrupts and other stuff.  In short, we call into the code once and, when it returns, all of
@@ -526,6 +571,14 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
+
+
+
+
+
+
+
+
 
 
 
