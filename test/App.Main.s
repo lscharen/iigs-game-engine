@@ -79,7 +79,9 @@ SHR_SCB              equ        $E19D00
 
 ]step                equ        0
                      lup        13
-                     lda        BlitBuff+]step+2
+                     ldx        #BlitBuff
+                     lda        #^BlitBuff
+                     ldy        #]step
                      jsr        BuildBank
 ]step                equ        ]step+4
                      --^
@@ -186,8 +188,6 @@ DoFrame
                      ldal       CodeFieldEvenBRA,x   ; Get the value to place there
                      ldx        #16*2
                      jsr        SetConst
-
-                     jsr        SetNextLine          ; Link the lines together
 
                      lda        #{$2000+159+15*160}  ; Set the stack address to the right edge of the screen
                      ldy        #0
@@ -606,6 +606,13 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
+
+
+
+
+
+
+
 
 
 
