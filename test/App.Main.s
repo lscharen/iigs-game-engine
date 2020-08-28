@@ -1,4 +1,16 @@
 ; Test program for graphics stufff...
+;
+; Allow dynamic resizing to benchmark against different games
+;
+;  1. Full Screen           : 320 x 200 (32,000 bytes (100.0%))
+;  2. Sword of Sodan        : 272 x 192 (26,112 bytes ( 81.6%))
+;  3. ~NES                  : 256 x 200 (25,600 bytes ( 80.0%))
+;  4. Task Force            : 256 x 176 (22,528 bytes ( 70.4%))
+;  5. Defender of the World : 280 x 160 (22,400 bytes ( 70.0%))
+;  6. Rastan                : 256 x 160 (20,480 bytes ( 64.0%))
+;  7. Game Boy Advanced     : 240 x 160 (19,200 bytes ( 60.0%))
+;  8. Ancient Land of Y's   : 288 x 128 (18,432 bytes ( 57.6%))
+;  9. Game Boy Color        : 160 x 144 (11,520 bytes ( 36.0%))
 
                      rel
 
@@ -65,8 +77,12 @@ SHR_SCB              equ        $E19D00
                      jsr        MemInit
                      jsr        GrafInit
 
-                     lda        BlitBuff+2           ; Fill in this bank
+]step                equ        0
+                     lup        13
+                     lda        BlitBuff+]step+2
                      jsr        BuildBank
+]step                equ        ]step+4
+                     --^
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -216,63 +232,82 @@ stk_save             lda        #0000                ; load the stack
                      jmp        EvtLoop
 
 HexToChar            dfb        '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
-DoMessage
-                     sep        #$20
-                     ldx        #0
-                     lda        BlitBuff+2
+
+; Convert a byte (Acc) into a string and store at (Y)
+ByteToString         sep        #$20
+                     pha
+
                      and        #$F0
                      lsr
                      lsr
                      lsr
                      lsr
                      tax
-                     lda        HexToChar,x
-                     sta        Hello+1
+                     ldal       HexToChar,x
+                     sta:       $0000,y
 
-                     lda        BlitBuff+2
+                     pla
                      and        #$0F
                      tax
-                     lda        HexToChar,x
-                     sta        Hello+2
-
-                     lda        BlitBuff+1
-                     and        #$F0
-                     lsr
-                     lsr
-                     lsr
-                     lsr
-                     tax
-                     lda        HexToChar,x
-                     sta        Hello+4
-
-                     lda        BlitBuff+1
-                     and        #$0F
-                     tax
-                     lda        HexToChar,x
-                     sta        Hello+5
-
-                     lda        BlitBuff
-                     and        #$F0
-                     lsr
-                     lsr
-                     lsr
-                     lsr
-                     tax
-                     lda        HexToChar,x
-                     sta        Hello+6
-
-                     lda        BlitBuff
-                     and        #$0F
-                     tax
-                     lda        HexToChar,x
-                     sta        Hello+7
+                     ldal       HexToChar,x
+                     sta:       $0001,y
 
                      rep        #$20
+                     rts
+
+; Pass in Acc = High, X = low
+Addr3ToString        phx
+                     jsr        ByteToString
+                     iny
+                     iny
+                     lda        1,s
+                     xba
+                     jsr        ByteToString
+                     iny
+                     iny
+                     pla
+                     jsr        ByteToString
+                     rts
+
+
+:count               =          4
+:ptr                 =          6
+:addr                =          10
+DoMessage            stz        :addr
+                     lda        #13
+                     sta        :count
+                     lda        #BlitBuff
+                     sta        :ptr
+                     lda        #^BlitBuff
+                     sta        :ptr+2
+
+:loop                lda        [:ptr]
+                     tax
+                     ldy        #2
+                     lda        [:ptr],y
+
+                     ldy        #Hello+1
+                     jsr        Addr3ToString
 
                      lda        #Hello
-                     ldx        #{60*160+30}
+                     ldx        :addr
                      ldy        #$7777
                      jsr        DrawString
+
+                     lda        :addr
+                     clc
+                     adc        #160*8
+                     sta        :addr
+
+                     inc        :ptr
+                     inc        :ptr
+                     inc        :ptr
+                     inc        :ptr
+
+                     dec        :count
+                     lda        :count
+                     bne        :loop
+
                      jmp        EvtLoop
 
 DoLoadPic
@@ -311,7 +346,7 @@ Exit
                      bcs        Fatal
 Fatal                brk        $00
 
-Hello                str        '00/0000'
+Hello                str        '000000'
 
 ****************************************
 * Fatal Error Handler                  *
@@ -571,6 +606,43 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
