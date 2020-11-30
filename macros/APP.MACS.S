@@ -15,6 +15,20 @@ _Deref      MAC
             plb               ; restore the caller's data bank register    
             <<<
 
+_Mul4096    mac
+            xba
+            asl
+            asl
+            asl
+            asl
+            <<<
+
+_Div16      mac
+            lsr
+            lsr
+            lsr
+            lsr
+            <<<
 
 ****************************************
 * Basic Error Macro                    *
@@ -28,5 +42,7 @@ _Err        mac
             jmp   PgmDeath0   ;  we just call the simpler error handler
             fin               ; (FIN) 
 NoErr       eom
+
+
 
 

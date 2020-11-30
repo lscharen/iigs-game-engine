@@ -195,3 +195,15 @@ CodeFieldOddBRA
                   bra   *+12        ; 80
                   bra   *+9         ; 81 -- need to skip over two JMP instructions
 
+]step             equ   $2000
+ScreenAddr        lup   200
+                  dw    ]step
+]step             =     ]step+160
+                  --^
+
+; This is a double-length table that holds the right-edge adresses of the playfield on the physical
+; screen.  At most, it needs to hold 200 addresses for a full height playfield.  It is double-length
+; so that code can pick an offset and copy values without needing to check for a wrap-around. If the
+; playfield is less than 200 lines tall, then any values after 2 * PLAYFIELD_HEIGHT are undefine.
+RTable            ds    400
+
