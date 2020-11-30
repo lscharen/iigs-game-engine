@@ -52,12 +52,14 @@ MemInit        PushLong  #0                   ; space for result
                stx       ZeroPage
                sta       ZeroPage+2
 
-; Allocate the 13 banks of memory we need
+; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0
                lup       13
                jsr       AllocOneBank2
                sta       BlitBuff+]step+2
+               sta       BlitBuffMid+]step+2
                stz       BlitBuff+]step
+               stz       BlitBuffMid+]step
 ]step          equ       ]step+4
                --^
 
@@ -67,8 +69,13 @@ Buff00         ds        4
 Buff01         ds        4
 ZeroPage       ds        4
 
-;
+; Array of addressed for the banks that hold the blitter.  This is actually a double-length
+; array, which is a pattern that is used a lot in GTE.  Whenever we have a situation where
+; we need to wrap around an array, we can to this be doubling the array length and using an
+; unrolled loop that starts in the middle instead of doing some kind of "mod N" or loop
+; splitting.
 BlitBuff       ds        4*13
+BlitBuffMid    ds        4*13
 
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
 
@@ -109,6 +116,13 @@ IntInit        rts
 ; IntSource( oSecDisable );		/* disable one second interrupts */
 ; SetVector( oneSecHnd, oldOneVect );   /* reset to the old handler */
 ShutDown       rts
+
+
+
+
+
+
+
 
 
 

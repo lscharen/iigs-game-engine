@@ -20,6 +20,7 @@
                      use        Misc.Macs.s
                      put        ..\macros\App.Macs.s
                      put        ..\macros\EDS.GSOS.MACS.s
+                     put        .\blitter\DirectPage.s
 
                      mx         %00
 
@@ -106,50 +107,77 @@ EvtLoop
                      brl        DoFrame
 :4                   bra        EvtLoop
 
+; Set the screen address (right-edge) in all of the scan lines
+SetRightEdge
+                     sep        #$20                 ; push all the bank addresses on the stack
+                     ldx        #0
+:loop1               lda        BlitBuff+2,x
+                     pha
+                     inx
+                     inx
+                     inx
+                     inx
+                     cpx        #4*13
+                     bcc        :loop1
+
+                     lup        13
+                     lda        #{$2000+159+15*160}  ; Set the stack address to the right edge of the screen
+                     ldy        #0
+                     ldx        #16*2
+                     jsr        SetScreenAddrs
+                     --^
+
+                     phk
+                     plb
+                     rts
+
+
+
 ; Set up the code field and render it
 DoFrame
 
 ; Render some tiles
+:bank                equ        0
+:column              equ        2
+:tile                equ        4
 
-                     lda        BlitBuff+1           ; set the data bank to the code field
+                     stz        :bank
+                     stz        :tile
+:bankloop
+                     ldx        :bank
+                     ldal       BlitBuff+1,x         ; set the data bank to the code field
                      pha
                      plb
                      plb
 
-                     ldx        #0
+                     stz        :column
+
+:tileloop
+                     ldx        :column
                      ldal       Col2CodeOffset,x
                      tay
                      iny
-                     lda        #1                   ; draw tile #1
+                     lda        :tile
                      jsr        CopyTile
 
-                     ldx        #4
-                     ldal       Col2CodeOffset,x
-                     tay
-                     iny
-                     lda        #2                   ; draw tile #1
-                     jsr        CopyTile
+                     lda        :tile
+                     inc
+                     and        #$000F
+                     sta        :tile
 
-                     ldx        #8
-                     ldal       Col2CodeOffset,x
-                     tay
-                     iny
-                     lda        #3                   ; draw tile #1
-                     jsr        CopyTile
+                     lda        :column
+                     clc
+                     adc        #4
+                     sta        :column
+                     cmp        #4*40
+                     bcc        :tileloop
 
-                     ldx        #12
-                     ldal       Col2CodeOffset,x
-                     tay
-                     iny
-                     lda        #4                   ; draw tile #1
-                     jsr        CopyTile
-
-                     ldx        #16
-                     ldal       Col2CodeOffset,x
-                     tay
-                     iny
-                     lda        #5                   ; draw tile #1
-                     jsr        CopyTile
+                     lda        :bank
+                     clc
+                     adc        #4
+                     sta        :bank
+                     cmp        #4*13
+                     bcc        :bankloop
 
                      phk
                      plb
@@ -165,10 +193,6 @@ DoFrame
                      pha
                      pha                             ; push twice because we will use it later
                      rep        #$20
-
-                     tsc                             ; save the stack pointer
-                     inc                             ; adjust for the plb below
-                     sta        stk_save+1           ; save a cycle by storing while bank is set
 
                      ldx        #80*2                ; This is the word to exit from
                      ldy        Col2CodeOffset,x     ; Get the offset
@@ -201,7 +225,7 @@ DoFrame
                      jsr        SetConst
                      rep        #$30
 
-                     ldy        #$F000
+                     ldy        #$7000               ; Set the return after line 200 (Bank 13, line 8)
                      jsr        SetReturn
 
                      sei                             ; disable interrupts
@@ -209,6 +233,9 @@ DoFrame
                      ldal       STATE_REG
                      ora        #$0010               ; Read Bank 0 / Write Bank 1
                      stal       STATE_REG
+
+                     tsc                             ; save the stack pointer
+                     stal       stk_save+1
 
 blt_entry            jml        $000006              ; Jump into the blitter code $XX/YY06
 
@@ -606,78 +633,5 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
