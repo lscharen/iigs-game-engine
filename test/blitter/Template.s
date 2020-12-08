@@ -104,7 +104,7 @@ SetScreenRect      sty   ScreenHeight                 ; Save the screen height a
                    rts
 
 ; Set the starting line of the virtual buffer that will be displayed on the first physical line
-; of the screen rect.
+; of the playfield.
 ;
 ; A = line number [0, 207]
 ;
@@ -149,39 +149,35 @@ SetScreenRect      sty   ScreenHeight                 ; Save the screen height a
 ; if (line_count > 0) {
 ;   do_action(curr_bank, 0, line_count)
 ; }
-;
-; One hack we do is to push in *at least* enough bank values (ScreenHeight / 16) + 1 on the
-; stack ahead of time and just pop them off in order.  At worst, this only adds about 10 cycles
-; of overhead and eliminates an awkward 16-bit <-> 8-bit state switch within the inner loops.
-;
 
-bank_count         equ   tmp0
-start_mod_16       equ   tmp1
-line_x2            equ   tmp2                         ; A physical screen line; used to index into RTable
-last_x2            equ   tmp3
+start_mod_16       equ   tmp0
+lines_left         equ   tmp1
+tblptr             equ   tmp2
+stksave            equ   tmp7
 
 SetYPos            sta   StartY                       ; Save the position
 
-                   asl
-                   sta   line_x2
-                   lsr
+; First action is to calculate the number of code banks that we will be updating and push all of the
+; bank bytes onto the stack in order so that we can use a single 'plb' instruction to set the target
+; for updating the screen address of each blitter line.
 
-; Now we need to calculate two things.  First, we get the code bank index that we are starting on. This
-; is easy, it's just the value of floor(Y / 16), but we pre-multiple by 4 for indexing into the table
-; of bank addresses.  Next, we need to calculate the number of banks that the current range spans.  This
-; will be either floor(ScreenHeight / 16) or floor(ScreenHeight / 16) + 1 depending on the exact value
-; of the Y position, so we actually calculate floor((ScreenHeight + Y % 16) / 16) and pre-multiple by 2.
-
-                   lsr                                ; divide by 4 (Y / 18 * 4 => Y / 4) and then truncate
-                   lsr                                ; the bottom two bits (and only keep relevant bits)
-                   and   #$003C
+                   lsr                                ; divide by 4.  This is really StartY / 16 but we
+                   lsr                                ; need to multiple by 4 to index into the array of
+                   and   #$003C                       ; code bank addresses.
                    tay
 
+; Quick stack save because we re-point the stack into some direct page space to aboid having to 
+; mix 8 and 16 bit modes for bank anipulation
 
+                   tsc
+                   sta   stksave
 
-                   lda   StartY
-                   and   #$000F
-                   sta   start_mod_16                 ; Save for later
+                   lda   ScreenHeight
+                   sta   lines_left
+
+                   lda   StartY                       ; Now figure out exactly how many banks we cross by
+                   and   #$000F                       ; calculating ((StartY % 16) + ScreenHeight) / 16
+                   sta   start_mod_16
                    clc
                    adc   ScreenHeight
                    and   #$00F0                       ; Just keep the relevant nibble
@@ -189,16 +185,26 @@ SetYPos            sta   StartY                       ; Save the position
                    lsr
                    lsr
                    tax                                ; Keep the value pre-multiplied by 2
-                   lsr
-                   sta   bank_count                   ; This is the total number of action calls to make
+
+                   ldy   #0
 
                    jsr   PushBanks                    ; Push the bank bytes on the stack
+                   brl   :out
 
-; Start of the main body of the function.  First, see if there are any unaligned lines to 
-; handle in the first code bank.
+; Start of the main body of the function.  We need to get a pointer to the correct offset of
+; the RTable to copy screen addresses into the code fields
 
-                   lda   start_mod_16
-                   beq   skip_pre
+                   lda   ScreenY0
+                   asl
+                   clc
+                   adc   #RTable
+                   sta   tblptr
+
+; Check to see where we start.  If we are aligned with a code bank, then skip to the
+; fast inner loop.  Otherwise to one iteration to get things lined up
+
+:prologue          lda   start_mod_16
+                   beq   :body
 
                    _Mul4096                           ; Save the offset into the code bank of the
                    tay                                ; first line.
@@ -209,60 +215,62 @@ SetYPos            sta   StartY                       ; Save the position
                    cmp   ScreenHeight                 ; the number of lines in the code bank, we need to clamp
                    bcc   :min_1                       ; the maximum value
                    lda   ScreenHeight
-:min_1             asl                                ; multiply the count by two
-                   pha                                ; save it for a second
+:min_1             sta   tmp4                         ; save for updating the counters
 
-                   clc
-                   adc   line_x2
-                   sta   line_x2                      ; advance the line counter
-                   tax
-                   ldal  RTable-2,x                   ; Load the ending address for this block
+                   asl
+                   tax                                ; do this many lines
+                   lda   tblptr                       ; starting at this address
 
-                   plx                                ; Pop the number of lines * 2 to fill
                    plb                                ; Set the code field bank
-                   jsr   SetScreenAddrs
+                   jsr   CopyFromArray2               ; Copy the right screen edge addresses
 
-skip_pre           ldy   #0
-                   lda   line_x2
-                   clc
-                   adc   #32
-                   cmp
-
-
+                   lda   lines_left
                    sec
-                   plb                                ; Set the code field bank
-                   ldal  RTable+30,x                  ; Load the highest address for this code field bank
-                   jsr   SetScreenAddrsTop            ; to bypass the need to set the X register
+                   sbc   tmp4
+                   sta   lines_left
+
+                   lda   tblptr
+                   clc
+                   adc   tmp4
+                   adc   tmp4
+                   sta   tblptr
+
+; While the number of lines left to render is 16 or greater, loop
+:body              lda   lines_left
+                   cmp   #16
+                   bcc   :epilogue
+
+                   ldy   #0
+                   ldx   tblptr
+:body0             plb                                ; Set the code field bank
+                   jsr   CopyFromArray2Top            ; to bypass the need to set the X register
 
                    txa
                    clc
                    adc   #32
                    tax
 
-                   ldy   #0
-                   jsr   SetScreenAddrsTop            ; bypass X-register
+                   lda   lines_left
+                   sec
+                   sbc   #16
+                   sta   lines_left
 
-                   dec   loop_count
+                   cmp   #16                          ; Repeat the test here to we can skip some
+                   bcs   :body0                       ; redundant setup and spill the X register
+                   stx   tblptr                       ; back into tblptr when done
 
-                   lda   line_count                   ; with some pre-calc, we can just decrement a 
-                   sec                                ; counter because we know the remaining line
-                   sbc   #16                          ; count is line_count % 16
-                   sta   line_count
-                   cmp   #16
-                   bcs   core_loop
+:epilogue          lda   lines_left
+                   beq   :out
 
-                   lda   line_count
-                   beq   :no_post
-
-:no_post
                    asl                                ; Y is still zero
                    tax
-
+                   lda   tblptr
                    plb                                ; Set the code field bank
-;               jsr   (action)
+                   jsr   CopyFromArray2               ; to bypass the need to set the X register
 
-
-:out               phk                                ; Need to restore the current bank
+:out               lda   stksave                      ; put the stack back
+                   tcs
+                   phk                                ; Need to restore the current bank
                    plb
                    rts
 
@@ -276,39 +284,39 @@ skip_pre           ldy   #0
 
 Mod208             cmp   #%1101000000000000
                    bcc   *+5
-                   sbc   #$1101000000000000
+                   sbc   #%1101000000000000
 
                    cmp   #%0110100000000000
                    bcc   *+5
-                   sbc   #$0110100000000000
+                   sbc   #%0110100000000000
 
                    cmp   #%0011010000000000
                    bcc   *+5
-                   sbc   #$0011010000000000
+                   sbc   #%0011010000000000
 
                    cmp   #%0001101000000000
                    bcc   *+5
-                   sbc   #$0001101000000000
+                   sbc   #%0001101000000000
 
                    cmp   #%0000110100000000
                    bcc   *+5
-                   sbc   #$0000110100000000
+                   sbc   #%0000110100000000
 
                    cmp   #%0000011010000000
                    bcc   *+5
-                   sbc   #$0000011010000000
+                   sbc   #%0000011010000000
 
                    cmp   #%0000001101000000
                    bcc   *+5
-                   sbc   #$0000001101000000
+                   sbc   #%0000001101000000
 
                    cmp   #%0000000110100000
                    bcc   *+5
-                   sbc   #$0000000110100000
+                   sbc   #%0000000110100000
 
                    cmp   #%0000000011010000
                    bcc   *+5
-                   sbc   #$0000000011010000
+                   sbc   #%0000000011010000
                    rts
 
 ; BankYSetup
@@ -370,57 +378,50 @@ SetNextLine        lda   #$F000+{entry_3-base}
                    ldx   #15*2
                    jmp   SetAbsAddrs
 
-; Push a series of bank bytes onto the stack that are use to iterate among the
-; different code banks.
+; Copy a series of bank bytes onto the direct page, which we will later point the stack
+; at, and are use to iterate among the different code banks.
 ;
 ; Y = starting index * 4
 ; X = number of bank
-;
-; Bytes are pushed in reverse order, so popping the banks will set the B register
-; in acending order, as expected (top to bottom)
-;
-; This is a bit of an unusual routine, we switch to 8-bit index registers and 16-bit accumulator.
-; That way we can cache the return address in the accumulator and use the index registers for
-; moving the data.  This is OK, because the arrays are small, so X and Y are much smaller than 256.
 
-PushBanks          pla                                ; Pop off the return address
-                   sep   #$10
+PushBanks          sep   #$20
                    jmp   (:tbl,x)
 :tbl               da    :bottom-04,:bottom-08,:bottom-12,:bottom-16
                    da    :bottom-20,:bottom-24,:bottom-28,:bottom-32
                    da    :bottom-36,:bottom-40,:bottom-44,:bottom-48
                    da    :bottom-52
-:top               ldx:  BlitBuff+48,y                ; These are all 8-bit loads and pushes
-                   phx
-                   ldx:  BlitBuff+44,y
-                   phx
-                   ldx:  BlitBuff+42,y
-                   phx
-                   ldx:  BlitBuff+38,y
-                   phx
-                   ldx:  BlitBuff+34,y
-                   phx
-                   ldx:  BlitBuff+30,y
-                   phx
-                   ldx:  BlitBuff+26,y
-                   phx
-                   ldx:  BlitBuff+22,y
-                   phx
-                   ldx:  BlitBuff+18,y
-                   phx
-                   ldx:  BlitBuff+14,y
-                   phx
-                   ldx:  BlitBuff+10,y
-                   phx
-                   ldx:  BlitBuff+6,y
-                   phx
-                   ldx:  BlitBuff+2,y
-                   phx
-:bottom            rep   #$10
-                   pha                                ; Push the return address back to the top of the stack
+:top               lda:  BlitBuff+48,y                ; These are all 8-bit loads and stores
+                   sta   bstk+13
+                   lda:  BlitBuff+44,y
+                   sta   bstk+12
+                   lda:  BlitBuff+42,y
+                   sta   bstk+11
+                   lda:  BlitBuff+38,y
+                   sta   bstk+10
+                   lda:  BlitBuff+34,y
+                   sta   bstk+9
+                   lda:  BlitBuff+30,y
+                   sta   bstk+8
+                   lda:  BlitBuff+26,y
+                   sta   bstk+7
+                   lda:  BlitBuff+22,y
+                   sta   bstk+6
+                   lda:  BlitBuff+18,y
+                   sta   bstk+5
+                   lda:  BlitBuff+14,y
+                   sta   bstk+4
+                   lda:  BlitBuff+10,y
+                   sta   bstk+3
+                   lda:  BlitBuff+6,y
+                   sta   bstk+2
+                   lda:  BlitBuff+2,y
+                   sta   bstk+1
+                   lda:  BlitBuff,y
+                   sta   bstk
+:bottom            rep   #$20
                    rts
 
-; Patch an 8-bit or 16-bit value into the bank.  These are a set up unrolled loops to 
+; Patch an 8-bit or 16-bit valueS into the bank.  These are a set up unrolled loops to 
 ; quickly patch in a constanct value, or a value from an array into a given set of 
 ; templates.
 ;
@@ -568,6 +569,59 @@ RestoreOpcode      pha                                ; save the accumulator
                    sta:  $0000,y
 :bottom            rts
 
+; CopyFromArray
+;
+; Copy values from an array with a stride of two bytes into the code field
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = array address
+CopyFromArray2     pha                                ; save the accumulator
+                   ldal  :tbl,x
+                   dec
+                   plx                                ; put the accumulator into X
+                   pha                                ; push the address into the stack
+                   rts                                ; and jump
+
+:tbl               da    bottomCFA2-00,bottomCFA2-06,bottomCFA2-12,bottomCFA2-18
+                   da    bottomCFA2-24,bottomCFA2-30,bottomCFA2-36,bottomCFA2-42
+                   da    bottomCFA2-48,bottomCFA2-54,bottomCFA2-60,bottomCFA2-66
+                   da    bottomCFA2-72,bottomCFA2-78,bottomCFA2-84,bottomCFA2-90
+                   da    bottomCFA2-96
+
+CopyFromArray2Top  lda:  $001E,x
+                   sta   $F000,y
+                   lda:  $001C,x
+                   sta   $E000,y
+                   lda:  $001A,x
+                   sta   $D000,y
+                   lda:  $0018,x
+                   sta   $C000,y
+                   lda:  $0016,x
+                   sta   $B000,y
+                   lda:  $0014,x
+                   sta   $A000,y
+                   lda:  $0012,x
+                   sta   $9000,y
+                   lda:  $0010,x
+                   sta   $8000,y
+                   lda:  $000E,x
+                   sta   $7000,y
+                   lda:  $000C,x
+                   sta   $6000,y
+                   lda:  $000A,x
+                   sta   $5000,y
+                   lda:  $0008,x
+                   sta   $4000,y
+                   lda:  $0006,x
+                   sta   $3000,y
+                   lda:  $0004,x
+                   sta   $2000,y
+                   lda:  $0002,x
+                   sta   $1000,y
+                   lda:  $0000,x
+                   sta:  $0000,y
+bottomCFA2         rts
 
 ; SetScreenAddrs
 ;
@@ -578,13 +632,13 @@ RestoreOpcode      pha                                ; save the accumulator
 ; Automatically decrements address by 160 bytes each line
 SetScreenAddrs     sec
                    jmp   (:tbl,x)
-:tbl               da    :bottom-00,:bottom-03,:bottom-09,:bottom-15
-                   da    :bottom-21,:bottom-27,:bottom-33,:bottom-39
-                   da    :bottom-45,:bottom-51,:bottom-57,:bottom-63
-                   da    :bottom-69,:bottom-75,:bottom-81,:bottom-87
-                   da    :bottom-93
-SetScreenAddrsTop
-:top               sta   STK_ADDR+$F000,y
+:tbl               da    bottomSSA-00,bottomSSA-03,bottomSSA-09,bottomSSA-15
+                   da    bottomSSA-21,bottomSSA-27,bottomSSA-33,bottomSSA-39
+                   da    bottomSSA-45,bottomSSA-51,bottomSSA-57,bottomSSA-63
+                   da    bottomSSA-69,bottomSSA-75,bottomSSA-81,bottomSSA-87
+                   da    bottomSSA-93
+
+SetScreenAddrsTop  sta   STK_ADDR+$F000,y
                    sbc   #160
                    sta   STK_ADDR+$E000,y
                    sbc   #160
@@ -615,7 +669,7 @@ SetScreenAddrsTop
                    sta   STK_ADDR+$1000,y
                    sbc   #160
                    sta:  STK_ADDR+$0000,y
-:bottom            rts
+bottomSSA          rts
 
 ; SetAbsAddrs
 ;
@@ -933,120 +987,6 @@ epilogue_2         ldal  stk_save                     ; restore the stack
 
 ; snippets      ds    32*82
 top
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

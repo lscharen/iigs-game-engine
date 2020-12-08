@@ -8,6 +8,8 @@ ScreenX1      equ   10
 
 StartY        equ   12          ; Which code buffer line displays first on screen. Range = 0 to 207
 
+bstk          equ   224         ; 16-byte stack to push bank addresses
+
 tmp0          equ   240         ; 16 bytes of temporary space to be used as scratch 
 tmp1          equ   242
 tmp2          equ   244
@@ -16,5 +18,7 @@ tmp4          equ   248
 tmp5          equ   250
 tmp6          equ   252
 tmp7          equ   254
+
+
 
 
