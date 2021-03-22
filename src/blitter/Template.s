@@ -103,6 +103,37 @@ SetScreenRect      sty   ScreenHeight                 ; Save the screen height a
 
                    rts
 
+; Clear the SHR screen and then infill the defined field
+FillScreen         lda   #0
+                   jsr   ClearToColor
+
+                   ldy   ScreenY0
+]yloop
+                   tya
+                   asl   a
+                   tax
+                   lda   ScreenAddr,x
+                   clc
+                   adc   ScreenX0
+                   tax
+                   phy
+
+                   lda   ScreenWidth
+                   lsr
+                   tay
+                   lda   #$FFFF
+]xloop             stal  $E10000,x
+                   inx
+                   inx
+                   dey
+                   bne   ]xloop
+
+                   ply
+                   iny
+                   cpy   ScreenY1
+                   bcc   ]yloop
+                   rts
+
 ; Set the starting line of the virtual buffer that will be displayed on the first physical line
 ; of the playfield.
 ;
@@ -987,6 +1018,15 @@ epilogue_2         ldal  stk_save                     ; restore the stack
 
 ; snippets      ds    32*82
 top
+
+
+
+
+
+
+
+
+
 
 
 

@@ -69,8 +69,8 @@ SHR_SCB              equ        $E19D00
                      jsr        BlitInit             ; Initialize the memory
                      jsr        GrafInit             ; Initialize the graphics screen
 
-;                     ldx        #6                   ; Gameboy Advance size
-;                     jsr        SetScreenMode
+                     ldx        #6                   ; Gameboy Advance size
+                     jsr        SetScreenMode
 
                      lda        #0                   ; Set the virtual Y-position
                      jsr        SetYPos
@@ -81,6 +81,7 @@ SHR_SCB              equ        $E19D00
                      sta        BankLoad             ; Store "Bank Pointer"
 EvtLoop
                      jsr        WaitForKey
+
                      cmp        #'q'
                      bne        :1
                      brl        Exit
@@ -103,7 +104,17 @@ EvtLoop
 :4                   cmp        #'h'                 ; Show the 'h'eads up display
                      bne        :5
                      jsr        DoHUP
-:5                   bra        EvtLoop
+
+:5                   cmp        #'1'
+                     bcc        :6
+                     cmp        #'9'+1
+                     bcs        :6
+                     sec
+                     sbc        #'1'
+                     tax
+                     jsr        SetScreenMode
+
+:6                   bra        EvtLoop
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes
 ;
@@ -150,6 +161,7 @@ SetScreenMode        cpx        #8
                      tax
                      pla
                      jsr        SetScreenRect
+                     jsr        FillScreen
                      rts
 
 SecondsStr           str        'SECONDS'
@@ -611,6 +623,8 @@ qtRec                adrl       $0000
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
+
+
 
 
 
