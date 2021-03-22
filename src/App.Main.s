@@ -86,7 +86,6 @@ SHR_SCB              equ        $E19D00
 
                      lda        #0                  ; Set the virtual Y-position
                      jsr        SetYPos
-                     brl        Exit
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -97,16 +96,51 @@ EvtLoop
                      cmp        #'q'
                      bne        :1
                      brl        Exit
+
 :1                   cmp        #'l'
                      bne        :2
-                     brl        DoLoadPic
+                     jsr        DoLoadPic
+                     bra        EvtLoop
+
 :2                   cmp        #'m'
                      bne        :3
-                     brl        DoMessage
+                     jsr        DumpBanks
+                     bra        EvtLoop
+
 :3                   cmp        #'f'                ; render a 'f'rame
                      bne        :4
-                     brl        DoFrame
-:4                   bra        EvtLoop
+                     jsr        DoFrame
+                     bra        EvtLoop
+
+:4                   cmp        #'h'                ; Show the 'h'eads up display
+                     bne        :5
+                     jsr        DoHUP
+:5                   bra        EvtLoop
+
+SecondsStr           str        'SECONDS'
+TicksStr             str        'TICKS'
+
+; Print a bunch of messages on screen
+DoHUP
+                     lda        #SecondsStr
+                     ldx        #{160-12*4}
+                     ldy        #$7777
+                     jsr        DrawString
+                     lda        OneSecondCounter    ; Number of elapsed seconds
+                     ldx        #{160-4*4}          ; Render the word 4 charaters from right edge
+                     jsr        DrawWord
+
+                     lda        #TicksStr
+                     ldx        #{8*160+160-12*4}
+                     ldy        #$7777
+                     jsr        DrawString
+                     PushLong   #0
+                     _GetTick
+                     pla
+                     plx
+                     ldx        #{8*160+160-4*4}
+                     jsr        DrawWord
+                     rts
 
 
 ; Set up the code field and render it
@@ -232,86 +266,7 @@ stk_save             lda        #0000               ; load the stack
 
                      phk                            ; restore data bank
                      plb
-                     jmp        EvtLoop
-
-HexToChar            dfb        '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
-
-; Convert a byte (Acc) into a string and store at (Y)
-ByteToString         sep        #$20
-                     pha
-
-                     and        #$F0
-                     lsr
-                     lsr
-                     lsr
-                     lsr
-                     tax
-                     ldal       HexToChar,x
-                     sta:       $0000,y
-
-                     pla
-                     and        #$0F
-                     tax
-                     ldal       HexToChar,x
-                     sta:       $0001,y
-
-                     rep        #$20
                      rts
-
-; Pass in Acc = High, X = low
-Addr3ToString        phx
-                     jsr        ByteToString
-                     iny
-                     iny
-                     lda        1,s
-                     xba
-                     jsr        ByteToString
-                     iny
-                     iny
-                     pla
-                     jsr        ByteToString
-                     rts
-
-
-:count               =          4
-:ptr                 =          6
-:addr                =          10
-DoMessage            stz        :addr
-                     lda        #13
-                     sta        :count
-                     lda        #BlitBuff
-                     sta        :ptr
-                     lda        #^BlitBuff
-                     sta        :ptr+2
-
-:loop                lda        [:ptr]
-                     tax
-                     ldy        #2
-                     lda        [:ptr],y
-
-                     ldy        #Hello+1
-                     jsr        Addr3ToString
-
-                     lda        #Hello
-                     ldx        :addr
-                     ldy        #$7777
-                     jsr        DrawString
-
-                     lda        :addr
-                     clc
-                     adc        #160*8
-                     sta        :addr
-
-                     inc        :ptr
-                     inc        :ptr
-                     inc        :ptr
-                     inc        :ptr
-
-                     dec        :count
-                     lda        :count
-                     bne        :loop
-
-                     jmp        EvtLoop
 
 DoLoadPic
                      lda        BankLoad
@@ -328,7 +283,7 @@ DoLoadPic
                      dex
                      dex
                      bpl        :copySHR
-                     jmp        EvtLoop
+                     rts
 
 Exit
                      pea        $0007               ; disable 1-second interrupts
@@ -349,7 +304,7 @@ Exit
                      bcs        Fatal
 Fatal                brk        $00
 
-Hello                str        '000000'
+Hello                str        '000000'            ; str adds leading length byte
 
 ****************************************
 * Fatal Error Handler                  *
@@ -617,9 +572,37 @@ qtRec                adrl       $0000
                      da         $00
 
                      put        App.Init.s
+                     put        App.Msg.s
                      put        font.s
                      put        blitter/Template.s
                      put        blitter/Tables.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

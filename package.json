@@ -11,9 +11,7 @@
   },
   "scripts": {
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
-    "build": "npm run build:tool && npm run build:test",
-    "build:test": "%npm_package_config_merlin32% -V %npm_package_config_macros% test\\App.s",
-    "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% src\\Tool.s",
+    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% src\\App.s",
     "build:watch": "watch \"npm run build\" src"
   },
   "repository": {
