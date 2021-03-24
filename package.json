@@ -4,7 +4,7 @@
   "description": "A game engine for the Applie IIgs written in 65816 assembly language",
   "main": "index.js",
   "config": {
-    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.9.exe",
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
     "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
     "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
     "macros": "C:\\Programs\\BrutalDeluxe\\Merlin32\\Library"
