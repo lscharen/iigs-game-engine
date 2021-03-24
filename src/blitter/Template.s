@@ -73,6 +73,17 @@ SetScreenRect      sty   ScreenHeight                 ; Save the screen height a
                    adc   ScreenWidth
                    sta   ScreenX1
 
+                   lda   ScreenHeight                 ; Divide the height in scanlines by 8 to get the number tiles
+                   lsr
+                   lsr
+                   lsr
+                   sta   ScreenTileHeight
+
+                   lda   ScreenWidth                  ; Divide width in bytes by 4 to get the number of tiles
+                   lsr
+                   lsr
+                   sta   ScreenTileWidth
+
                    lda   ScreenY0                     ; Calculate the address of the first byte
                    asl                                ; of the right side of the playfield
                    tax
@@ -417,10 +428,10 @@ SetNextLine        lda   #$F000+{entry_3-base}
 
 PushBanks          sep   #$20
                    jmp   (:tbl,x)
-:tbl               da    :bottom-04,:bottom-08,:bottom-12,:bottom-16
-                   da    :bottom-20,:bottom-24,:bottom-28,:bottom-32
-                   da    :bottom-36,:bottom-40,:bottom-44,:bottom-48
-                   da    :bottom-52
+:tbl               da    :bottom-05,:bottom-10,:bottom-15,:bottom-20
+                   da    :bottom-25,:bottom-30,:bottom-35,:bottom-40
+                   da    :bottom-45,:bottom-50,:bottom-55,:bottom-60
+                   da    :bottom-65
 :top               lda:  BlitBuff+48,y                ; These are all 8-bit loads and stores
                    sta   bstk+13
                    lda:  BlitBuff+44,y
@@ -467,7 +478,8 @@ PushBanks          sep   #$20
 ; A = value
 ;
 ; Set M to 0 or 1
-SetConst           jmp   (:tbl,x)
+SetConst                                              ; Need a blnk line here, otherwise the :tbl local variable resolveds backwards
+                   jmp   (:tbl,x)
 :tbl               da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
@@ -1018,42 +1030,6 @@ epilogue_2         ldal  stk_save                     ; restore the stack
 
 ; snippets      ds    32*82
 top
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
