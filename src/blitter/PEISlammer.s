@@ -9,7 +9,10 @@ PEISlam
                stx   :screen_width  ; save the width
 
                phd                  ; save the current direct page and assign the base
-               tcd                  ; creen address to the direct page register
+               tcd                  ; screen address to the direct page register
+               clc
+               adc   :screen_width  ; screen address of the right edge (will go in stack)
+               tax                  ; but cache in x register for a bit....
 
                tsc
                sta   :stk_save      ; save the stack pointer to restore later
@@ -37,14 +40,16 @@ PEISlam
                dex                  ; decrement the inner counter
                bne   :inner         ; if not zero, no break; go to the next line
 
+               tsx                  ; save the current stack
                _R0W0                ; restore the execution environment and
                lda   :stk_save      ; give a few cycles to catch some interrupts
                tcs
                cli                  ; fall through here -- saves a BRA instruction
 
 :outer
-               ldx   #8             ; Enable interrupts at least once every 8 lines
                sei
+               txs                  ; set the stack address to the right edge
+               ldx   #8             ; Enable interrupts at least once every 8 lines
                _R1W1
 :inner         jmp   $0000
 
@@ -67,6 +72,9 @@ PEISlam
 
 :stk_save      ds    2
 :screen_width  ds    2
+
+
+
 
 
 
