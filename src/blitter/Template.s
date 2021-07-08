@@ -12,7 +12,7 @@ CODE_LEN            equ   top-base
 CODE_EXIT           equ   even_exit-base
 OPCODE_SAVE         equ   odd_exit-base+1              ; spot to save the code field opcode when patching exit BRA
 FULL_RETURN         equ   full_return-base             ; offset that returns from the blitter
-
+ENABLE_INT          equ   enable_int-base              ; offset that re-enable interrupts and continues
 LINES_PER_BANK      equ   16
 
 ; Locations that need the page offset added
@@ -855,7 +855,7 @@ entry_jmp           jmp   $0100
 
                                                        ; We structure the line so that the entry point only needs to
                                                        ; update the low-byte of the address, the means it takes only
-                                                       ; an amortized 4-cycles per line to set the entry pointbra
+                                                       ; an amortized 4-cycles per line to set the entry point break
 
 right_odd           bit   #$000B                       ; Check the bottom nibble to quickly identify a PEA instruction
                     beq   r_is_pea                     ; This costs 6 cycles in the fast-path
@@ -886,15 +886,37 @@ long_2              ldal  entry_jmp+1-base
 long_3              stal  *+5-base
                     dfb   $4C,$00,$00                  ; Jump back to address in entry_jmp (this takes 16 cycles, is there a better way?)
 
-; Special exit code that is less than 256 bytes from the start of the template
+; The next labels are special, in that they are entry points into special subroutines.  They are special
+; because they are within the first 256 bytes of each code field, which allows them to be selectable
+; by patching the low byte of the JMP instructions.
+
+; Return to caller -- the even_exit JMP from the previous line will jump here when a render is complete
 full_return         jml   blt_return                   ; Full exit
+
+; Re-enable interrupts and contniue -- the even_exit JMP fro the previous line will jump here every
+; 8 or 16 lines in order to give the system some extra time to handle interrupts.
+enable_int          ldal  stk_save                     ; restore the stack
+                    tcs
+                    sep   #$20                         ; 8-bit mode
+                    ldal  STATE_REG                    ; Read Bank 0 / Write Bank 0
+                    and   #$CF
+                    stal  STATE_REG
+                    cli
+                    nop                                ; Give a couple of cycles
+                    sei
+                    ldal  STATE_REG
+                    ora   #$10                         ; Read Bank 0 / Write Bank 1
+                    stal  STATE_REG
+                    rep   #$20
+                    bra   entry_1
+
 
 ; This is the spot that needs to be page-aligned. In addition to simplifying the entry address
 ; and only needing to update a byte instad of a word, because the code breaks out of the
 ; code field with a BRA instruction, we keep everything within a page to avoid the 1-cycle
 ; page-crossing penalty of the branch.
 
-                    ds    200
+                    ds    166
 loop_exit_1         jmp   odd_exit-base                ; +0   Alternate exit point depending on whether the left edge is 
 loop_exit_2         jmp   even_exit-base               ; +3   odd-aligned
 
@@ -943,23 +965,6 @@ epilogue_1          tsc
 :out                jmp   $0000                        ; This jumps to the next epilogue chain element
                     ds    1
 
-; Special epilogue: re-enable interrupts.  Used every 8 or 16 lines to allow music to continue playing
-epilogue_2          ldal  stk_save                     ; restore the stack
-                    tcs
-                    sep   #$20                         ; 8-bit mode
-                    ldal  STATE_REG                    ; Read Bank 0 / Write Bank 0
-                    and   #$CF
-                    stal  STATE_REG
-                    cli
-                    nop                                ; Give a couple of cycles
-                    sei
-                    ldal  STATE_REG
-                    ora   #$10                         ; Read Bank 0 / Write Bank 1
-                    stal  STATE_REG
-                    rep   #$20
-                    jmp   $0000
-                    ds    1
-
 ; These are the special code snippets -- there is a 1:1 relationship between each snippet space
 ; and a 3-byte entry in the code field. Thus, each snippet has a hard-coded JMP to return to 
 ; the next code field location
@@ -1005,6 +1010,14 @@ epilogue_2          ldal  stk_save                     ; restore the stack
 
 ; snippets      ds    32*82
 top
+
+
+
+
+
+
+
+
 
 
 

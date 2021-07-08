@@ -8,6 +8,7 @@
 ; The lines are based on the appearance of lines in the play field, so blitting lines 0 through
 ; 19 will draw the first 20 lines on the play field, regardless of where the playfield is physically
 ; on the SHR screen or the current value of StartY
+exit_ptr    equ   tmp0
 BltRange
             clc`
 
@@ -96,6 +97,7 @@ BltSetup
 :twoLyr     sta   blt_entry+1    ; set the low byte of the JML
             rep   #$20
             rts
+
 
 
 

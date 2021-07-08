@@ -336,7 +336,7 @@ DoFrame
                      ldy        #$7000               ; Set the return after line 200 (Bank 13, line 8)
                      jsr        SetReturn
 
-                     jsr        BltDispatch          ; Execute the blit
+;                     jsr        BltDispatch          ; Execute the blit
 
 
                      plb                             ; set the bank back to the code field
@@ -646,6 +646,7 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
 
 
 
