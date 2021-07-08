@@ -1,17 +1,17 @@
 ; Collection of data tables
 ;
 
-; Tile2CodeOffset
+; Col2CodeOffset
 ;
-; Takes a tile number (0 - 40) and returns the offset into the blitter code
+; Takes a column number (0 - 81) and returns the offset into the blitter code
 ; template.
 ;
 ; This is used for rendering tile data into the code field. For example, is we assume that
-; we are filling in the operans for a bunch of PEA values, we could do this
+; we are filling in the operands for a bunch of PEA values, we could do this
 ;
-;  ldy tileNumber*2
+;  ldy tileColumn*2
 ;  lda #DATA
-;  ldx Tile2CodeOffset,y
+;  ldx Col2CodeOffset,y
 ;  sta $0001,x 
 ;
 ; This table is necessary, because due to the data being draw via stack instructions, the
@@ -206,4 +206,18 @@ ScreenAddr        lup   200
 ; so that code can pick an offset and copy values without needing to check for a wrap-around. If the
 ; playfield is less than 200 lines tall, then any values after 2 * PLAYFIELD_HEIGHT are undefine.
 RTable            ds    400
+
+; Array of addresses for the banks that hold the blitter. 
+BlitBuff          ds    4*13
+
+; The blitter table (BTable) is a double-length table that holds the full 4-byte address of each
+; line of the blit fields.  We decompose arrays of pointers into separate high and low words so
+; that everything can use the same indexing offsets
+BTableHigh        ds    208*2*2
+BTableLow         ds    208*2*2
+
+
+
+
+
 

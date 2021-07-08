@@ -30,6 +30,24 @@ _Div16      mac
             lsr
             <<<
 
+_R0W0       mac               ; Read Bank 0 / Write Bank 0
+            ldal  STATE_REG
+            and   #$FFCF
+            stal  STATE_REG
+            <<<
+
+_R0W1       mac               ; Read Bank 0 / Write Bank 1
+            ldal  STATE_REG
+            ora   #$0010
+            stal  STATE_REG
+            <<<
+
+_R1W1       mac               ; Read Bank 0 / Write Bank 1
+            ldal  STATE_REG
+            ora   #$0030
+            stal  STATE_REG
+            <<<
+
 ****************************************
 * Basic Error Macro                    *
 ****************************************
@@ -42,6 +60,12 @@ _Err        mac
             jmp   PgmDeath0   ;  we just call the simpler error handler
             fin               ; (FIN) 
 NoErr       eom
+
+
+
+
+
+
 
 
 

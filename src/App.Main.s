@@ -1,8 +1,16 @@
-; Test program for graphics stufff...
+; Test driver to exercise graphics routines.
 ;
-; Allow dynamic resizing to benchmark against different games
+; The general organization of the code is
+;
+;  1. The blitter/ folder contains all of the low-level graphics primitives
+;  2. The blitter/DirectPage.s file defines all of the DP locations
+;  3. Subroutines are written to try and be stateless, but, if local
+;     storage is needed, it is takes from the stack and uses stack-relative
+;     addressing.
 
-                     rel
+; Allow dynamic resizing to benchmark against different games
+                     REL
+                     DSK        MAINSEG
 
                      use        Util.Macs.s
                      use        Locator.Macs.s
@@ -17,7 +25,7 @@
 SHADOW_REG           equ        $E0C035
 STATE_REG            equ        $E0C068
 NEW_VIDEO_REG        equ        $E0C029
-BORDER_REG           equ        $E0C034              ; 0-3 = border 4-7 Text color
+BORDER_REG           equ        $E0C034              ; 0-3 = border, 4-7 Text color
 VBL_VERT_REG         equ        $E0C02E
 VBL_HORZ_REG         equ        $E0C02F
 
@@ -27,6 +35,9 @@ VBL_STATE_REG        equ        $E0C019
 
 SHR_SCREEN           equ        $E12000
 SHR_SCB              equ        $E19D00
+
+; External references
+tiledata             ext
 
 ; Typical init
 
@@ -46,7 +57,10 @@ SHR_SCB              equ        $E19D00
 
                      _MTStartUp
 
-; Install interrupt handlers
+; Install interrupt handlers.  We use the VBL interrupt to keep animations
+; moving at a consistent rate, regarless of the rendered frame rate.  The 
+; one-second timer is generally just used for counters and as a handy 
+; frames-per-second trigger.
 
                      PushLong   #0
                      pea        $0015                ; Get the existing 1-second interrupt handler and save
@@ -71,9 +85,6 @@ SHR_SCB              equ        $E19D00
 
                      ldx        #6                   ; Gameboy Advance size
                      jsr        SetScreenMode
-
-                     lda        #0                   ; Set the virtual Y-position
-                     jsr        SetYPos
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -105,7 +116,7 @@ EvtLoop
                      bne        :5
                      jsr        DoHUP
 
-:5                   cmp        #'1'
+:5                   cmp        #'1'                 ; User selects a new screen size
                      bcc        :6
                      cmp        #'9'+1
                      bcs        :6
@@ -115,6 +126,26 @@ EvtLoop
                      jsr        SetScreenMode
 
 :6                   bra        EvtLoop
+
+; Exit code
+Exit
+                     pea        $0007                ; disable 1-second interrupts
+                     _IntSource
+
+                     PushLong   #VBLTASK             ; Remove our heartbeat task
+                     _DelHeartBeat
+
+                     pea        $0015
+                     PushLong   OldOneSecVec         ; Reset the interrupt vector
+                     _SetVector
+
+                     PushWord   UserId               ; Deallocate all of our memory
+                     _DisposeAll
+
+                     _QuitGS    qtRec
+
+                     bcs        Fatal
+Fatal                brk        $00
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes
 ;
@@ -129,6 +160,7 @@ EvtLoop
 ;  9. Game Boy Color        : 20 x 18   160 x 144 (11,520 bytes ( 36.0%))
 ;
 ;  X=mode number
+
 ]ScreenModeWidth     dw         320,272,256,256,280,256,240,288,160
 ]ScreenModeHeight    dw         200,192,200,176,160,160,160,128,144
 
@@ -194,45 +226,51 @@ DoHUP
 DoFrame
 
 ; Render some tiles
-:bank                equ        0
-:column              equ        2
-:tile                equ        4
+:bank                equ        1
+:column              equ        3
+:tile                equ        5
 
-                     stz        :bank
-                     stz        :tile
+
+                     pea        $0000                ; Allocate local variable space
+                     pea        $0000
+                     pea        $0000
+
 :bankloop
-                     ldx        :bank
+                     lda        :bank,s
+                     tax
                      ldal       BlitBuff+1,x         ; set the data bank to the code field
                      pha
                      plb
                      plb
 
-                     stz        :column
+                     lda        #0
+                     sta        :column,s
 
 :tileloop
-                     ldx        :column
+                     lda        :column,s
+                     tax
                      ldal       Col2CodeOffset,x
                      tay
                      iny
-                     lda        :tile
+                     lda        :tile,s
                      jsr        CopyTile
 
-                     lda        :tile
+                     lda        :tile,s
                      inc
                      and        #$000F
-                     sta        :tile
+                     sta        :tile,s
 
-                     lda        :column
+                     lda        :column,s
                      clc
                      adc        #4
-                     sta        :column
+                     sta        :column,s
                      cmp        #4*40
                      bcc        :tileloop
 
-                     lda        :bank
+                     lda        :bank,s
                      clc
                      adc        #4
-                     sta        :bank
+                     sta        :bank,s
                      cmp        #4*13
                      bcc        :bankloop
 
@@ -251,7 +289,18 @@ DoFrame
                      pha                             ; push twice because we will use it later
                      rep        #$20
 
-                     ldx        #80*2                ; This is the word to exit from
+; Set the Y-Position within the virtual buffer
+
+                     lda        #0                   ; Set the virtual Y-position
+                     jsr        SetYPos
+
+; Just load the screen width here.  This is not semantically right; we actually are taking the nummber
+; of tiles in the width of the playfield, multiplying by two to get the number of words and then
+; multiplying by two again to get an index offset.  It just happens that TILES * 4 = BYTES.
+;
+; TODO: Once we start scrolling, this will be ScreenWidth + BG0_X
+
+                     ldx        ScreenWidth          ; This is the word to exit from
                      ldy        Col2CodeOffset,x     ; Get the offset
 
                      sep        #$20                 ; 8-bit acc
@@ -265,15 +314,17 @@ DoFrame
                      lda        #OPCODE_SAVE
                      jsr        SaveOpcode
 
-                     ldx        #80*2                ; X-register is overwritten by SaveOpcode
+                     ldx        ScreenWidth          ; X-register is overwritten by SaveOpcode
                      ldal       CodeFieldEvenBRA,x   ; Get the value to place there
                      ldx        #16*2
                      jsr        SetConst
 
-;                     lda        #{$2000+159+15*160}  ; Set the stack address to the right edge of the screen
-;                     ldy        #0
-;                     ldx        #16*2
-;                     jsr        SetScreenAddrs
+
+; Fill in the screen address of each line.  This routine must be called whenever the                     
+;                   lda        #{$2000+159+15*160}  ; Set the stack address to the right edge of the screen
+;                   ldy        #0
+;                   ldx        #16*2
+;                   jsr        SetScreenAddrs
 
                      sep        #$20                 ; only need to do an 8-bit store
                      lda        #$06                 ; This is the entry address to start drawing
@@ -285,26 +336,11 @@ DoFrame
                      ldy        #$7000               ; Set the return after line 200 (Bank 13, line 8)
                      jsr        SetReturn
 
-                     sei                             ; disable interrupts
+                     jsr        BltDispatch          ; Execute the blit
 
-                     ldal       STATE_REG
-                     ora        #$0010               ; Read Bank 0 / Write Bank 1
-                     stal       STATE_REG
-
-                     tsc                             ; save the stack pointer
-                     stal       stk_save+1
-
-blt_entry            jml        $000006              ; Jump into the blitter code $XX/YY06
-
-blt_return           ldal       STATE_REG            ; Read Bank 0 / Write Bank 0
-                     and        #$FFCF
-                     stal       STATE_REG
-stk_save             lda        #0000                ; load the stack
-                     tcs
-                     cli                             ; re-enable interrupts
 
                      plb                             ; set the bank back to the code field
-                     ldx        #80*2                ; This is the word to exit from
+                     ldx        ScreenWidth          ; This is the word to exit from
                      ldal       Col2CodeOffset,x     ; Get the offset
                      tay
                      ldx        #16*2
@@ -313,6 +349,10 @@ stk_save             lda        #0000                ; load the stack
 
                      phk                             ; restore data bank
                      plb
+
+                     pla                             ; restore the stack
+                     pla
+                     pla
                      rts
 
 DoLoadPic
@@ -331,27 +371,6 @@ DoLoadPic
                      dex
                      bpl        :copySHR
                      rts
-
-Exit
-                     pea        $0007                ; disable 1-second interrupts
-                     _IntSource
-
-                     PushLong   #VBLTASK             ; Remove our heartbeat task
-                     _DelHeartBeat
-
-                     pea        $0015
-                     PushLong   OldOneSecVec         ; Reset the interrupt vector
-                     _SetVector
-
-                     PushWord   UserId               ; Deallocate all of our memory
-                     _DisposeAll
-
-                     _QuitGS    qtRec
-
-                     bcs        Fatal
-Fatal                brk        $00
-
-Hello                str        '000000'             ; str adds leading length byte
 
 ****************************************
 * Fatal Error Handler                  *
@@ -621,20 +640,12 @@ qtRec                adrl       $0000
                      put        App.Init.s
                      put        App.Msg.s
                      put        font.s
-                     put        blitter/Template.s
+                     put        blitter/Blitter.s
+                     put        blitter/PEISlammer.s
                      put        blitter/Tables.s
-
-
-
-
-
-
-
-
-
-
-
-
+                     put        blitter/Template.s
+                     put        blitter/Tiles.s
+                     put        blitter/Vert.s
 
 
 

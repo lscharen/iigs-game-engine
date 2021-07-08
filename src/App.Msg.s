@@ -42,8 +42,6 @@ Addr2ToString  xba
 
 ; A=Value
 ; X=Screen offset
-WordBuff       dfb   4
-               ds    4
 DrawWord       phx                  ; Save register value
                ldy   #WordBuff+1
                jsr   WordToString
@@ -53,27 +51,31 @@ DrawWord       phx                  ; Save register value
                jsr   DrawString
                rts
 
-; Rendout out the bank addresses of all the blitter fields
-:count         =     tmp0
-:ptr           =     tmp1
-:addr          =     tmp3
-DumpBanks      stz   :addr
-               lda   #13
-               sta   :count
-               lda   #BlitBuff
-               sta   :ptr
-               lda   #^BlitBuff
-               sta   :ptr+2
+; Render out the bank addresses of all the blitter fields
+DumpBanks
+
+:addr          =     1
+:count         =     3
+:ptr           =     5
+
+               pea   #^BlitBuff     ; pointer to address table
+               pea   #BlitBuff
+               pea   #13            ; count = 13
+               pea   $0000          ; addr = 0
+
+               tsc
+               phd                  ; save the direct page
+               tcd                  ; set the direct page
 
 :loop          lda   [:ptr]
                tax
                ldy   #2
                lda   [:ptr],y
 
-               ldy   #Hello+1
+               ldy   #Addr3Buff+1
                jsr   Addr3ToString
 
-               lda   #Hello
+               lda   #Addr3Buff
                ldx   :addr
                ldy   #$7777
                jsr   DrawString
@@ -83,16 +85,35 @@ DumpBanks      stz   :addr
                adc   #160*8
                sta   :addr
 
-               inc   :ptr
-               inc   :ptr
-               inc   :ptr
-               inc   :ptr
+               lda   #4
+               adc   :ptr
+               sta   :ptr
 
                dec   :count
-               lda   :count
                bne   :loop
 
+               pld                  ; restore the direct page
+               tcs                  ; restore the stack pointer
+               clc
+               adc   #8
+               tsc
                rts
+
+WordBuff       str   '0000'
+Addr3Buff      str   '000000'       ; str adds leading length byte
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
