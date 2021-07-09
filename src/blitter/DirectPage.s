@@ -37,6 +37,10 @@ tmp7              equ   254
 
 DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
+DIRTY_BIT_BG1_X   equ   $0004
+DIRTY_BIT_BG1_Y   equ   $0008
+
+
 
 
 

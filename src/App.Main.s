@@ -126,7 +126,11 @@ EvtLoop
                      tax
                      jsr        SetScreenMode
 
-:6                   bra        EvtLoop
+:6                   cmp        #'t'
+                     bne        :7
+                     jsr        DoTiles
+
+:7                   bra        EvtLoop
 
 ; Exit code
 Exit
@@ -222,37 +226,25 @@ DoHUP
                      jsr        DrawWord
                      rts
 
-
-; Set up the code field and render it
-DoFrame
-
-; Render some tiles
-:bank                equ        1
+; Fill up the virtual buffer with tile data
+DoTiles
+:row                 equ        1
 :column              equ        3
 :tile                equ        5
-
 
                      pea        $0000                ; Allocate local variable space
                      pea        $0000
                      pea        $0000
 
-:bankloop
-                     lda        :bank,s
-                     tax
-                     ldal       BlitBuff+1,x         ; set the data bank to the code field
-                     pha
-                     plb
-                     plb
-
+:rowloop
                      lda        #0
                      sta        :column,s
 
-:tileloop
+:colloop
+                     lda        :row,s
+                     tay
                      lda        :column,s
                      tax
-                     ldal       Col2CodeOffset,x
-                     tay
-                     iny
                      lda        :tile,s
                      jsr        CopyTile
 
@@ -262,36 +254,24 @@ DoFrame
                      sta        :tile,s
 
                      lda        :column,s
-                     clc
-                     adc        #4
+                     inc
                      sta        :column,s
-                     cmp        #4*40
-                     bcc        :tileloop
+                     cmp        #40
+                     bcc        :colloop
 
-                     lda        :bank,s
-                     clc
-                     adc        #4
-                     sta        :bank,s
-                     cmp        #4*13
-                     bcc        :bankloop
+                     lda        :row,s
+                     inc
+                     sta        :row,s
+                     cmp        #25
+                     bcc        :rowloop
 
-                     phk
-                     plb
+                     pla                             ; restore the stack
+                     pla
+                     pla
+                     rts
 
-; This sets up the environment for calling the blitter. The blitter code takes care of moving from
-; line to line and should be set up ahead of time with appropriate epilogues for lines to periodically
-; enable interrupts and other stuff.  In short, we call into the code once and, when it returns, all of
-; the lines set up to render will be finished.
-
-                     sep        #$20                 ; 8-bit acc
-                     lda        BlitBuff+2           ; set the data bank to the code field
-                     sta        blt_entry+3          ; Patch into the long jump
-                     pha
-                     pha                             ; push twice because we will use it later
-                     rep        #$20
-
-; Set the Y-Position within the virtual buffer
-
+; Set up the code field and render it
+DoFrame
                      lda        #0                   ; Set the virtual Y-position
                      jsr        SetBG0YPos
 
@@ -299,65 +279,10 @@ DoFrame
                      jsr        SetBG0XPos
 
                      jsr        Render               ; Render the play field
+
                      rts
 
-; Just load the screen width here.  This is not semantically right; we actually are taking the nummber
-; of tiles in the width of the playfield, multiplying by two to get the number of words and then
-; multiplying by two again to get an index offset.  It just happens that TILES * 4 = BYTES.
-;
-; TODO: Once we start scrolling, this will be ScreenWidth + BG0_X
-
-                     ldx        ScreenWidth          ; This is the word to exit from
-                     ldy        Col2CodeOffset,x     ; Get the offset
-
-                     sep        #$20                 ; 8-bit acc
-                     lda        BlitBuff+2           ; set the data bank to the code field
-                     sta        blt_entry+3          ; Patch into the long jump
-                     rep        #$20
-
-                     plb                             ; set the data bank to the code field
-
-                     ldx        #16*2                ; Y-register is set correctly
-                     lda        #OPCODE_SAVE
-                     jsr        SaveOpcode
-
-                     ldx        ScreenWidth          ; X-register is overwritten by SaveOpcode
-                     ldal       CodeFieldEvenBRA,x   ; Get the value to place there
-                     ldx        #16*2
-                     jsr        SetConst
-
-
-; Fill in the screen address of each line.  This routine must be called whenever the                     
-;                   lda        #{$2000+159+15*160}  ; Set the stack address to the right edge of the screen
-;                   ldy        #0
-;                   ldx        #16*2
-;                   jsr        SetScreenAddrs
-
-                     sep        #$20                 ; only need to do an 8-bit store
-                     lda        #$06                 ; This is the entry address to start drawing
-                     ldy        #CODE_ENTRY          ; don't actually need to set these again
-                     ldx        #16*2
-                     jsr        SetConst
-                     rep        #$30
-
-;                     ldy        #$7000               ; Set the return after line 200 (Bank 13, line 8)
-;                     jsr        SetReturn
-
-                     plb                             ; set the bank back to the code field
-                     ldx        ScreenWidth          ; This is the word to exit from
-                     ldal       Col2CodeOffset,x     ; Get the offset
-                     tay
-                     ldx        #16*2
-                     lda        #OPCODE_SAVE
-;                     jsr        RestoreOpcode
-
-                     phk                             ; restore data bank
-                     plb
-
-                     pla                             ; restore the stack
-                     pla
-                     pla
-                     rts
+; Load a simple picture format onto the SHR screen
 
 DoLoadPic
                      lda        BankLoad
@@ -370,7 +295,7 @@ DoLoadPic
                      sta        :copySHR+2           ;  and store that over the 'ldal' address below
                      ldx        #$7FFE               ; copy all image data
 :copySHR             ldal       $000000,x            ; load from BankLoad we allocated
-                     stal       $E12000,x            ; store to SHR screen
+                     stal       SHR_SCREEN,x         ; store to SHR screen
                      dex
                      dex
                      bpl        :copySHR
@@ -652,6 +577,18 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

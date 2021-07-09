@@ -54,6 +54,35 @@
 ; and internal data structure to properly render the play field.  Then the update pipeline is
 ; executed.
 Render
+
+; TODO -- actually check the dirty bits and be selective on what gets updated.  For example, if
+;         only the Y position changes, then we should only need to set new values on the 
+;         virtual lines that were brought on screen.  If the X position only changes by one
+;         byte, then we may have to change the CODE_ENTRY values or restore/set new OPCODE
+;         values, but not both.
+
             jsr   ShadowOff
             jsr   ShadowOn
+
+            jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
+            jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
+
+            ldx   #0                  ; Blit the full virtual buffer to the screen
+            ldy   ScreenHeight
+            jsr   _BltRange
+
+            lda   StartY              ; Restore the fields back to their original state
+            ldx   ScreenHeight
+            jsr   _RestoreBG0Opcodes
+
             rts
+
+
+
+
+
+
+
+
+
+

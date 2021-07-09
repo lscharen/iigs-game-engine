@@ -8,8 +8,44 @@
 ; CopyTileLinear -- copies the tile data from the tile bank in linear order, e.g.
 ;                   32 consecutive bytes are copied
 
-
 ; CopyTile
+;
+; A low-level function that copies 8x8 tiles directly into the code field space.
+;
+; A = Tile ID (0 - 1023)
+; X = Tile row (0 - 25)
+; Y = Tile columns (0 - 40)
+CopyTile
+                phb                     ; save the current bank
+                pha                     ; save the tile ID
+
+                tya                     ; lookup the address of the virtual line (y * 8)
+                asl
+                asl
+                asl
+                tay
+
+                sep   #$20              ; set the bank register
+                lda   BTableHigh,y
+                pha                     ; save for a few instruction
+                rep   #$20
+
+                txa                     ; there are two columns per tile, so multiple by 4
+                asl
+                asl                     ; asl will clear the carry bit
+                tax
+                lda   Col2CodeOffset,x
+                adc   BTableLow,y
+                tay
+
+                plb                     ; set the bank
+                pla                     ; pop the tile ID
+                jsr   _CopyTile
+
+                plb                     ; restre the data bank and return
+                rts
+
+; _CopyTile
 ;
 ; Copy a solid tile into one of the code banks
 ;
@@ -17,11 +53,11 @@
 ; A = Tile ID (0 - 1023)
 ; Y = Base Adddress in the code field
 
-CopyTile        cmp   #$0010
+_CopyTile       cmp   #$0010
                 bcc   :FillWord
                 cmp   #$0400
                 bcc   :CopyTileMem
-                rts                    ; Tile number is too large
+                rts                     ; Tile number is too large
 
 :TilePatterns   dw    $0000,$1111,$2222,$3333
                 dw    $4444,$5555,$6666,$7777
@@ -90,5 +126,17 @@ CopyTileLinear  ldal  tiledata+0,x
                 ldal  tiledata+30,x
                 sta   $7003,y
                 rts
+
+
+
+
+
+
+
+
+
+
+
+
 
 
