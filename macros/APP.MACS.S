@@ -48,6 +48,57 @@ _R1W1       mac               ; Read Bank 0 / Write Bank 1
             stal  STATE_REG
             <<<
 
+_PushReg    mac               ; Used to save/restore registers when calling subroutines.
+            pha
+            phx
+            phy
+            <<<
+
+_PullReg    mac
+            ply
+            plx
+            pla
+            <<<
+
+_PushReg2   mac               ; Variation to also save the P-register to preserve m/x
+            pha
+            phx
+            phy
+            php
+            <<<
+
+_PullReg2   mac
+            plp
+            ply
+            plx
+            pla
+            <<<
+
+jne         mac
+            beq   *+5
+            jmp   ]1
+            <<<
+
+jeq         mac
+            bne   *+5
+            jmp   ]1
+            <<<
+
+jcc         mac
+            bcs   *+5
+            jmp   ]1
+            <<<
+
+jcs         mac
+            bcc   *+5
+            jmp   ]1
+            <<<
+
+min         mac
+            cmp   ]1
+            bcc   mout
+            lda   ]1
+mout        <<<
 ****************************************
 * Basic Error Macro                    *
 ****************************************
@@ -60,6 +111,14 @@ _Err        mac
             jmp   PgmDeath0   ;  we just call the simpler error handler
             fin               ; (FIN) 
 NoErr       eom
+
+
+
+
+
+
+
+
 
 
 

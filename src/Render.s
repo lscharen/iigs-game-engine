@@ -46,12 +46,14 @@
 ; edges of the rendered play field.
 
 
+; The render function is the point of committment -- most of the APIs that set sprintes and 
+; update coordinates are lazy; they simply save the value and set a dirty flag in the
+; DirtyBits word.
+;
+; This function examines the dirty bits and actually performs the work to update the code field
+; and internal data structure to properly render the play field.  Then the update pipeline is
+; executed.
 Render
-
             jsr   ShadowOff
-
             jsr   ShadowOn
             rts
-
-
-

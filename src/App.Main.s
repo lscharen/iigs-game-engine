@@ -33,6 +33,7 @@ KBD_REG              equ        $E0C000
 KBD_STROBE_REG       equ        $E0C010
 VBL_STATE_REG        equ        $E0C019
 
+SHADOW_SCREEN        equ        $012000
 SHR_SCREEN           equ        $E12000
 SHR_SCB              equ        $E19D00
 
@@ -292,7 +293,13 @@ DoFrame
 ; Set the Y-Position within the virtual buffer
 
                      lda        #0                   ; Set the virtual Y-position
-                     jsr        SetYPos
+                     jsr        SetBG0YPos
+
+                     lda        #0                   ; Set the virtual X-position
+                     jsr        SetBG0XPos
+
+                     jsr        Render               ; Render the play field
+                     rts
 
 ; Just load the screen width here.  This is not semantically right; we actually are taking the nummber
 ; of tiles in the width of the playfield, multiplying by two to get the number of words and then
@@ -333,11 +340,8 @@ DoFrame
                      jsr        SetConst
                      rep        #$30
 
-                     ldy        #$7000               ; Set the return after line 200 (Bank 13, line 8)
-                     jsr        SetReturn
-
-;                     jsr        BltDispatch          ; Execute the blit
-
+;                     ldy        #$7000               ; Set the return after line 200 (Bank 13, line 8)
+;                     jsr        SetReturn
 
                      plb                             ; set the bank back to the code field
                      ldx        ScreenWidth          ; This is the word to exit from
@@ -640,12 +644,22 @@ qtRec                adrl       $0000
                      put        App.Init.s
                      put        App.Msg.s
                      put        font.s
+                     put        Render.s
                      put        blitter/Blitter.s
+                     put        blitter/Horz.s
                      put        blitter/PEISlammer.s
                      put        blitter/Tables.s
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
+
+
+
+
+
+
+
 
 
 

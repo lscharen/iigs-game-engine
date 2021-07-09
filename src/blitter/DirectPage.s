@@ -8,15 +8,23 @@ ScreenX1          equ   10
 ScreenTileHeight  equ   12          ; Height of the playfield in 8x8 blocks
 ScreenTileWidth   equ   14          ; Width of the playfield in 8x8 blocks
 
-StartY            equ   16          ; Which code buffer line displays first on screen. Range = 0 to 207
-EngineMode        equ   18          ; Defined the mode/capabilities that are enabled
+StartX            equ   16          ; Which code buffer byte is the left edge of the screen. Range = 0 to 167
+StartY            equ   18          ; Which code buffer line is the top of the screen. Range = 0 to 207
+EngineMode        equ   20          ; Defined the mode/capabilities that are enabled
                                     ;  bit 0: 0 = Single Background, 1 = Parallax
-DirtyBits         equ   20          ; Identify values that have changed between frames
+DirtyBits         equ   22          ; Identify values that have changed between frames
 
-BG1DataBank       equ   22          ; Data bank that holds BG1 layer data
-BlitterDP         equ   23          ; Direct page address the holder blitter data
+BG1DataBank       equ   24          ; Data bank that holds BG1 layer data
+BlitterDP         equ   25          ; Direct page address the holder blitter data
 
-bstk              equ   224         ; 16-byte stack to push bank addresses
+OldStartX         equ   26
+OldStartY         equ   28
+
+bstk              equ   208         ; 16-byte stack to push bank addresses
+
+tmp8              equ   224
+tmp9              equ   226
+tmp10             equ   228
 
 tmp0              equ   240         ; 16 bytes of temporary space to be used as scratch 
 tmp1              equ   242
@@ -29,6 +37,11 @@ tmp7              equ   254
 
 DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
+
+
+
+
+
 
 
 
