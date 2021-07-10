@@ -13,6 +13,7 @@ _BltRange
 :exit_ptr      equ   tmp0
 :jmp_low_save  equ   tmp2
 
+               phb                  ; preserve the bank register
                clc`
 
                dey
@@ -81,5 +82,8 @@ stk_save       lda   #0000          ; load the stack
                sta   [:exit_ptr],y
                rep   #$20
 
+               plb                  ; restore the bank
                rts
+
+
 

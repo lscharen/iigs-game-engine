@@ -63,20 +63,20 @@ tiledata             ext
 ; one-second timer is generally just used for counters and as a handy 
 ; frames-per-second trigger.
 
-                     PushLong   #0
-                     pea        $0015                ; Get the existing 1-second interrupt handler and save
-                     _GetVector
-                     PullLong   OldOneSecVec
-
-                     pea        $0015                ; Set the new handler and enable interrupts
-                     PushLong   #OneSecHandler
-                     _SetVector
-
-                     pea        $0006
-                     _IntSource
-
-                     PushLong   #VBLTASK             ; Also register a Heart Beat Task
-                     _SetHeartBeat
+;                     PushLong   #0
+;                     pea        $0015                ; Get the existing 1-second interrupt handler and save
+;                     _GetVector
+;                     PullLong   OldOneSecVec
+;
+;                     pea        $0015                ; Set the new handler and enable interrupts
+;                     PushLong   #OneSecHandler
+;                     _SetVector
+;
+;                     pea        $0006
+;                     _IntSource
+;
+;                     PushLong   #VBLTASK             ; Also register a Heart Beat Task
+;                     _SetHeartBeat
 
 ; Start up the graphics engine...
 
@@ -84,8 +84,11 @@ tiledata             ext
                      jsr        BlitInit             ; Initialize the memory
                      jsr        GrafInit             ; Initialize the graphics screen
 
-                     ldx        #6                   ; Gameboy Advance size
+                     ldx        #9                   ; Special debug size
                      jsr        SetScreenMode
+
+;                     ldx        #6                   ; Gameboy Advance size
+;                     jsr        SetScreenMode
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -134,15 +137,15 @@ EvtLoop
 
 ; Exit code
 Exit
-                     pea        $0007                ; disable 1-second interrupts
-                     _IntSource
-
-                     PushLong   #VBLTASK             ; Remove our heartbeat task
-                     _DelHeartBeat
-
-                     pea        $0015
-                     PushLong   OldOneSecVec         ; Reset the interrupt vector
-                     _SetVector
+;                     pea        $0007                ; disable 1-second interrupts
+;                     _IntSource
+;
+;                     PushLong   #VBLTASK             ; Remove our heartbeat task
+;                     _DelHeartBeat
+;
+;                     pea        $0015
+;                     PushLong   OldOneSecVec         ; Reset the interrupt vector
+;                     _SetVector
 
                      PushWord   UserId               ; Deallocate all of our memory
                      _DisposeAll
@@ -163,15 +166,15 @@ Fatal                brk        $00
 ;  7. Game Boy Advanced     : 30 x 20   240 x 160 (19,200 bytes ( 60.0%))
 ;  8. Ancient Land of Y's   : 36 x 16   288 x 128 (18,432 bytes ( 57.6%))
 ;  9. Game Boy Color        : 20 x 18   160 x 144 (11,520 bytes ( 36.0%))
-;
+; 10. DEBUG                 : 40 x 1    320 x 1
 ;  X=mode number
 
-]ScreenModeWidth     dw         320,272,256,256,280,256,240,288,160
-]ScreenModeHeight    dw         200,192,200,176,160,160,160,128,144
+]ScreenModeWidth     dw         320,272,256,256,280,256,240,288,160,320
+]ScreenModeHeight    dw         200,192,200,176,160,160,160,128,144,1
 
-SetScreenMode        cpx        #8
+SetScreenMode        cpx        #9
                      bcc        :rangeOk
-                     ldx        #8
+                     ldx        #9
 
 :rangeOk             txa
                      asl
@@ -279,7 +282,6 @@ DoFrame
                      jsr        SetBG0XPos
 
                      jsr        Render               ; Render the play field
-
                      rts
 
 ; Load a simple picture format onto the SHR screen
@@ -577,6 +579,10 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
+
+
+
 
 
 

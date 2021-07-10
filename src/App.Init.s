@@ -4,7 +4,7 @@
 ;
 ; * 13 banks of memory for the blitter
 ; *  1 bank of memory for the second background
-; *  1 bank of memory for the second background mask
+; *  1 bank of memory for the second background alt/mask
 ;
 ; * $01/2000 - $01/9FFF for the shadow screen
 ; * $00/2000 - $00/9FFF for the fixed background
@@ -16,38 +16,38 @@
 
                mx        %00
 
-MemInit        PushLong  #0                            ; space for result
-               PushLong  #$008000                      ; size (32k)
+MemInit        PushLong  #0                          ; space for result
+               PushLong  #$008000                    ; size (32k)
                PushWord  UserId
-               PushWord  #%11000000_00010111           ; Fixed location
+               PushWord  #%11000000_00010111         ; Fixed location
                PushLong  #$002000
-               _NewHandle                              ; returns LONG Handle on stack
-               plx                                     ; base address of the new handle
-               pla                                     ; high address 00XX of the new handle (bank)
+               _NewHandle                            ; returns LONG Handle on stack
+               plx                                   ; base address of the new handle
+               pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                stx       Buff00
                sta       Buff00+2
 
-               PushLong  #0                            ; space for result
-               PushLong  #$008000                      ; size (32k)
+               PushLong  #0                          ; space for result
+               PushLong  #$008000                    ; size (32k)
                PushWord  UserId
-               PushWord  #%11000000_00010111           ; Fixed location
+               PushWord  #%11000000_00010111         ; Fixed location
                PushLong  #$012000
-               _NewHandle                              ; returns LONG Handle on stack
-               plx                                     ; base address of the new handle
-               pla                                     ; high address 00XX of the new handle (bank)
+               _NewHandle                            ; returns LONG Handle on stack
+               plx                                   ; base address of the new handle
+               pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                stx       Buff01
                sta       Buff01+2
 
-               PushLong  #0                            ; space for result
-               PushLong  #$000A00                      ; size (10 pages)
+               PushLong  #0                          ; space for result
+               PushLong  #$000A00                    ; size (10 pages)
                PushWord  UserId
-               PushWord  #%11000000_00010101           ; Page-aligned, fixed bank
+               PushWord  #%11000000_00010101         ; Page-aligned, fixed bank
                PushLong  #$000000
-               _NewHandle                              ; returns LONG Handle on stack
-               plx                                     ; base address of the new handle
-               pla                                     ; high address 00XX of the new handle (bank)
+               _NewHandle                            ; returns LONG Handle on stack
+               plx                                   ; base address of the new handle
+               pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                stx       ZeroPage
                sta       ZeroPage+2
@@ -61,27 +61,42 @@ MemInit        PushLong  #0                            ; space for result
 ]step          equ       ]step+4
                --^
 
+; Fill in a tables with the adddress of all 208 scanlines across all 13 banks
+
                ldx       #0
                ldy       #0
-               lda       BlitBuff+2,y                  ; Copy the high word first
+:bloop
+               lda       BlitBuff+2,y                ; Copy the high word first
 ]step          equ       0
                lup       16
-               sta       BTableHigh+]step+2,x          ; 16 lines per bank
-               sta       BTableHigh+]step+2+{208*2},x  ; 16 lines per bank
-]step          equ       ]step+4
+               sta       BTableHigh+]step,x          ; 16 lines per bank
+               sta       BTableHigh+]step+{208*2},x  ; 16 lines per bank
+]step          equ       ]step+2
                --^
                lda       BlitBuff,y
                sta       BTableLow,x
                sta       BTableLow+{208*2},x
                clc
-]step          equ       0
+]step          equ       2
                lup       15
                adc       #$1000
                sta       BTableLow+]step,x
                sta       BTableLow+]step+{208*2},x
-]step          equ       ]step+4
+]step          equ       ]step+2
                --^
 
+               txa
+               adc       #16*2                       ; move to the next chunk of BTableHigh and BTableLow
+               tax
+
+               tya
+               adc       #4                          ; move to the next bank address
+               tay
+               cmp       #4*13
+               bcs       :exit
+               brl       :bloop
+
+:exit
                rts
 
 Buff00         ds        4
@@ -95,12 +110,12 @@ AllocOneBank   PushLong  #0
                PushWord  UserId
                PushWord  #%11000000_00011100
                PushLong  #0
-               _NewHandle                              ; returns LONG Handle on stack
-               plx                                     ; base address of the new handle
-               pla                                     ; high address 00XX of the new handle (bank)
-               xba                                     ; swap accumulator bytes to XX00	
-               sta       :bank+2                       ; store as bank for next op (overwrite $XX00)
-:bank          ldal      $000001,X                     ; recover the bank address in A=XX/00	
+               _NewHandle                            ; returns LONG Handle on stack
+               plx                                   ; base address of the new handle
+               pla                                   ; high address 00XX of the new handle (bank)
+               xba                                   ; swap accumulator bytes to XX00	
+               sta       :bank+2                     ; store as bank for next op (overwrite $XX00)
+:bank          ldal      $000001,X                   ; recover the bank address in A=XX/00	
                rts
 
 ; Variation that return pointer in the X/A registers (X = low, A = high)
@@ -110,8 +125,8 @@ AllocOneBank2  PushLong  #0
                PushWord  #%11000000_00011100
                PushLong  #0
                _NewHandle
-               plx                                     ; base address of the new handle
-               pla                                     ; high address 00XX of the new handle (bank)
+               plx                                   ; base address of the new handle
+               pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                rts
 
@@ -127,6 +142,14 @@ IntInit        rts
 ; IntSource( oSecDisable );		/* disable one second interrupts */
 ; SetVector( oneSecHnd, oldOneVect );   /* reset to the old handler */
 ShutDown       rts
+
+
+
+
+
+
+
+
 
 
 

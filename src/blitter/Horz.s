@@ -32,7 +32,7 @@ SetBG0XPos
 ; performed in order.
 ;
 ; Experimental -- this is a parameterized version that does not rely on direct page
-; state variabled for input and attempts to be more optimized.
+; state variables for input and attempts to be more optimized.
 ;
 ; A = starting virtual line in the code field (0 - 207)
 ; X = number of lines to render (0 - 200)
@@ -470,6 +470,7 @@ SetCodeEntry
                     sta   CODE_ENTRY+$1000,y
                     sta:  CODE_ENTRY+$0000,y
 :bottom             rts
+
 
 
 
