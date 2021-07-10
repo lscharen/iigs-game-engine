@@ -7,10 +7,12 @@
     "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
     "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
     "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
-    "macros": "C:\\Programs\\BrutalDeluxe\\Merlin32\\Library"
+    "macros": "C:\\Programs\\BrutalDeluxe\\Merlin32\\Library",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
   },
   "scripts": {
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+    "debug": "%npm_package_config_crossrunner% src\\GTETestApp -Source src\\GTETestApp_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
     "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% src\\App.s",
     "build:watch": "watch \"npm run build\" src"
   },
