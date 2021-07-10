@@ -131,7 +131,7 @@ FillScreen          lda   #0
                     lsr
                     tay
                     lda   #$FFFF
-:xloop              stal  SHR_SCREEN,x
+:xloop              stal  $E10000,x                     ; X is the absolute address
                     inx
                     inx
                     dey
@@ -893,6 +893,7 @@ epilogue_1          tsc
 
 ; snippets      ds    32*82
 top
+
 
 
 

@@ -16,11 +16,17 @@
 ]F_Length      ds    2                    ;length of string (only one byte currently used)
 ]F_CharIdx     ds    2                    ;index of current character
 ]F_CurrentPos  ds    2                    ;current top left char position
-]F_StrPtr      equ   $00                  ;pointer to string (including length byte) / DP
-]F_StrClr      equ   $02
+]F_StrPtr      equ   $01                  ;pointer to string (including length byte) / DP
+]F_StrClr      equ   $03
 
 DrawString
-               sta   ]F_StrPtr            ;store at dp 0 ($00) for indirect loads
+               pha                        ; local variable space
+               pha
+               tsc
+               phd
+               tcd
+
+;               sta   ]F_StrPtr            ; (done in pha init above) store at dp 0 ($00) for indirect loads
                stx   ]F_CurrentPos
                sty   ]F_StrClr
                stz   ]F_CharIdx
@@ -31,11 +37,14 @@ DrawString
 NextChar       lda   ]F_CharIdx
                cmp   ]F_Length
                bne   :notDone
+               pld
+               pla
+               pla
                rts                        ;DONE! Return to caller
 
 :notDone       inc   ]F_CharIdx
                ldy   ]F_CharIdx
-               lda   ($00),y              ;get next char!
+               lda   (]F_StrPtr),y        ;get next char!
                and   #$00FF               ;mask high byte
                sec
                sbc   #' '                 ;our table starts with space ' '
@@ -627,6 +636,17 @@ s_Template     hex   00000000
                hex   00000000
                hex   00000000
                hex   00000000
+
+
+
+
+
+
+
+
+
+
+
 
 
 

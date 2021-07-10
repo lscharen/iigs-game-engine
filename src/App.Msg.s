@@ -93,14 +93,15 @@ DumpBanks
                bne   :loop
 
                pld                  ; restore the direct page
-               tcs                  ; restore the stack pointer
+               tsc                  ; restore the stack pointer
                clc
                adc   #8
-               tsc
+               tcs
                rts
 
 WordBuff       str   '0000'
 Addr3Buff      str   '000000'       ; str adds leading length byte
+
 
 
 

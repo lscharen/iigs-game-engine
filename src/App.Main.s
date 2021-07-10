@@ -36,6 +36,7 @@ VBL_STATE_REG        equ        $E0C019
 SHADOW_SCREEN        equ        $012000
 SHR_SCREEN           equ        $E12000
 SHR_SCB              equ        $E19D00
+SHR_PALETTES         equ        $E19E00
 
 ; External references
 tiledata             ext
@@ -84,11 +85,8 @@ tiledata             ext
                      jsr        BlitInit             ; Initialize the memory
                      jsr        GrafInit             ; Initialize the graphics screen
 
-                     ldx        #9                   ; Special debug size
+                     ldx        #6                   ; Gameboy Advance size
                      jsr        SetScreenMode
-
-;                     ldx        #6                   ; Gameboy Advance size
-;                     jsr        SetScreenMode
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -360,13 +358,22 @@ BlitInit
 
 
 ; Graphic screen initialization
-GrafInit             lda        #$8888
+GrafInit
+                     jsr        ShadowOn
+                     jsr        GrafOn
+                     lda        #$8888
                      jsr        ClearToColor
                      lda        #0000
                      jsr        SetSCBs
-                     jsr        GrafOn
-                     jsr        ShadowOn
+                     ldx        #DefaultPalette
+                     lda        #0
+                     jsr        SetPalette
                      rts
+
+DefaultPalette       dw         $0000,$007F,$0090,$0FF0
+                     dw         $000F,$0080,$0f70,$0FFF
+                     dw         $0fa9,$0ff0,$00e0,$04DF
+                     dw         $0d00,$078f,$0ccc,$0FFF
 
 ; Return the current border color ($0 - $F) in the accumulator
 GetBorderColor       lda        #0000
@@ -391,6 +398,26 @@ ClearToColor         ldx        #$7D00               ;start at top of pixel data
                      dex
                      stal       SHR_SCREEN,x         ;screen location
                      bne        :clearloop           ;loop until we've worked our way down to 0
+                     rts
+
+; Set a palette values
+; A = palette number, X = palette address
+SetPalette
+                     and        #$000F               ; palette values are 0 - 15 and each palette is 32 bytes
+                     asl
+                     asl
+                     asl
+                     asl
+                     asl
+                     txy
+                     tax
+
+]idx                 equ        0
+                     lup        16
+                     lda:       $0000+]idx,y
+                     stal       SHR_PALETTES+]idx,x
+]idx                 equ        ]idx+2
+                     --^
                      rts
 
 ; Initialize the SCB
@@ -579,6 +606,20 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

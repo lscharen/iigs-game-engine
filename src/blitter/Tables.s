@@ -206,6 +206,7 @@ ScreenAddr        lup   200
 ; so that code can pick an offset and copy values without needing to check for a wrap-around. If the
 ; playfield is less than 200 lines tall, then any values after 2 * PLAYFIELD_HEIGHT are undefine.
 RTable            ds    400
+                  ds    400
 
 ; Array of addresses for the banks that hold the blitter. 
 BlitBuff          ds    4*13
@@ -215,4 +216,6 @@ BlitBuff          ds    4*13
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
+
+
 
