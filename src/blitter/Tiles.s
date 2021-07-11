@@ -23,6 +23,7 @@ CopyTile
                 asl
                 asl
                 asl
+                asl
                 tay
 
                 sep   #$20              ; set the bank register
@@ -127,6 +128,7 @@ CopyTileLinear  ldal  tiledata+0,x
                 ldal  tiledata+30,x
                 sta   $7003,y
                 rts
+
 
 
 
