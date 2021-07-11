@@ -203,8 +203,8 @@ ScreenAddr        lup   200
 
 ; This is a double-length table that holds the right-edge adresses of the playfield on the physical
 ; screen.  At most, it needs to hold 200 addresses for a full height playfield.  It is double-length
-; so that code can pick an offset and copy values without needing to check for a wrap-around. If the
-; playfield is less than 200 lines tall, then any values after 2 * PLAYFIELD_HEIGHT are undefine.
+; so that code can pick any offset and copy values without needing to check for a wrap-around. If the
+; playfield is less than 200 lines tall, then any values after 2 * PLAYFIELD_HEIGHT are undefined.
 RTable            ds    400
                   ds    400
 
@@ -216,6 +216,8 @@ BlitBuff          ds    4*13
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
+
+
 
 
 
