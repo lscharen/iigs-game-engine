@@ -37,12 +37,13 @@ CopyTile
                 lda   Col2CodeOffset,x
                 adc   BTableLow,y
                 tay
+                iny                     ; +1 to move past to opcode to the operand
 
                 plb                     ; set the bank
                 pla                     ; pop the tile ID
                 jsr   _CopyTile
 
-                plb                     ; restre the data bank and return
+                plb                     ; restore the data bank and return
                 rts
 
 ; _CopyTile
@@ -126,6 +127,9 @@ CopyTileLinear  ldal  tiledata+0,x
                 ldal  tiledata+30,x
                 sta   $7003,y
                 rts
+
+
+
 
 
 
