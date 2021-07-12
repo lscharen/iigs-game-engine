@@ -22,7 +22,7 @@ ByteToString   and   #$00FF
                rep   #$20
                rts
 
-; Convert a word (Acc) into a string and store at (Y)
+; Convert a word (Acc) into a hexadecimal string and store at (Y)
 WordToString   pha
                bra   Addr2ToString
 
@@ -101,6 +101,10 @@ DumpBanks
 
 WordBuff       str   '0000'
 Addr3Buff      str   '000000'       ; str adds leading length byte
+
+
+
+
 
 
 

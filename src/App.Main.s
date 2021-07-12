@@ -41,6 +41,9 @@ SHR_PALETTES         equ        $E19E00
 ; External references
 tiledata             ext
 
+; Feature flags
+NO_INTERRUPTS        equ        0                    ; turn off for crossrunner debugging
+
 ; Typical init
 
                      phk
@@ -64,20 +67,23 @@ tiledata             ext
 ; one-second timer is generally just used for counters and as a handy 
 ; frames-per-second trigger.
 
-;                     PushLong   #0
-;                     pea        $0015                ; Get the existing 1-second interrupt handler and save
-;                     _GetVector
-;                     PullLong   OldOneSecVec
-;
-;                     pea        $0015                ; Set the new handler and enable interrupts
-;                     PushLong   #OneSecHandler
-;                     _SetVector
-;
-;                     pea        $0006
-;                     _IntSource
-;
-;                     PushLong   #VBLTASK             ; Also register a Heart Beat Task
-;                     _SetHeartBeat
+                     lda        #NO_INTERRUPTS
+                     bne        :no_interrupts
+                     PushLong   #0
+                     pea        $0015                ; Get the existing 1-second interrupt handler and save
+                     _GetVector
+                     PullLong   OldOneSecVec
+
+                     pea        $0015                ; Set the new handler and enable interrupts
+                     PushLong   #OneSecHandler
+                     _SetVector
+
+                     pea        $0006
+                     _IntSource
+
+                     PushLong   #VBLTASK             ; Also register a Heart Beat Task
+                     _SetHeartBeat
+:no_interrupts
 
 ; Start up the graphics engine...
 
@@ -87,6 +93,12 @@ tiledata             ext
 
                      ldx        #6                   ; Gameboy Advance size
                      jsr        SetScreenMode
+
+                     lda        #0                   ; Set the virtual Y-position
+                     jsr        SetBG0YPos
+
+                     lda        #0                   ; Set the virtual X-position
+                     jsr        SetBG0XPos
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -117,6 +129,7 @@ EvtLoop
 :4                   cmp        #'h'                 ; Show the 'h'eads up display
                      bne        :5
                      jsr        DoHUP
+                     bra        EvtLoop
 
 :5                   cmp        #'1'                 ; User selects a new screen size
                      bcc        :6
@@ -126,24 +139,60 @@ EvtLoop
                      sbc        #'1'
                      tax
                      jsr        SetScreenMode
+                     brl        EvtLoop
 
 :6                   cmp        #'t'
                      bne        :7
                      jsr        DoTiles
+                     brl        EvtLoop
 
-:7                   bra        EvtLoop
+:7                   cmp        #$15                 ; left = $08, right = $15, up = $0B, down = $0A
+                     bne        :8
+                     lda        #1
+                     jsr        MoveRight
+                     brl        EvtLoop
+
+:8                   cmp        #$08
+                     bne        :9
+                     lda        #1
+                     jsr        MoveLeft
+                     brl        EvtLoop
+
+:9                   cmp        #$0B
+                     bne        :10
+                     lda        #1
+                     jsr        MoveUp
+                     brl        EvtLoop
+
+:10                  cmp        #$0A
+                     bne        :11
+                     lda        #1
+                     jsr        MoveDown
+                     brl        EvtLoop
+
+:11                  cmp        #'d'
+                     bne        :12
+                     lda        #1
+                     jsr        Demo
+                     brl        EvtLoop
+
+:12                  brl        EvtLoop
 
 ; Exit code
 Exit
-;                     pea        $0007                ; disable 1-second interrupts
-;                     _IntSource
-;
-;                     PushLong   #VBLTASK             ; Remove our heartbeat task
-;                     _DelHeartBeat
-;
-;                     pea        $0015
-;                     PushLong   OldOneSecVec         ; Reset the interrupt vector
-;                     _SetVector
+                     lda        #NO_INTERRUPTS
+                     bne        :no_interrupts
+
+                     pea        $0007                ; disable 1-second interrupts
+                     _IntSource
+
+                     PushLong   #VBLTASK             ; Remove our heartbeat task
+                     _DelHeartBeat
+
+                     pea        $0015
+                     PushLong   OldOneSecVec         ; Reset the interrupt vector
+                     _SetVector
+:no_interrupts
 
                      PushWord   UserId               ; Deallocate all of our memory
                      _DisposeAll
@@ -273,12 +322,6 @@ DoTiles
 
 ; Set up the code field and render it
 DoFrame
-                     lda        #0                   ; Set the virtual Y-position
-                     jsr        SetBG0YPos
-
-                     lda        #0                   ; Set the virtual X-position
-                     jsr        SetBG0XPos
-
                      jsr        Render               ; Render the play field
                      rts
 
@@ -597,6 +640,7 @@ qtRec                adrl       $0000
 
                      put        App.Init.s
                      put        App.Msg.s
+                     put        Actions.s
                      put        font.s
                      put        Render.s
                      put        blitter/Blitter.s
@@ -606,6 +650,20 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
