@@ -1,7 +1,7 @@
 MoveLeft
                      clc
                      adc   StartX               ; Increment the virtual X-position
-                     cmp   #168
+                     cmp   #164
                      bcc   *+5
                      lda   #0
                      jsr   SetBG0XPos
@@ -14,7 +14,7 @@ MoveRight
                      sec
                      sbc   1,s
                      bpl   *+5
-                     lda   #167
+                     lda   #163
                      jsr   SetBG0XPos
                      jsr   DoFrame
                      pla
@@ -82,18 +82,3 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
