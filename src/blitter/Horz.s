@@ -14,16 +14,16 @@
 ; We assume that there is a clean code field in this routine
 SetBG0XPos
                     cmp   StartX
-                    beq   :out                 ; Easy, if nothing changed, then nothing changes
+                    beq   :out                       ; Easy, if nothing changed, then nothing changes
 
-                    ldx   StartX               ; Load the old value (but don't save it yet)
-                    sta   StartX               ; Save the new position
+                    ldx   StartX                     ; Load the old value (but don't save it yet)
+                    sta   StartX                     ; Save the new position
 
                     lda   #DIRTY_BIT_BG0_X
-                    tsb   DirtyBits            ; Check if the value is already dirty, if so exit
-                    bne   :out                 ; without overwriting the original value
+                    tsb   DirtyBits                  ; Check if the value is already dirty, if so exit
+                    bne   :out                       ; without overwriting the original value
 
-                    stx   OldStartX            ; First change, so preserve the value
+                    stx   OldStartX                  ; First change, so preserve the value
 :out                rts
 
 ; Simple function that restores the saved opcode that are stached in _applyBG0Xpos.  It is
@@ -45,14 +45,14 @@ _RestoreBG0Opcodes
 :exit_offset        equ   tmp4
 
                     asl
-                    sta   :virt_line_x2        ; Keep track of it
+                    sta   :virt_line_x2              ; Keep track of it
 
                     txa
                     asl
                     sta   :lines_left_x2
 
-                    lda   StartX               ; Repeat with adding the screen width
-                    clc                        ; to calculate the exit column
+                    lda   StartX                     ; Repeat with adding the screen width
+                    clc                              ; to calculate the exit column
                     adc   ScreenWidth
                     and   #$FFFE
                     tax
@@ -61,39 +61,39 @@ _RestoreBG0Opcodes
 
 :loop
                     ldx   :virt_line_x2
-                    ldal  BTableLow,x          ; Get the address of the first code field line
+                    ldal  BTableLow,x                ; Get the address of the first code field line
                     tay
 
                     sep   #$20
                     ldal  BTableHigh,x
                     pha
-                    plb                        ; This is the bank that will receive the updates
+                    plb                              ; This is the bank that will receive the updates
                     rep   #$20
 
-                    txa                        ; lda   :virt_line_x2
+                    txa                              ; lda   :virt_line_x2
                     and   #$001E
                     eor   #$FFFF
                     inc
                     clc
                     adc   #32
                     min   :lines_left_x2
-                    sta   :draw_count_x2       ; Do half of this many lines
+                    sta   :draw_count_x2             ; Do half of this many lines
 
-                                               ; y is already set to :base_address
-                    tax                        ; :draw_count * 2
+                                                     ; y is already set to :base_address
+                    tax                              ; :draw_count * 2
 
                     tya
                     clc
-                    adc   :exit_offset         ; Add some offsets to get the base address in the code field line
+                    adc   :exit_offset               ; Add some offsets to get the base address in the code field line
 
                     jsr   RestoreOpcode
 
-                    lda   :virt_line_x2        ; advance to the virtual line after the segment we just
-                    clc                        ; filled in
+                    lda   :virt_line_x2              ; advance to the virtual line after the segment we just
+                    clc                              ; filled in
                     adc   :draw_count_x2
                     sta   :virt_line_x2
 
-                    lda   :lines_left_x2       ; subtract the number of lines we just completed
+                    lda   :lines_left_x2             ; subtract the number of lines we just completed
                     sec
                     sbc   :draw_count_x2
                     sta   :lines_left_x2
@@ -138,11 +138,13 @@ _ApplyBG0XPos
 :exit_address       equ   tmp7
 :base_address       equ   tmp8
 :draw_count_x2      equ   tmp9
+:opcode             equ   tmp0
+:odd_entry_offset   equ   tmp10
 
 ; This code is fairly succinct.  See the corresponding code in Vert.s for more detailed comments.
 
-                    lda   StartY               ; This is the base line of the virtual screen
-                    sta   :virt_line           ; Keep track of it
+                    lda   StartY                     ; This is the base line of the virtual screen
+                    sta   :virt_line                 ; Keep track of it
 
                     lda   ScreenHeight
                     sta   :lines_left
@@ -185,40 +187,109 @@ _ApplyBG0XPos
 ; So, in short, the entry tile position is rounded up from the x-position and the exit
 ; tile position is rounded down.
 
-                    lda   StartX               ; This is the starting byte offset (0 - 163)
-                    jsr   Mod164               ; 
-                    pha                        ; Save for a bit
+                    lda   StartX                     ; This is the starting byte offset (0 - 163)
+                    jsr   Mod164                     ; 
+                    pha                              ; Save for a bit
 
-                    lda   #164                 ; The left edge of the screen is the exit point
-                    sec                        ; of the blitter.  So calculate that location for
-                    sbc   1,s                  ; the "starting" point of the render
-                    tay                        ; cache this value
+; Now, the left edge of the screen is pushed last, so we need to exit one instruction *after*
+; the location (163 - StartX % 164)
+;
+; x = 0
+;
+;  | PEA $0000 |
+;  +-----------+
+;  | PEA $0000 | 
+;  +-----------+ 
+;  | JMP loop  | <-- Exit here
+;  +-----------+
+;
+; x = 1 and 2
+;
+;  | PEA $0000 |
+;  +-----------+
+;  | PEA $0000 | <-- Exit Here
+;  +-----------+ 
+;  | JMP loop  |
+;  +-----------+
+
+
+                    lda   #163
+                    sec
+                    sbc   1,s
+                    tay
+
+; Right now we have the offset of the last visible byte.  Add one to get the offset
+; of the byte that will be patched for an exit.
+
+                    inc                              ; (a + 1) % 164
                     cmp   #164
-                    bcc   :nomod1
-                    lda   #0                   ; range check
-:nomod1             and   #$FFFE               ; clamp and load the BRA for this column
+                    bcc   :hop1
+                    lda   #0
+:hop1
+
+
+; If the exit byte is an even value, then this is the spot to exit.  If it's an
+; odd value, then round down and use the odd exit path in the blitter to push
+; the high byte of the word.
+
+                    bit   #$0001
+                    bne   :odd_exit
+
+; This is the even code path
+
+                    tax
+                    lda   CodeFieldEvenBRA,x
+                    sta   :exit_bra
+                    lda   Col2CodeOffset,X
+                    sta   :exit_offset
+                    bra   :do_entry
+
+; This is the odd code path
+:odd_exit           and   #$FFFE
                     tax
                     lda   CodeFieldOddBRA,x
                     sta   :exit_bra
                     lda   Col2CodeOffset,X
                     sta   :exit_offset
 
-                    tya                        ; reload (164 - x) % 164
+; Calculate the entry byte into the code field
+:do_entry           tya                              ; reload 163 - x % 164
                     sec
-                    sbc   ScreenWidth          ; back up to entry point, which corresponds to the
-                    bpl   :nomod2              ; right edge
+                    sbc   ScreenWidth                ; back up to entry point
+                    inc
+                    bpl   :hop2
                     clc
-                    adc   #184
-:nomod2             inc                        ; round up to calculate the entry column
-                    cmp   #184
-                    bcc   :nomod3
-                    lda   #0
-:nomod3             and   #$FFFE
-                    tax
-                    lda   Col2CodeOffset,X     ; This is an offset from the base page boundary
-                    sta   :entry_offset
+                    adc   #164
+:hop2
 
-                    pla                        ; Pop off the saved value
+; If the entry index is even, then just go to that column.  If it's odd, then we
+; enter the field at the _next_ column and change the entry code to take care of
+; pushing the low byte.  In both cases we set the same entry address, but update
+; the blitter opcode at entry_jmp, and for odd entries point, we also need to
+; set the address of odd_entry in the code field
+
+                    bit   #$0001
+                    bne   :odd_entry
+
+                    tax
+                    lda   Col2CodeOffset,x
+                    sta   :entry_offset
+                    lda   #$004C                     ; set the entry_jmp opcode to JMP
+                    sta   :opcode
+                    stz   :odd_entry_offset          ; mark as an even case
+                    bra   :prep_complete
+
+:odd_entry
+                    and   #$FFFE
+                    tax
+                    lda   Col2CodeOffset,x
+                    sta   :entry_offset
+                    lda   Col2CodeOffset+2,x
+                    sta   :odd_entry_offset
+                    lda   #$00AF                     ; set the entry_jmp opcode to LDAL
+                    sta   :opcode
+:prep_complete
+                    pla                              ; Pop off the saved value
 
 ; Main loop that 
 ;
@@ -228,18 +299,18 @@ _ApplyBG0XPos
 
 :loop
                     lda   :virt_line
-                    asl                        ; This will clear the carry bit
+                    asl                              ; This will clear the carry bit
                     tax
-                    ldal  BTableLow,x          ; Get the address of the first code field line
-                    tay                        ; Save it to use as the base address
-                    adc   :exit_offset         ; Add some offsets to get the base address in the code field line
+                    ldal  BTableLow,x                ; Get the address of the first code field line
+                    tay                              ; Save it to use as the base address
+                    adc   :exit_offset               ; Add some offsets to get the base address in the code field line
                     sta   :exit_address
                     sty   :base_address
 
                     sep   #$20
                     ldal  BTableHigh,x
                     pha
-                    plb                        ; This is the bank that will receive the updates
+                    plb                              ; This is the bank that will receive the updates
                     rep   #$20
 
                     lda   :virt_line
@@ -250,7 +321,7 @@ _ApplyBG0XPos
                     adc   #16
                     min   :lines_left
 
-                    sta   :draw_count          ; Do this many lines
+                    sta   :draw_count                ; Do this many lines
                     asl
                     sta   :draw_count_x2
 
@@ -262,14 +333,14 @@ _ApplyBG0XPos
 ; used in odd-aligned cases to determine how to draw the 8-bit value on the left edge of the
 ; screen
 
-                                               ; y is already set to :base_address
-                    tax                        ; :draw_count_x2
-                    lda   :exit_address        ; Save from this location
+                                                     ; y is already set to :base_address
+                    tax                              ; :draw_count_x2
+                    lda   :exit_address              ; Save from this location
                     jsr   SaveOpcode
 
-                    ldx   :draw_count_x2       ; Do this many lines
-                    lda   :exit_bra            ; Copy this value into all of the lines
-                    ldy   :exit_address        ; starting at this address
+                    ldx   :draw_count_x2             ; Do this many lines
+                    lda   :exit_bra                  ; Copy this value into all of the lines
+                    ldy   :exit_address              ; starting at this address
                     jsr   SetConst
 
 ; Next, patch in the CODE_ENTRY value, which is the low byte of a JMP instruction. This is an
@@ -280,17 +351,35 @@ _ApplyBG0XPos
                     lda   :entry_offset
                     ldy   :base_address
                     jsr   SetCodeEntry
+
+; Now, patch in the opcode
+
+                    ldx   :draw_count_x2
+                    lda   :opcode
+                    ldy   :base_address
+                    jsr   SetCodeEntryOpcode
+
+; If this is an odd entry, also set the odd_entry low byte
+
+                    lda   :odd_entry_offset
+                    beq   :not_odd
+
+                    ldx   :draw_count_x2
+                    ldy   :base_address
+                    jsr   SetOddCodeEntry
+
+:not_odd
                     rep   #$20
 
 ; Do the end of the loop -- update the virtual line counter and reduce the number
 ; of lines left to render
 
-                    lda   :virt_line           ; advance to the virtual line after the segment we just
-                    clc                        ; filled in
+                    lda   :virt_line                 ; advance to the virtual line after the segment we just
+                    clc                              ; filled in
                     adc   :draw_count
                     sta   :virt_line
 
-                    lda   :lines_left          ; subtract the number of lines we just completed
+                    lda   :lines_left                ; subtract the number of lines we just completed
                     sec
                     sbc   :draw_count
                     sta   :lines_left
@@ -496,6 +585,95 @@ SetCodeEntry
                     sta   CODE_ENTRY+$1000,y
                     sta:  CODE_ENTRY+$0000,y
 :bottom             rts
+
+; SetOddCodeEntry
+;
+; Patch in the low byte at the ODD_ENTRY. Must be called with 8-bit accumulator
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = address low byte
+SetOddCodeEntry
+                    jmp   (:tbl,x)
+:tbl                da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
+                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
+                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
+                    da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
+                    da    :bottom-48
+:top                sta   ODD_ENTRY+$F000,y
+                    sta   ODD_ENTRY+$E000,y
+                    sta   ODD_ENTRY+$D000,y
+                    sta   ODD_ENTRY+$C000,y
+                    sta   ODD_ENTRY+$B000,y
+                    sta   ODD_ENTRY+$A000,y
+                    sta   ODD_ENTRY+$9000,y
+                    sta   ODD_ENTRY+$8000,y
+                    sta   ODD_ENTRY+$7000,y
+                    sta   ODD_ENTRY+$6000,y
+                    sta   ODD_ENTRY+$5000,y
+                    sta   ODD_ENTRY+$4000,y
+                    sta   ODD_ENTRY+$3000,y
+                    sta   ODD_ENTRY+$2000,y
+                    sta   ODD_ENTRY+$1000,y
+                    sta:  ODD_ENTRY+$0000,y
+:bottom             rts
+
+; SetCodeEntryOpcode
+;
+; Patch in the opcode at the CODE_ENTRY_OPCODE. Must be called with 8-bit accumulator
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = opcode value
+SetCodeEntryOpcode
+                    jmp   (:tbl,x)
+:tbl                da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
+                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
+                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
+                    da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
+                    da    :bottom-48
+:top                sta   CODE_ENTRY_OPCODE+$F000,y
+                    sta   CODE_ENTRY_OPCODE+$E000,y
+                    sta   CODE_ENTRY_OPCODE+$D000,y
+                    sta   CODE_ENTRY_OPCODE+$C000,y
+                    sta   CODE_ENTRY_OPCODE+$B000,y
+                    sta   CODE_ENTRY_OPCODE+$A000,y
+                    sta   CODE_ENTRY_OPCODE+$9000,y
+                    sta   CODE_ENTRY_OPCODE+$8000,y
+                    sta   CODE_ENTRY_OPCODE+$7000,y
+                    sta   CODE_ENTRY_OPCODE+$6000,y
+                    sta   CODE_ENTRY_OPCODE+$5000,y
+                    sta   CODE_ENTRY_OPCODE+$4000,y
+                    sta   CODE_ENTRY_OPCODE+$3000,y
+                    sta   CODE_ENTRY_OPCODE+$2000,y
+                    sta   CODE_ENTRY_OPCODE+$1000,y
+                    sta:  CODE_ENTRY_OPCODE+$0000,y
+:bottom             rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

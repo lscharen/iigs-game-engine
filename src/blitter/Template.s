@@ -10,7 +10,9 @@ DP_ENTRY            equ   entry_1-base
 TWO_LYR_ENTRY       equ   entry_2-base
 ONE_LYR_ENTRY       equ   entry_3-base
 
+CODE_ENTRY_OPCODE   equ   entry_jmp-base
 CODE_ENTRY          equ   entry_jmp-base+1              ; low byte of the page-aligned jump address
+ODD_ENTRY           equ   odd_entry-base+1
 CODE_TOP            equ   loop-base
 CODE_LEN            equ   top-base
 CODE_EXIT           equ   even_exit-base
@@ -791,9 +793,9 @@ long_1              stal  *+4-base
                                                         ; gets a 1-cycle penalty, but we save 3 cycles here.
 
 r_is_pea            xba                                 ; fast code for PEA
-                    sep   #$30
+                    sep   #$20
                     pha
-                    rep   #$30
+                    rep   #$20
 odd_entry           jmp   $0100                         ; unconditionally jump into the "next" instruction in the 
                                                         ; code field.  This is OK, even if the entry point was the
                                                         ; last instruction, because there is a JMP at the end of
@@ -933,6 +935,9 @@ epilogue_1          tsc
 
 ; snippets      ds    32*82
 top
+
+
+
 
 
 

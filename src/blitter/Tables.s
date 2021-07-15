@@ -20,6 +20,8 @@ Col2CodeOffset    lup   82
                   dw    CODE_TOP+{]step*PER_TILE_SIZE}
 ]step             equ   ]step+1
                   --^
+                  dw    CODE_TOP
+
 ; Table of BRA instructions that are used to exit the code field.  Separate tables for
 ; even and odd aligned cases.
 ;
@@ -213,6 +215,8 @@ BlitBuff          ds    4*13
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
+
+
 
 
 
