@@ -392,6 +392,20 @@ VBLTASK              hex        00000000
 
 ; Blitter initialization
 BlitInit
+                     stz        ScreenHeight
+                     stz        ScreenWidth
+                     stz        ScreenY0
+                     stz        ScreenY1
+                     stz        ScreenX0
+                     stz        ScreenX1
+                     stz        ScreenTileHeight
+                     stz        ScreenTileWidth
+                     stz        StartX
+                     stz        StartY
+                     stz        EngineMode
+                     stz        DirtyBits
+                     stz        LastPatchOffset
+
 ]step                equ        0
                      lup        13
                      ldx        #BlitBuff
@@ -653,6 +667,7 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
 
 
 

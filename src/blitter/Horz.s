@@ -26,7 +26,7 @@ SetBG0XPos
                     stx   OldStartX                  ; First change, so preserve the value
 :out                rts
 
-; Simple function that restores the saved opcode that are stached in _applyBG0Xpos.  It is
+; Simple function that restores the saved opcode that are stashed in _applyBG0Xpos.  It is
 ; very important that opcodes are restored before new ones are inserted, because there is 
 ; only one, fixed storage location and old values will be overwritten if operations are not
 ; performed in order.
@@ -51,13 +51,9 @@ _RestoreBG0Opcodes
                     asl
                     sta   :lines_left_x2
 
-                    lda   StartX                     ; Repeat with adding the screen width
-                    clc                              ; to calculate the exit column
-                    adc   ScreenWidth
-                    and   #$FFFE
-                    tax
-                    lda   Col2CodeOffset,X
+                    lda   LastPatchOffset            ; If zero, there are no saved opcodes
                     sta   :exit_offset
+                    beq   :loop
 
 :loop
                     ldx   :virt_line_x2
@@ -99,7 +95,9 @@ _RestoreBG0Opcodes
                     sta   :lines_left_x2
 
                     jne   :loop
+                    stz   LastPatchOffset            ; Clear the value once completed
 
+:out
                     phk
                     plb
                     rts
@@ -141,8 +139,13 @@ _ApplyBG0XPos
 :opcode             equ   tmp0
 :odd_entry_offset   equ   tmp10
 
-; This code is fairly succinct.  See the corresponding code in Vert.s for more detailed comments.
+; If there are saved opcodes that have not been restored, do not run this routine
+                    lda   LastPatchOffset
+                    beq   :ok
+                    rts
 
+; This code is fairly succinct.  See the corresponding code in Vert.s for more detailed comments.
+:ok
                     lda   StartY                     ; This is the base line of the virtual screen
                     sta   :virt_line                 ; Keep track of it
 
@@ -242,6 +245,7 @@ _ApplyBG0XPos
                     sta   :exit_bra
                     lda   Col2CodeOffset,X
                     sta   :exit_offset
+                    sta   LastPatchOffset            ; Cache as a flag for later
                     bra   :do_entry
 
 ; This is the odd code path
@@ -251,6 +255,7 @@ _ApplyBG0XPos
                     sta   :exit_bra
                     lda   Col2CodeOffset,X
                     sta   :exit_offset
+                    sta   LastPatchOffset            ; Cache as a flag for later
 
 ; Calculate the entry byte into the code field
 :do_entry           tya                              ; reload 163 - x % 164
@@ -649,6 +654,17 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
+
+
+
+
+
+
+
+
+
+
+
 
 
 
