@@ -109,6 +109,24 @@ _RestoreBG0Opcodes
 ; routine.  The reason is that the restore *must* be applied using the (StartX, StartY)
 ; values from the previous frame, which requires logic that is not relevant to setting
 ; up the code field.
+;
+; This function is where the reverse-mapping aspect of the code field is compensated
+; for.  In the initialize case where X = 0, the exit point is at the *end* of 
+; the code buffer line
+;
+; +----+----+ ... +----+----+----+
+; | 82 | 80 |     | 04 | 02 | 00 |
+; +----+----+ ... +----+----+----+
+;                                ^ x=0
+;
+; As the screen scrolls right-to-left, the exit position moves to earlier memory
+; locations until wrapping around from 163 to 0.
+;
+; The net calculation are
+;
+;   x_exit = (164 - x) % 164
+;   x_enter = (164 - x - width) % 164
+;
 _ApplyBG0XPos
 
 :virt_line          equ   tmp1
@@ -168,31 +186,39 @@ _ApplyBG0XPos
 ; tile position is rounded down.
 
                     lda   StartX               ; This is the starting byte offset (0 - 163)
-                    inc                        ; round up to calculate the entry column
-                    and   #$FFFE
+                    jsr   Mod164               ; 
+                    pha                        ; Save for a bit
+
+                    lda   #164                 ; The left edge of the screen is the exit point
+                    sec                        ; of the blitter.  So calculate that location for
+                    sbc   1,s                  ; the "starting" point of the render
+                    tay                        ; cache this value
+                    cmp   #164
+                    bcc   :nomod1
+                    lda   #0                   ; range check
+:nomod1             and   #$FFFE               ; clamp and load the BRA for this column
+                    tax
+                    lda   CodeFieldOddBRA,x
+                    sta   :exit_bra
+                    lda   Col2CodeOffset,X
+                    sta   :exit_offset
+
+                    tya                        ; reload (164 - x) % 164
+                    sec
+                    sbc   ScreenWidth          ; back up to entry point, which corresponds to the
+                    bpl   :nomod2              ; right edge
+                    clc
+                    adc   #184
+:nomod2             inc                        ; round up to calculate the entry column
+                    cmp   #184
+                    bcc   :nomod3
+                    lda   #0
+:nomod3             and   #$FFFE
                     tax
                     lda   Col2CodeOffset,X     ; This is an offset from the base page boundary
                     sta   :entry_offset
 
-                    lda   StartX               ; Repeat with adding the screen width
-                    clc                        ; to calculate the exit column
-                    adc   ScreenWidth
-                    bit   #$0001               ; Check if odd or even
-                    bne   :isOdd
-
-                    and   #$FFFE
-                    tax
-                    lda   CodeFieldEvenBRA,x
-                    sta   :exit_bra
-                    bra   :wasEven
-:isOdd
-                    and   #$FFFE
-                    tax
-                    lda   CodeFieldOddBRA,x
-                    sta   :exit_bra
-:wasEven
-                    lda   Col2CodeOffset,X
-                    sta   :exit_offset
+                    pla                        ; Pop off the saved value
 
 ; Main loop that 
 ;
@@ -470,6 +496,21 @@ SetCodeEntry
                     sta   CODE_ENTRY+$1000,y
                     sta:  CODE_ENTRY+$0000,y
 :bottom             rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

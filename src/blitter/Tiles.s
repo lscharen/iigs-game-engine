@@ -13,8 +13,8 @@
 ; A low-level function that copies 8x8 tiles directly into the code field space.
 ;
 ; A = Tile ID (0 - 1023)
-; X = Tile row (0 - 25)
-; Y = Tile columns (0 - 40)
+; X = Tile column (0 - 40)
+; Y = Tile row (0 - 25)
 CopyTile
                 phb                     ; save the current bank
                 pha                     ; save the tile ID
@@ -31,8 +31,13 @@ CopyTile
                 pha                     ; save for a few instruction
                 rep   #$20
 
-                txa                     ; there are two columns per tile, so multiple by 4
-                asl
+                phx                     ; Reverse the tile index since x = 0 is at the end
+                lda   #40
+                sec
+                sbc   1,s
+                plx
+
+                asl                     ; there are two columns per tile, so multiple by 4
                 asl                     ; asl will clear the carry bit
                 tax
                 lda   Col2CodeOffset,x
@@ -88,46 +93,54 @@ CopyTileConst   sta:  $0000,y
                 sta   $7003,y
                 rts
 
-:CopyTileMem    asl
+:CopyTileMem    sec
+                sbc   #$0010
+
+                asl
                 asl
                 asl
                 asl
                 asl
                 tax
 
-CopyTileLinear  ldal  tiledata+0,x
-                sta:  $0000,y
-                ldal  tiledata+2,x
+CopyTileLinear  ldal  tiledata+0,x      ; The low word goes in the *next* instruction
                 sta:  $0003,y
+                ldal  tiledata+2,x
+                sta:  $0000,y
                 ldal  tiledata+4,x
-                sta   $1000,y
-                ldal  tiledata+6,x
                 sta   $1003,y
+                ldal  tiledata+6,x
+                sta   $1000,y
                 ldal  tiledata+8,x
-                sta   $2000,y
-                ldal  tiledata+10,x
                 sta   $2003,y
+                ldal  tiledata+10,x
+                sta   $2000,y
                 ldal  tiledata+12,x
-                sta   $3000,y
-                ldal  tiledata+14,x
                 sta   $3003,y
+                ldal  tiledata+14,x
+                sta   $3000,y
                 ldal  tiledata+16,x
-                sta   $4000,y
-                ldal  tiledata+18,x
                 sta   $4003,y
+                ldal  tiledata+18,x
+                sta   $4000,y
                 ldal  tiledata+20,x
-                sta   $5000,y
-                ldal  tiledata+22,x
                 sta   $5003,y
+                ldal  tiledata+22,x
+                sta   $5000,y
                 ldal  tiledata+24,x
-                sta   $6000,y
-                ldal  tiledata+26,x
                 sta   $6003,y
+                ldal  tiledata+26,x
+                sta   $6000,y
                 ldal  tiledata+28,x
-                sta   $7000,y
-                ldal  tiledata+30,x
                 sta   $7003,y
+                ldal  tiledata+30,x
+                sta   $7000,y
                 rts
+
+
+
+
+
 
 
 

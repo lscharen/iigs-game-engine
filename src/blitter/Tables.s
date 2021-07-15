@@ -13,9 +13,6 @@
 ;  lda #DATA
 ;  ldx Col2CodeOffset,y
 ;  sta $0001,x 
-;
-; This table is necessary, because due to the data being drawn via stack instructions, the
-; tile order is reversed.
 
 PER_TILE_SIZE     equ   3
 ]step             equ   0
@@ -216,6 +213,7 @@ BlitBuff          ds    4*13
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
+
 
 
 

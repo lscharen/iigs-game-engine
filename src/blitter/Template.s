@@ -313,6 +313,46 @@ SetYPos             sta   StartY                        ; Save the position
                     plb
                     rts
 
+; Special subroutine to divide the accumulator by 164 and return remainder in the Accumulator
+;
+; 164 = $A4 = 1010_0100
+Mod164              cmp   #%1010010000000000
+                    bcc   *+5
+                    sbc   #%1010010000000000
+
+                    cmp   #%0101001000000000
+                    bcc   *+5
+                    sbc   #%0101001000000000
+
+                    cmp   #%0010100100000000
+                    bcc   *+5
+                    sbc   #%0010100100000000
+
+                    cmp   #%0001010010000000
+                    bcc   *+5
+                    sbc   #%0001010010000000
+
+                    cmp   #%0000101001000000
+                    bcc   *+5
+                    sbc   #%0000101001000000
+
+                    cmp   #%0000010100100000
+                    bcc   *+5
+                    sbc   #%0000010100100000
+
+                    cmp   #%0000001010010000
+                    bcc   *+5
+                    sbc   #%0000001010010000
+
+                    cmp   #%0000000101001000
+                    bcc   *+5
+                    sbc   #%0000000101001000
+
+                    cmp   #%0000000010100100
+                    bcc   *+5
+                    sbc   #%0000000010100100
+                    rts
+
 ; Special subroutine to divide the accumulator by 208 and return remainder in the Accumulator
 ;
 ; 208 = $D0 = 1101_0000
@@ -893,6 +933,9 @@ epilogue_1          tsc
 
 ; snippets      ds    32*82
 top
+
+
+
 
 
 

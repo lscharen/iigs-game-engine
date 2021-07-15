@@ -42,7 +42,7 @@ SHR_PALETTES         equ        $E19E00
 tiledata             ext
 
 ; Feature flags
-NO_INTERRUPTS        equ        0                    ; turn off for crossrunner debugging
+NO_INTERRUPTS        equ        1                    ; turn off for crossrunner debugging
 
 ; Typical init
 
@@ -289,6 +289,8 @@ DoTiles
 :rowloop
                      lda        #0
                      sta        :column,s
+                     lda        #$0010
+                     sta        :tile,s
 
 :colloop
                      lda        :row,s
@@ -300,7 +302,6 @@ DoTiles
 
                      lda        :tile,s
                      inc
-                     and        #$000F
                      sta        :tile,s
 
                      lda        :column,s
@@ -322,6 +323,8 @@ DoTiles
 
 ; Set up the code field and render it
 DoFrame
+                     lda        #$FFFF
+                     sta        DirtyBits
                      jsr        Render               ; Render the play field
                      rts
 
@@ -650,6 +653,10 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+
+
+
+
 
 
 
