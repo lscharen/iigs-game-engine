@@ -16,41 +16,42 @@
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
 CopyTile
-                phb                     ; save the current bank
-                pha                     ; save the tile ID
+               phb                     ; save the current bank
+               phx                     ; save the original x-value
+               pha                     ; save the tile ID
 
-                tya                     ; lookup the address of the virtual line (y * 8)
-                asl
-                asl
-                asl
-                asl
-                tay
+               tya                     ; lookup the address of the virtual line (y * 8)
+               asl
+               asl
+               asl
+               asl
+               tay
 
-                sep   #$20              ; set the bank register
-                lda   BTableHigh,y
-                pha                     ; save for a few instruction
-                rep   #$20
+               sep   #$20              ; set the bank register
+               lda   BTableHigh,y
+               pha                     ; save for a few instruction
+               rep   #$20
 
-                phx                     ; Reverse the tile index since x = 0 is at the end
-                lda   #40
-                sec
-                sbc   1,s
-                plx
+               phx                     ; Reverse the tile index since x = 0 is at the end
+               lda   #40
+               sec
+               sbc   1,s
+               plx
 
-                asl                     ; there are two columns per tile, so multiple by 4
-                asl                     ; asl will clear the carry bit
-                tax
-                lda   Col2CodeOffset,x
-                adc   BTableLow,y
-                tay
-                iny                     ; +1 to move past to opcode to the operand
+               asl                     ; there are two columns per tile, so multiple by 4
+               asl                     ; asl will clear the carry bit
+               tax
+               lda   Col2CodeOffset,x
+               adc   BTableLow,y
+               tay
 
-                plb                     ; set the bank
-                pla                     ; pop the tile ID
-                jsr   _CopyTile
+               plb                     ; set the bank
+               pla                     ; pop the tile ID
+               jsr   :ClearTile        ; :_CopyTile
 
-                plb                     ; restore the data bank and return
-                rts
+               plx                     ; pop the x-register
+               plb                     ; restore the data bank and return
+               rts
 
 ; _CopyTile
 ;
@@ -60,90 +61,130 @@ CopyTile
 ; A = Tile ID (0 - 1023)
 ; Y = Base Adddress in the code field
 
-_CopyTile       cmp   #$0010
-                bcc   :FillWord
-                cmp   #$0400
-                bcc   :CopyTileMem
-                rts                     ; Tile number is too large
+:_CopyTile     cmp   #$0010
+               bcs   *+5
+               brl   :FillWord
+               cmp   #$0400
+               bcs   *+5
+               brl   :CopyTileMem
+               rts                     ; Tile number is too large
 
-:TilePatterns   dw    $0000,$1111,$2222,$3333
-                dw    $4444,$5555,$6666,$7777
-                dw    $8888,$9999,$AAAA,$BBBB
-                dw    $CCCC,$DDDD,$EEEE,$FFFF
+:TilePatterns  dw    $0000,$1111,$2222,$3333
+               dw    $4444,$5555,$6666,$7777
+               dw    $8888,$9999,$AAAA,$BBBB
+               dw    $CCCC,$DDDD,$EEEE,$FFFF
 
-:FillWord       asl
-                tax
-                ldal  :TilePatterns,x
+:ClearTile     sep   #$20
+               lda   #$B1
+               sta:  $0000,y
+               sta:  $0003,y
+               sta   $1000,y
+               sta   $1003,y
+               sta   $2000,y
+               sta   $2003,y
+               sta   $3000,y
+               sta   $3003,y
+               sta   $4000,y
+               sta   $4003,y
+               sta   $5000,y
+               sta   $5003,y
+               sta   $6000,y
+               sta   $6003,y
+               sta   $7000,y
+               sta   $7003,y
+               rep   #$20
 
-CopyTileConst   sta:  $0000,y
-                sta:  $0003,y
-                sta   $1000,y
-                sta   $1003,y
-                sta   $2000,y
-                sta   $2003,y
-                sta   $3000,y
-                sta   $3003,y
-                sta   $4000,y
-                sta   $4003,y
-                sta   $5000,y
-                sta   $5003,y
-                sta   $6000,y
-                sta   $6003,y
-                sta   $7000,y
-                sta   $7003,y
-                rts
-
-:CopyTileMem    sec
-                sbc   #$0010
-
-                asl
-                asl
-                asl
-                asl
-                asl
-                tax
-
-CopyTileLinear  ldal  tiledata+0,x      ; The low word goes in the *next* instruction
-                sta:  $0003,y
-                ldal  tiledata+2,x
-                sta:  $0000,y
-                ldal  tiledata+4,x
-                sta   $1003,y
-                ldal  tiledata+6,x
-                sta   $1000,y
-                ldal  tiledata+8,x
-                sta   $2003,y
-                ldal  tiledata+10,x
-                sta   $2000,y
-                ldal  tiledata+12,x
-                sta   $3003,y
-                ldal  tiledata+14,x
-                sta   $3000,y
-                ldal  tiledata+16,x
-                sta   $4003,y
-                ldal  tiledata+18,x
-                sta   $4000,y
-                ldal  tiledata+20,x
-                sta   $5003,y
-                ldal  tiledata+22,x
-                sta   $5000,y
-                ldal  tiledata+24,x
-                sta   $6003,y
-                ldal  tiledata+26,x
-                sta   $6000,y
-                ldal  tiledata+28,x
-                sta   $7003,y
-                ldal  tiledata+30,x
-                sta   $7000,y
-                rts
+               lda   3,s
+               asl
+               asl
+               and   #$00FF
+               ora   #$4800
+               sta:  $0004,y
+               sta   $1004,y
+               sta   $2004,y
+               sta   $3004,y
+               sta   $4004,y
+               sta   $5004,y
+               sta   $6004,y
+               sta   $7004,y
+               inc
+               inc
+               sta:  $0001,y
+               sta   $1001,y
+               sta   $2001,y
+               sta   $3001,y
+               sta   $4001,y
+               sta   $5001,y
+               sta   $6001,y
+               sta   $7001,y
+               rts
 
 
+:FillWord      asl
+               tax
+               ldal  :TilePatterns,x
 
+               sta:  $0001,y
+               sta:  $0004,y
+               sta   $1001,y
+               sta   $1004,y
+               sta   $2001,y
+               sta   $2004,y
+               sta   $3001,y
+               sta   $3004,y
+               sta   $4001,y
+               sta   $4004,y
+               sta   $5001,y
+               sta   $5004,y
+               sta   $6001,y
+               sta   $6004,y
+               sta   $7001,y
+               sta   $7004,y
+               rts
 
+:CopyTileMem   sec
+               sbc   #$0010
 
+               asl
+               asl
+               asl
+               asl
+               asl
+               tax
 
-
-
+               ldal  tiledata+0,x      ; The low word goes in the *next* instruction
+               sta:  $0004,y
+               ldal  tiledata+2,x
+               sta:  $0001,y
+               ldal  tiledata+4,x
+               sta   $1004,y
+               ldal  tiledata+6,x
+               sta   $1001,y
+               ldal  tiledata+8,x
+               sta   $2004,y
+               ldal  tiledata+10,x
+               sta   $2001,y
+               ldal  tiledata+12,x
+               sta   $3004,y
+               ldal  tiledata+14,x
+               sta   $3001,y
+               ldal  tiledata+16,x
+               sta   $4004,y
+               ldal  tiledata+18,x
+               sta   $4001,y
+               ldal  tiledata+20,x
+               sta   $5004,y
+               ldal  tiledata+22,x
+               sta   $5001,y
+               ldal  tiledata+24,x
+               sta   $6004,y
+               ldal  tiledata+26,x
+               sta   $6001,y
+               ldal  tiledata+28,x
+               sta   $7004,y
+               ldal  tiledata+30,x
+               sta   $7001,y
+               rts
 
 
 

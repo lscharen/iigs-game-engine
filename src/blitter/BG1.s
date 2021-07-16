@@ -4,6 +4,10 @@ _InitBG1
                         jsr   _ApplyBG1YPos
                         rts
 
+SetBG1XPos
+                        sta   BG1StartX
+                        rts
+
 ; Everytime either BG1 or BG0 X-position changes, we have to update the direct page values.  We 
 ; *could* do this by adjusting the since address offset, but we have to change up to 200 values
 ; when the vertical position changes, and only 41 when the horizontal value changes.  Plus
@@ -11,12 +15,21 @@ _InitBG1
 ;
 ; Note: This routine can be optimized as an unrolled loop of PEI instructions
 _ApplyBG1XPos
+                        lda   BG1StartX
+                        jsr   Mod164
+                        sta   BG1StartXMod164
+
                         lda   #162
                         sec
                         sbc   StartXMod164
                         bpl   *+6
                         clc
                         adc   #164
+                        clc
+                        adc   BG1StartXMod164
+                        cmp   #164
+                        bcc   *+5
+                        sbc   #164
                         tay
 
                         phd                           ; save the direct page because we are going to switch to the
@@ -39,6 +52,28 @@ _ApplyBG1XPos
                         pld
                         rts
 
+_ClearBG1Buffer
+                        phb
+                        pha
+                        sep   #$20
+                        lda   BG1DataBank
+                        pha
+                        plb
+                        rep   #$20
+
+                        pla
+                        ldx   #0
+:loop
+                        sta:  $0000,x
+                        inc
+                        inx
+                        inx
+                        cpx   #0
+                        bne   :loop
+
+                        plb
+                        rts
+
 ; Everytime either BG1 or BG0 Y-position changes, we have to update the Y-register
 ; value in all of the code fields (within the visible screen)
 _ApplyBG1YPos
@@ -47,7 +82,7 @@ _ApplyBG1YPos
 :draw_count             equ   tmp2
 :ytbl_idx               equ   tmp3
 
-                        stz   :rtbl_idx               ; Start copying from the first entry in the table
+                        stz   :ytbl_idx               ; Start copying from the first entry in the table
 
                         lda   StartY                  ; This is the base line of the virtual screen
                         sta   :virt_line              ; Keep track of it
@@ -180,6 +215,18 @@ CopyBG1YTableToBG1Addr
 :x01                    ldal  BG1YTable+00,x
                         sta:  BG1_ADDR+$0000,y
 :none                   rts
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

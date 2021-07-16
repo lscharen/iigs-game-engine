@@ -67,6 +67,7 @@ Render
             jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
             jsr   _ApplyBG1XPos       ; Adjust the direct page pointers to the BG1 bank
+            jsr   _ApplyBG1YPos
 
             ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
@@ -77,6 +78,7 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
+
 
 
 

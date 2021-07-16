@@ -51,9 +51,12 @@ MemInit        PushLong  #0                          ; space for result
                _Deref
                stx       BlitterDP
 
-; Allocate a bank of memory for BG1
+; Allocate banks of memory for BG1
                jsr       AllocOneBank2
                sta       BG1DataBank
+
+               jsr       AllocOneBank2
+               sta       BG1AltBank
 
 ; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0
@@ -144,6 +147,7 @@ IntInit        rts
 ; IntSource( oSecDisable );		/* disable one second interrupts */
 ; SetVector( oneSecHnd, oldOneVect );   /* reset to the old handler */
 ShutDown       rts
+
 
 
 

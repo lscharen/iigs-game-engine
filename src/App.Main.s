@@ -102,6 +102,9 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
 
                      jsr        _InitBG1             ; Initialize the second background
 
+                     lda        #0
+                     jsr        _ClearBG1Buffer
+
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
                      jsr        AllocOneBank         ; Alloc 64KB for Load/Unpack
@@ -303,7 +306,7 @@ DoTiles
 :rowloop
                      lda        #0
                      sta        :column,s
-                     lda        #$0015
+                     lda        #$0010
                      sta        :tile,s
 
 :colloop
@@ -314,9 +317,9 @@ DoTiles
                      lda        :tile,s
                      jsr        CopyTile
 
-                     lda        :tile,s
-                     eor        #$0003
-                     sta        :tile,s
+;                     lda        :tile,s
+;                     eor        #$0003
+;                     sta        :tile,s
 
                      lda        :column,s
                      inc
@@ -344,12 +347,34 @@ DoFrame
 
 ; Load a binary file in the BG1 buffer
 DoLoadBG1
-                     lda        BG1DataBank
-                     xba
-                     and        #$FF00
-                     ora        #$0001               ; Load directly into the BG1 buffer bank on Page 1
+                     lda        BankLoad
                      ldx        #BG1DataFile
                      jsr        LoadFile
+
+                     lda        BankLoad
+                     xba
+                     pha
+                     and        #$00FF
+                     tax
+                     pla
+                     and        #$FF00
+                     ldy        BG1DataBank
+                     jsr        CopyBinToBG1
+
+                     lda        BankLoad
+                     ldx        #BG1AltDataFile
+                     jsr        LoadFile
+
+                     lda        BankLoad
+                     xba
+                     pha
+                     and        #$00FF
+                     tax
+                     pla
+                     and        #$FF00
+                     ldy        BG1AltBank
+                     jsr        CopyBinToBG1
+
                      rts
 
 ; Load a simple picture format onto the SHR screen
@@ -448,6 +473,56 @@ CopyPicToField
 
                      rts
 
+; Copy a binary image data file into BG1.  Assumes the file is the correct size.
+;
+; A=low word of picture address
+; X=high word of pixture address
+; Y=high word of BG1 bank
+
+CopyBinToBG1
+:srcptr              equ        tmp0
+:line_cnt            equ        tmp2
+:dstptr              equ        tmp3
+:col_cnt             equ        tmp5
+
+                     sta        :srcptr
+                     stx        :srcptr+2
+                     sty        :dstptr+2            ; Everything goes into this bank
+
+                     stz        :line_cnt
+:rloop
+                     lda        :line_cnt            ; get the pointer to the code field line
+                     asl
+                     tax
+
+                     lda        BG1YTable,x
+                     sta        :dstptr
+
+                     ldy        #0                   ; move forward in the image data and image data
+:cloop
+                     lda        [:srcptr],y
+                     sta        [:dstptr],y
+
+                     iny
+                     iny
+
+                     cpy        #164
+                     bcc        :cloop
+
+                     lda        [:srcptr]            ; Duplicate the last byte in the extra space at the end of the line
+                     sta        [:dstptr],y
+
+                     lda        :srcptr
+                     clc
+                     adc        #164                 ; Each line is 328 pixels
+                     sta        :srcptr
+
+                     inc        :line_cnt
+                     lda        :line_cnt
+                     cmp        #208                 ; A total of 208 lines
+                     bcc        :rloop
+                     rts
+
 ****************************************
 * Fatal Error Handler                  *
 ****************************************
@@ -536,7 +611,8 @@ GrafInit
                      dw         $0fa9,$0ff0,$00e0,$04DF
                      dw         $0d00,$078f,$0ccc,$0FFF
 
-DefaultPalette       dw         $0ADF,$0FF8,$0CD6,$09CF,$0AC6,$08A5,$0FFF,$0694
+DefaultPalette       dw         $09BE,$0AA6,$0DC9,$0DB7,$09AA
+                     dw         $0080,$0f70,$0FFF
                      dw         $0fa9,$0ff0,$00e0,$04DF
                      dw         $0d00,$078f,$0ccc,$0FFF
 
@@ -735,7 +811,9 @@ msgLine3             str        ' -> Return to Try Again'
 msgLine4             str        ' -> Esc to Quit'
 
 ; Data storage
-BG1DataFile          strl       '1/bg1.bin'
+BG1DataFile          strl       '1/bg1a.bin'
+BG1AltDataFile       strl       '1/bg1b.bin'
+
 ImageName            strl       '1/test.pic'
 MasterId             ds         2
 UserId               ds         2
@@ -774,6 +852,25 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

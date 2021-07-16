@@ -29,18 +29,33 @@ function pngToIIgsBuff(png) {
         for (let x = 0; x < png.width; x += 1, i += 4) {
             const pixel = png.data.slice(i, i + 4);
             const index = findColorIndex(png, pixel);
-            const j = i / 8;
+            const j = y * (png.width / 2) + Math.floor(x / 2);
+
+            if (index > 15) {
+                console.warn('Pixel index greater than 15. Skipping...');
+                continue;
+            }
 
             if (x % 2 === 0) {
-                buff[j] = buff[j] + (16 * index);
+                buff[j] = 16 * index;
             }
             else {
-                buff[j] = buff[j] + index
+                buff[j] = buff[j] | index;
             }
         }
     }
     
     return buff;
+}
+
+function shiftImage(src) {
+    const { width, height, colorType, bitDepth } = src;
+    const dst = new PNG({ width, height, colorType, bitDepth });
+
+    PNG.bitblt(src, dst, 1, 0, width - 1, height, 0, 0);
+    PNG.bitblt(src, dst, 0, 0, 1, height, width - 1, 0);
+
+    return dst;
 }
 
 function pngToIIgsBuffRepeat(png) {

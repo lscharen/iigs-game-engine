@@ -1,10 +1,12 @@
 MoveLeft
                      clc
                      adc   StartX               ; Increment the virtual X-position
-                     cmp   #164
-                     bcc   *+5
-                     lda   #0
                      jsr   SetBG0XPos
+
+                     lda   StartX
+                     lsr
+                     jsr   SetBG1XPos
+
                      jsr   DoFrame
                      rts
 
@@ -82,5 +84,6 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
+
 
 

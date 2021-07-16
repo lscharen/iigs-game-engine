@@ -54,7 +54,13 @@ _BltRange
 ; Now we need to set up the Bank, Stack Pointer and Direct Page registers for calling into 
 ; the code field
 
-               lda   BG1DataBank    ; Set the data bank for BG1 data
+               lda   StartX
+               bit   #$01
+               beq   :primary
+               lda   BG1AltBank
+               bra   :alt
+:primary       lda   BG1DataBank
+:alt
                pha
                plb
                rep   #$20
@@ -84,3 +90,4 @@ stk_save       lda   #0000          ; load the stack
 
                plb                  ; restore the bank
                rts
+
