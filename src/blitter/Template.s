@@ -695,13 +695,13 @@ BuildBank
                     plb
                     plb
 
-                    lda   #$F000+{ONE_LYR_ENTRY}        ; Set the address from each line to the next
+                    lda   #$F000+{TWO_LYR_ENTRY}        ; Set the address from each line to the next
                     ldy   #CODE_EXIT+1
                     ldx   #15*2
                     jsr   SetAbsAddrs
 
                     ldy   #$F000+CODE_EXIT              ; Patch the last line with a JML to go to the next bank
-                    lda   #{$005C+{ONE_LYR_ENTRY}*256}
+                    lda   #{$005C+{TWO_LYR_ENTRY}*256}
                     sta   [target],y
                     ldy   #$F000+CODE_EXIT+2
                     lda   nextBank
@@ -938,3 +938,7 @@ epilogue_1          tsc
 
 ; snippets      ds    32*82
 top
+
+
+
+

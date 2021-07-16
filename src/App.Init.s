@@ -49,8 +49,11 @@ MemInit        PushLong  #0                          ; space for result
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
-               stx       ZeroPage
-               sta       ZeroPage+2
+               stx       BlitterDP
+
+; Allocate a bank of memory for BG1
+               jsr       AllocOneBank2
+               sta       BG1DataBank
 
 ; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0
@@ -101,7 +104,6 @@ MemInit        PushLong  #0                          ; space for result
 
 Buff00         ds        4
 Buff01         ds        4
-ZeroPage       ds        4
 
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
 
@@ -142,6 +144,11 @@ IntInit        rts
 ; IntSource( oSecDisable );		/* disable one second interrupts */
 ; SetVector( oneSecHnd, oldOneVect );   /* reset to the old handler */
 ShutDown       rts
+
+
+
+
+
 
 
 

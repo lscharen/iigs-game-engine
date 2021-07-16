@@ -215,3 +215,19 @@ BlitBuff          ds    4*13
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
+
+; A double-length table of addresses for the BG1 bank.  The BG1 buffer is 208 rows of 256 bytes each and
+; the first row starts 256 bytes in to give enough room for scroll adjustments
+]step             equ   256
+BG1YTable         lup   208
+                  dw    ]step
+]step             =     ]step+256
+                  --^
+]step             equ   256
+                  lup   208
+                  dw    ]step
+]step             =     ]step+256
+                  --^
+
+
+

@@ -42,7 +42,7 @@ SHR_PALETTES         equ        $E19E00
 tiledata             ext
 
 ; Feature flags
-NO_INTERRUPTS        equ        1                    ; turn off for crossrunner debugging
+NO_INTERRUPTS        equ        0                    ; turn off for crossrunner debugging
 
 ; Typical init
 
@@ -99,6 +99,8 @@ NO_INTERRUPTS        equ        1                    ; turn off for crossrunner 
 
                      lda        #0                   ; Set the virtual X-position
                      jsr        SetBG0XPos
+
+                     jsr        _InitBG1             ; Initialize the second background
 
 ; Load a picture and copy it into Bank $E1.  Then turn on the screen.
 
@@ -176,7 +178,14 @@ EvtLoop
                      jsr        Demo
                      brl        EvtLoop
 
-:12                  brl        EvtLoop
+:12                  cmp        #'c'
+                     bne        :13
+                     ldx        #$00E1
+                     lda        #$2000
+                     jsr        CopyPicToField
+                     brl        EvtLoop
+
+:13                  brl        EvtLoop
 
 ; Exit code
 Exit
@@ -329,22 +338,99 @@ DoFrame
                      rts
 
 ; Load a simple picture format onto the SHR screen
-
 DoLoadPic
                      lda        BankLoad
                      ldx        #ImageName           ; Load+Unpack Boot Picture
                      jsr        LoadPicture          ; X=Name, A=Bank to use for loading
 
-                     lda        BankLoad             ; get address of loaded/uncompressed picture
+                     lda        BankLoad             ; Copy it into the code field
                      clc
-                     adc        #$0080               ; skip header? 
-                     sta        :copySHR+2           ;  and store that over the 'ldal' address below
-                     ldx        #$7FFE               ; copy all image data
-:copySHR             ldal       $000000,x            ; load from BankLoad we allocated
-                     stal       SHR_SCREEN,x         ; store to SHR screen
+                     adc        #$0080
+                     xba
+                     pha
+                     and        #$00FF
+                     tax
+                     pla
+                     and        #$FF00
+                     jsr        CopyPicToField
+                     rts
+
+; Copy a loaded SHR picture into the code field
+;
+; A=low word of picture address
+; X=high workd of pixture address
+;
+; Picture must be within one bank
+CopyPicToField
+:srcptr              equ        tmp0
+:line_cnt            equ        tmp2
+:dstptr              equ        tmp3
+:col_cnt             equ        tmp5
+
+                     sta        :srcptr
+                     stx        :srcptr+2
+
+                     stz        :line_cnt
+:rloop
+                     lda        :line_cnt            ; get the pointer to the code field line
+                     asl
+                     tax
+
+                     lda        BTableLow,x
+                     sta        :dstptr
+                     lda        BTableHigh,x
+                     sta        :dstptr+2
+
+                     ldx        #162                 ; move backwards in the code field
+                     ldy        #0                   ; move forward in the image data
+
+                     lda        #80                  ; keep a running column count
+                     sta        :col_cnt
+
+:cloop
+                     phy
+                     lda        [:srcptr],y
+                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
+
+                     cmp        #0                   ; Empty values are transparent
+                     beq        :transparent
+
+                     pha
+                     lda        #$00F4               ; PEA instruction
+                     sta        [:dstptr],y
+                     iny
+                     pla
+                     sta        [:dstptr],y
+                     bra        :next
+:transparent
+                     lda        #$B1                 ; LDA (dp),y
+                     sta        [:dstptr],y
+                     iny
+                     lda        1,s                  ; load the saved Y-index
+                     ora        #$4800               ; put a PHA after the offset
+                     sta        [:dstptr],y
+
+:next
+                     ply
+
                      dex
                      dex
-                     bpl        :copySHR
+                     iny
+                     iny
+
+                     dec        :col_cnt
+                     bne        :cloop
+
+                     lda        :srcptr
+                     clc
+                     adc        #160
+                     sta        :srcptr
+
+                     inc        :line_cnt
+                     lda        :line_cnt
+                     cmp        #200
+                     bcc        :rloop
+
                      rts
 
 ****************************************
@@ -667,3 +753,12 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
+                     put        blitter/BG1.s
+
+
+
+
+
+
+
+

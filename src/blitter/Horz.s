@@ -192,7 +192,7 @@ _ApplyBG0XPos
 
                     lda   StartX                     ; This is the starting byte offset (0 - 163)
                     jsr   Mod164                     ; 
-                    pha                              ; Save for a bit
+                    sta   StartXMod164
 
 ; Now, the left edge of the screen is pushed last, so we need to exit one instruction *after*
 ; the location (163 - StartX % 164)
@@ -218,7 +218,7 @@ _ApplyBG0XPos
 
                     lda   #163
                     sec
-                    sbc   1,s
+                    sbc   StartXMod164
                     tay
 
 ; Right now we have the offset of the last visible byte.  Add one to get the offset
@@ -243,7 +243,7 @@ _ApplyBG0XPos
                     tax
                     lda   CodeFieldEvenBRA,x
                     sta   :exit_bra
-                    lda   Col2CodeOffset,X
+                    lda   Col2CodeOffset,x
                     sta   :exit_offset
                     sta   LastPatchOffset            ; Cache as a flag for later
                     bra   :do_entry
@@ -294,7 +294,6 @@ _ApplyBG0XPos
                     lda   #$00AF                     ; set the entry_jmp opcode to LDAL
                     sta   :opcode
 :prep_complete
-                    pla                              ; Pop off the saved value
 
 ; Main loop that 
 ;
@@ -742,3 +741,7 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
+
+
+
+

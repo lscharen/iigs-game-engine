@@ -188,11 +188,3 @@ CopyRTableToStkAddr
                      sta:  STK_ADDR+$0000,y
 :none                rts
 
-
-
-
-
-
-
-
-

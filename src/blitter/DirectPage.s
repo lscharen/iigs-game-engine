@@ -15,12 +15,13 @@ EngineMode        equ   20          ; Defined the mode/capabilities that are ena
 DirtyBits         equ   22          ; Identify values that have changed between frames
 
 BG1DataBank       equ   24          ; Data bank that holds BG1 layer data
-BlitterDP         equ   25          ; Direct page address the holder blitter data
+BlitterDP         equ   26          ; Direct page address the holder blitter data
 
-OldStartX         equ   26
-OldStartY         equ   28
+OldStartX         equ   28
+OldStartY         equ   30
 
-LastPatchOffset   equ   30          ; Offset into code field that was patched with BRA instructions
+LastPatchOffset   equ   32          ; Offset into code field that was patched with BRA instructions
+StartXMod164      equ   34
 
 bstk              equ   208         ; 16-byte stack to push bank addresses
 
@@ -41,6 +42,8 @@ DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
 DIRTY_BIT_BG1_X   equ   $0004
 DIRTY_BIT_BG1_Y   equ   $0008
+
+
 
 
 
