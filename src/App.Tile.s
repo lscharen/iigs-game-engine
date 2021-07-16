@@ -47,13 +47,22 @@ tiledata    ENT
             hex   00FFF000
             hex   00000000
 
+            hex   01234567
+            hex   01234567
+            hex   01234567
+            hex   01234567
+            hex   01234567
+            hex   01234567
+            hex   01234567
+            hex   01234567
+
+            hex   89ABCDEF
+            hex   89ABCDEF
+            hex   89ABCDEF
+            hex   89ABCDEF
+            hex   89ABCDEF
+            hex   89ABCDEF
+            hex   89ABCDEF
+            hex   89ABCDEF
+
 tileend
-
-
-
-
-
-
-
-
-

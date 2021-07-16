@@ -289,7 +289,7 @@ DoTiles
 :rowloop
                      lda        #0
                      sta        :column,s
-                     lda        #$0010
+                     lda        #$0015
                      sta        :tile,s
 
 :colloop
@@ -301,7 +301,7 @@ DoTiles
                      jsr        CopyTile
 
                      lda        :tile,s
-                     inc
+                     eor        #$0003
                      sta        :tile,s
 
                      lda        :column,s
@@ -667,100 +667,3 @@ qtRec                adrl       $0000
                      put        blitter/Template.s
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

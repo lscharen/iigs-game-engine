@@ -215,11 +215,3 @@ BlitBuff          ds    4*13
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
-
-
-
-
-
-
-
-

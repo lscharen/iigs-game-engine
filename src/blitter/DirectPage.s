@@ -13,13 +13,14 @@ StartY            equ   18          ; Which code buffer line is the top of the s
 EngineMode        equ   20          ; Defined the mode/capabilities that are enabled
                                     ;  bit 0: 0 = Single Background, 1 = Parallax
 DirtyBits         equ   22          ; Identify values that have changed between frames
-LastPatchOffset   equ   24          ; Offset into code field that was patched with BRA instructions
 
 BG1DataBank       equ   24          ; Data bank that holds BG1 layer data
 BlitterDP         equ   25          ; Direct page address the holder blitter data
 
 OldStartX         equ   26
 OldStartY         equ   28
+
+LastPatchOffset   equ   30          ; Offset into code field that was patched with BRA instructions
 
 bstk              equ   208         ; 16-byte stack to push bank addresses
 
@@ -40,6 +41,7 @@ DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
 DIRTY_BIT_BG1_X   equ   $0004
 DIRTY_BIT_BG1_Y   equ   $0008
+
 
 
 

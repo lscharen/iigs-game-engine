@@ -352,6 +352,7 @@ _ApplyBG0XPos
 ; 8-bit operation and, since the PEA code is bank aligned, we use the entry_offset value directly
 
                     sep   #$20
+
                     ldx   :draw_count_x2
                     lda   :entry_offset
                     ldy   :base_address
@@ -364,7 +365,7 @@ _ApplyBG0XPos
                     ldy   :base_address
                     jsr   SetCodeEntryOpcode
 
-; If this is an odd entry, also set the odd_entry low byte
+; If this is an odd entry, also set the odd_entry low byte and save the operand high byte
 
                     lda   :odd_entry_offset
                     beq   :not_odd
@@ -372,6 +373,12 @@ _ApplyBG0XPos
                     ldx   :draw_count_x2
                     ldy   :base_address
                     jsr   SetOddCodeEntry
+
+                    ldx   :draw_count_x2
+                    ldy   :base_address
+                    pei   :exit_address
+                    jmp   :SaveHighOperand           ; Only used once, so "inline" it
+:save_high_op_rtn
 
 :not_odd
                     rep   #$20
@@ -394,6 +401,88 @@ _ApplyBG0XPos
                     phk
                     plb
                     rts
+
+; SaveHighOperand
+;
+; Save the high byte of the 3-byte code field instruction into the odd handler at the end
+; of each line.  This is only needed
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = code field location * $1000
+:SaveHighOperand
+                    jmp   (:tbl,x)
+
+:tbl                da    :bottom
+                    da    :do01,:do02,:do03,:do04
+                    da    :do05,:do06,:do07,:do08
+                    da    :do09,:do10,:do11,:do12
+                    da    :do13,:do14,:do15,:do16
+
+:do15               plx
+                    bra   :x15
+:do14               plx
+                    bra   :x14
+:do13               plx
+                    bra   :x13
+:do12               plx
+                    bra   :x12
+:do11               plx
+                    bra   :x11
+:do10               plx
+                    bra   :x10
+:do09               plx
+                    bra   :x09
+:do08               plx
+                    bra   :x08
+:do07               plx
+                    bra   :x07
+:do06               plx
+                    bra   :x06
+:do05               plx
+                    bra   :x05
+:do04               plx
+                    bra   :x04
+:do03               plx
+                    bra   :x03
+:do02               plx
+                    bra   :x02
+:do01               plx
+                    bra   :x01
+:do16               plx
+:x16                lda   $F002,x
+                    sta   OPCODE_HIGH_SAVE+$F000,y
+:x15                lda   $E002,x
+                    sta   OPCODE_HIGH_SAVE+$E000,y
+:x14                lda   $D002,x
+                    sta   OPCODE_HIGH_SAVE+$D000,y
+:x13                lda   $C002,x
+                    sta   OPCODE_HIGH_SAVE+$C000,y
+:x12                lda   $B002,x
+                    sta   OPCODE_HIGH_SAVE+$B000,y
+:x11                lda   $A002,x
+                    sta   OPCODE_HIGH_SAVE+$A000,y
+:x10                lda   $9002,x
+                    sta   OPCODE_HIGH_SAVE+$9000,y
+:x09                lda   $8002,x
+                    sta   OPCODE_HIGH_SAVE+$8000,y
+:x08                lda   $7002,x
+                    sta   OPCODE_HIGH_SAVE+$7000,y
+:x07                lda   $6002,x
+                    sta   OPCODE_HIGH_SAVE+$6000,y
+:x06                lda   $5002,x
+                    sta   OPCODE_HIGH_SAVE+$5000,y
+:x05                lda   $4002,x
+                    sta   OPCODE_HIGH_SAVE+$4000,y
+:x04                lda   $3002,x
+                    sta   OPCODE_HIGH_SAVE+$3000,y
+:x03                lda   $2002,x
+                    sta   OPCODE_HIGH_SAVE+$2000,y
+:x02                lda   $1002,x
+                    sta   OPCODE_HIGH_SAVE+$1000,y
+:x01                lda:  $0002,x
+                    sta:  OPCODE_HIGH_SAVE+$0000,y
+:bottom             jmp   :save_high_op_rtn
 
 ; SaveOpcode
 ;
@@ -476,7 +565,6 @@ SaveOpcode
 :x01                lda:  $0000,x
                     sta:  OPCODE_SAVE+$0000,y
 :bottom             rts
-
 
 ; RestoreOpcode
 ;
@@ -654,120 +742,3 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

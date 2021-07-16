@@ -84,6 +84,3 @@ stk_save       lda   #0000          ; load the stack
 
                plb                  ; restore the bank
                rts
-
-
-

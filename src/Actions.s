@@ -51,7 +51,7 @@ Demo
                      stz   frameCount
 :loop
                      lda   #1
-                     jsr   MoveDown
+                     jsr   MoveLeft
                      inc   frameCount
 
                      ldal  KBD_STROBE_REG
@@ -82,3 +82,5 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
+
+

@@ -17,6 +17,7 @@ CODE_TOP            equ   loop-base
 CODE_LEN            equ   top-base
 CODE_EXIT           equ   even_exit-base
 OPCODE_SAVE         equ   odd_exit-base+1               ; spot to save the code field opcode when patching exit BRA
+OPCODE_HIGH_SAVE    equ   odd_high_byte-base+1          ; save the third byte
 FULL_RETURN         equ   full_return-base              ; offset that returns from the blitter
 ENABLE_INT          equ   enable_int-base               ; offset that re-enable interrupts and continues
 LINES_PER_BANK      equ   16
@@ -856,27 +857,35 @@ odd_exit            lda   #0000                         ; This operand field is 
                                                         ; left edge is odd-aligned, we are able to immediately load the value and perform
                                                         ; similar logic to the right_odd code path above
 
-left_odd            bit   #$000B
-                    beq   l_is_pea
+                    bit   #$000B
+                    bne   :chk_jmp
 
-                    bit   #$0040
-                    bne   l_is_jmp
+                    sep   #$20
+odd_high_byte       lda   #00                           ; patch with high byte code operand
 
-long_4              stal  *+4-base
-                    dfb   $00,$00
-l_is_pea            xba
-                    sep   #$30
+; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimize
+; for the PEA $0000 case -- only 19 cycles to handle the edge, so pretty good
+:left_byte
                     pha
-                    rep   #$30
-                    bra   even_exit
-l_is_jmp            sep   #$01                          ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
-long_5              ldal  entry_jmp+1-base
-long_6              stal  *+5-base
-                    dfb   $4C,$00,$00                   ; Jump back to address in entry_jmp (this takes 13 cycles, is there a better way?)
+                    rep   #$20
 
 ; JMP opcode = $4C, JML opcode = $5C
 even_exit           jmp   $1000                         ; Jump to the next line.
                     ds    1                             ; space so that the last line in a bank can be patched into a JML
+
+:chk_jmp
+                    bit   #$0040
+                    bne   :l_is_jmp
+
+long_4              stal  *+4-base
+                    dfb   $00,$00
+                    sep   #$20
+                    bra   :left_byte
+
+:l_is_jmp           sec                                 ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
+long_5              ldal  entry_jmp+1-base
+long_6              stal  *+5-base
+                    dfb   $4C,$00,$00                   ; Jump back to address in entry_jmp (this takes 13 cycles, is there a better way?)
 
 ; Special epilogue: skip a number of bytes and jump back into the code field. This is useful for
 ;                   large, floating panels in the attract mode of a game, or to overlay solid
@@ -899,7 +908,7 @@ epilogue_1          tsc
 ; are:
 ;
 ;  1. Carry Clear -> 16-bit write and return to the next code field operand
-;  2. Carry Set 
+;  2. Carry Set
 ;     a. Overflow set   -> Low 8-bit write and return to the next code field operand
 ;     b. Overflow clear -> High 8-bit write and exit the line
 ;     c. Always clear the Carry flags. It's actually OK to leave the overflow bit in 
@@ -908,77 +917,24 @@ epilogue_1          tsc
 ;
 ; Snippet Samples:
 ;
-; Standard Two-level Mix (27 bytes)
+; Standard Two-level Mix (23 bytes)
 ;
-;   Optimal     = 18 cycles (LDA/AND/ORA/PHA)
-;  16-bit write = 23 cycles 
-;   8-bit low   = 35 cycles
-;   8-bit high  = 36 cycles
+;   Optimal     = 18 cycles (LDA/AND/ORA/PHA/JMP)
+;  16-bit write = 21 cycles 
+;   8-bit low   = 30 cycles
+;   8-bit high  = 29 cycles
 ;
-;  start     lda  (00),y
-;            and  #MASK
-;            ora  #DATA         ; 14 cycles to load the data
-;            bcs  8_bit
-;            pha
-;  out       jmp  next          ; Fast-path completes in 9 additional cycles
+;  start     lda  (00),y        ; 6
+;            and  #MASK         ; 3
+;            ora  #DATA         ; 3 = 12 cycles to load the data
+;            pha                ; 4
+;            bcs  alt_exit      ; 2/3
+;  out       jmp  next          ; 3 Fast-path completes in 5 additional cycles
 
-;  8_bit     sep  #$30          ; Switch to 8 bit mode
-;            bvs  r_edge        ; Need to switch if doing the left edge
-;            xba
-;  r_edge    pha                ; push the value
-;            rep  #$31          ; put back into 16-bit mode and clear the carry bit, as required
-;            bvs  out           ; jmp out and continue if this is the right edge
-;            jmp  even_exit     ; exit the line otherwise
-;                               ;
-;                               ; The slow paths have 21 and 22 cycles for the right and left
-;                               ; odd-aligned cases respectively.
+;  alt_exit  clc                ; 2
+;            bvs  r_edge        ; 2/3 Need to switch if doing the left edge
+;            jmp  exit_rtn      ; 3
+;  r_edge    jmp  entry_rtn     ; 3
 
 ; snippets      ds    32*82
 top
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
