@@ -454,7 +454,7 @@ right_odd          bit   #$000B                        ; Check the bottom nibble
                    bit   #$0040                        ; Check bit 6 to distinguish between JMP and all of the LDA variants
                    bne   r_is_jmp
 
-long_1             stal  *+4-base
+long_1             stal  *+4-base                      ; Everything else is a two-byte LDA opcode + PHA
                    dfb   $00,$00
                    bra   r_is_pea+1
 
@@ -546,7 +546,9 @@ long_4             stal  *+4-base
                    dfb   $00,$00
                    xba
                    sep   #$20
-                   bra   :left_byte
+                   pha
+                   rep   #$20
+                   bra   even_exit
 
 :l_is_jmp          sec                                 ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
 long_5             ldal  entry_jmp+1-base
@@ -604,6 +606,8 @@ epilogue_1         tsc
 
 ; snippets      ds    32*82
 top
+
+
 
 
 

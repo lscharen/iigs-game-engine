@@ -114,8 +114,13 @@ EvtLoop
                      brl        Exit
 
 :1                   cmp        #'l'
-                     bne        :2
+                     bne        :1_1
                      jsr        DoLoadPic
+                     bra        EvtLoop
+
+:1_1                 cmp        #'b'
+                     bne        :2
+                     jsr        DoLoadBG1
                      bra        EvtLoop
 
 :2                   cmp        #'m'
@@ -337,6 +342,16 @@ DoFrame
                      jsr        Render               ; Render the play field
                      rts
 
+; Load a binary file in the BG1 buffer
+DoLoadBG1
+                     lda        BG1DataBank
+                     xba
+                     and        #$FF00
+                     ora        #$0001               ; Load directly into the BG1 buffer bank on Page 1
+                     ldx        #BG1DataFile
+                     jsr        LoadFile
+                     rts
+
 ; Load a simple picture format onto the SHR screen
 DoLoadPic
                      lda        BankLoad
@@ -516,8 +531,12 @@ GrafInit
                      jsr        SetPalette
                      rts
 
-DefaultPalette       dw         $0000,$007F,$0090,$0FF0
-                     dw         $000F,$0080,$0f70,$0FFF
+;DefaultPalette       dw         $0000,$007F,$0090,$0FF0
+;                     dw         $000F,$0080,$0f70,$0FFF
+                     dw         $0fa9,$0ff0,$00e0,$04DF
+                     dw         $0d00,$078f,$0ccc,$0FFF
+
+DefaultPalette       dw         $0ADF,$0FF8,$0CD6,$09CF,$0AC6,$08A5,$0FFF,$0694
                      dw         $0fa9,$0ff0,$00e0,$04DF
                      dw         $0d00,$078f,$0ccc,$0FFF
 
@@ -716,6 +735,7 @@ msgLine3             str        ' -> Return to Try Again'
 msgLine4             str        ' -> Esc to Quit'
 
 ; Data storage
+BG1DataFile          strl       '1/bg1.bin'
 ImageName            strl       '1/test.pic'
 MasterId             ds         2
 UserId               ds         2
@@ -754,6 +774,10 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
+
+
 
 
 
