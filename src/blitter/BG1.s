@@ -8,6 +8,10 @@ SetBG1XPos
                         sta   BG1StartX
                         rts
 
+SetBG1YPos
+                        sta   BG1StartY
+                        rts
+
 ; Everytime either BG1 or BG0 X-position changes, we have to update the direct page values.  We 
 ; *could* do this by adjusting the since address offset, but we have to change up to 200 values
 ; when the vertical position changes, and only 41 when the horizontal value changes.  Plus
@@ -215,6 +219,7 @@ CopyBG1YTableToBG1Addr
 :x01                    ldal  BG1YTable+00,x
                         sta:  BG1_ADDR+$0000,y
 :none                   rts
+
 
 
 

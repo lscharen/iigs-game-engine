@@ -406,6 +406,8 @@ CopyPicToField
 :line_cnt            equ        tmp2
 :dstptr              equ        tmp3
 :col_cnt             equ        tmp5
+:mask                equ        tmp6
+:data                equ        tmp7
 
                      sta        :srcptr
                      stx        :srcptr+2
@@ -429,25 +431,62 @@ CopyPicToField
 
 :cloop
                      phy
+                     lda        [:srcptr],y          ; load the picture data
+                     beq        :transparent         ; a value of $0000 is transparent
+
+                     jsr        :toMask              ; Infer a mask value for this. If it's $0000, then
+                     bne        :mixed               ; the data is solid, otherwise mixed
+
+; This is a solid word
                      lda        [:srcptr],y
                      ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
 
-                     cmp        #0                   ; Empty values are transparent
-                     beq        :transparent
-
-                     pha
+                     pha                             ; Save the data
                      lda        #$00F4               ; PEA instruction
                      sta        [:dstptr],y
                      iny
                      pla
-                     sta        [:dstptr],y
+                     sta        [:dstptr],y          ; PEA operand
                      bra        :next
 :transparent
+                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
                      lda        #$B1                 ; LDA (dp),y
                      sta        [:dstptr],y
                      iny
                      lda        1,s                  ; load the saved Y-index
                      ora        #$4800               ; put a PHA after the offset
+                     sta        [:dstptr],y
+                     bra        :next
+
+:mixed
+                     sta        :mask                ; Save the mask
+                     lda        [:srcptr],y          ; Refetch the screen data
+                     sta        :data
+
+                     ldy        Col2CodeOffset,x     ; Get the offset into the code field
+                     lda        #$4C                 ; JMP exception
+                     sta        [:dstptr],y
+                     iny
+
+                     lda        JTableOffset,x       ; Get the address offset and add to the base address
+                     clc
+                     adc        :dstptr
+                     sta        [:dstptr],y
+
+                     ldy        JTableOffset,x       ; This points to the code fragment
+                     lda        1,s                  ; load the offset
+                     xba
+                     ora        #$00B1
+                     sta        [:dstptr],y          ; write the LDA (--),y instruction
+                     iny
+                     iny
+                     iny                             ; advance to the AND #imm operand
+                     lda        :mask
+                     sta        [:dstptr],y
+                     iny
+                     iny
+                     iny                             ; advance to the ORA #imm operand
+                     lda        :data
                      sta        [:dstptr],y
 
 :next
@@ -469,8 +508,35 @@ CopyPicToField
                      inc        :line_cnt
                      lda        :line_cnt
                      cmp        #200
-                     bcc        :rloop
+                     bcs        :exit
+                     brl        :rloop
 
+:exit
+                     rts
+
+:toMask              bit        #$F000
+                     beq        *+7
+                     and        #$0FFF
+                     bra        *+5
+                     ora        #$F000
+
+                     bit        #$0F00
+                     beq        *+7
+                     and        #$F0FF
+                     bra        *+5
+                     ora        #$0F00
+
+                     bit        #$00F0
+                     beq        *+7
+                     and        #$FF0F
+                     bra        *+5
+                     ora        #$00F0
+
+                     bit        #$000F
+                     beq        *+7
+                     and        #$FFF0
+                     bra        *+5
+                     ora        #$000F
                      rts
 
 ; Copy a binary image data file into BG1.  Assumes the file is the correct size.
@@ -852,6 +918,35 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

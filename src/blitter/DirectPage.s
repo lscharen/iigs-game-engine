@@ -28,6 +28,9 @@ StartXMod164      equ   36
 BG1StartX         equ   38          ; Logical offset of the second background
 BG1StartXMod164   equ   40
 
+BG1StartY         equ   42
+BG1StartYMod208   equ   44
+
 bstk              equ   208         ; 16-byte stack to push bank addresses
 
 tmp8              equ   224
@@ -47,6 +50,7 @@ DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
 DIRTY_BIT_BG1_X   equ   $0004
 DIRTY_BIT_BG1_Y   equ   $0008
+
 
 
 

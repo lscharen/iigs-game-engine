@@ -16,11 +16,12 @@ ODD_ENTRY          equ   odd_entry-base+1
 CODE_TOP           equ   loop-base
 CODE_LEN           equ   top-base
 CODE_EXIT          equ   even_exit-base
-OPCODE_SAVE        equ   odd_exit-base+1               ; spot to save the code field opcode when patching exit BRA
-OPCODE_HIGH_SAVE   equ   odd_high_byte-base+1          ; save the third byte
+OPCODE_SAVE        equ   odd_save-base                 ; spot to save the code field opcode when patching exit BRA
+OPCODE_HIGH_SAVE   equ   odd_save-base+2               ; save the third byte
 FULL_RETURN        equ   full_return-base              ; offset that returns from the blitter
 ENABLE_INT         equ   enable_int-base               ; offset that re-enable interrupts and continues
 LINES_PER_BANK     equ   16
+SNIPPET_BASE       equ   snippets-base
 
 ; Locations that need the page offset added
 PagePatches        da    {long_0-base+2}
@@ -456,10 +457,10 @@ right_odd          bit   #$000B                        ; Check the bottom nibble
 
 long_1             stal  *+4-base                      ; Everything else is a two-byte LDA opcode + PHA
                    dfb   $00,$00
-                   bra   r_is_pea+1
+                   bra   r_jmp_rtn
 
 r_is_pea           xba                                 ; fast code for PEA
-                   sep   #$20
+r_jmp_rtn          sep   #$20                          ; shared return code path by all methods
                    pha
                    rep   #$20
 odd_entry          jmp   $0100                         ; unconditionally jump into the "next" instruction in the 
@@ -475,7 +476,7 @@ odd_entry          jmp   $0100                         ; unconditionally jump in
 r_is_jmp           sep   #$41                          ; Set the C and V flags which tells a snippet to push only the low byte
 long_2             ldal  entry_jmp+1-base
 long_3             stal  *+5-base
-                   dfb   $4C,$00,$00                   ; Jump back to address in entry_jmp (this takes 16 cycles, is there a better way?)
+                   jmp   $0000                         ; Jumps into the exception code, which return to r_jmp_rtn
 
 ; The next labels are special, in that they are entry points into special subroutines.  They are special
 ; because they are within the first 256 bytes of each code field, which allows them to be selectable
@@ -517,16 +518,13 @@ loop               lup   82                            ; +6   Set up 82 PEA inst
 loop_back          jmp   loop-base                     ; +252 Ensure execution continues to loop around
 loop_exit_3        jmp   even_exit-base                ; +255
 
-odd_exit           lda   #0000                         ; This operand field is *always* used to hold the original 2 bytes of the code field
-                                                       ; that are replaced by the needed BRA instruction to exit the code field.  When the
-                                                       ; left edge is odd-aligned, we are able to immediately load the value and perform
-                                                       ; similar logic to the right_odd code path above
-
+long_5
+odd_exit           ldal  l_is_jmp+1-base
                    bit   #$000B
                    bne   :chk_jmp
 
                    sep   #$20
-odd_high_byte      lda   #00                           ; patch with high byte code operand
+long_6             ldal  l_is_jmp+3-base               ; get the high byte of the PEA operand
 
 ; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimize
 ; for the PEA $0000 case -- only 19 cycles to handle the edge, so pretty good
@@ -540,20 +538,18 @@ even_exit          jmp   $1000                         ; Jump to the next line.
 
 :chk_jmp
                    bit   #$0040
-                   bne   :l_is_jmp
+                   bne   l_is_jmp
 
 long_4             stal  *+4-base
                    dfb   $00,$00
-                   xba
+l_jmp_rtn          xba
                    sep   #$20
                    pha
                    rep   #$20
                    bra   even_exit
 
-:l_is_jmp          sec                                 ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
-long_5             ldal  entry_jmp+1-base
-long_6             stal  *+5-base
-                   dfb   $4C,$00,$00                   ; Jump back to address in entry_jmp (this takes 13 cycles, is there a better way?)
+l_is_jmp           sec                                 ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
+odd_save           dfb   $00,$00,$00                   ; The odd exit 3-byte sequence is always stashed here
 
 ; Special epilogue: skip a number of bytes and jump back into the code field. This is useful for
 ;                   large, floating panels in the attract mode of a game, or to overlay solid
@@ -604,18 +600,24 @@ epilogue_1         tsc
 ;            jmp  exit_rtn      ; 3
 ;  r_edge    jmp  entry_rtn     ; 3
 
-; snippets      ds    32*82
+                   ds    \,$00                         ; pad to the next page boundary
+]index             equ   0
+snippets           lup   82
+                   ds    2                             ; space for a 2-byte sequence; LDA (00),y  LDA 00,x  LDA 0,s
+                   and   #$0000                        ; the mask operand will be set when the tile is drawn
+                   ora   #$0000                        ; the data operand will be set when the tile is drawn
+                   pha
+                   bcs   *+5
+                   brl   loop+3+{3*]index}             ; use relative branch for convenience
+                   bvs   *+6                           ; overflow set means this is the right edge (entry)
+                   clc                                 ; carry is set only for edge operations; force clear
+                   brl   l_jmp_rtn
+                   rep   #$41                          ; clear V and C
+                   brl   r_jmp_rtn                     ; 25 bytes
+                   ds    7                             ; padding
+]index             equ   ]index+1
+                   --^
 top
-
-
-
-
-
-
-
-
-
-
 
 
 

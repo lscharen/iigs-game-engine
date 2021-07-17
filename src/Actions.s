@@ -16,8 +16,13 @@ MoveRight
                      sec
                      sbc   1,s
                      bpl   *+5
-                     lda   #163
+                     lda   #0
                      jsr   SetBG0XPos
+
+                     lda   StartX
+                     lsr
+                     jsr   SetBG1XPos
+
                      jsr   DoFrame
                      pla
                      rts
@@ -25,10 +30,12 @@ MoveRight
 MoveDown
                      clc
                      adc   StartY               ; Increment the virtual X-position
-                     cmp   #207
-                     bcc   *+5
-                     lda   #0
                      jsr   SetBG0YPos
+
+                     lda   StartY
+                     lsr
+                     jsr   SetBG1YPos
+
                      jsr   DoFrame
                      rts
 
@@ -38,8 +45,13 @@ MoveUp
                      sec
                      sbc   1,s
                      bpl   *+5
-                     lda   #207
+                     lda   #0
                      jsr   SetBG0YPos
+
+                     lda   StartY
+                     lsr
+                     jsr   SetBG1YPos
+
                      jsr   DoFrame
                      pla
                      rts
@@ -84,6 +96,11 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
+
+
+
+
+
 
 
 

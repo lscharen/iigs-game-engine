@@ -22,6 +22,15 @@ Col2CodeOffset    lup   82
                   --^
                   dw    CODE_TOP
 
+; A parallel table to Col2CodeOffset that hold the offset to the exception handler address for each column
+SNIPPET_SIZE      equ   32
+]step             equ   0
+JTableOffset      lup   82
+                  dw    SNIPPET_BASE+{]step*SNIPPET_SIZE}
+]step             equ   ]step+1
+                  --^
+                  dw    SNIPPET_BASE
+
 ; Table of BRA instructions that are used to exit the code field.  Separate tables for
 ; even and odd aligned cases.
 ;
