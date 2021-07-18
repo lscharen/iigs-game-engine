@@ -606,8 +606,8 @@ snippets           lup   82
                    ds    2                             ; space for a 2-byte sequence; LDA (00),y  LDA 00,x  LDA 0,s
                    and   #$0000                        ; the mask operand will be set when the tile is drawn
                    ora   #$0000                        ; the data operand will be set when the tile is drawn
+                   bcs   *+6
                    pha
-                   bcs   *+5
                    brl   loop+3+{3*]index}             ; use relative branch for convenience
                    bvs   *+6                           ; overflow set means this is the right edge (entry)
                    clc                                 ; carry is set only for edge operations; force clear
@@ -618,6 +618,3 @@ snippets           lup   82
 ]index             equ   ]index+1
                    --^
 top
-
-
-
