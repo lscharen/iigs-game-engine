@@ -3,6 +3,9 @@ const PNG = require("pngjs").PNG;
 const process = require('process');
 const { Buffer } = require('buffer');
 
+// Starting color index
+let startIndex = 0;
+
 main(process.argv.slice(2)).then(
     () => process.exit(0), 
     (e) => {
@@ -15,7 +18,7 @@ function findColorIndex(png, pixel) {
     for (let i = 0; i < png.palette.length; i += 1) {
         const color = png.palette[i];
         if (color.every((c, idx) => c === pixel[idx])) {
-            return i;
+            return i + startIndex;
         }
     }
 
@@ -94,9 +97,21 @@ function paletteToIIgs(palette) {
     return '0' + r.toString(16).toUpperCase() + g.toString(16).toUpperCase() + b.toString(16).toUpperCase();
 }
 
+function getArg(argv, arg, fn, defaultValue) {
+    for (let i = 0; i < argv.length; i += 1) {
+        if (argv[i] === arg) {
+            return fn(argv[i+1]);
+        }
+    }
+    return defaultValue;
+}
+
 async function main(argv) {
     const data = await fs.readFile(argv[0]);
     const png = PNG.sync.read(data);
+    startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
+
+    console.info(`startIndex = ${startIndex}`);
 
     if (png.colorType !== 3) {
         console.warn('PNG must be in palette color type');

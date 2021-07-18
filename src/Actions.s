@@ -82,6 +82,9 @@ Demo
                      beq   :loop
 
                      sta   oldOneSecondCounter
+                     lda   ScreenWidth
+                     cmp   #150
+                     bcs   :loop
 
                      lda   #FPSStr
                      ldx   #0                   ; top-left corner
@@ -96,6 +99,7 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
+
 
 
 

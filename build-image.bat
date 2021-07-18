@@ -17,3 +17,4 @@ REM Now copy files and folders as needed
 %CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\test.pic
 %CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\bg1a.bin
 %CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\bg1b.bin
+%CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\fg1.bin

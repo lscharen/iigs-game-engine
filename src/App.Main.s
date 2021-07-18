@@ -105,10 +105,11 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
                      lda        #0
                      jsr        _ClearBG1Buffer
 
-; Load a picture and copy it into Bank $E1.  Then turn on the screen.
+; Allocate room to load data
 
-                     jsr        AllocOneBank         ; Alloc 64KB for Load/Unpack
+                     jsr        AllocOneBank2        ; Alloc 64KB for Load/Unpack
                      sta        BankLoad             ; Store "Bank Pointer"
+
 EvtLoop
                      jsr        WaitForKey
 
@@ -118,7 +119,7 @@ EvtLoop
 
 :1                   cmp        #'l'
                      bne        :1_1
-                     jsr        DoLoadPic
+                     jsr        DoLoadFG
                      bra        EvtLoop
 
 :1_1                 cmp        #'b'
@@ -187,11 +188,11 @@ EvtLoop
                      brl        EvtLoop
 
 :12                  cmp        #'c'
-                     bne        :13
-                     ldx        #$00E1
-                     lda        #$2000
-                     jsr        CopyPicToField
-                     brl        EvtLoop
+;                     bne        :13
+;                     ldx        #$00E1
+;                     lda        #$2000
+;                     jsr        CopyPicToField
+;                     brl        EvtLoop
 
 :13                  brl        EvtLoop
 
@@ -218,6 +219,21 @@ Exit
 
                      bcs        Fatal
 Fatal                brk        $00
+
+ClearBankLoad
+                     lda        BankLoad
+                     phb
+                     pha
+                     plb
+                     ldx        #$FFFE
+:lp                  sta:       $0000,x
+                     dex
+                     dex
+                     cpx        #0
+                     bne        :lp
+                     plb
+                     plb
+                     rts
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes
 ;
@@ -324,13 +340,13 @@ DoTiles
                      lda        :column,s
                      inc
                      sta        :column,s
-                     cmp        #40
+                     cmp        #41
                      bcc        :colloop
 
                      lda        :row,s
                      inc
                      sta        :row,s
-                     cmp        #25
+                     cmp        #26
                      bcc        :rowloop
 
                      pla                             ; restore the stack
@@ -351,13 +367,8 @@ DoLoadBG1
                      ldx        #BG1DataFile
                      jsr        LoadFile
 
-                     lda        BankLoad
-                     xba
-                     pha
-                     and        #$00FF
-                     tax
-                     pla
-                     and        #$FF00
+                     ldx        BankLoad
+                     lda        #0
                      ldy        BG1DataBank
                      jsr        CopyBinToBG1
 
@@ -365,16 +376,22 @@ DoLoadBG1
                      ldx        #BG1AltDataFile
                      jsr        LoadFile
 
-                     lda        BankLoad
-                     xba
-                     pha
-                     and        #$00FF
-                     tax
-                     pla
-                     and        #$FF00
+                     ldx        BankLoad
+                     lda        #0
                      ldy        BG1AltBank
                      jsr        CopyBinToBG1
 
+                     rts
+
+; Load a raw pixture into the code buffer
+DoLoadFG
+                     lda        BankLoad
+                     ldx        #FGName
+                     jsr        LoadFile
+
+                     ldx        BankLoad             ; Copy it into the code field
+                     lda        #0
+                     jsr        CopyBinToField
                      rts
 
 ; Load a simple picture format onto the SHR screen
@@ -383,25 +400,16 @@ DoLoadPic
                      ldx        #ImageName           ; Load+Unpack Boot Picture
                      jsr        LoadPicture          ; X=Name, A=Bank to use for loading
 
-                     lda        BankLoad             ; Copy it into the code field
-                     clc
-                     adc        #$0080
-                     xba
-                     pha
-                     and        #$00FF
-                     tax
-                     pla
-                     and        #$FF00
+                     ldx        BankLoad             ; Copy it into the code field
+                     lda        #0
                      jsr        CopyPicToField
                      rts
 
-; Copy a loaded SHR picture into the code field
+; Copy a raw data file into the code field
 ;
 ; A=low word of picture address
-; X=high workd of pixture address
-;
-; Picture must be within one bank
-CopyPicToField
+; X=high word of pixture address
+CopyBinToField
 :srcptr              equ        tmp0
 :line_cnt            equ        tmp2
 :dstptr              equ        tmp3
@@ -426,7 +434,7 @@ CopyPicToField
                      ldx        #162                 ; move backwards in the code field
                      ldy        #0                   ; move forward in the image data
 
-                     lda        #80                  ; keep a running column count
+                     lda        #82                  ; keep a running column count
                      sta        :col_cnt
 
 :cloop
@@ -502,11 +510,158 @@ CopyPicToField
 
                      lda        :srcptr
                      clc
+                     adc        #164
+                     sta        :srcptr
+
+                     inc        :line_cnt
+                     lda        :line_cnt
+                     cmp        #200
+                     bcs        :exit
+                     brl        :rloop
+
+:exit
+                     rts
+
+:toMask              bit        #$F000
+                     beq        *+7
+                     and        #$0FFF
+                     bra        *+5
+                     ora        #$F000
+
+                     bit        #$0F00
+                     beq        *+7
+                     and        #$F0FF
+                     bra        *+5
+                     ora        #$0F00
+
+                     bit        #$00F0
+                     beq        *+7
+                     and        #$FF0F
+                     bra        *+5
+                     ora        #$00F0
+
+                     bit        #$000F
+                     beq        *+7
+                     and        #$FFF0
+                     bra        *+5
+                     ora        #$000F
+                     rts
+
+; Copy a loaded SHR picture into the code field
+;
+; A=low word of picture address
+; X=high workd of pixture address
+;
+; Picture must be within one bank
+CopyPicToField
+:srcptr              equ        tmp0
+:line_cnt            equ        tmp2
+:dstptr              equ        tmp3
+:col_cnt             equ        tmp5
+:mask                equ        tmp6
+:data                equ        tmp7
+
+                     sta        :srcptr
+                     stx        :srcptr+2
+
+                     stz        :line_cnt
+:rloop
+                     lda        :line_cnt            ; get the pointer to the code field line
+                     asl
+                     tax
+
+                     lda        BTableLow,x
+                     sta        :dstptr
+                     lda        BTableHigh,x
+                     sta        :dstptr+2
+
+                     ldx        #162                 ; move backwards in the code field
+                     ldy        #0                   ; move forward in the image data
+
+                     lda        #80                  ; keep a running column count
+;                     lda        #82                  ; keep a running column count
+                     sta        :col_cnt
+
+:cloop
+                     phy
+                     lda        [:srcptr],y          ; load the picture data
+                     beq        :transparent         ; a value of $0000 is transparent
+
+                     jsr        :toMask              ; Infer a mask value for this. If it's $0000, then
+                     bne        :mixed               ; the data is solid, otherwise mixed
+
+; This is a solid word
+                     lda        [:srcptr],y
+                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
+
+                     pha                             ; Save the data
+                     lda        #$00F4               ; PEA instruction
+                     sta        [:dstptr],y
+                     iny
+                     pla
+                     sta        [:dstptr],y          ; PEA operand
+                     bra        :next
+:transparent
+                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
+                     lda        #$B1                 ; LDA (dp),y
+                     sta        [:dstptr],y
+                     iny
+                     lda        1,s                  ; load the saved Y-index
+                     ora        #$4800               ; put a PHA after the offset
+                     sta        [:dstptr],y
+                     bra        :next
+
+:mixed
+                     sta        :mask                ; Save the mask
+                     lda        [:srcptr],y          ; Refetch the screen data
+                     sta        :data
+
+                     ldy        Col2CodeOffset,x     ; Get the offset into the code field
+                     lda        #$4C                 ; JMP exception
+                     sta        [:dstptr],y
+                     iny
+
+                     lda        JTableOffset,x       ; Get the address offset and add to the base address
+                     clc
+                     adc        :dstptr
+                     sta        [:dstptr],y
+
+                     ldy        JTableOffset,x       ; This points to the code fragment
+                     lda        1,s                  ; load the offset
+                     xba
+                     ora        #$00B1
+                     sta        [:dstptr],y          ; write the LDA (--),y instruction
+                     iny
+                     iny
+                     iny                             ; advance to the AND #imm operand
+                     lda        :mask
+                     sta        [:dstptr],y
+                     iny
+                     iny
+                     iny                             ; advance to the ORA #imm operand
+                     lda        :data
+                     sta        [:dstptr],y
+
+:next
+                     ply
+
+                     dex
+                     dex
+                     iny
+                     iny
+
+                     dec        :col_cnt
+                     bne        :cloop
+
+                     lda        :srcptr
+                     clc
+;                     adc        #164
                      adc        #160
                      sta        :srcptr
 
                      inc        :line_cnt
                      lda        :line_cnt
+;                     cmp        #208
                      cmp        #200
                      bcs        :exit
                      brl        :rloop
@@ -683,11 +838,13 @@ GrafInit
                      dw         $0fa9,$0ff0,$00e0,$04DF
                      dw         $0d00,$078f,$0ccc,$0FFF
 
-DefaultPalette       dw         $09BE,$0AA6,$0DC9,$0DB7,$09AA
+; DefaultPalette       dw         $09BE,$0AA6,$0DC9,$0DB7,$09AA
                      dw         $0080,$0f70,$0FFF
                      dw         $0fa9,$0ff0,$00e0,$04DF
                      dw         $0d00,$078f,$0ccc,$0FFF
 
+DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+                     dw         $0FDA,$0DEE,$0000,$0CC5,$09A0,$0680,$0470,$0051
 ; Return the current border color ($0 - $F) in the accumulator
 GetBorderColor       lda        #0000
                      sep        #$20
@@ -837,8 +994,11 @@ UP_UnPackedSize      hex        0000                 ; Size of Unpacked Data Buf
 
 ; Basic I/O function to load files
 
-LoadFile             stx        openRec+4            ; X=File, A=Bank/Page XX/00
-                     sta        readRec+5
+LoadFile
+                     stx        openRec+4            ; X=File, A=Bank (high word) assumed zero for low
+                     stz        readRec+4
+                     sta        readRec+6
+                     jsr        ClearBankLoad
 
 :openFile            _OpenGS    openRec
                      bcs        :openReadErr
@@ -887,13 +1047,13 @@ BG1DataFile          strl       '1/bg1a.bin'
 BG1AltDataFile       strl       '1/bg1b.bin'
 
 ImageName            strl       '1/test.pic'
+FGName               strl       '1/fg1.bin'
 MasterId             ds         2
 UserId               ds         2
-BankLoad             hex        0000
 
 openRec              dw         2                    ; pCount
                      ds         2                    ; refNum
-                     adrl       ImageName            ; pathname
+                     adrl       FGName               ; pathname
 
 eofRec               dw         2                    ; pCount
                      ds         2                    ; refNum
@@ -924,6 +1084,51 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
