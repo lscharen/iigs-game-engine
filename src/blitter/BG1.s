@@ -1,16 +1,38 @@
 ; Initialization and setup routines for the second background
 _InitBG1
-                        jsr   _ApplyBG1XPos
                         jsr   _ApplyBG1YPos
+                        jsr   _ApplyBG1XPos
                         rts
 
 SetBG1XPos
-                        sta   BG1StartX
-                        rts
+                        cmp   BG1StartX
+                        beq   :out                    ; Easy, if nothing changed, then nothing changes
+
+                        ldx   BG1StartX               ; Load the old value (but don't save it yet)
+                        sta   BG1StartX               ; Save the new position
+
+                        lda   #DIRTY_BIT_BG1_X
+                        tsb   DirtyBits               ; Check if the value is already dirty, if so exit
+                        bne   :out                    ; without overwriting the original value
+
+                        stx   OldBG1StartX            ; First change, so preserve the value
+:out                    rts
+
 
 SetBG1YPos
-                        sta   BG1StartY
-                        rts
+                        cmp   BG1StartY
+                        beq   :out                    ; Easy, if nothing changed, then nothing changes
+
+                        ldx   BG1StartY               ; Load the old value (but don't save it yet)
+                        sta   BG1StartY               ; Save the new position
+
+                        lda   #DIRTY_BIT_BG1_Y
+                        tsb   DirtyBits               ; Check if the value is already dirty, if so exit
+                        bne   :out                    ; without overwriting the original value
+
+                        stx   OldBG1StartY            ; First change, so preserve the value
+:out                    rts
+
 
 ; Everytime either BG1 or BG0 X-position changes, we have to update the direct page values.  We 
 ; *could* do this by adjusting the since address offset, but we have to change up to 200 values
@@ -86,9 +108,12 @@ _ApplyBG1YPos
 :draw_count             equ   tmp2
 :ytbl_idx               equ   tmp3
 
-                        stz   :ytbl_idx               ; Start copying from the first entry in the table
+                        lda   BG1StartY
+                        jsr   Mod208
+                        sta   BG1StartYMod208
+                        sta   :ytbl_idx               ; Start copying from the first entry in the table
 
-                        lda   StartY                  ; This is the base line of the virtual screen
+                        lda   StartYMod208            ; This is the base line of the virtual screen
                         sta   :virt_line              ; Keep track of it
 
                         lda   ScreenHeight
@@ -219,6 +244,13 @@ CopyBG1YTableToBG1Addr
 :x01                    ldal  BG1YTable+00,x
                         sta:  BG1_ADDR+$0000,y
 :none                   rts
+
+
+
+
+
+
+
 
 
 

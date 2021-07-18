@@ -24,12 +24,16 @@ OldStartY         equ   32
 
 LastPatchOffset   equ   34          ; Offset into code field that was patched with BRA instructions
 StartXMod164      equ   36
+StartYMod208      equ   38
 
-BG1StartX         equ   38          ; Logical offset of the second background
-BG1StartXMod164   equ   40
+BG1StartX         equ   40          ; Logical offset of the second background
+BG1StartXMod164   equ   42
 
-BG1StartY         equ   42
-BG1StartYMod208   equ   44
+BG1StartY         equ   44
+BG1StartYMod208   equ   46
+
+OldBG1StartX      equ   48
+OldBG1StartY      equ   50
 
 bstk              equ   208         ; 16-byte stack to push bank addresses
 
@@ -50,6 +54,10 @@ DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
 DIRTY_BIT_BG1_X   equ   $0004
 DIRTY_BIT_BG1_Y   equ   $0008
+
+
+
+
 
 
 

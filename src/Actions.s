@@ -27,9 +27,9 @@ MoveRight
                      pla
                      rts
 
-MoveDown
+MoveUp
                      clc
-                     adc   StartY               ; Increment the virtual X-position
+                     adc   StartY               ; Increment the virtual Y-position
                      jsr   SetBG0YPos
 
                      lda   StartY
@@ -39,7 +39,7 @@ MoveDown
                      jsr   DoFrame
                      rts
 
-MoveUp
+MoveDown
                      pha
                      lda   StartY
                      sec
@@ -96,6 +96,7 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
+
 
 
 

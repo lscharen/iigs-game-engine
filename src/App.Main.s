@@ -643,10 +643,16 @@ BlitInit
                      stz        ScreenTileHeight
                      stz        ScreenTileWidth
                      stz        StartX
+                     stz        StartXMod164
                      stz        StartY
+                     stz        StartYMod208
                      stz        EngineMode
                      stz        DirtyBits
                      stz        LastPatchOffset
+                     stz        BG1StartX
+                     stz        BG1StartXMod164
+                     stz        BG1StartY
+                     stz        BG1StartYMod208
 
 ]step                equ        0
                      lup        13
@@ -918,6 +924,7 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
 
 
 

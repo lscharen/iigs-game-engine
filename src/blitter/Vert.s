@@ -5,8 +5,7 @@
 
 ; SetBG0YPos
 ;
-; Set the virtual position of the primary background layer.  In addition to 
-; updating the direct page state locations, this routine needs to
+; Set the virtual position of the primary background layer.
 SetBG0YPos
                      cmp   StartY
                      beq   :out                 ; Easy, if nothing changed, then nothing changes
@@ -38,6 +37,9 @@ _ApplyBG0YPos
                      stz   :rtbl_idx            ; Start copying from the first entry in the table
 
                      lda   StartY               ; This is the base line of the virtual screen
+                     jsr   Mod208
+                     sta   StartYMod208
+
                      sta   :virt_line           ; Keep track of it
 
 ; copy a range of address from the table into the destination bank. If we restrict ourselves to
@@ -187,4 +189,5 @@ CopyRTableToStkAddr
 :x01                 ldal  RTable+00,x
                      sta:  STK_ADDR+$0000,y
 :none                rts
+
 

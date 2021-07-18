@@ -146,7 +146,7 @@ _ApplyBG0XPos
 
 ; This code is fairly succinct.  See the corresponding code in Vert.s for more detailed comments.
 :ok
-                    lda   StartY                     ; This is the base line of the virtual screen
+                    lda   StartYMod208               ; This is the base line of the virtual screen
                     sta   :virt_line                 ; Keep track of it
 
                     lda   ScreenHeight
@@ -741,6 +741,7 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
+
 
 
 
