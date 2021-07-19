@@ -5,6 +5,7 @@ const { Buffer } = require('buffer');
 
 // Starting color index
 let startIndex = 0;
+let transparentColor = 0;
 
 main(process.argv.slice(2)).then(
     () => process.exit(0), 
@@ -110,6 +111,7 @@ async function main(argv) {
     const data = await fs.readFile(argv[0]);
     const png = PNG.sync.read(data);
     startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
+    transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), 0);
 
     console.info(`startIndex = ${startIndex}`);
 
@@ -147,7 +149,22 @@ async function main(argv) {
 
     if (buff && argv[1]) {
         console.log(`Writing to output file ${argv[1]}`);
-        await fs.writeFile(argv[1], buff);
+
+        // Write a small header.  This is useful and avoids triggering a sparse file load
+        // bug when the first block of the file on the GS/OS drive is sparse.
+
+        // Put the ASCII text of "GTERAW" in the first 6 bytes
+        const header = Buffer.alloc(8);
+        header.write('GTERAW', 'latin1');
+
+        // Use the special value $A5A5 to identify no transparency
+        if (typeof transparentColor !== 'number') {
+            header.writeUInt16LE(0xA5A5);
+        } else {
+            header.writeUInt16LE(0x1111 * transparentColor, 6);
+        }
+
+        await fs.writeFile(argv[1], Buffer.concat([header, buff]));
     }
 }
 

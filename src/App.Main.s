@@ -416,9 +416,33 @@ CopyBinToField
 :col_cnt             equ        tmp5
 :mask                equ        tmp6
 :data                equ        tmp7
+:mask_color          equ        tmp8
 
                      sta        :srcptr
                      stx        :srcptr+2
+
+; Check that this is a GTERAW image and save the transparent color
+
+                     ldy        #4
+:chkloop
+                     lda        [:srcptr],y
+                     cmp        :headerStr,y
+                     beq        *+3
+                     rts
+                     dey
+                     dey
+                     bpl        :chkloop
+
+; We have a valid header, now get the transparency word and load it in
+                     ldy        #6
+                     lda        [:srcptr],y
+                     sta        :mask_color
+
+; Advance over the header
+                     lda        :srcptr
+                     clc
+                     adc        #8
+                     sta        :srcptr
 
                      stz        :line_cnt
 :rloop
@@ -440,12 +464,15 @@ CopyBinToField
 :cloop
                      phy
                      lda        [:srcptr],y          ; load the picture data
+                     cmp        :mask_color
                      beq        :transparent         ; a value of $0000 is transparent
 
                      jsr        :toMask              ; Infer a mask value for this. If it's $0000, then
+                     cmp        #$0000
                      bne        :mixed               ; the data is solid, otherwise mixed
 
 ; This is a solid word
+:solid
                      lda        [:srcptr],y
                      ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
 
@@ -457,6 +484,10 @@ CopyBinToField
                      sta        [:dstptr],y          ; PEA operand
                      bra        :next
 :transparent
+                     lda        :mask_color          ; Make sure we actually have to mask
+                     cmp        #$A5A5
+                     beq        :solid
+
                      ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
                      lda        #$B1                 ; LDA (dp),y
                      sta        [:dstptr],y
@@ -494,7 +525,9 @@ CopyBinToField
                      iny
                      iny
                      iny                             ; advance to the ORA #imm operand
-                     lda        :data
+                     lda        :mask
+                     eor        #$FFFF               ; invert the mask to clear up the data
+                     and        :data
                      sta        [:dstptr],y
 
 :next
@@ -522,30 +555,56 @@ CopyBinToField
 :exit
                      rts
 
-:toMask              bit        #$F000
-                     beq        *+7
-                     and        #$0FFF
-                     bra        *+5
-                     ora        #$F000
+:toMask              pha                             ; save original
 
-                     bit        #$0F00
+                     lda        1,s
+                     eor        :mask_color          ; only identical bits produce zero
+                     and        #$F000
                      beq        *+7
-                     and        #$F0FF
+                     pea        #$0000
                      bra        *+5
-                     ora        #$0F00
+                     pea        #$F000
 
-                     bit        #$00F0
-                     beq        *+7
-                     and        #$FF0F
-                     bra        *+5
-                     ora        #$00F0
 
-                     bit        #$000F
+                     lda        3,s
+                     eor        :mask_color
+                     and        #$0F00
                      beq        *+7
-                     and        #$FFF0
+                     pea        #$0000
                      bra        *+5
-                     ora        #$000F
+                     pea        #$0F00
+
+                     lda        5,s
+                     eor        :mask_color
+                     and        #$00F0
+                     beq        *+7
+                     pea        #$0000
+                     bra        *+5
+                     pea        #$00F0
+
+                     lda        7,s
+                     eor        :mask_color
+                     and        #$000F
+                     beq        *+7
+                     lda        #$0000
+                     bra        *+5
+                     lda        #$000F
+
+                     ora        1,s
+                     sta        1,s
+                     pla
+                     ora        1,s
+                     sta        1,s
+                     pla
+                     ora        1,s
+                     sta        1,s
+                     pla
+
+                     sta        1,s                  ; pop the saved word
+                     pla
                      rts
+
+:headerStr           asc        'GTERAW'
 
 ; Copy a loaded SHR picture into the code field
 ;
@@ -710,6 +769,12 @@ CopyBinToBG1
                      stx        :srcptr+2
                      sty        :dstptr+2            ; Everything goes into this bank
 
+                                                     ; Advance over the header
+                     lda        :srcptr
+                     clc
+                     adc        #8
+                     sta        :srcptr
+
                      stz        :line_cnt
 :rloop
                      lda        :line_cnt            ; get the pointer to the code field line
@@ -843,8 +908,14 @@ GrafInit
                      dw         $0fa9,$0ff0,$00e0,$04DF
                      dw         $0d00,$078f,$0ccc,$0FFF
 
+; Super Mario World Assets
 DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
                      dw         $0FDA,$0DEE,$0000,$0CC5,$09A0,$0680,$0470,$0051
+
+;DefaultPalette       dw         $0000,$0000,$0778,$0BCC,$0368,$00AF,$0556,$0245
+                     dw         $0000,$0778,$0AAA,$0CFF,$0368,$00AF,$0556
+
+
 ; Return the current border color ($0 - $F) in the accumulator
 GetBorderColor       lda        #0000
                      sep        #$20
@@ -1084,6 +1155,32 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
