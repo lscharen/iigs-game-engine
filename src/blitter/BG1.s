@@ -62,20 +62,59 @@ _ApplyBG1XPos
                         lda   BlitterDP               ; blitter direct page space and fill in the addresses
                         tcd
 
-                        tya
                         ldx   #162
 :loop
+                        tya
+                        clc
+                        adc   affine,x
                         sta   00,x                    ; store the value
-                        dec
-                        dec
-                        bpl   *+6
+                        dey
+                        dey
+                        bpl   :nowrap
+                        tya
                         clc
                         adc   #164
+                        tay
 
+:nowrap
                         dex
                         dex
                         bpl   :loop
                         pld
+                        rts
+
+affine                  ds    164
+
+; Pass accumulator to set every (A / 256) pitch
+SetAffine
+                        ldx   #0
+                        ldy   #0
+                        and   #$00FF
+                        pha                           ; step size
+                        pea   $0000
+
+:loop                   lda   1,s
+                        clc
+                        adc   3,s
+                        cmp   #256
+                        bcc   :skip
+                        tya
+                        clc
+                        adc   #256                    ; Move to next BG1 line
+                        tay
+
+:skip                   and   #$00FF                  ; always clamp to 256
+                        sta   1,s
+
+                        tya
+                        sta   affine,x
+                        inx
+                        inx
+                        cpx   #164
+                        bcc   :loop
+
+                        pla
+                        pla
                         rts
 
 _ClearBG1Buffer
@@ -244,6 +283,35 @@ CopyBG1YTableToBG1Addr
 :x01                    ldal  BG1YTable+00,x
                         sta:  BG1_ADDR+$0000,y
 :none                   rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

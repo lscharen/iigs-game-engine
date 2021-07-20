@@ -42,7 +42,7 @@ SHR_PALETTES         equ        $E19E00
 tiledata             ext
 
 ; Feature flags
-NO_INTERRUPTS        equ        0                    ; turn off for crossrunner debugging
+NO_INTERRUPTS        equ        1                    ; turn off for crossrunner debugging
 
 ; Typical init
 
@@ -1155,6 +1155,8 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
 
 
 

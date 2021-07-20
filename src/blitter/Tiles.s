@@ -186,6 +186,57 @@ CopyTile
                sta   $7001,y
                rts
 
+; Primitives to render a dynamic tile
+;
+; LDA 00,x / PHA where the operand is fixed when the tile is rendered
+; $B5 $00 $48
+;
+; A = dynamic tile id (must be an 8-bit value)
+
+:DynTile
+               and   #$00FF
+               ora   #$4800
+               sta:  $0004,y
+               sta   $1004,y
+               sta   $2004,y
+               sta   $3004,y
+               sta   $4004,y
+               sta   $5004,y
+               sta   $6004,y
+               sta   $7004,y
+               inc
+               inc
+               sta:  $0001,y
+               sta   $1001,y
+               sta   $2001,y
+               sta   $3001,y
+               sta   $4001,y
+               sta   $5001,y
+               sta   $6001,y
+               sta   $7001,y
+
+               sep   #$20
+               lda   #$B5
+               sta:  $0000,y
+               sta:  $0003,y
+               sta   $1000,y
+               sta   $1003,y
+               sta   $2000,y
+               sta   $2003,y
+               sta   $3000,y
+               sta   $3003,y
+               sta   $4000,y
+               sta   $4003,y
+               sta   $5000,y
+               sta   $5003,y
+               sta   $6000,y
+               sta   $6003,y
+               sta   $7000,y
+               sta   $7003,y
+               rep   #$20
+               rts
+
+
 
 
 

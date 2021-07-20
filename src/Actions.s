@@ -63,9 +63,11 @@ Demo
                      lda   OneSecondCounter
                      sta   oldOneSecondCounter
                      stz   frameCount
+
 :loop
                      lda   #1
                      jsr   MoveLeft
+
                      inc   frameCount
 
                      ldal  KBD_STROBE_REG
@@ -74,6 +76,8 @@ Demo
                      and   #$007F
                      cmp   #'s'
                      bne   :nokey
+
+                     pla
                      rts
 
 :nokey
@@ -99,6 +103,26 @@ Demo
                      bra   :loop
 
 FPSStr               str   'FPS'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

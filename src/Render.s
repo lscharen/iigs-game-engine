@@ -61,9 +61,6 @@ Render
 ;         byte, then we may have to change the CODE_ENTRY values or restore/set new OPCODE
 ;         values, but not both.
 
-            jsr   ShadowOff
-            jsr   ShadowOn
-
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
 
@@ -72,7 +69,21 @@ Render
             jsr   _ApplyBG1YPos       ; Adjust the index values into the BG1 bank buffer
             jsr   _ApplyBG1XPos       ; Adjust the direct page pointers to the BG1 bank
 
+; The code fields are locked in now and reder to be rendered
+
+            jsr   ShadowOff
+
             ldx   #0                  ; Blit the full virtual buffer to the screen
+            ldy   #8
+            jsr   _BltRange
+
+            jsr   ShadowOn
+
+            ldx   #0                  ; Expose the top 8 rows
+            ldy   #8
+            jsr   _PEISlam
+
+            ldx   #8                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
 
@@ -81,11 +92,6 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
-
-
-
-
-
 
 
 
