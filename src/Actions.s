@@ -65,6 +65,21 @@ Demo
                      sta       oldOneSecondCounter
                      stz       frameCount
 
+; Set a timer to fire every 16 ticks
+
+                     lda       #6
+                     sta       Timers
+                     sta       Timers+2
+                     lda       #UpdateBG1Offset
+                     sta       Timers+4
+
+; Every 3 ticks (20 fps) cycle some colors
+
+                     lda       #3
+                     sta       Timers+8
+                     sta       Timers+10
+                     lda       #DoColorCycle
+                     sta       Timers+12
 :loop
                      PushLong  #0
                      _GetTick
@@ -73,14 +88,14 @@ Demo
 
                      cmp       lastTick             ; Throttle to 60 fps
                      beq       :loop
-                     sta       lastTick
+                     tax                            ; Calculate the increment
+                     sec
+                     sbc       lastTick
+                     stx       lastTick
+                     jsr       _DoTimers
 
-                     and       #$003C               ; An 4-step animation that fires every 16 ticks
-                     lsr
-                     sta       BG1OffsetIndex       ; Set the value
-
-                     lda       #1
-                     jsr       MoveLeft
+;                     lda       #1
+;                     jsr       MoveLeft
                      jsr       DoFrame
 
                      inc       frameCount
@@ -117,6 +132,92 @@ Demo
                      bra       :loop
 
 FPSStr               str       'FPS'
+
+; Move some colors around
+DoColorCycle
+                     ldal      $E19E00
+                     tax
+                     ldal      $E19E02
+                     stal      $E19E00
+                     txa
+                     stal      $E19E02
+                     rts
+
+; Triggered timer to sway the background
+UpdateBG1Offset
+                     lda       BG1OffsetIndex
+                     inc
+                     inc
+                     cmp       #32                  ; 16 entries x 2 for indexing
+                     bcc       *+5
+                     sbc       #32
+                     sta       BG1OffsetIndex
+                     rts
+
+; A collection of 8 timers that are triggered when their countdown
+; goes below zero.  Each time taks up 8 bytes
+;
+; +0 counter         decremented by the number of ticks since last run
+; +2 reset           copied into counter when triggered. 0 turns off the timer.
+; +4 addr            address of time routine
+; +6 reserved
+MAX_TIMERS           equ       4
+Timers               ds        8*MAX_TIMERS
+
+; Countdown the timers
+;
+; A = number of elapsed ticks
+_DoTimers
+                     pha
+                     ldx       #0
+:loop
+                     lda       Timers,x
+                     beq       :skip
+
+                     sec
+                     sbc       1,s                  ; subtract the number of ticks
+                     sta       Timers,x
+
+                     beq       :fire                ; getting to zero triggers
+                     bpl       :skip
+
+:fire                lda       Timers+2,x           ; Reset the timer
+                     sta       Timers,x
+
+                     phx                            ; Save our index
+                     jsr       (Timers+4,x)
+                     plx
+
+:skip                txa
+                     clc
+                     adc       #8
+                     tax
+                     cpx       #8*MAX_TIMERS
+                     bcc       :loop
+
+                     pla
+                     rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
