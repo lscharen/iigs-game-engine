@@ -1,108 +1,136 @@
 MoveLeft
                      clc
-                     adc   StartX               ; Increment the virtual X-position
-                     jsr   SetBG0XPos
+                     adc       StartX               ; Increment the virtual X-position
+                     jsr       SetBG0XPos
 
-                     lda   StartX
+                     lda       StartX
                      lsr
-                     jsr   SetBG1XPos
+                     jsr       SetBG1XPos
 
-                     jsr   DoFrame
+                     jsr       DoFrame
                      rts
 
 MoveRight
                      pha
-                     lda   StartX
+                     lda       StartX
                      sec
-                     sbc   1,s
-                     bpl   *+5
-                     lda   #0
-                     jsr   SetBG0XPos
+                     sbc       1,s
+                     bpl       *+5
+                     lda       #0
+                     jsr       SetBG0XPos
 
-                     lda   StartX
+                     lda       StartX
                      lsr
-                     jsr   SetBG1XPos
+                     jsr       SetBG1XPos
 
-                     jsr   DoFrame
+                     jsr       DoFrame
                      pla
                      rts
 
 MoveUp
                      clc
-                     adc   StartY               ; Increment the virtual Y-position
-                     jsr   SetBG0YPos
+                     adc       StartY               ; Increment the virtual Y-position
+                     jsr       SetBG0YPos
 
-                     lda   StartY
+                     lda       StartY
                      lsr
-                     jsr   SetBG1YPos
+                     jsr       SetBG1YPos
 
-                     jsr   DoFrame
+                     jsr       DoFrame
                      rts
 
 MoveDown
                      pha
-                     lda   StartY
+                     lda       StartY
                      sec
-                     sbc   1,s
-                     bpl   *+5
-                     lda   #0
-                     jsr   SetBG0YPos
+                     sbc       1,s
+                     bpl       *+5
+                     lda       #0
+                     jsr       SetBG0YPos
 
-                     lda   StartY
+                     lda       StartY
                      lsr
-                     jsr   SetBG1YPos
+                     jsr       SetBG1YPos
 
-                     jsr   DoFrame
+                     jsr       DoFrame
                      pla
                      rts
 
 ; Very simple, scroll as fast as possible
-oldOneSecondCounter  ds    2
-frameCount           ds    2
+oldOneSecondCounter  ds        2
+frameCount           ds        2
+lastTick             ds        2
 Demo
-                     lda   OneSecondCounter
-                     sta   oldOneSecondCounter
-                     stz   frameCount
+                     lda       OneSecondCounter
+                     sta       oldOneSecondCounter
+                     stz       frameCount
 
 :loop
-                     lda   #1
-                     jsr   MoveLeft
-
-                     inc   frameCount
-
-                     ldal  KBD_STROBE_REG
-                     bit   #$0080
-                     beq   :nokey
-                     and   #$007F
-                     cmp   #'s'
-                     bne   :nokey
-
+                     PushLong  #0
+                     _GetTick
                      pla
+                     plx
+
+                     cmp       lastTick             ; Throttle to 60 fps
+                     beq       :loop
+                     sta       lastTick
+
+                     and       #$003C               ; An 4-step animation that fires every 16 ticks
+                     lsr
+                     sta       BG1OffsetIndex       ; Set the value
+
+                     lda       #1
+                     jsr       MoveLeft
+                     jsr       DoFrame
+
+                     inc       frameCount
+
+                     ldal      KBD_STROBE_REG
+                     bit       #$0080
+                     beq       :nokey
+                     and       #$007F
+                     cmp       #'s'
+                     bne       :nokey
+
                      rts
 
 :nokey
-                     lda   OneSecondCounter
-                     cmp   oldOneSecondCounter
-                     beq   :loop
+                     lda       OneSecondCounter
+                     cmp       oldOneSecondCounter
+                     beq       :loop
 
-                     sta   oldOneSecondCounter
-                     lda   ScreenWidth
-                     cmp   #150
-                     bcs   :loop
+                     sta       oldOneSecondCounter
+                     lda       ScreenWidth
+                     cmp       #150
+                     bcs       :loop
 
-                     lda   #FPSStr
-                     ldx   #0                   ; top-left corner
-                     ldy   #$7777
-                     jsr   DrawString
+                     lda       #FPSStr
+                     ldx       #0                   ; top-left corner
+                     ldy       #$7777
+                     jsr       DrawString
 
-                     lda   frameCount
-                     ldx   #4*4
-                     jsr   DrawWord
+                     lda       frameCount
+                     ldx       #4*4
+                     jsr       DrawWord
 
-                     stz   frameCount
-                     bra   :loop
+                     stz       frameCount
+                     bra       :loop
 
-FPSStr               str   'FPS'
+FPSStr               str       'FPS'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

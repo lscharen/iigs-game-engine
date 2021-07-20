@@ -238,6 +238,13 @@ BG1YTable         lup   208
 ]step             =     ]step+256
                   --^
 
-BG1YOffsetTable   ds    208*2*2
+; Repeat
+BG1YOffsetTable   lup   26
+                  dw    1,1,1,1,2,2,2,2,1,1,1,1,0,0,0,0
+                  --^
+
+
+
+
 
 

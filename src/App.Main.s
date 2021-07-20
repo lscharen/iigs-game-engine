@@ -42,7 +42,7 @@ SHR_PALETTES         equ        $E19E00
 tiledata             ext
 
 ; Feature flags
-NO_INTERRUPTS        equ        1                    ; turn off for crossrunner debugging
+NO_INTERRUPTS        equ        0                    ; turn off for crossrunner debugging
 
 ; Typical init
 
@@ -873,6 +873,7 @@ BlitInit
                      stz        BG1StartXMod164
                      stz        BG1StartY
                      stz        BG1StartYMod208
+                     stz        BG1OffsetIndex
 
 ]step                equ        0
                      lup        13
@@ -1155,6 +1156,11 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
+
+
+
+
+
 
 
 

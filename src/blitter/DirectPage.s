@@ -35,6 +35,8 @@ BG1StartYMod208   equ   46
 OldBG1StartX      equ   48
 OldBG1StartY      equ   50
 
+BG1OffsetIndex    equ   52
+
 BankLoad          equ   128
 
 bstk              equ   208         ; 16-byte stack to push bank addresses
@@ -56,6 +58,7 @@ DIRTY_BIT_BG0_X   equ   $0001
 DIRTY_BIT_BG0_Y   equ   $0002
 DIRTY_BIT_BG1_X   equ   $0004
 DIRTY_BIT_BG1_Y   equ   $0008
+
 
 
 
