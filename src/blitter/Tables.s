@@ -226,8 +226,8 @@ BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
 
 ; A double-length table of addresses for the BG1 bank.  The BG1 buffer is 208 rows of 256 bytes each and
-; the first row starts 256 bytes in to give enough room for scroll adjustments
-]step             equ   256
+; the first row starts $1800 bytes in to cenrer the buffer in the bank
+]step             equ   $1800
 BG1YTable         lup   208
                   dw    ]step
 ]step             =     ]step+256
@@ -242,6 +242,7 @@ BG1YTable         lup   208
 BG1YOffsetTable   lup   26
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
                   --^
+
 
 
 

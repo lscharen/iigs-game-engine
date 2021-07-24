@@ -66,24 +66,24 @@ Render
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
             jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
-            jsr   _ApplyBG1YPos       ; Adjust the index values into the BG1 bank buffer
-            jsr   _ApplyBG1XPos       ; Adjust the direct page pointers to the BG1 bank
+;            jsr   _ApplyBG1YPos       ; Adjust the index values into the BG1 bank buffer
+;            jsr   _ApplyBG1XPos       ; Adjust the direct page pointers to the BG1 bank
 
 ; The code fields are locked in now and reder to be rendered
 
             jsr   ShadowOff
 
-            ldx   #0                  ; Blit the full virtual buffer to the screen
-            ldy   #8
-            jsr   _BltRange
+;            ldx   #0                  ; Blit the full virtual buffer to the screen
+;            ldy   #8
+;            jsr   _BltRange
 
             jsr   ShadowOn
 
-            ldx   #0                  ; Expose the top 8 rows
-            ldy   #8
-            jsr   _PEISlam
+;            ldx   #0                  ; Expose the top 8 rows
+;            ldy   #8
+;            jsr   _PEISlam
 
-            ldx   #8                  ; Blit the full virtual buffer to the screen
+            ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
 
@@ -92,6 +92,8 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
+
+
 
 
 

@@ -187,14 +187,17 @@ EvtLoop
                      jsr        Demo
                      brl        EvtLoop
 
-:12                  cmp        #'c'
-;                     bne        :13
-;                     ldx        #$00E1
-;                     lda        #$2000
-;                     jsr        CopyPicToField
-;                     brl        EvtLoop
+:12                  cmp        #'z'
+                     bne        :13
+                     jsr        AngleUp
+                     brl        EvtLoop
 
-:13                  brl        EvtLoop
+:13                  cmp        #'x'
+                     bne        :14
+                     jsr        AngleDown
+                     brl        EvtLoop
+
+:14                  brl        EvtLoop
 
 ; Exit code
 Exit
@@ -910,12 +913,15 @@ GrafInit
                      dw         $0d00,$078f,$0ccc,$0FFF
 
 ; Super Mario World Assets
-DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
                      dw         $0FDA,$0DEE,$0000,$0CC5,$09A0,$0680,$0470,$0051
 
 ;DefaultPalette       dw         $0000,$0000,$0778,$0BCC,$0368,$00AF,$0556,$0245
                      dw         $0000,$0778,$0AAA,$0CFF,$0368,$00AF,$0556
 
+; Woz
+DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+                     dw         $0666,$0999,$0CCC,$0222,$09A0,$0680,$0470,$0051
 
 ; Return the current border color ($0 - $F) in the accumulator
 GetBorderColor       lda        #0000
@@ -1156,142 +1162,6 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                     put        RotData.s
 
 
