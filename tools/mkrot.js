@@ -1,13 +1,13 @@
 /**
  * Generated data tables for BG1 rotation
  * 
- * The tickiest issue to address is that, when calculating the rotation indices, at
+ * The trickiest issue to address is that, when calculating the rotation indices, at
  * a 45 degree angle, the mapped address for a fixed rectangle can be outside of the
  * pixel buffer.  To fix this we make a compromise.
  * 
  * To keep speed, image data is drawn one word at a time, so the effective width of the
  * rotation is 82 units wide.  Since each work contains 4 pixels, we will only rotate
- * a quarter of the vertical image -- an effective 52 units -- and display the save offset
+ * a quarter of the vertical image -- an effective 52 units -- and display the same offset
  * for four consecutive lines.
  * 
  * Further, the image data will be the center of the BG1 buffer, so the middle 52 lines.
@@ -16,7 +16,7 @@
  * sqrt(2) (~40%) -- or 32 words horizontally and 21 lines vertically.  There is extra
  * data vertically to fill this and, since the BG1 buffer is stored with a stride of
  * 256 bytes (128 words) there are an extra 46 words of empty space that can be zeroed
- * out or filled with content to improve the retation visuals.
+ * out or filled with content to improve the rotation visuals.
  */
 const fs = require('fs').promises;
 const process = require('process');
@@ -41,7 +41,7 @@ console.log(`; The BG1 buffer lives at [${toHex(BUFFER_START)}, ${toHex(BUFFER_E
 // extends down to line 
 const TEXTURE_START = BUFFER_STRIDE * (BUFFER_HEIGHT - TEXTURE_HEIGHT) / 2;
 const TEXTURE_END   = BUFFER_STRIDE * (BUFFER_HEIGHT + TEXTURE_HEIGHT) / 2;
-const TEXTURE_CENTER = TEXTURE_START + Math.floor(TEXTURE_HEIGHT / 2) * BUFFER_STRIDE + Math.floor(BUFFER_WIDTH / 2);
+const TEXTURE_CENTER = BUFFER_START + TEXTURE_START + Math.floor(TEXTURE_HEIGHT / 2) * BUFFER_STRIDE + Math.floor(BUFFER_WIDTH / 2);
 
 console.log(`; The texture is this range of the BG1 buffer [${toHex(TEXTURE_START)}, ${toHex(TEXTURE_END)}]`);
 
