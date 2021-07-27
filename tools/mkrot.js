@@ -22,13 +22,16 @@ const fs = require('fs').promises;
 const process = require('process');
 const { Buffer } = require('buffer');
 
+// When calculating addresses, do we use the floor() function or round()?
+const USE_FLOOR = true;
+
 const NUM_ANGLES = 64;
 
 const BUFFER_HEIGHT = 208;
-const BUFFER_WIDTH  = 164;
-const BUFFER_STRIDE = 256;
+const BUFFER_WIDTH  = 164; // In bytes
+const BUFFER_STRIDE = 256; // In bytes
 
-const TEXTURE_WIDTH = BUFFER_WIDTH / 2;    // Full width
+const TEXTURE_WIDTH = BUFFER_WIDTH / 2;    // Full width (in words)
 const TEXTURE_HEIGHT = BUFFER_HEIGHT / 4;  // Quarter height
 const TEXTURE_STRIDE = BUFFER_STRIDE;
 
@@ -70,12 +73,12 @@ function toHex(n) {
 function f_x(x, angle) {
     // Calculate x in units of bytes
     // return Math.floor(a(x - x_half, angle)) + x_half + BIAS_X;
-    return Math.floor(a(x - x_half, angle)) + BIAS_X;
+    return a(x - x_half, angle) + BIAS_X;
 }
 
 function f_y(y, angle) {
     // return Math.floor(b(y - y_half, angle)) + (y_half * TEXTURE_STRIDE) + BIAS_Y;
-    return Math.floor(b(y - y_half, angle)) + BIAS_Y;
+    return b(y - y_half, angle) + BIAS_Y;
 }
 
 function check_sample(_a, x, y) {
@@ -150,9 +153,15 @@ async function main(argv) {
 }
 
 function a(x, angle) {
-    return Math.floor(x * Math.cos(angle)) + Math.floor(x * Math.sin(angle)) * TEXTURE_STRIDE;
+    if (USE_FLOOR) {
+        return (Math.floor(2 * x * Math.cos(angle)) & ~1) + Math.floor(x * Math.sin(angle)) * TEXTURE_STRIDE;
+    }
+    return (Math.round(2 * x * Math.cos(angle)) & ~1) + Math.round(x * Math.sin(angle)) * TEXTURE_STRIDE;
 }
 
 function b(y, angle) {
-    return Math.floor(y * Math.cos(angle)) * TEXTURE_STRIDE - Math.floor(y * Math.sin(angle));
+    if (USE_FLOOR) {
+        return Math.floor(y * Math.cos(angle)) * TEXTURE_STRIDE - (Math.floor(2 * y * Math.sin(angle)) & ~1);
+    }
+    return Math.round(y * Math.cos(angle)) * TEXTURE_STRIDE - (Math.round(2 * y * Math.sin(angle)) & ~1);
 }
