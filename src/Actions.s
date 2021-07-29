@@ -67,19 +67,19 @@ Demo
 
 ; Set a timer to fire every 16 ticks
 
-                     lda       #6
-                     sta       Timers
-                     sta       Timers+2
-                     lda       #UpdateBG1Rotation
-                     sta       Timers+4
+;                     lda       #6
+;                     sta       Timers
+;                     sta       Timers+2
+;                     lda       #UpdateBG1Rotation
+;                     sta       Timers+4
 
 ; Every 3 ticks (20 fps) cycle some colors
 
-;                     lda       #3
-;                     sta       Timers+8
-;                     sta       Timers+10
-;                     lda       #DoColorCycle
-;                     sta       Timers+12
+                     lda       #3
+                     sta       Timers+8
+                     sta       Timers+10
+                     lda       #DoColorCycle
+                     sta       Timers+12
 :loop
                      PushLong  #0
                      _GetTick
@@ -92,10 +92,12 @@ Demo
                      sec
                      sbc       lastTick
                      stx       lastTick
-                     jsr       _DoTimers
+;                     jsr       _DoTimers
 
 ;                     lda       #1
 ;                     jsr       MoveLeft
+                     jsr       UpdateBG1Rotation
+;                     jsr       DoColorCycle
                      jsr       DoFrame
 
                      inc       frameCount
@@ -133,14 +135,30 @@ Demo
 
 FPSStr               str       'FPS'
 
-; Move some colors around
+; Move some colors around color (6 - 11) address 12 - 22
 DoColorCycle
-                     ldal      $E19E00
-                     tax
-                     ldal      $E19E02
-                     stal      $E19E00
-                     txa
-                     stal      $E19E02
+                     ldal      $E19E0C
+                     pha
+                     ldal      $E19E0E
+                     pha
+                     ldal      $E19E10
+                     pha
+                     ldal      $E19E12
+                     pha
+                     ldal      $E19E14
+                     pha
+                     ldal      $E19E16
+                     stal      $E19E0C
+                     pla
+                     stal      $E19E16
+                     pla
+                     stal      $E19E14
+                     pla
+                     stal      $E19E12
+                     pla
+                     stal      $E19E10
+                     pla
+                     stal      $E19E0E
                      rts
 
 ; Triggered timer to sway the background
@@ -256,6 +274,17 @@ _DoTimers
 
                      pla
                      rts
+
+
+
+
+
+
+
+
+
+
+
 
 
 

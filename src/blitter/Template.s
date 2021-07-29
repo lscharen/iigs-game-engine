@@ -373,6 +373,10 @@ BuildBank
                    lda   :nextBank
                    sta   [:target],y
 
+                   ldy   #$8000+CODE_EXIT              ; Patch one line per bank to enable interrupts
+                   lda   #{$004C+{ENABLE_INT}*256}
+                   sta   [:target],y
+
                    plb
                    rts
 
@@ -487,7 +491,7 @@ full_return        jml   blt_return                    ; Full exit
 
 ; Re-enable interrupts and continue -- the even_exit JMP from the previous line will jump here every
 ; 8 or 16 lines in order to give the system some extra time to handle interrupts.
-enable_int         ldal  stk_save                      ; restore the stack
+enable_int         ldal  stk_save+1                    ; restore the stack
                    tcs
                    sep   #$20                          ; 8-bit mode
                    ldal  STATE_REG                     ; Read Bank 0 / Write Bank 0
@@ -618,3 +622,7 @@ snippets           lup   82
 ]index             equ   ]index+1
                    --^
 top
+
+
+
+

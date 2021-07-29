@@ -1,0 +1,4 @@
+node_modules
+emu
+src/*_Output.txt
+src/GTETestApp

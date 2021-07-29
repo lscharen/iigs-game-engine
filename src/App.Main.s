@@ -18,6 +18,7 @@
                      use        Misc.Macs.s
                      put        ..\macros\App.Macs.s
                      put        ..\macros\EDS.GSOS.MACS.s
+                     put        ..\macros\Tool222.MACS.s
                      put        .\blitter\DirectPage.s
 
                      mx         %00
@@ -61,6 +62,24 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
                      sta        UserId               ; any memory we request must use our own id 
 
                      _MTStartUp
+
+                     pea        $00DE
+                     pea        $0000
+                     _LoadOneTool
+                     _Err
+
+                     lda        UserId
+                     pha
+                     _NTPStartUp
+
+                     pea        #^MusicFile
+                     pea        #MusicFile
+                     _NTPLoadOneMusic
+
+                     pea        $0001                ; loop
+                     _NTPPlayMusic
+
+; Use Tool222 (NinjaTrackerPlus) for music playback
 
 ; Install interrupt handlers.  We use the VBL interrupt to keep animations
 ; moving at a consistent rate, regarless of the rendered frame rate.  The 
@@ -110,6 +129,11 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
                      jsr        AllocOneBank2        ; Alloc 64KB for Load/Unpack
                      sta        BankLoad             ; Store "Bank Pointer"
 
+                     ldx        #0
+                     jsr        SetScreenMode
+                     jsr        DoTiles
+                     jsr        DoLoadBG1
+                     jsr        Demo
 EvtLoop
                      jsr        WaitForKey
 
@@ -920,9 +944,16 @@ GrafInit
                      dw         $0000,$0778,$0AAA,$0CFF,$0368,$00AF,$0556
 
 ; Woz
-DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
                      dw         $0666,$0999,$0CCC,$0222,$09A0,$0680,$0470,$0051
 
+; Fatdog color cycling
+;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+                     dw         $0156,$0288,$03A8,$07B8,$0034,$0013,$0470,$0051
+
+; Plant
+DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+                     dw         $0222,$0333,$0444,$0888,$09A0,$0680,$0470,$0051
 ; Return the current border color ($0 - $F) in the accumulator
 GetBorderColor       lda        #0000
                      sep        #$20
@@ -1120,7 +1151,8 @@ msgLine2             str        'Press a key :'
 msgLine3             str        ' -> Return to Try Again'
 msgLine4             str        ' -> Esc to Quit'
 
-; Data storage
+; Data storage    
+MusicFile            str        '1/main.ntp'
 BG1DataFile          strl       '1/bg1a.bin'
 BG1AltDataFile       strl       '1/bg1b.bin'
 
@@ -1163,5 +1195,20 @@ qtRec                adrl       $0000
                      put        blitter/Vert.s
                      put        blitter/BG1.s
                      put        RotData.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
