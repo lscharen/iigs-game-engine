@@ -1,5 +1,3 @@
-            REL
-            DSK   TILESEG
 tiledata    ENT
 
             hex   0000F000
@@ -66,3 +64,4 @@ tiledata    ENT
             hex   89ABCDEF
 
 tileend
+

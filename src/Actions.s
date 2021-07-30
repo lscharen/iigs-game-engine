@@ -206,17 +206,19 @@ UpdateBG1Rotation
                      sta       angle
                      rts
 
+x_angles             EXT
+y_angles             EXT
 _ApplyAngle
                      lda       angle                ; debug with angle = 0
                      asl
                      tax
-                     lda       x_angles,x           ; load the address of addressed for this angle
+                     ldal      x_angles,x           ; load the address of addressed for this angle
                      tay
                      phx
                      jsr       _ApplyBG1XPosAngle
                      plx
 
-                     lda       y_angles,x           ; load the address of addresses for this angle
+                     ldal      y_angles,x           ; load the address of addresses for this angle
                      tay
                      jsr       _ApplyBG1YPosAngle
 
@@ -274,6 +276,8 @@ _DoTimers
 
                      pla
                      rts
+
+
 
 
 

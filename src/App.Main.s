@@ -239,6 +239,8 @@ Exit
                      _SetVector
 :no_interrupts
 
+                     _NTPShutDown
+
                      PushWord   UserId               ; Deallocate all of our memory
                      _DisposeAll
 
@@ -1194,7 +1196,9 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
-                     put        RotData.s
+;                     put        RotData.s
+
+
 
 
 

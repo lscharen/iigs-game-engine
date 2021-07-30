@@ -79,6 +79,7 @@ _ApplyBG1XPos
                           pld
                           rts
 
+ANGLEBNK                  ext
 _ApplyBG1XPosAngle
 ;                          phy
 
@@ -107,11 +108,13 @@ _ApplyBG1XPosAngle
                           lda   BlitterDP                 ; blitter direct page space and fill in the addresses
                           tcd
 
-                          sty   $fe                       ; Store in the new direct page
+                          lda   #^ANGLEBNK
+                          sta   $fe
+                          sty   $fc                       ; Store in the new direct page
                           ldy   #162
                           tyx
 :loop
-                          lda   ($fe),y
+                          lda   [$fc],y
                           sta   00,x                      ; store the value
                           dey
                           dey
@@ -193,6 +196,8 @@ _ApplyBG1YPosAngle
                           asl
                           clc
                           adc   :angle_tbl
+                          sec
+                          sbc   #ANGLEBNK
                           jsr   CopyAngleYTableToBG1Addr  ; or CopyBG1YTableToBG1Addr2
 
                           lda   :virt_line                ; advance to the virtual line after the segment we just
@@ -403,37 +408,37 @@ SaveBG1AngleValues
 :do08                     tax
                           bra   :x08
 :do16                     tax
-                          lda:  06,x
+                          ldal  ANGLEBNK+06,x
                           sta   BG1YCache+30
-:x15                      lda:  06,x
+:x15                      ldal  ANGLEBNK+06,x
                           sta   BG1YCache+28
-:x14                      lda:  06,x
+:x14                      ldal  ANGLEBNK+06,x
                           sta   BG1YCache+26
-:x13                      lda:  06,x
+:x13                      ldal  ANGLEBNK+06,x
                           sta   BG1YCache+24
-:x12                      lda:  04,x
+:x12                      ldal  ANGLEBNK+04,x
                           sta   BG1YCache+22
-:x11                      lda:  04,x
+:x11                      ldal  ANGLEBNK+04,x
                           sta   BG1YCache+20
-:x10                      lda:  04,x
+:x10                      ldal  ANGLEBNK+04,x
                           sta   BG1YCache+18
-:x09                      lda:  04,x
+:x09                      ldal  ANGLEBNK+04,x
                           sta   BG1YCache+16
-:x08                      lda:  02,x
+:x08                      ldal  ANGLEBNK+02,x
                           sta   BG1YCache+14
-:x07                      lda:  02,x
+:x07                      ldal  ANGLEBNK+02,x
                           sta   BG1YCache+12
-:x06                      lda:  02,x
+:x06                      ldal  ANGLEBNK+02,x
                           sta   BG1YCache+10
-:x05                      lda:  02,x
+:x05                      ldal  ANGLEBNK+02,x
                           sta   BG1YCache+08
-:x04                      lda:  00,x
+:x04                      ldal  ANGLEBNK+00,x
                           sta   BG1YCache+06
-:x03                      lda:  00,x
+:x03                      ldal  ANGLEBNK+00,x
                           sta   BG1YCache+04
-:x02                      lda:  00,x
+:x02                      ldal  ANGLEBNK+00,x
                           sta   BG1YCache+02
-:x01                      lda:  00,x
+:x01                      ldal  ANGLEBNK+00,x
                           sta   BG1YCache+00
 :none                     rts
 :do07                     tax
@@ -604,6 +609,24 @@ ApplyBG1OffsetValues
 :none                     rts
 
 BG1YCache                 ds    32
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

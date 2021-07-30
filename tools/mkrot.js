@@ -115,7 +115,8 @@ async function main(argv) {
     // Now generate the tables to stdout as merlin source code
     const _ = console.log;
 
-    _("x_angles\t");
+    _("ANGLEBNK\tENT");
+    _("x_angles\tENT");
     for (let a = 0; a < NUM_ANGLES; a += 1) {
         _(`\tdw\t:x_a_${a}`);
     }
@@ -133,7 +134,7 @@ async function main(argv) {
         _(`\tdw\t${arr}`);
     }
 
-    _("y_angles\t");
+    _("y_angles\tENT");
     for (let a = 0; a < NUM_ANGLES; a += 1) {
         _(`\tdw\t:y_a_${a}`);
     }
