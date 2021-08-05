@@ -1196,23 +1196,4 @@ qtRec                adrl       $0000
                      put        blitter/Tiles.s
                      put        blitter/Vert.s
                      put        blitter/BG1.s
-;                     put        RotData.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                     PUT        TileMap.s

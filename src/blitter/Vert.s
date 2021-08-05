@@ -189,5 +189,3 @@ CopyRTableToStkAddr
 :x01                 ldal  RTable+00,x
                      sta:  STK_ADDR+$0000,y
 :none                rts
-
-

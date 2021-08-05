@@ -92,14 +92,3 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
-
-
-
-
-
-
-
-
-
-
-
