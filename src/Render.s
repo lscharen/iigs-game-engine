@@ -69,6 +69,10 @@ Render
 ;            jsr   _ApplyBG1YPos       ; Adjust the index values into the BG1 bank buffer
 ;            jsr   _ApplyBG1XPos       ; Adjust the direct page pointers to the BG1 bank
 
+; Copy any tiles that have come into view
+
+            jsr   _UpdateBG0TileMap
+
 ; The code fields are locked in now and reder to be rendered
 
             jsr   ShadowOff
@@ -92,3 +96,5 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
+
+

@@ -124,6 +124,9 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
                      lda        #0
                      jsr        _ClearBG1Buffer
 
+; Set up our level data
+                     jsr        BG0SetUp
+
 ; Allocate room to load data
 
                      jsr        AllocOneBank2        ; Alloc 64KB for Load/Unpack
@@ -131,9 +134,9 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
 
                      ldx        #0
                      jsr        SetScreenMode
-                     jsr        DoTiles
-                     jsr        DoLoadBG1
-                     jsr        Demo
+;                     jsr        DoTiles
+;                     jsr        DoLoadBG1
+;                     jsr        Demo
 EvtLoop
                      jsr        WaitForKey
 
@@ -1197,3 +1200,8 @@ qtRec                adrl       $0000
                      put        blitter/Vert.s
                      put        blitter/BG1.s
                      PUT        TileMap.s
+                     PUT        Level.s
+
+
+
+
