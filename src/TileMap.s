@@ -289,7 +289,13 @@ _UpdateBG0TileMap
                    ldy   :BlkY
                    jsr   CopyTile
 
-                   inc   :BlkX              ; Move to the next block
+                   lda   :BlkX
+                   inc
+                   cmp   #42                ; If we go past the physical block index, wrap around
+                   bcc   *+5
+                   lda   #0
+                   sta   :BlkX
+
                    dec   :Width             ; Decrement out count
                    bne   :xloop
 
@@ -304,7 +310,13 @@ _UpdateBG0TileMap
                    lda   1,s                ; Reset the width
                    sta   :Width
 
-                   inc   :BlkY
+                   lda   :BlkY              ; The y lookup has a double0length array, may not need the bounds check
+                   inc
+                   cmp   #27
+                   bcc   *+5
+                   lda   #0
+                   sta   :BlkY
+
                    dec   :Height            ; Have we done all of the rows?
                    bne   :yloop
 
@@ -345,6 +357,10 @@ _UpdateBG0TileMap
                    bne   :loop
 
                    rts
+
+
+
+
 
 
 

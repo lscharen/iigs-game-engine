@@ -121,7 +121,7 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
                      lda        #0                   ; Set the virtual Y-position
                      jsr        SetBG0YPos
 
-                     lda        #0                   ; Set the virtual X-position
+                     lda        #15                  ; Set the virtual X-position
                      jsr        SetBG0XPos
 
                      jsr        _InitBG1             ; Initialize the second background
@@ -1224,3 +1224,5 @@ qtRec                adrl       $0000
                      put        blitter/BG1.s
                      PUT        TileMap.s
                      PUT        Level.s
+
+
