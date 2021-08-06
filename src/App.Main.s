@@ -43,7 +43,8 @@ SHR_PALETTES         equ        $E19E00
 tiledata             ext
 
 ; Feature flags
-NO_INTERRUPTS        equ        0                    ; turn off for crossrunner debugging
+NO_INTERRUPTS        equ        1                    ; turn off for crossrunner debugging
+NO_MUSIC             equ        1                    ; turn music + tool loading off
 
 ; Typical init
 
@@ -63,6 +64,11 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
 
                      _MTStartUp
 
+; Use Tool222 (NinjaTrackerPlus) for music playback
+
+                     lda        #NO_MUSIC
+                     bne        :no_music
+
                      pea        $00DE
                      pea        $0000
                      _LoadOneTool
@@ -78,8 +84,7 @@ NO_INTERRUPTS        equ        0                    ; turn off for crossrunner 
 
                      pea        $0001                ; loop
                      _NTPPlayMusic
-
-; Use Tool222 (NinjaTrackerPlus) for music playback
+:no_music
 
 ; Install interrupt handlers.  We use the VBL interrupt to keep animations
 ; moving at a consistent rate, regarless of the rendered frame rate.  The 
@@ -242,7 +247,10 @@ Exit
                      _SetVector
 :no_interrupts
 
+                     lda        #NO_MUSIC
+                     bne        :no_music
                      _NTPShutDown
+:no_music
 
                      PushWord   UserId               ; Deallocate all of our memory
                      _DisposeAll
@@ -907,6 +915,21 @@ BlitInit
                      stz        BG1StartYMod208
                      stz        BG1OffsetIndex
 
+                     stz        BG0TileOriginX
+                     stz        BG0TileOriginY
+                     stz        OldBG0TileOriginX
+                     stz        OldBG0TileOriginY
+
+                     stz        BG1TileOriginX
+                     stz        BG1TileOriginY
+                     stz        OldBG1TileOriginX
+                     stz        OldBG1TileOriginY
+
+                     stz        TileMapWidth
+                     stz        TileMapHeight
+                     stz        TileMapPtr
+                     stz        TileMapPtr+2
+
 ]step                equ        0
                      lup        13
                      ldx        #BlitBuff
@@ -1201,7 +1224,3 @@ qtRec                adrl       $0000
                      put        blitter/BG1.s
                      PUT        TileMap.s
                      PUT        Level.s
-
-
-
-
