@@ -36,7 +36,7 @@ function pngToIIgsBuff(png) {
             const j = y * (png.width / 2) + Math.floor(x / 2);
 
             if (index > 15) {
-                console.warn('Pixel index greater than 15. Skipping...');
+                console.warn('; Pixel index greater than 15. Skipping...');
                 continue;
             }
 
@@ -72,7 +72,7 @@ function pngToIIgsBuffRepeat(png) {
             const j = y * png.width + Math.floor(x / 2);
 
             if (index > 15) {
-                console.warn('Pixel index greater than 15. Skipping...');
+                console.warn('; Pixel index greater than 15. Skipping...');
                 continue;
             }
 
@@ -101,7 +101,10 @@ function paletteToIIgs(palette) {
 function getArg(argv, arg, fn, defaultValue) {
     for (let i = 0; i < argv.length; i += 1) {
         if (argv[i] === arg) {
-            return fn(argv[i+1]);
+            if (fn) {
+                return fn(argv[i+1]);
+            }
+            return true;   // REturn true if the argument was found
         }
     }
     return defaultValue;
@@ -111,60 +114,97 @@ async function main(argv) {
     const data = await fs.readFile(argv[0]);
     const png = PNG.sync.read(data);
     startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
+    asTileData = getArg(argv, '--as-tile-data', null, 0);
+
     transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), 0);
 
-    console.info(`startIndex = ${startIndex}`);
+    console.info(`; startIndex = ${startIndex}`);
 
     if (png.colorType !== 3) {
-        console.warn('PNG must be in palette color type');
+        console.warn('; PNG must be in palette color type');
         return;
     }
 
     if (png.palette.length > 16) {
-        console.warn('Too many colors.  Must be 16 or less');
+        console.warn('; Too many colors.  Must be 16 or less');
         return;
     }
 
     // Dump the palette in IIgs hex format
-    console.log('Palette:');
+    console.log('; Palette:');
     const hexCodes = png.palette.map(c => '$' + paletteToIIgs(c));
-    console.log(hexCodes.join(','));
+    console.log(';', hexCodes.join(','));
 
-    // Just convert a paletted PNG to IIgs memory format
+    // Just convert a paletted PNG to IIgs memory format.  We make sute that only a few widths
+    // are supported
     let buff = null;
+
     if (png.width === 512) {
-        console.log('Converting to BG1 format...');
+        console.log('; Converting to BG1 format...');
         buff = pngToIIgsBuff(png);
     }
 
     if (png.width === 256) {
-        console.log('Converting to BG1 format w/repeat...');
+        console.log('; Converting to BG1 format w/repeat...');
         buff = pngToIIgsBuffRepeat(png);
     }
 
-    if (png.width === 328) {
-        console.log('Converting to BG0 format...');
+    if (png.width === 328 || png.width == 320) {
+        console.log('; Converting to BG0 format...');
         buff = pngToIIgsBuff(png);
     }
 
     if (buff && argv[1]) {
-        console.log(`Writing to output file ${argv[1]}`);
-
-        // Write a small header.  This is useful and avoids triggering a sparse file load
-        // bug when the first block of the file on the GS/OS drive is sparse.
-
-        // Put the ASCII text of "GTERAW" in the first 6 bytes
-        const header = Buffer.alloc(8);
-        header.write('GTERAW', 'latin1');
-
-        // Use the special value $A5A5 to identify no transparency
-        if (typeof transparentColor !== 'number') {
-            header.writeUInt16LE(0xA5A5);
-        } else {
-            header.writeUInt16LE(0x1111 * transparentColor, 6);
+        if (asTileData) {
+            writeToTileDataSource(buff, png.width / 2);
         }
-
-        await fs.writeFile(argv[1], Buffer.concat([header, buff]));
+        else {
+            console.log(`; Writing to output file ${argv[1]}`);
+            await writeBinayOutput(argv[1], buff);
+        }
     }
+}
+
+function writeToTileDataSource(buff, width) {
+    console.log('tiledata    ENT');
+
+    let count = 0;
+    for (let y = 0; ; y += 8) {
+        for (let x = 0; x < width; x += 4, count += 1) {
+            if (count >= 256) {
+                return;
+            }
+            console.log('; Tile ID ' + count);
+            console.log('; From image coordinates ' + (x * 2) + ', ' + y);
+
+            const offset = y * width + x;
+            for (dy = 0; dy < 8; dy += 1) {
+                const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
+                const hex1 = buff[offset + dy * width + 1].toString(16).padStart(2, '0');
+                const hex2 = buff[offset + dy * width + 2].toString(16).padStart(2, '0');
+                const hex3 = buff[offset + dy * width + 3].toString(16).padStart(2, '0');
+                console.log('            hex   ' + hex0 + hex1 + hex2 + hex3);
+            }
+            console.log();
+        }
+    }
+}
+
+async function writeBinayOutput(filename, buff) {
+    // Write a small header.  This is useful and avoids triggering a sparse file load
+    // bug when the first block of the file on the GS/OS drive is sparse.
+
+    // Put the ASCII text of "GTERAW" in the first 6 bytes
+    const header = Buffer.alloc(8);
+    header.write('GTERAW', 'latin1');
+
+    // Use the special value $A5A5 to identify no transparency
+    if (typeof transparentColor !== 'number') {
+        header.writeUInt16LE(0xA5A5);
+    } else {
+        header.writeUInt16LE(0x1111 * transparentColor, 6);
+    }
+
+    await fs.writeFile(filename, Buffer.concat([header, buff]));
 }
 

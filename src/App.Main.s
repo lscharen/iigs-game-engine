@@ -980,8 +980,13 @@ GrafInit
                      dw         $0156,$0288,$03A8,$07B8,$0034,$0013,$0470,$0051
 
 ; Plant
-DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
+;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
                      dw         $0222,$0333,$0444,$0888,$09A0,$0680,$0470,$0051
+
+; SMB
+DefaultPalette       dw         $0E51,$0EDB,$0000,$068F,$0BF1,$00A0,$0EEE,$0777,$0FA4,$0F59,$0E05,$0F30
+                     dw         $0680,$0470,$0051
+
 ; Return the current border color ($0 - $F) in the accumulator
 GetBorderColor       lda        #0000
                      sep        #$20
@@ -1224,5 +1229,7 @@ qtRec                adrl       $0000
                      put        blitter/BG1.s
                      PUT        TileMap.s
                      PUT        Level.s
+
+
 
 

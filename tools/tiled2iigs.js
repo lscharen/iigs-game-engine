@@ -85,7 +85,8 @@ BG0SetUp
     for (let i = 0; i < tileIDs.length; i += N) {
         chunks.push(tileIDs.slice(i, i + N))
     }
+    // Tiled starts numbering its tiles at 1, swtich to a more sane approach... :)
     for (const chunk of chunks) {
-        console.log('        dw ' + chunk.join(','));
+        console.log('        dw ' + chunk.map(t => t - 1).join(','));
     }
 }

@@ -21,7 +21,8 @@
     "build:assets-woz": "node ./tools/png2iigs.js ./assets/woz.png ./emu/bg1a.bin --start-index 6 && node ./tools/pngtoiigs.js ./assets/woz-shifted.png ./emu/bg1b.bin --start-index 6 && node ./tools/pngtoiigs.js ./assets/donut-plains-1-6-color.png ./emu/fg1.bin",
     "build:assets-woz-fatbits": "node ./tools/png2iigs.js ./assets/woz-pixelated.png ./emu/bg1a.bin --start-index 6 && node ./tools/pngtoiigs.js ./assets/woz-shifted.png ./emu/bg1b.bin --start-index 6 && node ./tools/pngtoiigs.js ./assets/donut-plains-1-6-color.png ./emu/fg1.bin",
     "build:assets-color-cycle": "node ./tools/png2iigs.js ./assets/rotopattern.png ./emu/bg1a.bin --start-index 6 && node ./tools/pngtoiigs.js ./assets/woz-shifted.png ./emu/bg1b.bin --start-index 6 && node ./tools/pngtoiigs.js ./assets/donut-plains-1-6-color.png ./emu/fg1.bin",
-    "build:map": "node ./tools/tiled2iigs.js ./assets/tiled/world_1-1.json > ./src/Level.s"
+    "build:map": "node ./tools/tiled2iigs.js ./assets/tiled/world_1-1.json > ./src/Level.s",
+    "build:tiles": "node ./tools/png2iigs.js ./assets/tilesets/smb-16.png --as-tile-data > src/App.Tile.s"
   },
   "repository": {
     "type": "git",
