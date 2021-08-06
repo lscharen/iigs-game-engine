@@ -1,0 +1,71 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "tiled/world_1-1.tmx",
+    "expandedProjectPaths": [
+        "tiled"
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "C:/Users/lscharen/EUm-lfFWkAEb5fJ.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "C:/Users/lscharen/Overworld.tmx": {
+            "scale": 4,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 98,
+                "y": 79.75
+            }
+        },
+        "C:/Users/lscharen/SNES - Final Fantasy 6 - South Figaro Exterior.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 2,
+            "scaleInEditor": 4
+        },
+        "tiled/Overworld.tsx": {
+            "scaleInDock": 2,
+            "scaleInEditor": 1
+        },
+        "tiled/world_1-1.tmx": {
+            "scale": 4,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 825.875,
+                "y": 191.125
+            }
+        }
+    },
+    "last.exportedFilePath": "C:/checkout/iigs-game-engine/assets/tiled",
+    "last.imagePath": "C:/checkout/iigs-game-engine/assets/tilesets",
+    "map.height": 30,
+    "map.lastUsedExportFilter": "JSON map files (*.json)",
+    "map.lastUsedFormat": "tmx",
+    "map.renderOrder": null,
+    "map.tileHeight": 8,
+    "map.tileWidth": 8,
+    "map.width": 256,
+    "openFiles": [
+        "tiled/world_1-1.tmx",
+        "tiled/Overworld.tsx"
+    ],
+    "project": "assets.tiled-project",
+    "property.type": "int",
+    "recentFiles": [
+        "tiled/Overworld.tsx",
+        "tiled/world_1-1.tmx",
+        "C:/Users/lscharen/SNES - Final Fantasy 6 - South Figaro Exterior.tsx",
+        "C:/Users/lscharen/Overworld.tmx",
+        "C:/Users/lscharen/EUm-lfFWkAEb5fJ.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 8,
+        "width": 8
+    },
+    "tileset.transparentColor": "#6b8cff",
+    "tileset.useTransparentColor": false
+}
