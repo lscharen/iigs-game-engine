@@ -125,6 +125,15 @@ _RestoreBG0Opcodes
 ;   x_exit = (164 - x) % 164
 ;   x_enter = (164 - x - width) % 164
 ;
+
+; Small routine to put the data in a consistent state. Called before any routines need to draw on
+; the code buffer, but before we patch out the instructions.
+_ApplyBG0XPosPre
+                    lda   StartX                     ; This is the starting byte offset (0 - 163)
+                    jsr   Mod164
+                    sta   StartXMod164
+                    rts
+
 _ApplyBG0XPos
 
 :virt_line          equ   tmp1
@@ -189,11 +198,7 @@ _ApplyBG0XPos
 ;
 ; So, in short, the entry tile position is rounded up from the x-position and the exit
 ; tile position is rounded down.
-
-                    lda   StartX                     ; This is the starting byte offset (0 - 163)
-                    jsr   Mod164                     ; 
-                    sta   StartXMod164
-
+;
 ; Now, the left edge of the screen is pushed last, so we need to exit one instruction *after*
 ; the location (163 - StartX % 164)
 ;
@@ -214,7 +219,6 @@ _ApplyBG0XPos
 ;  +-----------+ 
 ;  | JMP loop  |
 ;  +-----------+
-
 
                     lda   #163
                     sec
@@ -741,6 +745,8 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
+
+
 
 
 

@@ -47,7 +47,7 @@ CopyTile
 
                plb                     ; set the bank
                pla                     ; pop the tile ID
-               jsr   :ClearTile        ; :_CopyTile
+               jsr   :CopyTileMem0
 
                plx                     ; pop the x-register
                plb                     ; restore the data bank and return
@@ -145,6 +145,7 @@ CopyTile
 :CopyTileMem   sec
                sbc   #$0010
 
+:CopyTileMem0
                asl
                asl
                asl
@@ -235,3 +236,6 @@ CopyTile
                sta   $7003,y
                rep   #$20
                rts
+
+
+

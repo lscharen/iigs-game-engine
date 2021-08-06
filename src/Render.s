@@ -65,13 +65,20 @@ Render
 ; used in all of the other loops
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
+
+; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
+; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
+            jsr   _ApplyBG0XPosPre
+
+            lda   #$FFFF              ; Force a tile refresh
+            jsr   _UpdateBG0TileMap
+
             jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
+
 ;            jsr   _ApplyBG1YPos       ; Adjust the index values into the BG1 bank buffer
 ;            jsr   _ApplyBG1XPos       ; Adjust the direct page pointers to the BG1 bank
 
 ; Copy any tiles that have come into view
-
-            jsr   _UpdateBG0TileMap
 
 ; The code fields are locked in now and reder to be rendered
 
@@ -96,5 +103,12 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
+
+
+
+
+
+
+
 
 

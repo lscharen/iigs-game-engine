@@ -2,7 +2,7 @@
 ;
 ; This module contains higher-level functions than the low-level tile rendering routines.  The
 ; goal here is to take a rectangular tilemap data structure and efficiently render it into
-; code buffer.  Especially inportant is to only draw new tiles as they come into view.
+; code buffer.  Especially important is to only draw new tiles as they come into view.
 ;
 ; Also, we maintain a tilemap cache to track the current state of the tiles rendered into
 ; the code field so if, by chance, a tile that comes into view is the same as a tile that
@@ -10,6 +10,13 @@
 ; in actual games since the primary background is often large empty areas, or runs
 ; of repeating tiles.
 
+
+; _UpdateBG0TileMap
+;
+; Fill in dirty tiles into the BG0 buffer.
+;
+; A = $FFFF re-render the entire playfield.  Otherwise only render difference from the old
+;     coordinates.
 _UpdateBG0TileMap
 :Left              equ   tmp0
 :Right             equ   tmp1
@@ -31,8 +38,16 @@ _UpdateBG0TileMap
 :BlkX              equ   tmp12
 :BlkY              equ   tmp13
 
+:Refresh           equ   tmp14
+
+                   cmp   #$FFFF
+                   lda   #0
+                   rol
+                   sta   :Refresh           ; 1 if A = $FFFF, 0 otherwise
+
                    lda   StartY             ; calculate the tile index of the current location
                    and   #$FFF8
+                   lsr
                    lsr
                    lsr
                    sta   BG0TileOriginY
@@ -41,19 +56,20 @@ _UpdateBG0TileMap
                    and   #$FFF8
                    lsr
                    lsr
+                   lsr
                    sta   OldBG0TileOriginY
 
                    lda   StartX
-                   and   #$FFF8
+                   and   #$FFFC
                    lsr
                    lsr
                    sta   BG0TileOriginX
 
                    lda   OldStartX
-                   and   #$FFF8
+                   and   #$FFFC
                    lsr
                    lsr
-                   sta   OldBG0TileOriginY
+                   sta   OldBG0TileOriginX
 
 ; Figure out the two rectangular regions that need to be updated. We check for changes in Y-direction
 ; first because it's a bit more efficient to redraw tiles in long horizontal strips, because we do not
@@ -83,6 +99,12 @@ _UpdateBG0TileMap
                    lda   ScreenTileHeight
                    sta   :Bottom
 
+; If we are supposed to refresh the while field, just do that and return
+                   lda   :Refresh
+                   beq   :NoRefresh
+                   jmp   :DrawRectBG0       ; Let the DrawRectBG0 RTS take care of the return for us
+
+:NoRefresh
                    lda   BG0TileOriginY
                    cmp   OldBG0TileOriginY
                    beq   :NoYUpdate         ; if equal, don't change Y
@@ -323,3 +345,13 @@ _UpdateBG0TileMap
                    bne   :loop
 
                    rts
+
+
+
+
+
+
+
+
+
+
