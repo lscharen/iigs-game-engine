@@ -33,6 +33,9 @@ VBL_HORZ_REG         equ        $E0C02F
 KBD_REG              equ        $E0C000
 KBD_STROBE_REG       equ        $E0C010
 VBL_STATE_REG        equ        $E0C019
+MOD_REG              equ        $E0C025
+COMMAND_KEY_REG      equ        $E0C061
+OPTION_KEY_REG       equ        $E0C062
 
 SHADOW_SCREEN        equ        $012000
 SHR_SCREEN           equ        $E12000
@@ -139,11 +142,14 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
 
                      ldx        #0
                      jsr        SetScreenMode
+                     jsr        MovePlayerToOrigin
+
 ;                     jsr        DoTiles
 ;                     jsr        DoLoadBG1
 ;                     jsr        Demo
 EvtLoop
-                     jsr        WaitForKey
+                     jsr        ReadControl
+                     and        #$007F               ; Ignore the buttons for now
 
                      cmp        #'q'
                      bne        :1
@@ -182,6 +188,7 @@ EvtLoop
                      sbc        #'1'
                      tax
                      jsr        SetScreenMode
+                     jsr        MovePlayerToOrigin
                      brl        EvtLoop
 
 :6                   cmp        #'t'
@@ -259,6 +266,19 @@ Exit
 
                      bcs        Fatal
 Fatal                brk        $00
+
+; Position the screen with the botom-left corner of the tilemap visible
+MovePlayerToOrigin
+                     lda        #0                   ; Set the player's position
+                     jsr        SetBG0XPos
+                     lda        TileMapHeight
+                     asl
+                     asl
+                     asl
+                     sec
+                     sbc        ScreenHeight
+                     jsr        SetBG0YPos
+                     rts
 
 ClearBankLoad
                      lda        BankLoad
@@ -1098,6 +1118,38 @@ ClearKeyboardStrobe  sep        #$20
                      rep        #$20
                      rts
 
+ReadControl
+                     pea        $0000                ; low byte = key code, high byte = %------AB 
+
+                     ldal       OPTION_KEY_REG       ; 'B' button
+                     and        #$0080
+                     beq        :BNotDown
+
+                     lda        #1
+                     ora        1,s
+                     sta        1,s
+
+:BNotDown
+                     ldal       COMMAND_KEY_REG
+                     and        #$0080
+                     beq        :ANotDown
+
+                     lda        #2
+                     ora        1,s
+                     sta        1,s
+
+:ANotDown
+                     ldal       KBD_STROBE_REG       ; read the keyboard
+                     bit        #$0080
+                     beq        :KbdNotDwn           ; check the key-down status
+                     and        #$007f
+                     ora        1,s
+                     sta        1,s
+
+:KbdNotDwn
+                     pla
+                     rts
+
 ; Graphics helpers
 
 LoadPicture
@@ -1229,6 +1281,19 @@ qtRec                adrl       $0000
                      put        blitter/BG1.s
                      PUT        TileMap.s
                      PUT        Level.s
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
