@@ -94,12 +94,19 @@ _UpdateBG0TileMap
                    stz   :Left              ; prepare to do the entire screen
                    lda   ScreenTileWidth    ; and then whack off the parts
                    sta   :Right             ; that are not needed
+                   lda   StartX
+                   and   #$0003             ; If not tile-aligned, then we need to draw one extra column
+                   beq   *+2
+                   inc   :Right
 
                    stz   :Top
                    lda   ScreenTileHeight
                    sta   :Bottom
+                   and   #$0007
+                   beq   *+2
+                   inc   :Bottom
 
-; If we are supposed to refresh the while field, just do that and return
+; If we are supposed to refresh the whole field, just do that and return
                    lda   :Refresh
                    beq   :NoRefresh
                    jmp   :DrawRectBG0       ; Let the DrawRectBG0 RTS take care of the return for us
@@ -357,6 +364,9 @@ _UpdateBG0TileMap
                    bne   :loop
 
                    rts
+
+
+
 
 
 
