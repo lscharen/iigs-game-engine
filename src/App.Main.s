@@ -118,13 +118,13 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
                      jsr        BlitInit             ; Initialize the memory
                      jsr        GrafInit             ; Initialize the graphics screen
 
-                     ldx        #6                   ; Gameboy Advance size
+                     ldx        #0                   ; Gameboy Advance size
                      jsr        SetScreenMode
 
                      lda        #0                   ; Set the virtual Y-position
                      jsr        SetBG0YPos
 
-                     lda        #15                  ; Set the virtual X-position
+                     lda        #0                   ; Set the virtual X-position
                      jsr        SetBG0XPos
 
                      jsr        _InitBG1             ; Initialize the second background
@@ -140,9 +140,10 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
                      jsr        AllocOneBank2        ; Alloc 64KB for Load/Unpack
                      sta        BankLoad             ; Store "Bank Pointer"
 
-                     ldx        #0
-                     jsr        SetScreenMode
-                     jsr        MovePlayerToOrigin
+                     jsr        MovePlayerToOrigin   ; Put the player at the beginning of the map
+                     lda        #$FFFF               ; Force a redraw of all the tiles
+                     jsr        _UpdateBG0TileMap
+
 
 ;                     jsr        DoTiles
 ;                     jsr        DoLoadBG1
@@ -1281,6 +1282,15 @@ qtRec                adrl       $0000
                      put        blitter/BG1.s
                      PUT        TileMap.s
                      PUT        Level.s
+
+
+
+
+
+
+
+
+
 
 
 

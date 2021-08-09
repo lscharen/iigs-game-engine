@@ -30,11 +30,21 @@ MoveRight
 MoveUp
                      clc
                      adc       StartY               ; Increment the virtual Y-position
-                     jsr       SetBG0YPos
+                     pha
 
-                     lda       StartY
-                     lsr
-                     jsr       SetBG1YPos
+                     lda       #240                 ; virtual play field height
+                     sec
+                     sbc       ScreenHeight
+                     tax
+                     cmp       1,s
+                     bcc       *+4
+                     lda       1,s
+                     jsr       SetBG0YPos
+                     pla
+
+;                     lda       StartY
+;                     lsr
+;                     jsr       SetBG1YPos
 
                      jsr       DoFrame
                      rts
@@ -276,3 +286,6 @@ _DoTimers
 
                      pla
                      rts
+
+
+

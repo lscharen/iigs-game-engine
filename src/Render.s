@@ -70,7 +70,6 @@ Render
 ; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
             jsr   _ApplyBG0XPosPre
 
-            lda   #$FFFF              ; Force a tile refresh
             jsr   _UpdateBG0TileMap
 
             jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
@@ -103,6 +102,7 @@ Render
             jsr   _RestoreBG0Opcodes
 
             rts
+
 
 
 

@@ -215,19 +215,23 @@ _UpdateBG0TileMap
 
 ; This is a private subroutine that draws in tiles into the code fields using the
 ; data from the tilemap and the local :Top, :Left, :Bottom and :Right parameters.
+;
+; The ranges are [:Left, :Right) and [:Top, :Bottom), so :Right can be, at most, 41
+; if we are drawing all 41 tiles (Index 0 through 40).  The :Bottom value can be
+; at most 26.
+MAX_TILE_X         equ   40
+MAX_TILE_Y         equ   25
 :DrawRectBG0
 
                    lda   :Bottom
                    sec
                    sbc   :Top
-                   inc
-                   sta   :Height
+                   sta   :Height            ; Maximum value of 25
 
                    lda   :Right
                    sec
                    sbc   :Left
-                   inc
-                   sta   :Width
+                   sta   :Width             ; Maximum value of 40
 
 ; Compute the offset into the tile array of the top-left corner
 
@@ -298,7 +302,7 @@ _UpdateBG0TileMap
 
                    lda   :BlkX
                    inc
-                   cmp   #42                ; If we go past the physical block index, wrap around
+                   cmp   #MAX_TILE_X+1      ; If we go past the physical block index, wrap around
                    bcc   *+5
                    lda   #0
                    sta   :BlkX
@@ -319,7 +323,7 @@ _UpdateBG0TileMap
 
                    lda   :BlkY              ; The y lookup has a double0length array, may not need the bounds check
                    inc
-                   cmp   #27
+                   cmp   #MAX_TILE_Y+1
                    bcc   *+5
                    lda   #0
                    sta   :BlkY
@@ -364,6 +368,22 @@ _UpdateBG0TileMap
                    bne   :loop
 
                    rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
