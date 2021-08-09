@@ -191,7 +191,7 @@ _UpdateBG0TileMap
                    beq   :NoXUpdate         ; no, so we can ignore this
 
                    sec
-                   sbc   BG0TileOriginX     ; find the difference
+                   sbc   OldBG0TileOriginX  ; find the difference
                    bpl   :DoRightSide       ; did we move in a pos or neg?
 
 ; Handle the two sides in an analagous way as the vertical code
@@ -368,6 +368,7 @@ MAX_TILE_Y         equ   25
                    bne   :loop
 
                    rts
+
 
 
 
