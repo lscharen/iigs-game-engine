@@ -93,6 +93,12 @@ Render
 ;            ldy   #8
 ;            jsr   _PEISlam
 
+;            ldx   #0                  ; Blit the full virtual buffer to the screen
+;            ldy   #16
+;            jsr   _BltRange
+
+;            jsr   Overlay
+
             ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
@@ -101,7 +107,20 @@ Render
             ldx   ScreenHeight
             jsr   _RestoreBG0Opcodes
 
+            lda   StartY
+            sta   OldStartY
+            lda   StartX
+            sta   OldStartX
+
+            stz   DirtyBits
             rts
+
+
+
+
+
+
+
 
 
 

@@ -3,11 +3,11 @@ MoveLeft
                      adc       StartX               ; Increment the virtual X-position
                      jsr       SetBG0XPos
 
-                     lda       StartX
-                     lsr
-                     jsr       SetBG1XPos
+;                     lda       StartX
+;                     lsr
+;                     jsr       SetBG1XPos
 
-                     jsr       DoFrame
+                     jsr       Render
                      rts
 
 MoveRight
@@ -19,11 +19,11 @@ MoveRight
                      lda       #0
                      jsr       SetBG0XPos
 
-                     lda       StartX
-                     lsr
-                     jsr       SetBG1XPos
+;                     lda       StartX
+;                     lsr
+;                     jsr       SetBG1XPos
 
-                     jsr       DoFrame
+                     jsr       Render
                      pla
                      rts
 
@@ -46,7 +46,7 @@ MoveUp
 ;                     lsr
 ;                     jsr       SetBG1YPos
 
-                     jsr       DoFrame
+                     jsr       Render
                      rts
 
 MoveDown
@@ -58,11 +58,11 @@ MoveDown
                      lda       #0
                      jsr       SetBG0YPos
 
-                     lda       StartY
-                     lsr
-                     jsr       SetBG1YPos
+;                     lda       StartY
+;                     lsr
+;                     jsr       SetBG1YPos
 
-                     jsr       DoFrame
+                     jsr       Render
                      pla
                      rts
 
@@ -108,7 +108,7 @@ Demo
 ;                     jsr       MoveLeft
                      jsr       UpdateBG1Rotation
 ;                     jsr       DoColorCycle
-                     jsr       DoFrame
+                     jsr       Render
 
                      inc       frameCount
 
@@ -190,7 +190,7 @@ AngleUp
                      sbc       #64
                      sta       angle
                      jsr       _ApplyAngle
-                     jsr       DoFrame
+                     jsr       Render
                      rts
 
 AngleDown
@@ -201,7 +201,7 @@ AngleDown
                      adc       #64
                      sta       angle
                      jsr       _ApplyAngle
-                     jsr       DoFrame
+                     jsr       Render
                      rts
 
 angle                dw        0
@@ -286,6 +286,11 @@ _DoTimers
 
                      pla
                      rts
+
+
+
+
+
 
 
 

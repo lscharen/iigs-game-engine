@@ -26,7 +26,7 @@
 SHADOW_REG           equ        $E0C035
 STATE_REG            equ        $E0C068
 NEW_VIDEO_REG        equ        $E0C029
-BORDER_REG           equ        $E0C034              ; 0-3 = border, 4-7 Text color
+BORDER_REG           equ        $E0C034                 ; 0-3 = border, 4-7 Text color
 VBL_VERT_REG         equ        $E0C02E
 VBL_HORZ_REG         equ        $E0C02F
 
@@ -46,8 +46,8 @@ SHR_PALETTES         equ        $E19E00
 tiledata             ext
 
 ; Feature flags
-NO_INTERRUPTS        equ        1                    ; turn off for crossrunner debugging
-NO_MUSIC             equ        1                    ; turn music + tool loading off
+NO_INTERRUPTS        equ        1                       ; turn off for crossrunner debugging
+NO_MUSIC             equ        1                       ; turn music + tool loading off
 
 ; Typical init
 
@@ -56,14 +56,14 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
 
 ; Tool startup
 
-                     _TLStartUp                      ; normal tool initialization
+                     _TLStartUp                         ; normal tool initialization
                      pha
                      _MMStartUp
-                     _Err                            ; should never happen
+                     _Err                               ; should never happen
                      pla
-                     sta        MasterId             ; our master handle references the memory allocated to us
-                     ora        #$0100               ; set auxID = $01  (valid values $01-0f)
-                     sta        UserId               ; any memory we request must use our own id 
+                     sta        MasterId                ; our master handle references the memory allocated to us
+                     ora        #$0100                  ; set auxID = $01  (valid values $01-0f)
+                     sta        UserId                  ; any memory we request must use our own id 
 
                      _MTStartUp
 
@@ -85,7 +85,7 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
                      pea        #MusicFile
                      _NTPLoadOneMusic
 
-                     pea        $0001                ; loop
+                     pea        $0001                   ; loop
                      _NTPPlayMusic
 :no_music
 
@@ -97,37 +97,31 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
                      lda        #NO_INTERRUPTS
                      bne        :no_interrupts
                      PushLong   #0
-                     pea        $0015                ; Get the existing 1-second interrupt handler and save
+                     pea        $0015                   ; Get the existing 1-second interrupt handler and save
                      _GetVector
                      PullLong   OldOneSecVec
 
-                     pea        $0015                ; Set the new handler and enable interrupts
+                     pea        $0015                   ; Set the new handler and enable interrupts
                      PushLong   #OneSecHandler
                      _SetVector
 
                      pea        $0006
                      _IntSource
 
-                     PushLong   #VBLTASK             ; Also register a Heart Beat Task
+                     PushLong   #VBLTASK                ; Also register a Heart Beat Task
                      _SetHeartBeat
 :no_interrupts
 
 ; Start up the graphics engine...
 
-                     jsr        MemInit              ; Allocate memory
-                     jsr        BlitInit             ; Initialize the memory
-                     jsr        GrafInit             ; Initialize the graphics screen
+                     jsr        MemInit                 ; Allocate memory
+                     jsr        BlitInit                ; Initialize the memory
+                     jsr        GrafInit                ; Initialize the graphics screen
 
-                     ldx        #0                   ; Gameboy Advance size
+                     ldx        #0                      ; 
                      jsr        SetScreenMode
 
-                     lda        #0                   ; Set the virtual Y-position
-                     jsr        SetBG0YPos
-
-                     lda        #0                   ; Set the virtual X-position
-                     jsr        SetBG0XPos
-
-                     jsr        _InitBG1             ; Initialize the second background
+                     jsr        _InitBG1                ; Initialize the second background
 
                      lda        #0
                      jsr        _ClearBG1Buffer
@@ -137,20 +131,20 @@ NO_MUSIC             equ        1                    ; turn music + tool loading
 
 ; Allocate room to load data
 
-                     jsr        AllocOneBank2        ; Alloc 64KB for Load/Unpack
-                     sta        BankLoad             ; Store "Bank Pointer"
+                     jsr        AllocOneBank2           ; Alloc 64KB for Load/Unpack
+                     sta        BankLoad                ; Store "Bank Pointer"
 
-                     jsr        MovePlayerToOrigin   ; Put the player at the beginning of the map
-                     lda        #$FFFF               ; Force a redraw of all the tiles
-                     jsr        _UpdateBG0TileMap
+                     jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
+                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
+                     tsb        DirtyBits
 
 ;                     jsr        DoTiles
 ;                     jsr        DoLoadBG1
 ;                     jsr        Demo
 EvtLoop
                      jsr        ReadControl
-                     and        #$007F               ; Ignore the buttons for now
+                     and        #$007F                  ; Ignore the buttons for now
 
                      cmp        #'q'
                      bne        :1
@@ -171,17 +165,17 @@ EvtLoop
                      jsr        DumpBanks
                      bra        EvtLoop
 
-:3                   cmp        #'f'                 ; render a 'f'rame
+:3                   cmp        #'f'                    ; render a 'f'rame
                      bne        :4
-                     jsr        DoFrame
+                     jsr        Render
                      bra        EvtLoop
 
-:4                   cmp        #'h'                 ; Show the 'h'eads up display
+:4                   cmp        #'h'                    ; Show the 'h'eads up display
                      bne        :5
                      jsr        DoHUP
                      bra        EvtLoop
 
-:5                   cmp        #'1'                 ; User selects a new screen size
+:5                   cmp        #'1'                    ; User selects a new screen size
                      bcc        :6
                      cmp        #'9'+1
                      bcs        :6
@@ -197,7 +191,7 @@ EvtLoop
                      jsr        DoTiles
                      brl        EvtLoop
 
-:7                   cmp        #$15                 ; left = $08, right = $15, up = $0B, down = $0A
+:7                   cmp        #$15                    ; left = $08, right = $15, up = $0B, down = $0A
                      bne        :8
                      lda        #1
                      jsr        MoveRight
@@ -244,14 +238,14 @@ Exit
                      lda        #NO_INTERRUPTS
                      bne        :no_interrupts
 
-                     pea        $0007                ; disable 1-second interrupts
+                     pea        $0007                   ; disable 1-second interrupts
                      _IntSource
 
-                     PushLong   #VBLTASK             ; Remove our heartbeat task
+                     PushLong   #VBLTASK                ; Remove our heartbeat task
                      _DelHeartBeat
 
                      pea        $0015
-                     PushLong   OldOneSecVec         ; Reset the interrupt vector
+                     PushLong   OldOneSecVec            ; Reset the interrupt vector
                      _SetVector
 :no_interrupts
 
@@ -260,7 +254,7 @@ Exit
                      _NTPShutDown
 :no_music
 
-                     PushWord   UserId               ; Deallocate all of our memory
+                     PushWord   UserId                  ; Deallocate all of our memory
                      _DisposeAll
 
                      _QuitGS    qtRec
@@ -270,8 +264,9 @@ Fatal                brk        $00
 
 ; Position the screen with the botom-left corner of the tilemap visible
 MovePlayerToOrigin
-                     lda        #0                   ; Set the player's position
+                     lda        #0                      ; Set the player's position
                      jsr        SetBG0XPos
+
                      lda        TileMapHeight
                      asl
                      asl
@@ -279,6 +274,7 @@ MovePlayerToOrigin
                      sec
                      sbc        ScreenHeight
                      jsr        SetBG0YPos
+
                      rts
 
 ClearBankLoad
@@ -321,7 +317,7 @@ SetScreenMode        cpx        #9
                      asl
                      tax
 
-                     lda        #320                 ; Calculate the screen offset
+                     lda        #320                    ; Calculate the screen offset
                      sec
                      sbc:       ]ScreenModeWidth,x
                      lsr
@@ -354,8 +350,8 @@ DoHUP
                      ldx        #{160-12*4}
                      ldy        #$7777
                      jsr        DrawString
-                     lda        OneSecondCounter     ; Number of elapsed seconds
-                     ldx        #{160-4*4}           ; Render the word 4 charaters from right edge
+                     lda        OneSecondCounter        ; Number of elapsed seconds
+                     ldx        #{160-4*4}              ; Render the word 4 charaters from right edge
                      jsr        DrawWord
 
                      lda        #TicksStr
@@ -376,7 +372,7 @@ DoTiles
 :column              equ        3
 :tile                equ        5
 
-                     pea        $0000                ; Allocate local variable space
+                     pea        $0000                   ; Allocate local variable space
                      pea        $0000
                      pea        $0000
 
@@ -410,16 +406,9 @@ DoTiles
                      cmp        #26
                      bcc        :rowloop
 
-                     pla                             ; restore the stack
+                     pla                                ; restore the stack
                      pla
                      pla
-                     rts
-
-; Set up the code field and render it
-DoFrame
-                     lda        #$FFFF
-                     sta        DirtyBits
-                     jsr        Render               ; Render the play field
                      rts
 
 ; Load a binary file in the BG1 buffer
@@ -450,7 +439,7 @@ DoLoadFG
                      ldx        #FGName
                      jsr        LoadFile
 
-                     ldx        BankLoad             ; Copy it into the code field
+                     ldx        BankLoad                ; Copy it into the code field
                      lda        #0
                      jsr        CopyBinToField
                      rts
@@ -458,10 +447,10 @@ DoLoadFG
 ; Load a simple picture format onto the SHR screen
 DoLoadPic
                      lda        BankLoad
-                     ldx        #ImageName           ; Load+Unpack Boot Picture
-                     jsr        LoadPicture          ; X=Name, A=Bank to use for loading
+                     ldx        #ImageName              ; Load+Unpack Boot Picture
+                     jsr        LoadPicture             ; X=Name, A=Bank to use for loading
 
-                     ldx        BankLoad             ; Copy it into the code field
+                     ldx        BankLoad                ; Copy it into the code field
                      lda        #0
                      jsr        CopyPicToField
                      rts
@@ -507,7 +496,7 @@ CopyBinToField
 
                      stz        :line_cnt
 :rloop
-                     lda        :line_cnt            ; get the pointer to the code field line
+                     lda        :line_cnt               ; get the pointer to the code field line
                      asl
                      tax
 
@@ -516,78 +505,78 @@ CopyBinToField
                      lda        BTableHigh,x
                      sta        :dstptr+2
 
-                     ldx        #162                 ; move backwards in the code field
-                     ldy        #0                   ; move forward in the image data
+                     ldx        #162                    ; move backwards in the code field
+                     ldy        #0                      ; move forward in the image data
 
-                     lda        #82                  ; keep a running column count
+                     lda        #82                     ; keep a running column count
                      sta        :col_cnt
 
 :cloop
                      phy
-                     lda        [:srcptr],y          ; load the picture data
+                     lda        [:srcptr],y             ; load the picture data
                      cmp        :mask_color
-                     beq        :transparent         ; a value of $0000 is transparent
+                     beq        :transparent            ; a value of $0000 is transparent
 
-                     jsr        :toMask              ; Infer a mask value for this. If it's $0000, then
+                     jsr        :toMask                 ; Infer a mask value for this. If it's $0000, then
                      cmp        #$0000
-                     bne        :mixed               ; the data is solid, otherwise mixed
+                     bne        :mixed                  ; the data is solid, otherwise mixed
 
 ; This is a solid word
 :solid
                      lda        [:srcptr],y
-                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
+                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
 
-                     pha                             ; Save the data
-                     lda        #$00F4               ; PEA instruction
+                     pha                                ; Save the data
+                     lda        #$00F4                  ; PEA instruction
                      sta        [:dstptr],y
                      iny
                      pla
-                     sta        [:dstptr],y          ; PEA operand
+                     sta        [:dstptr],y             ; PEA operand
                      bra        :next
 :transparent
-                     lda        :mask_color          ; Make sure we actually have to mask
+                     lda        :mask_color             ; Make sure we actually have to mask
                      cmp        #$A5A5
                      beq        :solid
 
-                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
-                     lda        #$B1                 ; LDA (dp),y
+                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
+                     lda        #$B1                    ; LDA (dp),y
                      sta        [:dstptr],y
                      iny
-                     lda        1,s                  ; load the saved Y-index
-                     ora        #$4800               ; put a PHA after the offset
+                     lda        1,s                     ; load the saved Y-index
+                     ora        #$4800                  ; put a PHA after the offset
                      sta        [:dstptr],y
                      bra        :next
 
 :mixed
-                     sta        :mask                ; Save the mask
-                     lda        [:srcptr],y          ; Refetch the screen data
+                     sta        :mask                   ; Save the mask
+                     lda        [:srcptr],y             ; Refetch the screen data
                      sta        :data
 
-                     ldy        Col2CodeOffset,x     ; Get the offset into the code field
-                     lda        #$4C                 ; JMP exception
+                     ldy        Col2CodeOffset,x        ; Get the offset into the code field
+                     lda        #$4C                    ; JMP exception
                      sta        [:dstptr],y
                      iny
 
-                     lda        JTableOffset,x       ; Get the address offset and add to the base address
+                     lda        JTableOffset,x          ; Get the address offset and add to the base address
                      clc
                      adc        :dstptr
                      sta        [:dstptr],y
 
-                     ldy        JTableOffset,x       ; This points to the code fragment
-                     lda        1,s                  ; load the offset
+                     ldy        JTableOffset,x          ; This points to the code fragment
+                     lda        1,s                     ; load the offset
                      xba
                      ora        #$00B1
-                     sta        [:dstptr],y          ; write the LDA (--),y instruction
+                     sta        [:dstptr],y             ; write the LDA (--),y instruction
                      iny
                      iny
-                     iny                             ; advance to the AND #imm operand
+                     iny                                ; advance to the AND #imm operand
                      lda        :mask
                      sta        [:dstptr],y
                      iny
                      iny
-                     iny                             ; advance to the ORA #imm operand
+                     iny                                ; advance to the ORA #imm operand
                      lda        :mask
-                     eor        #$FFFF               ; invert the mask to clear up the data
+                     eor        #$FFFF                  ; invert the mask to clear up the data
                      and        :data
                      sta        [:dstptr],y
 
@@ -616,10 +605,10 @@ CopyBinToField
 :exit
                      rts
 
-:toMask              pha                             ; save original
+:toMask              pha                                ; save original
 
                      lda        1,s
-                     eor        :mask_color          ; only identical bits produce zero
+                     eor        :mask_color             ; only identical bits produce zero
                      and        #$F000
                      beq        *+7
                      pea        #$0000
@@ -661,7 +650,7 @@ CopyBinToField
                      sta        1,s
                      pla
 
-                     sta        1,s                  ; pop the saved word
+                     sta        1,s                     ; pop the saved word
                      pla
                      rts
 
@@ -686,7 +675,7 @@ CopyPicToField
 
                      stz        :line_cnt
 :rloop
-                     lda        :line_cnt            ; get the pointer to the code field line
+                     lda        :line_cnt               ; get the pointer to the code field line
                      asl
                      tax
 
@@ -695,70 +684,70 @@ CopyPicToField
                      lda        BTableHigh,x
                      sta        :dstptr+2
 
-                     ldx        #162                 ; move backwards in the code field
-                     ldy        #0                   ; move forward in the image data
+                     ldx        #162                    ; move backwards in the code field
+                     ldy        #0                      ; move forward in the image data
 
-                     lda        #80                  ; keep a running column count
+                     lda        #80                     ; keep a running column count
 ;                     lda        #82                  ; keep a running column count
                      sta        :col_cnt
 
 :cloop
                      phy
-                     lda        [:srcptr],y          ; load the picture data
-                     beq        :transparent         ; a value of $0000 is transparent
+                     lda        [:srcptr],y             ; load the picture data
+                     beq        :transparent            ; a value of $0000 is transparent
 
-                     jsr        :toMask              ; Infer a mask value for this. If it's $0000, then
-                     bne        :mixed               ; the data is solid, otherwise mixed
+                     jsr        :toMask                 ; Infer a mask value for this. If it's $0000, then
+                     bne        :mixed                  ; the data is solid, otherwise mixed
 
 ; This is a solid word
                      lda        [:srcptr],y
-                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
+                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
 
-                     pha                             ; Save the data
-                     lda        #$00F4               ; PEA instruction
+                     pha                                ; Save the data
+                     lda        #$00F4                  ; PEA instruction
                      sta        [:dstptr],y
                      iny
                      pla
-                     sta        [:dstptr],y          ; PEA operand
+                     sta        [:dstptr],y             ; PEA operand
                      bra        :next
 :transparent
-                     ldy        Col2CodeOffset,x     ; Get the offset to the code from the line start
-                     lda        #$B1                 ; LDA (dp),y
+                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
+                     lda        #$B1                    ; LDA (dp),y
                      sta        [:dstptr],y
                      iny
-                     lda        1,s                  ; load the saved Y-index
-                     ora        #$4800               ; put a PHA after the offset
+                     lda        1,s                     ; load the saved Y-index
+                     ora        #$4800                  ; put a PHA after the offset
                      sta        [:dstptr],y
                      bra        :next
 
 :mixed
-                     sta        :mask                ; Save the mask
-                     lda        [:srcptr],y          ; Refetch the screen data
+                     sta        :mask                   ; Save the mask
+                     lda        [:srcptr],y             ; Refetch the screen data
                      sta        :data
 
-                     ldy        Col2CodeOffset,x     ; Get the offset into the code field
-                     lda        #$4C                 ; JMP exception
+                     ldy        Col2CodeOffset,x        ; Get the offset into the code field
+                     lda        #$4C                    ; JMP exception
                      sta        [:dstptr],y
                      iny
 
-                     lda        JTableOffset,x       ; Get the address offset and add to the base address
+                     lda        JTableOffset,x          ; Get the address offset and add to the base address
                      clc
                      adc        :dstptr
                      sta        [:dstptr],y
 
-                     ldy        JTableOffset,x       ; This points to the code fragment
-                     lda        1,s                  ; load the offset
+                     ldy        JTableOffset,x          ; This points to the code fragment
+                     lda        1,s                     ; load the offset
                      xba
                      ora        #$00B1
-                     sta        [:dstptr],y          ; write the LDA (--),y instruction
+                     sta        [:dstptr],y             ; write the LDA (--),y instruction
                      iny
                      iny
-                     iny                             ; advance to the AND #imm operand
+                     iny                                ; advance to the AND #imm operand
                      lda        :mask
                      sta        [:dstptr],y
                      iny
                      iny
-                     iny                             ; advance to the ORA #imm operand
+                     iny                                ; advance to the ORA #imm operand
                      lda        :data
                      sta        [:dstptr],y
 
@@ -828,9 +817,9 @@ CopyBinToBG1
 
                      sta        :srcptr
                      stx        :srcptr+2
-                     sty        :dstptr+2            ; Everything goes into this bank
+                     sty        :dstptr+2               ; Everything goes into this bank
 
-                                                     ; Advance over the header
+                                                        ; Advance over the header
                      lda        :srcptr
                      clc
                      adc        #8
@@ -838,14 +827,14 @@ CopyBinToBG1
 
                      stz        :line_cnt
 :rloop
-                     lda        :line_cnt            ; get the pointer to the code field line
+                     lda        :line_cnt               ; get the pointer to the code field line
                      asl
                      tax
 
                      lda        BG1YTable,x
                      sta        :dstptr
 
-                     ldy        #0                   ; move forward in the image data and image data
+                     ldy        #0                      ; move forward in the image data and image data
 :cloop
                      lda        [:srcptr],y
                      sta        [:dstptr],y
@@ -856,17 +845,17 @@ CopyBinToBG1
                      cpy        #164
                      bcc        :cloop
 
-                     lda        [:srcptr]            ; Duplicate the last byte in the extra space at the end of the line
+                     lda        [:srcptr]               ; Duplicate the last byte in the extra space at the end of the line
                      sta        [:dstptr],y
 
                      lda        :srcptr
                      clc
-                     adc        #164                 ; Each line is 328 pixels
+                     adc        #164                    ; Each line is 328 pixels
                      sta        :srcptr
 
                      inc        :line_cnt
                      lda        :line_cnt
-                     cmp        #208                 ; A total of 208 lines
+                     cmp        #208                    ; A total of 208 lines
                      bcc        :rloop
                      rts
 
@@ -898,7 +887,7 @@ OneSecHandler        mx         %11
                      sep        #$20
 
                      ldal       $E0C032
-                     and        #%10111111           ;clear IRQ source
+                     and        #%10111111              ;clear IRQ source
                      stal       $E0C032
 
                      pla
@@ -924,9 +913,13 @@ BlitInit
                      stz        ScreenTileHeight
                      stz        ScreenTileWidth
                      stz        StartX
+                     stz        OldStartX
                      stz        StartXMod164
+
                      stz        StartY
+                     stz        OldStartY
                      stz        StartYMod208
+
                      stz        EngineMode
                      stz        DirtyBits
                      stz        LastPatchOffset
@@ -1017,26 +1010,26 @@ GetBorderColor       lda        #0000
                      rts
 
 ; Set the border color to the accumulator value.
-SetBorderColor       sep        #$20                 ; ACC = $X_Y, REG = $W_Z
-                     eorl       BORDER_REG           ; ACC = $(X^Y)_(Y^Z)
-                     and        #$0F                 ; ACC = $0_(Y^Z)
-                     eorl       BORDER_REG           ; ACC = $W_(Y^Z^Z) = $W_Y
+SetBorderColor       sep        #$20                    ; ACC = $X_Y, REG = $W_Z
+                     eorl       BORDER_REG              ; ACC = $(X^Y)_(Y^Z)
+                     and        #$0F                    ; ACC = $0_(Y^Z)
+                     eorl       BORDER_REG              ; ACC = $W_(Y^Z^Z) = $W_Y
                      stal       BORDER_REG
                      rep        #$20
                      rts
 
 ; Clear to SHR screen to a specific color
-ClearToColor         ldx        #$7D00               ;start at top of pixel data! ($2000-9D00)
+ClearToColor         ldx        #$7D00                  ;start at top of pixel data! ($2000-9D00)
 :clearloop           dex
                      dex
-                     stal       SHR_SCREEN,x         ;screen location
-                     bne        :clearloop           ;loop until we've worked our way down to 0
+                     stal       SHR_SCREEN,x            ;screen location
+                     bne        :clearloop              ;loop until we've worked our way down to 0
                      rts
 
 ; Set a palette values
 ; A = palette number, X = palette address
 SetPalette
-                     and        #$000F               ; palette values are 0 - 15 and each palette is 32 bytes
+                     and        #$000F                  ; palette values are 0 - 15 and each palette is 32 bytes
                      asl
                      asl
                      asl
@@ -1054,7 +1047,7 @@ SetPalette
                      rts
 
 ; Initialize the SCB
-SetSCBs              ldx        #$0100               ;set all $100 scbs to A
+SetSCBs              ldx        #$0100                  ;set all $100 scbs to A
 :scbloop             dex
                      dex
                      stal       SHR_SCB,x
@@ -1093,21 +1086,21 @@ GetVBL               sep        #$20
                      ldal       VBL_HORZ_REG
                      asl
                      ldal       VBL_VERT_REG
-                     rol                             ; put V5 into carry bit, if needed. See TN #39 for details.
+                     rol                                ; put V5 into carry bit, if needed. See TN #39 for details.
                      rep        #$20
                      and        #$00FF
                      rts
 
 WaitForVBL           sep        #$20
-:wait1               ldal       VBL_STATE_REG        ; If we are already in VBL, then wait
+:wait1               ldal       VBL_STATE_REG           ; If we are already in VBL, then wait
                      bmi        :wait1
 :wait2               ldal       VBL_STATE_REG
-                     bpl        :wait2               ; spin until transition into VBL
+                     bpl        :wait2                  ; spin until transition into VBL
                      rep        #$20
                      rts
 
 WaitForKey           sep        #$20
-                     stal       KBD_STROBE_REG       ; clear the strobe
+                     stal       KBD_STROBE_REG          ; clear the strobe
 :WFK                 ldal       KBD_REG
                      bpl        :WFK
                      rep        #$20
@@ -1120,9 +1113,9 @@ ClearKeyboardStrobe  sep        #$20
                      rts
 
 ReadControl
-                     pea        $0000                ; low byte = key code, high byte = %------AB 
+                     pea        $0000                   ; low byte = key code, high byte = %------AB 
 
-                     ldal       OPTION_KEY_REG       ; 'B' button
+                     ldal       OPTION_KEY_REG          ; 'B' button
                      and        #$0080
                      beq        :BNotDown
 
@@ -1140,9 +1133,9 @@ ReadControl
                      sta        1,s
 
 :ANotDown
-                     ldal       KBD_STROBE_REG       ; read the keyboard
+                     ldal       KBD_STROBE_REG          ; read the keyboard
                      bit        #$0080
-                     beq        :KbdNotDwn           ; check the key-down status
+                     beq        :KbdNotDwn              ; check the key-down status
                      and        #$007f
                      ora        1,s
                      sta        1,s
@@ -1154,43 +1147,43 @@ ReadControl
 ; Graphics helpers
 
 LoadPicture
-                     jsr        LoadFile             ; X=Nom Image, A=Banc de chargement XX/00
+                     jsr        LoadFile                ; X=Nom Image, A=Banc de chargement XX/00
                      bcc        :loadOK
                      rts
 :loadOK
-                     jsr        UnpackPicture        ; A=Packed Size
+                     jsr        UnpackPicture           ; A=Packed Size
                      rts
 
 
-UnpackPicture        sta        UP_PackedSize        ; Size of Packed Data
-                     lda        #$8000               ; Size of output Data Buffer
+UnpackPicture        sta        UP_PackedSize           ; Size of Packed Data
+                     lda        #$8000                  ; Size of output Data Buffer
                      sta        UP_UnPackedSize
-                     lda        BankLoad             ; Banc de chargement / Decompression
-                     sta        UP_Packed+1          ; Packed Data
+                     lda        BankLoad                ; Banc de chargement / Decompression
+                     sta        UP_Packed+1             ; Packed Data
                      clc
                      adc        #$0080
-                     stz        UP_UnPacked          ; On remet a zero car modifie par l'appel
+                     stz        UP_UnPacked             ; On remet a zero car modifie par l'appel
                      stz        UP_UnPacked+2
-                     sta        UP_UnPacked+1        ; Unpacked Data buffer
+                     sta        UP_UnPacked+1           ; Unpacked Data buffer
 
-                     PushWord   #0                   ; Space for Result : Number of bytes unpacked 
-                     PushLong   UP_Packed            ; Pointer to buffer containing the packed data
-                     PushWord   UP_PackedSize        ; Size of the Packed Data
-                     PushLong   #UP_UnPacked         ; Pointer to Pointer to unpacked buffer
-                     PushLong   #UP_UnPackedSize     ; Pointer to a Word containing size of unpacked data
+                     PushWord   #0                      ; Space for Result : Number of bytes unpacked 
+                     PushLong   UP_Packed               ; Pointer to buffer containing the packed data
+                     PushWord   UP_PackedSize           ; Size of the Packed Data
+                     PushLong   #UP_UnPacked            ; Pointer to Pointer to unpacked buffer
+                     PushLong   #UP_UnPackedSize        ; Pointer to a Word containing size of unpacked data
                      _UnPackBytes
-                     pla                             ; Number of byte unpacked
+                     pla                                ; Number of byte unpacked
                      rts
 
-UP_Packed            hex        00000000             ; Address of Packed Data
-UP_PackedSize        hex        0000                 ; Size of Packed Data
-UP_UnPacked          hex        00000000             ; Address of Unpacked Data Buffer (modified)
-UP_UnPackedSize      hex        0000                 ; Size of Unpacked Data Buffer (modified)
+UP_Packed            hex        00000000                ; Address of Packed Data
+UP_PackedSize        hex        0000                    ; Size of Packed Data
+UP_UnPacked          hex        00000000                ; Address of Unpacked Data Buffer (modified)
+UP_UnPackedSize      hex        0000                    ; Size of Unpacked Data Buffer (modified)
 
 ; Basic I/O function to load files
 
 LoadFile
-                     stx        openRec+4            ; X=File, A=Bank (high word) assumed zero for low
+                     stx        openRec+4               ; X=File, A=Bank (high word) assumed zero for low
                      stz        readRec+4
                      sta        readRec+6
                      jsr        ClearBankLoad
@@ -1212,7 +1205,7 @@ LoadFile
 
 :closeFile           _CloseGS   closeRec
                      clc
-                     lda        eofRec+4             ; File Size
+                     lda        eofRec+4                ; File Size
                      rts
 
 :openReadErr         jsr        :closeFile
@@ -1247,22 +1240,22 @@ FGName               strl       '1/fg1.bin'
 MasterId             ds         2
 UserId               ds         2
 
-openRec              dw         2                    ; pCount
-                     ds         2                    ; refNum
-                     adrl       FGName               ; pathname
+openRec              dw         2                       ; pCount
+                     ds         2                       ; refNum
+                     adrl       FGName                  ; pathname
 
-eofRec               dw         2                    ; pCount
-                     ds         2                    ; refNum
-                     ds         4                    ; eof
+eofRec               dw         2                       ; pCount
+                     ds         2                       ; refNum
+                     ds         4                       ; eof
 
-readRec              dw         4                    ; pCount
-                     ds         2                    ; refNum
-                     ds         4                    ; dataBuffer
-                     ds         4                    ; requestCount
-                     ds         4                    ; transferCount
+readRec              dw         4                       ; pCount
+                     ds         2                       ; refNum
+                     ds         4                       ; dataBuffer
+                     ds         4                       ; requestCount
+                     ds         4                       ; transferCount
 
-closeRec             dw         1                    ; pCount
-                     ds         2                    ; refNum
+closeRec             dw         1                       ; pCount
+                     ds         2                       ; refNum
 
 qtRec                adrl       $0000
                      da         $00
@@ -1272,6 +1265,7 @@ qtRec                adrl       $0000
                      put        Actions.s
                      put        font.s
                      put        Render.s
+                     put        Overlay.s
                      put        blitter/Blitter.s
                      put        blitter/Horz.s
                      put        blitter/PEISlammer.s
@@ -1282,17 +1276,6 @@ qtRec                adrl       $0000
                      put        blitter/BG1.s
                      PUT        TileMap.s
                      PUT        Level.s
-
-
-
-
-
-
-
-
-
-
-
 
 
 

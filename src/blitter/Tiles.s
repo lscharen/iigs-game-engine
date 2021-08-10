@@ -42,6 +42,7 @@ CopyTile
                asl                     ; asl will clear the carry bit
                tax
                lda   Col2CodeOffset,x
+               clc
                adc   BTableLow,y
                tay
 
@@ -236,6 +237,12 @@ CopyTile
                sta   $7003,y
                rep   #$20
                rts
+
+
+
+
+
+
 
 
 

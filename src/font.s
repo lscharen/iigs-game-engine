@@ -37,6 +37,7 @@ DrawString
 NextChar       lda   ]F_CharIdx
                cmp   ]F_Length
                bne   :notDone
+               ldy   ]F_StrClr            ;restore the color pattern
                pld
                pla
                pla
@@ -636,6 +637,7 @@ s_Template     hex   00000000
                hex   00000000
                hex   00000000
                hex   00000000
+
 
 
 

@@ -43,11 +43,12 @@ Addr2ToString  xba
 ; A=Value
 ; X=Screen offset
 DrawWord       phx                  ; Save register value
+               phy
                ldy   #WordBuff+1
                jsr   WordToString
+               ply
                plx
                lda   #WordBuff
-               ldy   #$7777
                jsr   DrawString
                rts
 
@@ -101,6 +102,8 @@ DumpBanks
 
 WordBuff       str   '0000'
 Addr3Buff      str   '000000'       ; str adds leading length byte
+
+
 
 
 
