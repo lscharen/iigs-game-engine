@@ -314,7 +314,7 @@ _UpdateBG0TileMap
 
                    ldx   :BlkX
                    ldy   :BlkY
-                   jsr   RenderTile
+                   jsr   CopyTile
 
                    lda   :BlkX
                    inc
@@ -383,6 +383,7 @@ _UpdateBG0TileMap
                    bne   :loop
 
                    rts
+
 
 
 

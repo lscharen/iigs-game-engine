@@ -22,7 +22,7 @@ Col2CodeOffset    lup   82
                   --^
                   dw    CODE_TOP
 
-; A parallel table to Col2CodeOffset that hold the offset to the exception handler address for each column
+; A parallel table to Col2CodeOffset that holds the offset to the exception handler address for each column
 SNIPPET_SIZE      equ   32
 ]step             equ   0
 JTableOffset      lup   82
@@ -242,6 +242,7 @@ BG1YTable         lup   208
 BG1YOffsetTable   lup   26
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
                   --^
+
 
 
 

@@ -26,6 +26,16 @@
 ;          |     +----------- M : Apply tile mask
 ;          +----------------- Reserved
 ;
+; Each logical tile (corresponding to each Tile ID) actually takes up 128 bytes of memory in the
+; tile bank
+;
+; +0  : 32 bytes of tile data
+; +32 : 32 bytes of tile mask
+; +64 : 32 bytes of horizontally flipped tile data
+; +96 : 32 bytes of horizontally flipped tile mask
+;
+; It is simply too slow to try to horizontally reverse the pixel data on the fly.  This still allows
+; for up to 512 tiles to be stored in a single bank, which should be sufficient.
 
 TILE_ID_MASK    equ             $01FF
 TILE_MASK_BIT   equ             $1000
@@ -52,7 +62,8 @@ RenderTile
                 phx                                               ; Save the tile offset
 
                 tax
-                and             #TILE_ID_MASK                     ; Mask out the ID and save just tha
+                and             #TILE_ID_MASK                     ; Mask out the ID and save just that
+                _Mul128                                           ; multiplied by 128
                 pha
 
                 txa
@@ -120,12 +131,6 @@ FillPEAOpcode
 
 CopyTileMem
 CopyTileMem0
-                asl                                               ; Each tile takes up 64 bytes, 32 bytes for the
-                asl                                               ; 8x8 data and 32 bytes for the 8x8 mask.
-                asl
-                asl
-                asl
-                asl
                 tax
 
                 ldal            tiledata+0,x                      ; The low word goes in the *next* instruction
@@ -179,24 +184,16 @@ CopyTileMem0
 ; ]1 = address of tile data
 ; ]2 = address of tile mask
 ; ]3 = address of target in code field
-;
-; This is a relatively efficient way to handle the three different modes.  Focus on this and
-; then we will adjust the setup code...
-CopyTileMemM
+
 _X_REG          equ             tiletmp
 _Y_REG          equ             tiletmp+2
 _T_PTR          equ             tiletmp+4                         ; Copy of the tile address pointer
 _BASE_ADDR      equ             tiletmp+6                         ; Copy of BTableLow for this tile
 
+CopyTileMemM
+
                 stx             _X_REG                            ; Save these values as we will need to reload them
                 sty             _Y_REG                            ; at certain points
-
-                asl                                               ; Each tile takes up 64 bytes, 32 bytes for the
-                asl                                               ; 8x8 data and 32 bytes for the 8x8 mask.
-                asl
-                asl
-                asl
-                asl
                 sta             _T_PTR
                 tax
 
@@ -216,6 +213,32 @@ _BASE_ADDR      equ             tiletmp+6                         ; Copy of BTab
                 CopyMaskedWord  tiledata+28;tiledata+32+26;$6000
                 CopyMaskedWord  tiledata+30;tiledata+32+28;$7003
                 CopyMaskedWord  tiledata+32;tiledata+32+30;$7000
+
+                rts
+
+CopyTileMemMV
+
+                stx             _X_REG                            ; Save these values as we will need to reload them
+                sty             _Y_REG                            ; at certain points
+                sta             _T_PTR
+                tax
+
+                CopyMaskedWord  tiledata+0;tiledata+32+0;$7003
+                CopyMaskedWord  tiledata+2;tiledata+32+2;$7000
+                CopyMaskedWord  tiledata+4;tiledata+32+4;$6003
+                CopyMaskedWord  tiledata+6;tiledata+32+6;$6000
+                CopyMaskedWord  tiledata+8;tiledata+32+8;$5003
+                CopyMaskedWord  tiledata+10;tiledata+32+10;$5000
+                CopyMaskedWord  tiledata+12;tiledata+32+12;$4003
+                CopyMaskedWord  tiledata+14;tiledata+32+14;$4000
+                CopyMaskedWord  tiledata+16;tiledata+32+16;$3003
+                CopyMaskedWord  tiledata+18;tiledata+32+18;$3000
+                CopyMaskedWord  tiledata+20;tiledata+32+20;$2003
+                CopyMaskedWord  tiledata+22;tiledata+32+22;$2000
+                CopyMaskedWord  tiledata+24;tiledata+32+24;$1003
+                CopyMaskedWord  tiledata+28;tiledata+32+26;$1000
+                CopyMaskedWord  tiledata+30;tiledata+32+28;$0003
+                CopyMaskedWord  tiledata+32;tiledata+32+30;$0000
 
                 rts
 
@@ -269,12 +292,6 @@ ClearTile       sep             #$20
 
 ; Copy a tile, but vertically flip the data
 CopyTileMemV
-                asl                                               ; Each tile takes up 64 bytes, 32 bytes for the
-                asl                                               ; 8x8 data and 32 bytes for the 8x8 mask.
-                asl
-                asl
-                asl
-                asl
                 tax
 
                 ldal            tiledata+0,x                      ; The low word goes in the *next* instruction
@@ -368,10 +385,11 @@ solid
                 pla
                 rts
 
-; Not implemented yet, fallback to regular tile rendering
 solid_hflip
                 plx
                 pla
+                clc
+                adc             #64                               ; Advance to the flipped version
                 brl             CopyTileMem
 
 solid_vflip
@@ -379,10 +397,11 @@ solid_vflip
                 pla
                 brl             CopyTileMemV
 
-; Not implemented, fallback to just vertical flips
 solid_hvflip
                 plx
                 pla
+                clc
+                adc             #64                               ; Advance to the flipped version
                 brl             CopyTileMemV
 
 masked
@@ -391,16 +410,34 @@ masked
                 brl             CopyTileMemM
 
 masked_hflip
+                plx
+                pla
+                clc
+                adc             #64                               ; Advance to the flipped version
+                brl             CopyTileMemM
+
 masked_vflip
+                plx
+                pla
+                brl             CopyTileMemMV
+
 masked_hvflip
+                plx
+                pla
+                clc
+                adc             #64                               ; Advance to the flipped version
+                brl             CopyTileMemMV
+
 dynamic
 dyn_masked
+                plx
+                pla
                 rts
 ; CopyTile
 ;
 ; A low-level function that copies 8x8 tiles directly into the code field space.
 ;
-; A = Tile ID (0 - 1023)
+; A = Tile ID (0 - 511)
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
 CopyTile
@@ -429,18 +466,51 @@ CopyTile
                 asl                                               ; there are two columns per tile, so multiple by 4
                 asl                                               ; asl will clear the carry bit
                 tax
-                lda             Col2CodeOffset,x
+                lda             BTableLow,y
+                sta             _BASE_ADDR                        ; Used in masked tile renderer
                 clc
-                adc             BTableLow,y
+                adc             Col2CodeOffset,x
                 tay
+
+; Optimization note: We could make a Tile2CodeOffset table that is pre-reversed, which should simplify
+; the code starting after the 'rep #$20' to just be this.  Saves around 16 cycles / tile...
+;
+; There would need to be a similar modification made to the JTable as well.
+;
+;               txa
+;               asl
+;               tax
+;               lda             BTableLow,y
+;               sta             _BASE_ADDR                        ; Used in masked tile renderer
+;               adc             Col2CodeOffset,x
 
                 plb                                               ; set the bank
                 pla                                               ; pop the tile ID
-                jsr             CopyTileMem0
+                jsr             RenderTile
 
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

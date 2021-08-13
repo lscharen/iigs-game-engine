@@ -15,6 +15,22 @@ _Deref          MAC
                 plb                   ; restore the caller's data bank register    
                 <<<
 
+_Mul128         mac
+                asl
+                asl
+                asl
+                asl
+                asl
+                asl
+                asl
+                <<<
+;                xba                   ; Naive is 7 ASL instructions = 14 cycles
+;                lsr                   ; By using XBA, we can save a couple cycles
+;                bcc   *+5
+;                ora   #$8000
+;                and   #$007F
+
+
 _Mul4096        mac
                 xba
                 asl
@@ -162,6 +178,8 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
+
+
 
 
 

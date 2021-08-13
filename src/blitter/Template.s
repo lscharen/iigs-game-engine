@@ -595,14 +595,29 @@ epilogue_1         tsc
 ;  start     lda  (00),y        ; 6
 ;            and  #MASK         ; 3
 ;            ora  #DATA         ; 3 = 12 cycles to load the data
-;            pha                ; 4
 ;            bcs  alt_exit      ; 2/3
-;  out       jmp  next          ; 3 Fast-path completes in 5 additional cycles
+;            pha                ; 4
+;  out       brl  next          ; 4 Fast-path completes in 5 additional cycles
+;
+;  alt_exit  bvs  r_edge        ; 2/3 
+;            clc                ; 2
+;            brl  l_jmp_rtn     ; 3
+;  r_edge    rep   #$41
+;            brl  r_jmp_rtn     ; 3
+;
+;
+; For dynamic masked tiles, we re-write bytes 2 - 8 as this, which mostly
+; avoids an execution speed pentaly for having to fill in the two extra bytes
+; with an instruction
+;
+;  start     lda  (00),y        ; 6
+;            and  $80,x         ; 5
+;            ora  $00,x         ; 5 = 16 cycles to load the data
+;            bcc  *+4           ; 
+;            bcs  alt_exit      ; 2/3
+;            pha
+;            ...
 
-;  alt_exit  clc                ; 2
-;            bvs  r_edge        ; 2/3 Need to switch if doing the left edge
-;            jmp  exit_rtn      ; 3
-;  r_edge    jmp  entry_rtn     ; 3
 
                    ds    \,$00                         ; pad to the next page boundary
 ]index             equ   0
@@ -622,6 +637,13 @@ snippets           lup   82
 ]index             equ   ]index+1
                    --^
 top
+
+
+
+
+
+
+
 
 
 
