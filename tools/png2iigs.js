@@ -165,18 +165,28 @@ async function main(argv) {
     }
 }
 
+function reverse(str) {
+    return [...str].reverse().join(''); // use [...str] instead of split as it is unicode-aware.
+}
+
 function writeToTileDataSource(buff, width) {
     console.log('tiledata    ENT');
+    console.log();
+    console.log('; Reserved space (tile 0 is special...');
+    console.log('            ds 128');
+
+    const MAX_TILES = 64;
 
     let count = 0;
     for (let y = 0; ; y += 8) {
         for (let x = 0; x < width; x += 4, count += 1) {
-            if (count >= 256) {
+            if (count >= MAX_TILES) {
                 return;
             }
-            console.log('; Tile ID ' + count);
+            console.log('; Tile ID ' + (count + 1));
             console.log('; From image coordinates ' + (x * 2) + ', ' + y);
 
+            // Output the tile data
             const offset = y * width + x;
             for (dy = 0; dy < 8; dy += 1) {
                 const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
@@ -186,6 +196,37 @@ function writeToTileDataSource(buff, width) {
                 console.log('            hex   ' + hex0 + hex1 + hex2 + hex3);
             }
             console.log();
+
+            // Output the tile mask
+            for (dy = 0; dy < 8; dy += 1) {
+                //const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
+                //const hex1 = buff[offset + dy * width + 1].toString(16).padStart(2, '0');
+                //const hex2 = buff[offset + dy * width + 2].toString(16).padStart(2, '0');
+                //const hex3 = buff[offset + dy * width + 3].toString(16).padStart(2, '0');
+                console.log('            hex   00000000');
+            }
+            console.log();
+
+            // Output the flipped tile data
+            for (dy = 0; dy < 8; dy += 1) {
+                const hex0 = reverse(buff[offset + dy * width + 0].toString(16).padStart(2, '0'));
+                const hex1 = reverse(buff[offset + dy * width + 1].toString(16).padStart(2, '0'));
+                const hex2 = reverse(buff[offset + dy * width + 2].toString(16).padStart(2, '0'));
+                const hex3 = reverse(buff[offset + dy * width + 3].toString(16).padStart(2, '0'));
+                console.log('            hex   ' + hex3 + hex2 + hex1 + hex0);
+            }
+            console.log();
+
+            // Output the flipped tile mask
+            for (dy = 0; dy < 8; dy += 1) {
+                //const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
+                //const hex1 = buff[offset + dy * width + 1].toString(16).padStart(2, '0');
+                //const hex2 = buff[offset + dy * width + 2].toString(16).padStart(2, '0');
+                //const hex3 = buff[offset + dy * width + 3].toString(16).padStart(2, '0');
+                console.log('            hex   00000000');
+            }
+            console.log();
+
         }
     }
 }

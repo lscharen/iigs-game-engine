@@ -57,8 +57,26 @@ async function main(argv) {
     emitHeader();
     emitBG0Layer(tileLayers[0]);
     if (tileLayers.length > 1) {
-        emigBG1Layer(tileLayers[1]);
+        emitBG1Layer(tileLayers[1]);
     }
+}
+
+function emitBG1Layer(layer) {
+    const label = layer.name.split(' ').join('_');
+    const initCode = `
+BG1SetUp
+        lda #${layer.width}
+        sta BG1TileMapWidth
+        lda #${layer.height}
+        sta BG1TileMapHeight
+        lda #${label}
+        sta BG1TileMapPtr
+        lda #^${label}
+        sta BG1TileMapPtr+2
+        rts
+    `;
+    console.log(initCode);
+    console.log(`${label}`);
 }
 
 function emitBG0Layer(layer) {
@@ -85,8 +103,9 @@ BG0SetUp
     for (let i = 0; i < tileIDs.length; i += N) {
         chunks.push(tileIDs.slice(i, i + N))
     }
-    // Tiled starts numbering its tiles at 1, swtich to a more sane approach... :)
+    // Tiled starts numbering its tiles at 1. This is OK since Tile 0 is reserved in
+    // GTE, also
     for (const chunk of chunks) {
-        console.log('        dw ' + chunk.map(t => t - 1).join(','));
+        console.log('        dw ' + chunk.join(','));
     }
 }

@@ -86,6 +86,7 @@ RenderTile
 ; Y = Base Adddress in the code field
 
 _CopyTile       cmp             #$0000                            ; Fast-path the special zero tile
+                _Mul128                                           ; Take care of getting the right tile address
                 bne             CopyTileMem
 
 FillWord0
@@ -491,6 +492,9 @@ CopyTile
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
+
+
+
 
 
 
