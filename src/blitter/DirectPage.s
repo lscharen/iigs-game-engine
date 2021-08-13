@@ -55,6 +55,7 @@ Next                   equ   78
 
 BankLoad               equ   128
 
+tiletmp                equ   186         ; 8 bytes of temp storage for the tile renderers
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space
 
 tmp8                   equ   224
@@ -81,4 +82,5 @@ DIRTY_BIT_BG1_X        equ   $0004
 DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
+
 
