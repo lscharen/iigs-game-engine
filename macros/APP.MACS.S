@@ -24,20 +24,10 @@ _Mul128         mac
                 asl
                 asl
                 <<<
-;                xba                   ; Naive is 7 ASL instructions = 14 cycles
-;                lsr                   ; By using XBA, we can save a couple cycles
-;                bcc   *+5
-;                ora   #$8000
-;                and   #$007F
-
-
-_Mul4096        mac
-                xba
-                asl
-                asl
-                asl
-                asl
-                <<<
+; Possible optimization (assumes accumulator is <512). 8 cycles/5 bytes vs 14 cycles/7 bytes
+;                cmp  #$0100
+;                xba
+;                ror
 
 _Div16          mac
                 lsr
@@ -178,6 +168,10 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
+
+
+
+
 
 
 

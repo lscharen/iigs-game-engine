@@ -51,7 +51,11 @@ TileMapWidth           equ   70
 TileMapHeight          equ   72
 TileMapPtr             equ   74
 
-Next                   equ   78
+BG1TileMapWidth        equ   78
+BG1TileMapHeight       equ   80
+BG1TileMapPtr          equ   82
+
+Next                   equ   86
 
 BankLoad               equ   128
 
@@ -82,5 +86,6 @@ DIRTY_BIT_BG1_X        equ   $0004
 DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
+
 
 

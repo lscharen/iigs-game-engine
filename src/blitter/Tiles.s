@@ -334,10 +334,10 @@ CopyTileMemV
 ; LDA 00,x / PHA where the operand is fixed when the tile is rendered
 ; $B5 $00 $48
 ;
-; A = dynamic tile id (must be an 8-bit value)
+; A = dynamic tile id (must be <32)
 
-DynTile
-                and             #$00FF
+DynamicTile
+                and             #$007F                            ; clamp to < (32 * 4)
                 ora             #$4800
                 sta:            $0004,y
                 sta             $1004,y
@@ -379,6 +379,104 @@ DynTile
                 rep             #$20
                 rts
 
+; Helper function to copy tile data to the appropriate location in Bank 0
+;  X = address of tile
+;  Y = tile address in bank 0
+CopyTileDToDyn
+                phb
+                pea             $0000
+                plb
+                plb
+
+                ldal            tiledata+0,x
+                sta:            $0000,y
+                ldal            tiledata+2,x
+                sta:            $0002,y
+                ldal            tiledata+4,x
+                sta             $0100,y
+                ldal            tiledata+6,x
+                sta             $0102,y
+                ldal            tiledata+8,x
+                sta             $0200,y
+                ldal            tiledata+10,x
+                sta             $0202,y
+                ldal            tiledata+12,x
+                sta             $0300,y
+                ldal            tiledata+14,x
+                sta             $0302,y
+                ldal            tiledata+16,x
+                sta             $0400,y
+                ldal            tiledata+18,x
+                sta             $0402,y
+                ldal            tiledata+20,x
+                sta             $0500,y
+                ldal            tiledata+22,x
+                sta             $0502,y
+                ldal            tiledata+24,x
+                sta             $0600,y
+                ldal            tiledata+26,x
+                sta             $0602,y
+                ldal            tiledata+28,x
+                sta             $0700,y
+                ldal            tiledata+30,x
+                sta             $0702,y
+
+                plb
+                rts
+
+; Helper function to copy tile mask to the appropriate location in Bank 0
+;
+;  X = address of tile
+;  Y = tile address in bank 0
+;
+; Argument are the same as CopyTileDToDyn, the code takes care of adjust offsets.
+; This make is possible to call the two functions back-to-back
+;
+;   ldx tileAddr
+;   ldy dynTileAddr
+;   jsr CopyTileDToDyn
+;   jsr CopyTileMToDyn
+CopyTileMToDyn
+                phb
+                pea             $0000
+                plb
+                plb
+
+                ldal            tiledata+32+0,x
+                sta:            $0080,y
+                ldal            tiledata+32+2,x
+                sta:            $0082,y
+                ldal            tiledata+32+4,x
+                sta             $0180,y
+                ldal            tiledata+32+6,x
+                sta             $0182,y
+                ldal            tiledata+32+8,x
+                sta             $0280,y
+                ldal            tiledata+32+10,x
+                sta             $0282,y
+                ldal            tiledata+32+12,x
+                sta             $0380,y
+                ldal            tiledata+32+14,x
+                sta             $0382,y
+                ldal            tiledata+32+16,x
+                sta             $0480,y
+                ldal            tiledata+32+18,x
+                sta             $0482,y
+                ldal            tiledata+32+20,x
+                sta             $0580,y
+                ldal            tiledata+32+22,x
+                sta             $0582,y
+                ldal            tiledata+32+24,x
+                sta             $0680,y
+                ldal            tiledata+32+26,x
+                sta             $0682,y
+                ldal            tiledata+32+28,x
+                sta             $0780,y
+                ldal            tiledata+32+30,x
+                sta             $0782,y
+
+                plb
+                rts
 
 ; This should never be called, because empty control value should be fast-pathed
 solid
@@ -430,6 +528,13 @@ masked_hvflip
                 brl             CopyTileMemMV
 
 dynamic
+                plx
+                pla
+                asl
+                asl
+                xba                                               ; Undo the x128 we just need x2
+                brl             DynamicTile
+
 dyn_masked
                 plx
                 pla
@@ -492,6 +597,23 @@ CopyTile
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

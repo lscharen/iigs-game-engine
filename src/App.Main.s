@@ -1275,7 +1275,9 @@ qtRec                adrl       $0000
                      put        blitter/Vert.s
                      put        blitter/BG1.s
                      PUT        TileMap.s
-                     PUT        Level.s
+                     PUT        App.TileMapBG0.s
+                     PUT        App.TileMapBG1.s
+
 
 
 
