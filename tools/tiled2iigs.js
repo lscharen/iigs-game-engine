@@ -219,7 +219,7 @@ function emitLayerData(sb, layer) {
     const chunks = [];
     const tileIDs = layer.data;
     for (let i = 0; i < tileIDs.length; i += N) {
-        chunks.push(tileIDs.slice(i, i + N))
+        chunks.push(tileIDs.slice(i, i + N).map(t => convertTileID(t)))
     }
     // Tiled starts numbering its tiles at 1. This is OK since Tile 0 is reserved in
     // GTE, also
@@ -228,4 +228,29 @@ function emitLayerData(sb, layer) {
     }
 
     return sb;
+}
+
+/**
+ * Map the bit flags used in Tiled to compatible values in GTE
+ */
+function convertTileID(tileId) {
+    const GTE_VFLIP_BIT = 0x0400;
+    const GTE_HFLIP_BIT = 0x0200;
+    const TILED_VFLIP_BIT = 0x40000000;
+    const TILED_HFLIP_BIT = 0x80000000;
+    const TILED_DFLIP_BIT = 0x20000000;
+
+    // We don't support the flipped diagonally flag or tile values greater than 511
+    if ((tileId & TILED_DFLIP_BIT) !== 0) {
+        throw new Error('Diagonally flipped bits are not supported: tileId =  ' + tileId.toString(16));
+    }
+
+    const hflip = (tileId & TILED_HFLIP_BIT) !== 0;
+    const vflip = (tileId & TILED_VFLIP_BIT) !== 0;
+
+    if ((tileId & 0x1FFFFFFF) > 511) {
+        throw new Error('A maximum of 511 tiles are supported');
+    }
+
+    return (tileId & 0x1FFFFFFF) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
 }
