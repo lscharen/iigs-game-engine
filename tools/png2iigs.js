@@ -2,6 +2,7 @@ const fs = require('fs').promises;
 const PNG = require("pngjs").PNG;
 const process = require('process');
 const { Buffer } = require('buffer');
+const StringBuilder  = require('string-builder');
 
 // Starting color index
 let startIndex = 0;
@@ -17,7 +18,7 @@ main(process.argv.slice(2)).then(
 
 function findColorIndex(png, pixel) {
     for (let i = 0; i < png.palette.length; i += 1) {
-        const color = png.palette[i];
+        const color = png.palette[i].slice(0, pixel.length); // Handle RGB or RGBA
         if (color.every((c, idx) => c === pixel[idx])) {
             return i + startIndex;
         }
@@ -104,69 +105,244 @@ function getArg(argv, arg, fn, defaultValue) {
             if (fn) {
                 return fn(argv[i+1]);
             }
-            return true;   // REturn true if the argument was found
+            return true;   // Return true if the argument was found
         }
     }
     return defaultValue;
 }
 
-async function main(argv) {
-    const data = await fs.readFile(argv[0]);
+async function readPNG(filename) {
+    const data = await fs.readFile(filename);
     const png = PNG.sync.read(data);
-    startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
-    asTileData = getArg(argv, '--as-tile-data', null, 0);
-
-    transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), 0);
-
-    console.info(`; startIndex = ${startIndex}`);
 
     if (png.colorType !== 3) {
-        console.warn('; PNG must be in palette color type');
-        return;
+        throw new Error('PNG must be in palette color type');
     }
 
     if (png.palette.length > 16) {
-        console.warn('; Too many colors.  Must be 16 or less');
-        return;
+        throw new Error(`Too many colors.  Must be 16 or less. Found ${png.palette.length}`);
     }
 
-    // Dump the palette in IIgs hex format
-    console.log('; Palette:');
-    const hexCodes = png.palette.map(c => '$' + paletteToIIgs(c));
-    console.log(';', hexCodes.join(','));
+    return png;
+}
 
-    // Just convert a paletted PNG to IIgs memory format.  We make sute that only a few widths
-    // are supported
-    let buff = null;
+async function main(argv) {
+    try {
+        const png = await readPNG(argv[0]);
+        
+        startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
+        asTileData = getArg(argv, '--as-tile-data', null, 0);
 
-    if (png.width === 512) {
-        console.log('; Converting to BG1 format...');
-        buff = pngToIIgsBuff(png);
-    }
+        transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), 0);
 
-    if (png.width === 256) {
-        console.log('; Converting to BG1 format w/repeat...');
-        buff = pngToIIgsBuffRepeat(png);
-    }
+        console.info(`; startIndex = ${startIndex}`);
 
-    if (png.width === 328 || png.width == 320) {
-        console.log('; Converting to BG0 format...');
-        buff = pngToIIgsBuff(png);
-    }
-
-    if (buff && argv[1]) {
-        if (asTileData) {
-            writeToTileDataSource(buff, png.width / 2);
+        if (png.colorType !== 3) {
+            console.warn('; PNG must be in palette color type');
+            return;
         }
-        else {
-            console.log(`; Writing to output file ${argv[1]}`);
-            await writeBinayOutput(argv[1], buff);
+
+        if (png.palette.length > 16) {
+            console.warn('; Too many colors.  Must be 16 or less');
+            return;
         }
+
+        // Dump the palette in IIgs hex format
+        console.log('; Palette:');
+        const hexCodes = png.palette.map(c => '$' + paletteToIIgs(c));
+        console.log(';', hexCodes.join(','));
+
+        // Just convert a paletted PNG to IIgs memory format.  We make sure that only a few widths
+        // are supported
+        let buff = null;
+
+        if (png.width === 512) {
+            console.log('; Converting to BG1 format...');
+            buff = pngToIIgsBuff(png);
+        }
+
+        if (png.width === 256) {
+            console.log('; Converting to BG1 format w/repeat...');
+            buff = pngToIIgsBuffRepeat(png);
+        }
+
+        if (png.width === 328 || png.width == 320) {
+            console.log('; Converting to BG0 format...');
+            buff = pngToIIgsBuff(png);
+        }
+
+        if (buff && argv[1]) {
+            if (asTileData) {
+                writeToTileDataSource(buff, png.width / 2);
+            }
+            else {
+                console.log(`; Writing to output file ${argv[1]}`);
+                await writeBinayOutput(argv[1], buff);
+            }
+        }
+    } catch (e) {
+        console.log(`; ${e}`);
+        process.exit(1);
     }
 }
 
 function reverse(str) {
     return [...str].reverse().join(''); // use [...str] instead of split as it is unicode-aware.
+}
+
+function toHex(h) {
+    return h.toString(16).padStart(2, '0');
+}
+
+function swap(hex) {
+    const high = hex & 0xF0;
+    const low = hex & 0x0F;
+
+    return (high >> 4) | (low << 4);
+}
+
+function toMask(hex, transparentIndex) {
+    if (transparentIndex === -1) {
+        return 0;
+    }
+
+    const indexHigh = (transparentIndex & 0xF) << 4;
+    const indexLow = (transparentIndex & 0xF);
+    let mask = 0;
+    if ((hex & 0xF0) === indexHigh) {
+        mask = mask | 0xF0;
+    }
+    if ((hex & 0x0F) === indexLow) {
+        mask = mask | 0x0F;
+    }
+    return mask;
+}
+
+/**
+ * Return all four 32 byte chunks of data for a single 8x8 tile
+ */
+function buildTile(buff, width, x, y, transparentIndex = -1) {
+    const tile = {
+        normal: {
+            data: [],
+            mask: []
+        },
+        flipped: {
+            data: [],
+            mask: []
+        }
+    };
+
+    const offset = y * width + x;
+    for (dy = 0; dy < 8; dy += 1) {
+        const hex0 = buff[offset + dy * width + 0];
+        const hex1 = buff[offset + dy * width + 1];
+        const hex2 = buff[offset + dy * width + 2];
+        const hex3 = buff[offset + dy * width + 3];
+
+        const data = [hex0, hex1, hex2, hex3];
+        const mask = data.map(h => toMask(h, transparentIndex));
+
+        tile.normal.data.push(data);
+        tile.normal.mask.push(mask);
+    }
+
+    for (dy = 0; dy < 8; dy += 1) {
+        const hex0 = swap(buff[offset + dy * width + 0]);
+        const hex1 = swap(buff[offset + dy * width + 1]);
+        const hex2 = swap(buff[offset + dy * width + 2]);
+        const hex3 = swap(buff[offset + dy * width + 3]);
+
+        const data = [hex3, hex2, hex1, hex0];
+        const mask = data.map(h => toMask(h, transparentIndex));
+
+        tile.flipped.data.push(data);
+        tile.flipped.mask.push(mask);
+    }
+
+    return tile;
+}
+
+function buildTiles(buff, width, transparentIndex = -1) {
+    const tiles = [];
+
+    const MAX_TILES = 64;
+
+    let count = 0;
+    for (let y = 0; ; y += 8) {
+        for (let x = 0; x < width; x += 4, count += 1) {
+            if (count >= MAX_TILES) {
+                return tiles;
+            }
+            const tile = buildTile(buff, width, x, y, transparentIndex);
+            tiles.push(tile);
+        }
+    }
+}
+
+function writeTileToStream(stream, data) {
+    // Output the tile data
+    for (const row of data) {
+        const hex = row.map(d => toHex(d)).join('');
+        stream.write('            hex   ' + hex + '\n');
+    }
+}
+
+function writeTilesToStream(stream, tiles, label='tiledata') {
+    stream.write(`${label}    ENT\n`);
+    stream.write('');
+    stream.write('; Reserved space (tile 0 is special...)\n');
+    stream.write('            ds 128\n');
+
+    const MAX_TILES = 511;
+    let count = 0;
+    for (const tile of tiles.slice(0, MAX_TILES)) {
+        console.log(`Writing tile ${count + 1}`);
+        stream.write(`; Tile ID ${count + 1}\n`);
+        writeTileToStream(stream, tile.normal.data);
+        writeTileToStream(stream, tile.normal.mask);
+        writeTileToStream(stream, tile.flipped.data);
+        writeTileToStream(stream, tile.flipped.mask);
+        stream.write('');
+
+        count += 1;
+    }
+}
+
+function buildMerlinCodeForTile(data) {
+    const sb = new StringBuilder();
+
+    // Output the tile data
+    for (const row of data) {
+        const hex = row.map(d => toHex(d)).join('');
+        sb.appendLine('            hex   ' + hex);
+    }
+
+    return sb.toString();
+}
+
+function buildMerlinCodeForTiles(tiles, label='tiledata') {
+    const sb = new StringBuilder();
+    sb.appendLine(`${label}    ENT`);
+    sb.appendLine();
+    sb.appendLine('; Reserved space (tile 0 is special...)');
+    sb.appendLine('            ds 128');
+
+    const MAX_TILES = 511;
+    let count = 0;
+    for (const tile of tiles.slice(0, MAX_TILES)) {
+        console.log(`Writing tile ${count + 1}`);
+        sb.appendLine(`; Tile ID ${count + 1}`);
+        sb.append(buildMerlinCodeForTile(tile.normal.data));
+        sb.append(buildMerlinCodeForTile(tile.normal.mask));
+        sb.append(buildMerlinCodeForTile(tile.flipped.data));
+        sb.append(buildMerlinCodeForTile(tile.flipped.mask));
+        sb.appendLine();
+
+        count += 1;
+    }
+
+    return sb.toString();
 }
 
 function writeToTileDataSource(buff, width) {
@@ -186,47 +362,35 @@ function writeToTileDataSource(buff, width) {
             console.log('; Tile ID ' + (count + 1));
             console.log('; From image coordinates ' + (x * 2) + ', ' + y);
 
+            const tile = buildTile(buff, width, x, y, transparentIndex);
+
             // Output the tile data
-            const offset = y * width + x;
-            for (dy = 0; dy < 8; dy += 1) {
-                const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
-                const hex1 = buff[offset + dy * width + 1].toString(16).padStart(2, '0');
-                const hex2 = buff[offset + dy * width + 2].toString(16).padStart(2, '0');
-                const hex3 = buff[offset + dy * width + 3].toString(16).padStart(2, '0');
-                console.log('            hex   ' + hex0 + hex1 + hex2 + hex3);
+            for (const row of tile.normal.data) {
+                const hex = row.map(d => toHex(d)).join('');
+                console.log('            hex   ' + hex);
             }
             console.log();
 
             // Output the tile mask
-            for (dy = 0; dy < 8; dy += 1) {
-                //const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
-                //const hex1 = buff[offset + dy * width + 1].toString(16).padStart(2, '0');
-                //const hex2 = buff[offset + dy * width + 2].toString(16).padStart(2, '0');
-                //const hex3 = buff[offset + dy * width + 3].toString(16).padStart(2, '0');
-                console.log('            hex   00000000');
+            for (const row of tile.normal.mask) {
+                const hex = row.map(d => toHex(d)).join('');
+                console.log('            hex   ' + hex);
             }
             console.log();
 
             // Output the flipped tile data
-            for (dy = 0; dy < 8; dy += 1) {
-                const hex0 = reverse(buff[offset + dy * width + 0].toString(16).padStart(2, '0'));
-                const hex1 = reverse(buff[offset + dy * width + 1].toString(16).padStart(2, '0'));
-                const hex2 = reverse(buff[offset + dy * width + 2].toString(16).padStart(2, '0'));
-                const hex3 = reverse(buff[offset + dy * width + 3].toString(16).padStart(2, '0'));
-                console.log('            hex   ' + hex3 + hex2 + hex1 + hex0);
+            for (const row of tile.flipped.data) {
+                const hex = row.map(d => toHex(d)).join('');
+                console.log('            hex   ' + hex);
             }
             console.log();
 
-            // Output the flipped tile mask
-            for (dy = 0; dy < 8; dy += 1) {
-                //const hex0 = buff[offset + dy * width + 0].toString(16).padStart(2, '0');
-                //const hex1 = buff[offset + dy * width + 1].toString(16).padStart(2, '0');
-                //const hex2 = buff[offset + dy * width + 2].toString(16).padStart(2, '0');
-                //const hex3 = buff[offset + dy * width + 3].toString(16).padStart(2, '0');
-                console.log('            hex   00000000');
+            // Output the flipped tile data
+            for (const row of tile.flipped.mask) {
+                const hex = row.map(d => toHex(d)).join('');
+                console.log('            hex   ' + hex);
             }
             console.log();
-
         }
     }
 }
@@ -249,3 +413,17 @@ async function writeBinayOutput(filename, buff) {
     await fs.writeFile(filename, Buffer.concat([header, buff]));
 }
 
+module.exports = {
+    buildTile,
+    buildTiles,
+    buildMerlinCodeForTiles,
+    buildMerlinCodeForTile,
+    findColorIndex,
+    paletteToIIgs,
+    pngToIIgsBuff,
+    readPNG,
+    toHex,
+    writeBinayOutput,
+    writeToTileDataSource,
+    writeTilesToStream
+}
