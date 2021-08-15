@@ -4,15 +4,15 @@
 ; This is a generated file. Do not modify.
 
 
-BG0SetUp
+BG1SetUp
         lda #256
-        sta TileMapWidth
+        sta BG1TileMapWidth
         lda #30
-        sta TileMapHeight
+        sta BG1TileMapHeight
         lda #App_TileMapBG1
-        sta TileMapPtr
+        sta BG1TileMapPtr
         lda #^App_TileMapBG1
-        sta TileMapPtr+2
+        sta BG1TileMapPtr+2
         rts
     
 App_TileMapBG1

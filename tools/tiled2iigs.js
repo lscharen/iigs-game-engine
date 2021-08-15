@@ -132,7 +132,7 @@ async function main(argv) {
     }
 
     // Sort the tile layers by ID.  The lower ID is considered to be the "front" layer
-    tileLayers.sort((first, second) => first.id <= second.id);
+    tileLayers.sort((first, second) => first.id - second.id);
 
     // Load up any/all tilesets
     const tileSets = await Promise.all(doc.tilesets.map(tileset => loadTileset(workdir, tileset)));
