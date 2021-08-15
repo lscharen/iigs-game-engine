@@ -480,65 +480,66 @@ CopyTileMToDyn
 
 ; This should never be called, because empty control value should be fast-pathed
 solid
-                plx
                 pla
-                rts
+                plx
+                brl             CopyTileMem
 
 solid_hflip
-                plx
                 pla
                 clc
                 adc             #64                               ; Advance to the flipped version
+                plx
                 brl             CopyTileMem
 
 solid_vflip
-                plx
                 pla
+                plx
                 brl             CopyTileMemV
 
 solid_hvflip
-                plx
                 pla
                 clc
                 adc             #64                               ; Advance to the flipped version
+                plx
                 brl             CopyTileMemV
 
 masked
-                plx
                 pla
+                plx
                 brl             CopyTileMemM
 
 masked_hflip
-                plx
                 pla
                 clc
                 adc             #64                               ; Advance to the flipped version
+                plx
                 brl             CopyTileMemM
 
 masked_vflip
-                plx
                 pla
+                plx
                 brl             CopyTileMemMV
 
 masked_hvflip
-                plx
                 pla
                 clc
                 adc             #64                               ; Advance to the flipped version
+                plx
                 brl             CopyTileMemMV
 
 dynamic
-                plx
                 pla
                 asl
                 asl
                 xba                                               ; Undo the x128 we just need x2
+                plx
                 brl             DynamicTile
 
 dyn_masked
-                plx
                 pla
+                plx
                 rts
+
 ; CopyTile
 ;
 ; A low-level function that copies 8x8 tiles directly into the code field space.
@@ -597,51 +598,4 @@ CopyTile
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
