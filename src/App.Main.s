@@ -1115,8 +1115,9 @@ ClearKeyboardStrobe  sep        #$20
 ReadControl
                      pea        $0000                   ; low byte = key code, high byte = %------AB 
 
+                     sep        #$20
                      ldal       OPTION_KEY_REG          ; 'B' button
-                     and        #$0080
+                     and        #$80
                      beq        :BNotDown
 
                      lda        #1
@@ -1125,7 +1126,7 @@ ReadControl
 
 :BNotDown
                      ldal       COMMAND_KEY_REG
-                     and        #$0080
+                     and        #$80
                      beq        :ANotDown
 
                      lda        #2
@@ -1134,13 +1135,14 @@ ReadControl
 
 :ANotDown
                      ldal       KBD_STROBE_REG          ; read the keyboard
-                     bit        #$0080
+                     bit        #$80
                      beq        :KbdNotDwn              ; check the key-down status
-                     and        #$007f
+                     and        #$7f
                      ora        1,s
                      sta        1,s
 
 :KbdNotDwn
+                     rep        #$20
                      pla
                      rts
 
@@ -1277,6 +1279,7 @@ qtRec                adrl       $0000
                      PUT        TileMap.s
                      PUT        App.TileMapBG0.s
                      PUT        App.TileMapBG1.s
+
 
 
 
