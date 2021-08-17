@@ -223,6 +223,7 @@ function toMask(hex, transparentIndex) {
  */
 function buildTile(buff, width, x, y, transparentIndex = -1) {
     const tile = {
+        isSolid: true,
         normal: {
             data: [],
             mask: []
@@ -245,6 +246,11 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
 
         tile.normal.data.push(data);
         tile.normal.mask.push(mask);
+
+        // If we run across any non-zero mask value, then the tile is not solid
+        if (mask.some(h => h != 0)) {
+            tile.isSolid = false;
+        }
     }
 
     for (dy = 0; dy < 8; dy += 1) {
@@ -266,7 +272,7 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
 function buildTiles(buff, width, transparentIndex = -1) {
     const tiles = [];
 
-    const MAX_TILES = 64;
+    const MAX_TILES = 240;
 
     let count = 0;
     for (let y = 0; ; y += 8) {

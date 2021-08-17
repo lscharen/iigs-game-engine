@@ -18,6 +18,10 @@ const StringBuilder = require('string-builder');
     }
 );
 
+function toHex(h, width=4) {
+    return h.toString(16).padStart(width, '0');
+}
+
 function hexToRbg(hex) {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
@@ -137,6 +141,9 @@ async function main(argv) {
     // Load up any/all tilesets
     const tileSets = await Promise.all(doc.tilesets.map(tileset => loadTileset(workdir, tileset)));
 
+    // Save all of the tilesets
+    let bg0TileSet = null;
+
     for (const record of tileSets) {
         console.log(`Importing tileset "${record.tileset.name}"`);
         const tiles = await readTileSet(workdir, record.tileset);
@@ -145,12 +152,14 @@ async function main(argv) {
         console.log(`Writing tiles to ${outputFilename}`);
         writeTiles(outputFilename, tiles);
         console.log(`Writing complete`);
+
+        bg0TileSet = tiles;
     }
 
     // Ok, looks good.  Write out the source code for the layers
     console.log('Generating data for front layer (BG0): ' + tileLayers[0].name);
     const header = emitHeader();
-    const bg0 = emitBG0Layer(tileLayers[0]);
+    const bg0 = emitBG0Layer(tileLayers[0], bg0TileSet);
 
     const bg0OutputFilename = path.resolve(path.join(outdir, tileLayers[0].name + '.s'));
     console.log(`Writing BG0 data to ${bg0OutputFilename}`);
@@ -158,8 +167,8 @@ async function main(argv) {
     console.log(`Writing complete`);
 
     if (tileLayers.length > 1) {
-        console.log('Generating data for front layer (BG0): ' + tileLayers[1].name);
-        const bg1 = emitBG1Layer(tileLayers[1]);
+        console.log('Generating data for back layer (BG1): ' + tileLayers[1].name);
+        const bg1 = emitBG1Layer(tileLayers[1], bg0TileSet);
         const bg1OutputFilename = path.resolve(path.join(outdir, tileLayers[1].name + '.s'));
         console.log(`Writing BG1 data to ${bg1OutputFilename}`);
         fs.writeFileSync(bg1OutputFilename, header + '\n' + bg1);
@@ -167,7 +176,7 @@ async function main(argv) {
     }
 }
 
-function emitBG1Layer(layer) {
+function emitBG1Layer(layer, tileset) {
     const sb = new StringBuilder();
 
     const label = layer.name.split(' ').join('_').split('.').join('_');
@@ -185,12 +194,12 @@ BG1SetUp
     `;
     sb.appendLine(initCode);
     sb.appendLine(`${label}`);
-    emitLayerData(sb, layer);
+    emitLayerData(sb, layer, tileset);
 
     return sb.toString();
 }
 
-function emitBG0Layer(layer) {
+function emitBG0Layer(layer, tileset) {
     const sb = new StringBuilder();
 
     const label = layer.name.split(' ').join('_').split('.').join('_');
@@ -208,23 +217,23 @@ BG0SetUp
     `;
     sb.appendLine(initCode);
     sb.appendLine(`${label}`);
-    emitLayerData(sb, layer);
+    emitLayerData(sb, layer, tileset);
 
     return sb.toString();
 }
 
-function emitLayerData(sb, layer) {
+function emitLayerData(sb, layer, tileset) {
     // Print out the data in groups of N
     const N = 16;
     const chunks = [];
     const tileIDs = layer.data;
     for (let i = 0; i < tileIDs.length; i += N) {
-        chunks.push(tileIDs.slice(i, i + N).map(t => convertTileID(t)))
+        chunks.push(tileIDs.slice(i, i + N).map(tID => convertTileID(tID, tileset)))
     }
     // Tiled starts numbering its tiles at 1. This is OK since Tile 0 is reserved in
     // GTE, also
     for (const chunk of chunks) {
-        sb.appendLine('        dw ' + chunk.join(','));
+        sb.appendLine('        dw ' + chunk.map(id => '$' + toHex(id, 4)).join(','));
     }
 
     return sb;
@@ -233,7 +242,8 @@ function emitLayerData(sb, layer) {
 /**
  * Map the bit flags used in Tiled to compatible values in GTE
  */
-function convertTileID(tileId) {
+function convertTileID(tileId, tileset) {
+    const GTE_MASK_BIT  = 0x1000;
     const GTE_VFLIP_BIT = 0x0400;
     const GTE_HFLIP_BIT = 0x0200;
     const TILED_VFLIP_BIT = 0x40000000;
@@ -248,9 +258,19 @@ function convertTileID(tileId) {
     const hflip = (tileId & TILED_HFLIP_BIT) !== 0;
     const vflip = (tileId & TILED_VFLIP_BIT) !== 0;
 
-    if ((tileId & 0x1FFFFFFF) > 511) {
+    // Mask out the flip bits
+    const tileIndex = tileId & 0x1FFFFFFF;
+    if (tileIndex > 511) {
         throw new Error('A maximum of 511 tiles are supported');
     }
 
-    return (tileId & 0x1FFFFFFF) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
+    let mask_bit = false;
+    try {
+        mask_bit = !tileset[tileIndex].isSolid;
+    } catch (e) {
+        console.log(tileId, tileIndex, tileset.length, tileset[tileIndex]);
+        throw e;
+    }
+
+    return (tileId & 0x1FFFFFFF) + (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
 }
