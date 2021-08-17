@@ -53,6 +53,8 @@ TILE_CTRL_MASK  equ             $1E00
 ;
 ; tmp0/tmp1 is reserved 
 RenderTile
+                ora             #TILE_MASK_BIT                    ; toture test -- make everything masked
+
                 bit             #TILE_CTRL_MASK                   ; Fast path for "normal" tiles
                 beq             _CopyTile
                 cmp             #TILE_MASK_BIT                    ; Tile 0 w/mask bit set is special, too
@@ -70,7 +72,7 @@ RenderTile
                 and             #TILE_CTRL_MASK                   ; Mask out the different modifiers
                 xba
                 tax
-                jmp             (:actions,x)
+                jmp             masked                            ; (:actions,x)
 
 :actions        dw              solid,solid_hflip,solid_vflip,solid_hvflip
                 dw              dynamic,dynamic,dynamic,dynamic
@@ -198,22 +200,34 @@ CopyTileMemM
                 sta             _T_PTR
                 tax
 
+; Do the left column first
+
                 CopyMaskedWord  tiledata+0;tiledata+32+0;$0003
-                CopyMaskedWord  tiledata+2;tiledata+32+2;$0000
                 CopyMaskedWord  tiledata+4;tiledata+32+4;$1003
-                CopyMaskedWord  tiledata+6;tiledata+32+6;$1000
                 CopyMaskedWord  tiledata+8;tiledata+32+8;$2003
-                CopyMaskedWord  tiledata+10;tiledata+32+10;$2000
                 CopyMaskedWord  tiledata+12;tiledata+32+12;$3003
-                CopyMaskedWord  tiledata+14;tiledata+32+14;$3000
                 CopyMaskedWord  tiledata+16;tiledata+32+16;$4003
-                CopyMaskedWord  tiledata+18;tiledata+32+18;$4000
                 CopyMaskedWord  tiledata+20;tiledata+32+20;$5003
-                CopyMaskedWord  tiledata+22;tiledata+32+22;$5000
                 CopyMaskedWord  tiledata+24;tiledata+32+24;$6003
-                CopyMaskedWord  tiledata+28;tiledata+32+26;$6000
-                CopyMaskedWord  tiledata+30;tiledata+32+28;$7003
-                CopyMaskedWord  tiledata+32;tiledata+32+30;$7000
+                CopyMaskedWord  tiledata+28;tiledata+32+28;$7003
+
+; Move the index for the JTableOffset array.  This is the same index used for transparent words,
+; so, if _X_REG is zero, then we would be patching out the last word in the code field with LDA (0),y
+; and then increment _X_REG by two to patch the next-to-last word in the code field with LDA (2),y
+
+                inc             _X_REG
+                inc             _X_REG
+
+; Do the right column
+
+                CopyMaskedWord  tiledata+2;tiledata+32+2;$0000
+                CopyMaskedWord  tiledata+6;tiledata+32+6;$1000
+                CopyMaskedWord  tiledata+10;tiledata+32+10;$2000
+                CopyMaskedWord  tiledata+14;tiledata+32+14;$3000
+                CopyMaskedWord  tiledata+18;tiledata+32+18;$4000
+                CopyMaskedWord  tiledata+22;tiledata+32+22;$5000
+                CopyMaskedWord  tiledata+26;tiledata+32+26;$6000
+                CopyMaskedWord  tiledata+30;tiledata+32+30;$7000
 
                 rts
 
@@ -564,19 +578,20 @@ CopyTile
                 pha                                               ; save for a few instruction
                 rep             #$20
 
-                phx                                               ; Reverse the tile index since x = 0 is at the end
-                lda             #40
-                sec
-                sbc             1,s
-                plx
-
+;                phx                                               ; Reverse the tile index since x = 0 is at the end
+;                lda             #40
+;                sec
+;                sbc             1,s
+;                plx
+                txa
                 asl                                               ; there are two columns per tile, so multiple by 4
                 asl                                               ; asl will clear the carry bit
                 tax
+
                 lda             BTableLow,y
                 sta             _BASE_ADDR                        ; Used in masked tile renderer
                 clc
-                adc             Col2CodeOffset,x
+                adc             Col2CodeOffset+2,x                ; Get the right edge (which is the lower physical address)
                 tay
 
 ; Optimization note: We could make a Tile2CodeOffset table that is pre-reversed, which should simplify
@@ -598,4 +613,3 @@ CopyTile
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
-

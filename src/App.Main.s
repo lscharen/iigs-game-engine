@@ -129,6 +129,13 @@ NO_MUSIC             equ        1                       ; turn music + tool load
 ; Set up our level data
                      jsr        BG0SetUp
 
+                     ldx        #0
+                     ldy        #0
+                     lda        #56
+                     jsr        CopyTile
+;                     jsr        Render
+                     jsr        WaitForKey
+
 ; Allocate room to load data
 
                      jsr        AllocOneBank2           ; Alloc 64KB for Load/Unpack
@@ -505,7 +512,7 @@ CopyBinToField
                      lda        BTableHigh,x
                      sta        :dstptr+2
 
-                     ldx        #162                    ; move backwards in the code field
+;                     ldx        #162                    ; move backwards in the code field
                      ldy        #0                      ; move forward in the image data
 
                      lda        #82                     ; keep a running column count
@@ -524,9 +531,11 @@ CopyBinToField
 ; This is a solid word
 :solid
                      lda        [:srcptr],y
-                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
-
                      pha                                ; Save the data
+
+                     lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
+                     tay
+
                      lda        #$00F4                  ; PEA instruction
                      sta        [:dstptr],y
                      iny
@@ -538,7 +547,8 @@ CopyBinToField
                      cmp        #$A5A5
                      beq        :solid
 
-                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
+                     lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
+                     tay
                      lda        #$B1                    ; LDA (dp),y
                      sta        [:dstptr],y
                      iny
@@ -552,7 +562,9 @@ CopyBinToField
                      lda        [:srcptr],y             ; Refetch the screen data
                      sta        :data
 
-                     ldy        Col2CodeOffset,x        ; Get the offset into the code field
+                     tyx
+                     lda        Col2CodeOffset,y        ; Get the offset into the code field
+                     tay
                      lda        #$4C                    ; JMP exception
                      sta        [:dstptr],y
                      iny
@@ -583,8 +595,8 @@ CopyBinToField
 :next
                      ply
 
-                     dex
-                     dex
+;                     dex
+;                     dex
                      iny
                      iny
 
@@ -684,7 +696,7 @@ CopyPicToField
                      lda        BTableHigh,x
                      sta        :dstptr+2
 
-                     ldx        #162                    ; move backwards in the code field
+;                     ldx        #162                    ; move backwards in the code field
                      ldy        #0                      ; move forward in the image data
 
                      lda        #80                     ; keep a running column count
@@ -701,9 +713,11 @@ CopyPicToField
 
 ; This is a solid word
                      lda        [:srcptr],y
-                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
-
                      pha                                ; Save the data
+
+                     lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
+                     tay
+
                      lda        #$00F4                  ; PEA instruction
                      sta        [:dstptr],y
                      iny
@@ -711,7 +725,9 @@ CopyPicToField
                      sta        [:dstptr],y             ; PEA operand
                      bra        :next
 :transparent
-                     ldy        Col2CodeOffset,x        ; Get the offset to the code from the line start
+                     lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
+                     tay
+
                      lda        #$B1                    ; LDA (dp),y
                      sta        [:dstptr],y
                      iny
@@ -725,7 +741,10 @@ CopyPicToField
                      lda        [:srcptr],y             ; Refetch the screen data
                      sta        :data
 
-                     ldy        Col2CodeOffset,x        ; Get the offset into the code field
+                     tyx
+                     lda        Col2CodeOffset,y        ; Get the offset into the code field
+                     tay
+
                      lda        #$4C                    ; JMP exception
                      sta        [:dstptr],y
                      iny
@@ -754,8 +773,8 @@ CopyPicToField
 :next
                      ply
 
-                     dex
-                     dex
+;                     dex
+;                     dex
                      iny
                      iny
 
@@ -1279,20 +1298,3 @@ qtRec                adrl       $0000
                      PUT        TileMap.s
                      PUT        App.TileMapBG0.s
                      PUT        App.TileMapBG1.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -119,7 +119,11 @@ _Err            mac
 NoErr           eom
 
 
-; MAcros to use in the Masked Tile renderer
+; Macros to use in the Masked Tile renderer
+;
+; ]1 : tiledata offset
+; ]2 : tilemask offset
+; ]3 : code field offset
 CopyMaskedWord  MAC
                 ldal  ]2,x            ; load the mask value
                 bne   mixed           ; a non-zero value may be mixed
@@ -141,7 +145,9 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
 
                 ldx   _X_REG          ; Get the addressing offset
                 ldal  JTableOffset,x  ; Get the address offset and add to the base address
-                adc   _BASE_ADDR      ; of the current code field line (could be an ORA, too)
+                clc                   ; may be able to be removed...
+                adc   _BASE_ADDR      ; of the current code field line
+                adc   #{]3&$F000}     ; adjust for the current row offset
                 sta:  ]3+1,y
 
                 tay                   ; This becomes the new address that we use to patch in
@@ -151,9 +157,9 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
                 sta:  $0000,y
 
                 ldx   _T_PTR          ; restore the original x-register value
-                ldal  ]1,x            ; insert the tile mask and data into the exception
+                ldal  ]2,x            ; insert the tile mask and data into the exception
                 sta:  $0003,y         ; handler.
-                ldal  ]2,x
+                ldal  ]1,x
                 sta:  $0006,y
 
                 ldy   _Y_REG          ; restore original y-register value and move on
@@ -168,34 +174,4 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -220,30 +220,31 @@ _ApplyBG0XPos
 ;  | JMP loop  |
 ;  +-----------+
 
+;                    lda   #163
+;                    sec
+;                    sbc   StartXMod164
+                    lda   StartXMod164
+;                    tay
+
+; Right now we have the offset of the left-edge visible byte. Move one byte earlier to figure out
+; where the exit will be patched in
+
+                    dec                              ; (a - 1) % 164
+                    bpl   :hop1
                     lda   #163
-                    sec
-                    sbc   StartXMod164
-                    tay
-
-; Right now we have the offset of the last visible byte.  Add one to get the offset
-; of the byte that will be patched for an exit.
-
-                    inc                              ; (a + 1) % 164
-                    cmp   #164
-                    bcc   :hop1
-                    lda   #0
 :hop1
 
-
-; If the exit byte is an even value, then this is the spot to exit.  If it's an
-; odd value, then round down and use the odd exit path in the blitter to push
-; the high byte of the word.
+; If the exit byte is odd, then the left edge is even-aligned and we round down and exit at at
+; that word.
+;
+; If the exit byte is even, then the left edge is odd-aligned and we exit at this word.
 
                     bit   #$0001
-                    bne   :odd_exit
+                    beq   :odd_exit
 
 ; This is the even code path
 
+                    and   #$FFFE
                     tax
                     lda   CodeFieldEvenBRA,x
                     sta   :exit_bra
@@ -253,33 +254,34 @@ _ApplyBG0XPos
                     bra   :do_entry
 
 ; This is the odd code path
-:odd_exit           and   #$FFFE
-                    tax
+:odd_exit           tax
                     lda   CodeFieldOddBRA,x
                     sta   :exit_bra
                     lda   Col2CodeOffset,X
                     sta   :exit_offset
                     sta   LastPatchOffset            ; Cache as a flag for later
 
-; Calculate the entry byte into the code field
-:do_entry           tya                              ; reload 163 - x % 164
-                    sec
-                    sbc   ScreenWidth                ; back up to entry point
-                    inc
-                    bpl   :hop2
+; Calculate the entry point into the code field by calculating the right edge
+:do_entry           lda   StartXMod164
                     clc
-                    adc   #164
+                    adc   ScreenWidth                ; move to the right edge and back up a byte
+                    dec                              ; to get the index of the first on-screen byte
+
+                    cmp   #164                       ; Keep the value in range
+                    bcc   :hop2
+                    sbc   #164
 :hop2
 
-; If the entry index is even, then just go to that column.  If it's odd, then we
-; enter the field at the _next_ column and change the entry code to take care of
-; pushing the low byte.  In both cases we set the same entry address, but update
-; the blitter opcode at entry_jmp, and for odd entries point, we also need to
-; set the address of odd_entry in the code field
+; Same logic as above. If the right edge is odd, then the full word needs to be drawn and we
+; will enter at that index, rounded down.
+;
+; If the right edge is even, then only the low byte needs to be drawn, which is handled before
+; entering the code field.  So enter one word before the right edge.
 
                     bit   #$0001
-                    bne   :odd_entry
+                    beq   :odd_entry
 
+                    and   #$FFFE
                     tax
                     lda   Col2CodeOffset,x
                     sta   :entry_offset
@@ -289,12 +291,11 @@ _ApplyBG0XPos
                     bra   :prep_complete
 
 :odd_entry
-                    and   #$FFFE
                     tax
                     lda   Col2CodeOffset,x
-                    sta   :entry_offset
-                    lda   Col2CodeOffset+2,x
-                    sta   :odd_entry_offset
+                    sta   :entry_offset              ; Will be used to load the data
+                    lda   Col2CodeOffset-2,x
+                    sta   :odd_entry_offset          ; will the the actual location to jump to
                     lda   #$00AF                     ; set the entry_jmp opcode to LDAL
                     sta   :opcode
 :prep_complete
@@ -745,6 +746,13 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
+
+
+
+
+
+
+
 
 
 
