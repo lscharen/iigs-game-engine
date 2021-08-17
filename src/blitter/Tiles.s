@@ -53,8 +53,6 @@ TILE_CTRL_MASK  equ             $1E00
 ;
 ; tmp0/tmp1 is reserved 
 RenderTile
-                ora             #TILE_MASK_BIT                    ; toture test -- make everything masked
-
                 bit             #TILE_CTRL_MASK                   ; Fast path for "normal" tiles
                 beq             _CopyTile
                 cmp             #TILE_MASK_BIT                    ; Tile 0 w/mask bit set is special, too
@@ -72,7 +70,7 @@ RenderTile
                 and             #TILE_CTRL_MASK                   ; Mask out the different modifiers
                 xba
                 tax
-                jmp             masked                            ; (:actions,x)
+                jmp             (:actions,x)
 
 :actions        dw              solid,solid_hflip,solid_vflip,solid_hvflip
                 dw              dynamic,dynamic,dynamic,dynamic
@@ -613,3 +611,4 @@ CopyTile
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
+
