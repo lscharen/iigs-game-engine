@@ -1,7 +1,7 @@
 {
-  "name": "super-mario-bros-nes-demo",
+  "name": "pac-man-demo",
   "version": "1.0.0",
-  "description": "Wrapping the SMB 6502 ROM in GTE",
+  "description": "A few ways of displaying a Pac-Man style playfield using GTE",
   "main": "index.js",
   "config": {
     "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
