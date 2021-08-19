@@ -128,13 +128,7 @@ NO_MUSIC             equ        1                       ; turn music + tool load
 
 ; Set up our level data
                      jsr        BG0SetUp
-
-                     ldx        #0
-                     ldy        #0
-                     lda        #56
-                     jsr        CopyTile
-;                     jsr        Render
-                     jsr        WaitForKey
+                     jsr        BG1SetUp
 
 ; Allocate room to load data
 
@@ -142,13 +136,17 @@ NO_MUSIC             equ        1                       ; turn music + tool load
                      sta        BankLoad                ; Store "Bank Pointer"
 
                      jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
+                     lda        #74
+                     jsr        SetBG0XPos
 
                      lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
+                     ora        #DIRTY_BIT_BG1_REFRESH
                      tsb        DirtyBits
 
 ;                     jsr        DoTiles
 ;                     jsr        DoLoadBG1
 ;                     jsr        Demo
+                     jsr        Render
 EvtLoop
                      jsr        ReadControl
                      and        #$007F                  ; Ignore the buttons for now
@@ -273,6 +271,8 @@ Fatal                brk        $00
 MovePlayerToOrigin
                      lda        #0                      ; Set the player's position
                      jsr        SetBG0XPos
+                     lda        #0
+                     jsr        SetBG1XPos
 
                      lda        TileMapHeight
                      asl
@@ -280,7 +280,10 @@ MovePlayerToOrigin
                      asl
                      sec
                      sbc        ScreenHeight
+                     pha
                      jsr        SetBG0YPos
+                     pla
+                     jsr        SetBG1YPos
 
                      rts
 
@@ -396,10 +399,6 @@ DoTiles
                      tax
                      lda        :tile,s
                      jsr        CopyTile
-
-;                     lda        :tile,s
-;                     eor        #$0003
-;                     sta        :tile,s
 
                      lda        :column,s
                      inc
@@ -1298,3 +1297,13 @@ qtRec                adrl       $0000
                      PUT        TileMap.s
                      PUT        App.TileMapBG0.s
                      PUT        App.TileMapBG1.s
+
+
+
+
+
+
+
+
+
+

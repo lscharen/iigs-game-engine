@@ -3,9 +3,9 @@ MoveLeft
                      adc       StartX               ; Increment the virtual X-position
                      jsr       SetBG0XPos
 
-;                     lda       StartX
-;                     lsr
-;                     jsr       SetBG1XPos
+                     lda       StartX
+                     lsr
+                     jsr       SetBG1XPos
 
                      jsr       Render
                      rts
@@ -19,9 +19,9 @@ MoveRight
                      lda       #0
                      jsr       SetBG0XPos
 
-;                     lda       StartX
-;                     lsr
-;                     jsr       SetBG1XPos
+                     lda       StartX
+                     lsr
+                     jsr       SetBG1XPos
 
                      jsr       Render
                      pla
@@ -286,6 +286,7 @@ _DoTimers
 
                      pla
                      rts
+
 
 
 

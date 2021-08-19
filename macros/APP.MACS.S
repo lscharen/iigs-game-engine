@@ -145,7 +145,7 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
 
                 ldx   _X_REG          ; Get the addressing offset
                 ldal  JTableOffset,x  ; Get the address offset and add to the base address
-                clc                   ; may be able to be removed...
+;                clc                   ; may be able to be removed...
                 adc   _BASE_ADDR      ; of the current code field line
                 adc   #{]3&$F000}     ; adjust for the current row offset
                 sta:  ]3+1,y
@@ -174,4 +174,7 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
+
+
+
 

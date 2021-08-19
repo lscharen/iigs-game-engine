@@ -54,11 +54,11 @@ _BltRange
 ; Now we need to set up the Bank, Stack Pointer and Direct Page registers for calling into 
 ; the code field
 
-                lda   StartX
-                bit   #$01
-                beq   :primary
-                lda   BG1AltBank
-                bra   :alt
+;                lda   StartX
+;                bit   #$01
+;                beq   :primary
+;                lda   BG1AltBank
+;                bra   :alt
 :primary        lda   BG1DataBank
 :alt
                 pha
@@ -95,3 +95,4 @@ stk_save        lda   #0000          ; load the stack
 ; we don't do anything sprite related; just call function pointers provided to us.
 _RenderSprites
                 rts
+

@@ -27,7 +27,7 @@ Col2CodeOffset    lup   82
                   dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
 ]step             equ   ]step+1
                   --^
-;                  dw    CODE_TOP
+                  dw    CODE_TOP+{81*PER_TILE_SIZE}
 
 ; A parallel table to Col2CodeOffset that holds the offset to the exception handler address for each column
 SNIPPET_SIZE      equ   32
@@ -37,6 +37,7 @@ JTableOffset      lup   82
                   dw    SNIPPET_BASE+{{81-]step}*SNIPPET_SIZE}
 ]step             equ   ]step+1
                   --^
+                  dw    SNIPPET_BASE+{81*SNIPPET_SIZE}
 
 ; Table of BRA instructions that are used to exit the code field.  Separate tables for
 ; even and odd aligned cases.
@@ -252,3 +253,6 @@ BG1YTable         lup   208
 BG1YOffsetTable   lup   26
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
                   --^
+
+
+

@@ -40,14 +40,16 @@ SetBG1YPos
 ; these are all direct page values
 ;
 ; Note: This routine can be optimized as an unrolled loop of PEI instructions
-_ApplyBG1XPos
-                          lda   BG1StartX
+_ApplyBG1XPosPre
+                          lda   BG1StartX                 ; This is the starting byte offset (0 - 163)
                           jsr   Mod164
                           sta   BG1StartXMod164
+                          rts
 
+_ApplyBG1XPos
                           lda   #162
                           sec
-                          sbc   StartXMod164
+                          sbc   StartXMod164              ; Need to compensate for both BG0 and BG1 positions
                           bpl   *+6
                           clc
                           adc   #164
@@ -609,3 +611,7 @@ ApplyBG1OffsetValues
 :none                     rts
 
 BG1YCache                 ds    32
+
+
+
+
