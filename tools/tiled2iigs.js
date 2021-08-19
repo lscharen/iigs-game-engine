@@ -224,7 +224,9 @@ BG0SetUp
 
 function emitLayerData(sb, layer, tileset) {
     // Print out the data in groups of N
-    const N = 16;
+    //
+    // Merlin32 errors out with errno 3221226505 is the line is too long (>1047 characters)
+    const N = 64;
     const chunks = [];
     const tileIDs = layer.data;
     for (let i = 0; i < tileIDs.length; i += N) {
@@ -264,13 +266,9 @@ function convertTileID(tileId, tileset) {
         throw new Error('A maximum of 511 tiles are supported');
     }
 
-    let mask_bit = false;
-    try {
-        mask_bit = !tileset[tileIndex].isSolid;
-    } catch (e) {
-        console.log(tileId, tileIndex, tileset.length, tileset[tileIndex]);
-        throw e;
-    }
+    // The tileId start at one, but the tile set starts at zero.  It's ok when we export,
+    // because a special zero tile is inserted, but we have to manually adjust here
+    const mask_bit = !tileset[tileIndex - 1].isSolid;
 
     return (tileId & 0x1FFFFFFF) + (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
 }

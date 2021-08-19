@@ -241,8 +241,9 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
         const hex2 = buff[offset + dy * width + 2];
         const hex3 = buff[offset + dy * width + 3];
 
-        const data = [hex0, hex1, hex2, hex3];
-        const mask = data.map(h => toMask(h, transparentIndex));
+        const raw = [hex0, hex1, hex2, hex3];
+        const mask = raw.map(h => toMask(h, transparentIndex));
+        const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.normal.data.push(data);
         tile.normal.mask.push(mask);
@@ -259,8 +260,9 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
         const hex2 = swap(buff[offset + dy * width + 2]);
         const hex3 = swap(buff[offset + dy * width + 3]);
 
-        const data = [hex3, hex2, hex1, hex0];
-        const mask = data.map(h => toMask(h, transparentIndex));
+        const raw = [hex3, hex2, hex1, hex0];
+        const mask = raw.map(h => toMask(h, transparentIndex));
+        const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.flipped.data.push(data);
         tile.flipped.mask.push(mask);
@@ -304,7 +306,7 @@ function writeTilesToStream(stream, tiles, label='tiledata') {
     let count = 0;
     for (const tile of tiles.slice(0, MAX_TILES)) {
         console.log(`Writing tile ${count + 1}`);
-        stream.write(`; Tile ID ${count + 1}\n`);
+        stream.write(`; Tile ID ${count + 1}, isSolid: ${tile.isSolid}\n`);
         writeTileToStream(stream, tile.normal.data);
         writeTileToStream(stream, tile.normal.mask);
         writeTileToStream(stream, tile.flipped.data);
@@ -338,7 +340,7 @@ function buildMerlinCodeForTiles(tiles, label='tiledata') {
     let count = 0;
     for (const tile of tiles.slice(0, MAX_TILES)) {
         console.log(`Writing tile ${count + 1}`);
-        sb.appendLine(`; Tile ID ${count + 1}`);
+        sb.appendLine(`; Tile ID ${count + 1}, isSolid: ${tile.isSolid}`);
         sb.append(buildMerlinCodeForTile(tile.normal.data));
         sb.append(buildMerlinCodeForTile(tile.normal.mask));
         sb.append(buildMerlinCodeForTile(tile.flipped.data));
