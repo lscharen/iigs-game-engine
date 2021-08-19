@@ -46,6 +46,119 @@ TILE_CTRL_MASK  equ             $1E00
 
 ; On entry
 ;
+; B is set to the correct BG1 data bank
+; A is set to the the tile descriptor
+; Y is set to the top-left address of the tile in the BG1 data bank
+;
+; tmp0/tmp1 is reserved 
+RenderTileBG1
+                tax                                               ; Save the tile descriptor
+                and             #TILE_ID_MASK                     ; Mask out the ID and save just that
+                _Mul128                                           ; multiplied by 128
+                pha
+
+                txa
+                and             #TILE_VFLIP_BIT+TILE_HFLIP_BIT    ; Only horizontal and vertical flips are supported for BG1
+                xba
+                tax
+                jmp             (:actions,x)
+
+:actions        dw              bg1_noflip,bg1_hflip,bg1_vflip,bg1_hvflip
+
+bg1_noflip
+                pla
+                brl             _CopyTileBG1
+
+bg1_hflip
+                pla
+                clc
+                adc             #64                               ; Advance to the flipped version
+                brl             _CopyTileBG1
+
+bg1_vflip
+                pla
+                brl             _CopyTileBG1V
+
+bg1_hvflip
+                pla
+                clc
+                adc             #64                               ; Advance to the flipped version
+                brl             _CopyTileBG1V
+
+_CopyTileBG1    tax
+
+                ldal            tiledata+0,x
+                sta:            $0000,y
+                ldal            tiledata+2,x
+                sta:            $0002,y
+                ldal            tiledata+4,x
+                sta             $0100,y
+                ldal            tiledata+6,x
+                sta             $0102,y
+                ldal            tiledata+8,x
+                sta             $0200,y
+                ldal            tiledata+10,x
+                sta             $0202,y
+                ldal            tiledata+12,x
+                sta             $0300,y
+                ldal            tiledata+14,x
+                sta             $0302,y
+                ldal            tiledata+16,x
+                sta             $0400,y
+                ldal            tiledata+18,x
+                sta             $0402,y
+                ldal            tiledata+20,x
+                sta             $0500,y
+                ldal            tiledata+22,x
+                sta             $0502,y
+                ldal            tiledata+24,x
+                sta             $0600,y
+                ldal            tiledata+26,x
+                sta             $0602,y
+                ldal            tiledata+28,x
+                sta             $0700,y
+                ldal            tiledata+30,x
+                sta             $0702,y
+                rts
+
+_CopyTileBG1V   tax
+
+                ldal            tiledata+0,x
+                sta:            $0700,y
+                ldal            tiledata+2,x
+                sta:            $0702,y
+                ldal            tiledata+4,x
+                sta             $0600,y
+                ldal            tiledata+6,x
+                sta             $0602,y
+                ldal            tiledata+8,x
+                sta             $0500,y
+                ldal            tiledata+10,x
+                sta             $0502,y
+                ldal            tiledata+12,x
+                sta             $0400,y
+                ldal            tiledata+14,x
+                sta             $0402,y
+                ldal            tiledata+16,x
+                sta             $0300,y
+                ldal            tiledata+18,x
+                sta             $0302,y
+                ldal            tiledata+20,x
+                sta             $0200,y
+                ldal            tiledata+22,x
+                sta             $0202,y
+                ldal            tiledata+24,x
+                sta             $0100,y
+                ldal            tiledata+26,x
+                sta             $0102,y
+                ldal            tiledata+28,x
+                sta             $0000,y
+                ldal            tiledata+30,x
+                sta             $0002,y
+                rts
+
+; On entry
+;
 ; B is set to the correct code field bank
 ; A is set to the the tile descriptor
 ; Y is set to the top-left address of the tile in the code field
@@ -77,18 +190,6 @@ RenderTile
                 dw              masked,masked_hflip,masked_vflip,masked_hvflip
                 dw              dyn_masked,dyn_masked,dyn_masked,dyn_masked
 
-; _CopyTile
-;
-; Copy a solid tile into one of the code banks
-;
-; B = bank of the code field
-; A = Tile ID (0 - 1023)
-; Y = Base Adddress in the code field
-
-_CopyTile       cmp             #$0000                            ; Fast-path the special zero tile
-                _Mul128                                           ; Take care of getting the right tile address
-                bne             CopyTileMem
-
 FillWord0
                 sta:            $0001,y
                 sta:            $0004,y
@@ -105,32 +206,24 @@ FillWord0
                 sta             $6001,y
                 sta             $6004,y
                 sta             $7001,y
-                sta             $7004,y                           ; Fall through here intentionally
+                sta             $7004,y
+                bra             FillPEAOpcode
 
-; For solid tiles
-FillPEAOpcode
-                sep             #$20
-                lda             #$F4
-                sta:            $0000,y
-                sta:            $0003,y
-                sta             $1000,y
-                sta             $1003,y
-                sta             $2000,y
-                sta             $2003,y
-                sta             $3000,y
-                sta             $3003,y
-                sta             $4000,y
-                sta             $4003,y
-                sta             $5000,y
-                sta             $5003,y
-                sta             $6000,y
-                sta             $6003,y
-                sta             $7000,y
-                sta             $7003,y
-                rep             #$20
-                rts
+; _CopyTile
+;
+; Copy a solid tile into one of the code banks
+;
+; B = bank of the code field
+; A = Tile ID (0 - 1023)
+; Y = Base Adddress in the code field
+
+
+_CopyTile       cmp             #$0000                            ; Fast-path the special zero tile
+                beq             FillWord0
 
 CopyTileMem
+                _Mul128                                           ; Take care of getting the right tile address
+
 CopyTileMem0
                 tax
 
@@ -165,7 +258,29 @@ CopyTileMem0
                 ldal            tiledata+28,x
                 sta             $7004,y
                 ldal            tiledata+30,x
-                sta             $7001,y
+                sta             $7001,y                           ; Fall through
+
+; For solid tiles
+FillPEAOpcode
+                sep             #$20
+                lda             #$F4
+                sta:            $0000,y
+                sta:            $0003,y
+                sta             $1000,y
+                sta             $1003,y
+                sta             $2000,y
+                sta             $2003,y
+                sta             $3000,y
+                sta             $3003,y
+                sta             $4000,y
+                sta             $4003,y
+                sta             $5000,y
+                sta             $5003,y
+                sta             $6000,y
+                sta             $6003,y
+                sta             $7000,y
+                sta             $7003,y
+                rep             #$20
                 rts
 
 ; Masked tiles
@@ -611,4 +726,48 @@ CopyTile
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
+
+; CopyTileBG1
+;
+; A low-level function that copies 8x8 tiles directly into the BG1 data buffer.
+;
+; A = Tile ID (0 - 511)
+; X = Tile column (0 - 40)
+; Y = Tile row (0 - 25)
+CopyTileBG1
+                phb                                               ; save the current bank
+                phx                                               ; save the original x-value
+                pha                                               ; save the tile ID
+
+                tya                                               ; lookup the address of the virtual line (y * 8)
+                asl
+                asl
+                asl
+                asl
+                tay
+
+                txa
+                asl
+                asl                                               ; 4 bytes per tile column
+                clc
+                adc             BG1YTable,y
+                tay
+
+                pei             BG1DataBank
+                plb
+                plb                                               ; set the bank
+                pla                                               ; pop the tile ID
+                jsr             RenderTileBG1
+
+                plx                                               ; pop the x-register
+                plb                                               ; restore the data bank and return
+                rts
+
+
+
+
+
+
+
+
 
