@@ -753,15 +753,21 @@ CopyTileBG1
                 adc             BG1YTable,y
                 tay
 
-                pei             BG1DataBank
-                plb
+                sep             #$20
+                lda             BG1DataBank
+                pha
                 plb                                               ; set the bank
+                rep             #$20
+
                 pla                                               ; pop the tile ID
                 jsr             RenderTileBG1
 
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
+
+
+
 
 
 

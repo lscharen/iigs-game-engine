@@ -502,7 +502,7 @@ _UpdateBG1TileMap
                    sta   :Left
 
 :DoXUpdate
-                   jsr   _DrawRectBG1            ; Fill in the rectangle.
+                   jmp   _DrawRectBG1            ; Fill in the rectangle.
 
 :NoXUpdate
                    rts
@@ -568,11 +568,9 @@ _DrawRectBG1
                    asl                           ; This is the number of bytes to move the Offset to advance from the end of
                    sta   :Span                   ; one line to the beginning of the next
 
-; Now we need to figure out the code field tile coordinate of corner of
-; play field.  That is, becuase the screen is scrolling, the location of 
-; tile (0, 0) could be anywhere within the code field
+; Now we need to figure out the tile coordinate of corner of play field.
 
-                   lda   BG1StartYMod208         ; This is the code field line that is at the top of the screen
+                   lda   BG1StartYMod208         ; This is the line that is at the top of the screen
                    and   #$FFF8                  ; Clamp to the nearest block
                    lsr
                    lsr
@@ -650,6 +648,13 @@ _DrawRectBG1
                    pla
 
                    rts
+
+
+
+
+
+
+
 
 
 

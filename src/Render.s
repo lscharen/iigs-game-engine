@@ -73,7 +73,7 @@ Render
             jsr   _ApplyBG1XPosPre
 
             jsr   _UpdateBG0TileMap
-;            jsr   _UpdateBG1TileMap
+            jsr   _UpdateBG1TileMap
 
             jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
             jsr   _ApplyBG1XPos       ; Patch the PEA instructions with exit BRA opcode
@@ -120,6 +120,7 @@ Render
 
             stz   DirtyBits
             rts
+
 
 
 

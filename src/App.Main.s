@@ -136,8 +136,6 @@ NO_MUSIC             equ        1                       ; turn music + tool load
                      sta        BankLoad                ; Store "Bank Pointer"
 
                      jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
-                     lda        #74
-                     jsr        SetBG0XPos
 
                      lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                      ora        #DIRTY_BIT_BG1_REFRESH
@@ -1297,6 +1295,9 @@ qtRec                adrl       $0000
                      PUT        TileMap.s
                      PUT        App.TileMapBG0.s
                      PUT        App.TileMapBG1.s
+
+
+
 
 
 
