@@ -182,10 +182,15 @@ _DoTimers
                 plx
                 pla
 
+                lda       Timers+2,x                          ; Load the reset value, if it's zero
+                beq       :oneshot                            ; then this was a one-shot timer
+
                 clc
-                adc       Timers+2,x                          ; Add the increment
-                sta       Timers,x                            ; Store in the count
+                adc       Timers,x                            ; Add to the current count and store
+                sta       Timers,x
                 bra       :retry                              ; See if we have >0 ticks to wait until the next trigger
+
+:oneshot        stz       Timers,x
 
 :skip           txa
                 clc
@@ -196,6 +201,8 @@ _DoTimers
 
                 pla
                 rts
+
+
 
 
 
