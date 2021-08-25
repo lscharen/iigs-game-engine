@@ -7,7 +7,7 @@ MoveLeft
                      lsr
                      jsr       SetBG1XPos
 
-                     jsr       Render
+                     jsr       _Render
                      rts
 
 MoveRight
@@ -23,7 +23,7 @@ MoveRight
                      lsr
                      jsr       SetBG1XPos
 
-                     jsr       Render
+                     jsr       _Render
                      pla
                      rts
 
@@ -46,7 +46,7 @@ MoveUp
 ;                     lsr
 ;                     jsr       SetBG1YPos
 
-                     jsr       Render
+                     jsr       _Render
                      rts
 
 MoveDown
@@ -62,7 +62,7 @@ MoveDown
 ;                     lsr
 ;                     jsr       SetBG1YPos
 
-                     jsr       Render
+                     jsr       _Render
                      pla
                      rts
 
@@ -108,7 +108,7 @@ Demo
 ;                     jsr       MoveLeft
                      jsr       UpdateBG1Rotation
 ;                     jsr       DoColorCycle
-                     jsr       Render
+                     jsr       _Render
 
                      inc       frameCount
 
@@ -190,7 +190,7 @@ AngleUp
                      sbc       #64
                      sta       angle
                      jsr       _ApplyAngle
-                     jsr       Render
+                     jsr       _Render
                      rts
 
 AngleDown
@@ -201,7 +201,7 @@ AngleDown
                      adc       #64
                      sta       angle
                      jsr       _ApplyAngle
-                     jsr       Render
+                     jsr       _Render
                      rts
 
 angle                dw        0
@@ -286,6 +286,7 @@ _DoTimers
 
                      pla
                      rts
+
 
 
 

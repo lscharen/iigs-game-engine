@@ -16,7 +16,7 @@
 
                mx        %00
 
-MemInit        PushLong  #0                          ; space for result
+InitMemory     PushLong  #0                          ; space for result
                PushLong  #$008000                    ; size (32k)
                PushWord  UserId
                PushWord  #%11000000_00010111         ; Fixed location
@@ -123,7 +123,7 @@ AllocOneBank   PushLong  #0
 :bank          ldal      $000001,X                   ; recover the bank address in A=XX/00	
                rts
 
-; Variation that return pointer in the X/A registers (X = low, A = high)
+; Variation that returns the pointer in the X/A registers (X = low, A = high)
 AllocOneBank2  PushLong  #0
                PushLong  #$10000
                PushWord  UserId
@@ -134,75 +134,3 @@ AllocOneBank2  PushLong  #0
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                rts
-
-; Set up the interrupts
-;
-; oldOneVect = GetVector( oneSecHnd );
-; SetVector( oneSecHnd, (Pointer) ONEHANDLER );
-; IntSource( oSecEnable );
-;  SetHeartBeat( VBLTASK );
-IntInit        rts
-
-
-; IntSource( oSecDisable );		/* disable one second interrupts */
-; SetVector( oneSecHnd, oldOneVect );   /* reset to the old handler */
-ShutDown       rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

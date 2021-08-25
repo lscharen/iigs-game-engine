@@ -215,7 +215,8 @@ CodeFieldOddBRA
                   bra   *-6         ; 0 -- branch back 6 to skip the JMP even path
 
 ]step             equ   $2000
-ScreenAddr        lup   200
+ScreenAddr        ENT
+                  lup   200
                   dw    ]step
 ]step             =     ]step+160
                   --^
@@ -253,6 +254,7 @@ BG1YTable         lup   208
 BG1YOffsetTable   lup   26
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
                   --^
+
 
 
 

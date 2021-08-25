@@ -20,11 +20,12 @@
 ;            ALI   BANK
             SNA   Tiles
 
-;Segment #3 -- Rotation table data
+; Segment #3 -- Rotation table data
 
             ASM   RotData.s
             DS    0
             KND   #$1001         ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   RotData
+
 

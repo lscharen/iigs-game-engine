@@ -53,7 +53,13 @@
 ; This function examines the dirty bits and actually performs the work to update the code field
 ; and internal data structure to properly render the play field.  Then the update pipeline is
 ; executed.
-Render
+Render      ENT
+            phb
+            phk
+            plb
+            jsr   _Render
+            plb
+            rtl
 
 ; TODO -- actually check the dirty bits and be selective on what gets updated.  For example, if
 ;         only the Y position changes, then we should only need to set new values on the 
@@ -63,7 +69,7 @@ Render
 
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
-
+_Render
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
             jsr   _ApplyBG1YPos
 
@@ -120,6 +126,11 @@ Render
 
             stz   DirtyBits
             rts
+
+
+
+
+
 
 
 

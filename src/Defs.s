@@ -1,3 +1,23 @@
+; Global addresses and engine values
+SHADOW_REG             equ   $E0C035
+STATE_REG              equ   $E0C068
+NEW_VIDEO_REG          equ   $E0C029
+BORDER_REG             equ   $E0C034     ; 0-3 = border, 4-7 Text color
+VBL_VERT_REG           equ   $E0C02E
+VBL_HORZ_REG           equ   $E0C02F
+
+KBD_REG                equ   $E0C000
+KBD_STROBE_REG         equ   $E0C010
+VBL_STATE_REG          equ   $E0C019
+MOD_REG                equ   $E0C025
+COMMAND_KEY_REG        equ   $E0C061
+OPTION_KEY_REG         equ   $E0C062
+
+SHADOW_SCREEN          equ   $012000
+SHR_SCREEN             equ   $E12000
+SHR_SCB                equ   $E19D00
+SHR_PALETTES           equ   $E19E00
+
 ; Direct page locations used by the engine
 ScreenHeight           equ   0           ; Height of the playfield in scan lines
 ScreenWidth            equ   2           ; Width of the playfield in bytes
@@ -59,10 +79,12 @@ Next                   equ   86
 
 BankLoad               equ   128
 
-tiletmp                equ   186         ; 8 bytes of temp storage for the tile renderers
-blttmp                 equ   192         ; 32 bytes of local cache/scratch space
+AppSpace               equ   160         ; 16 bytes of space reserved for application use
 
-tmp8                   equ   224
+tiletmp                equ   186         ; 8 bytes of temp storage for the tile renderers
+blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
+
+tmp8                   equ   224         ; another 16 bytes of temporary space to be used as scratch 
 tmp9                   equ   226
 tmp10                  equ   228
 tmp11                  equ   230
@@ -86,6 +108,13 @@ DIRTY_BIT_BG1_X        equ   $0004
 DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
+
+
+
+
+
+
+
 
 
 
