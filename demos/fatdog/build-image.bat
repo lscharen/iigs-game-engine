@@ -5,7 +5,7 @@ REM
 REM Pass the path of the Cadius tool as the first argument (%1)
 
 set CADIUS="%1"
-set IMAGE="emu\\Base.2mg"
+set IMAGE="..\\..\\emu\\Target.2mg"
 set FOLDER="/GTEDEV/Build"
 
 REM Cadius does not overwrite files, so clear the root folder first
@@ -13,4 +13,4 @@ REM Cadius does not overwrite files, so clear the root folder first
 %CADIUS% CREATEFOLDER %IMAGE% %FOLDER%
 
 REM Now copy files and folders as needed
-%CADIUS% ADDFILE %IMAGE% %FOLDER% src\\GTEShooter
+%CADIUS% ADDFILE %IMAGE% %FOLDER% .\\GTEShooter
