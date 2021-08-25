@@ -1,3 +1,16 @@
+****************************************
+* Basic Error Macro                    *
+****************************************
+_Err            mac
+                bcc   NoErr
+                do    ]0              ; (DO if true) 
+                jsr   PgmDeath        ;  this is conditionally compiled if
+                str   ]1              ;  we pass in an error statement
+                else                  ; (ELSE) 
+                jmp   PgmDeath0       ;  we just call the simpler error handler
+                fin                   ; (FIN) 
+NoErr           eom
+
 ;
 ; Dereference a handle that is on the top of the stack
 ;
@@ -105,19 +118,6 @@ min             mac
                 bcc   mout
                 lda   ]1
 mout            <<<
-****************************************
-* Basic Error Macro                    *
-****************************************
-_Err            mac
-                bcc   NoErr
-                do    ]0              ; (DO if true) 
-                jsr   PgmDeath        ;  this is conditionally compiled if
-                str   ]1              ;  we pass in an error statement
-                else                  ; (ELSE) 
-                jmp   PgmDeath0       ;  we just call the simpler error handler
-                fin                   ; (FIN) 
-NoErr           eom
-
 
 ; Macros to use in the Masked Tile renderer
 ;
@@ -174,7 +174,3 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
-
-
-
-
