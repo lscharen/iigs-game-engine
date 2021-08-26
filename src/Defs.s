@@ -108,13 +108,3 @@ DIRTY_BIT_BG1_X        equ   $0004
 DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
-
-
-
-
-
-
-
-
-
-

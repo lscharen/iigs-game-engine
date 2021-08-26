@@ -17,8 +17,8 @@
 tiledata            ext
 
 ; Feature flags
-NO_INTERRUPTS       equ        1                       ; turn off for crossrunner debugging
-NO_MUSIC            equ        1                       ; turn music + tool loading off
+NO_INTERRUPTS       equ        1                  ; turn off for crossrunner debugging
+NO_MUSIC            equ        1                  ; turn music + tool loading off
 
 ; Typical init
                     phk
@@ -30,24 +30,25 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                     jsl        SetScreenMode
 
 ; Set up our level data
-                    jsr        BG0SetUp
-                    jsr        BG1SetUp
+;                    jsr        BG0SetUp
+;                    jsr        BG1SetUp
 
 ; Allocate room to load data
 
-                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
-                    sta        BankLoad                ; Store "Bank Pointer"
+;                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
+;                    sta        BankLoad                ; Store "Bank Pointer"
 
-                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
+;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
-                    lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
-                    ora        #DIRTY_BIT_BG1_REFRESH
-                    tsb        DirtyBits
+;                    lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
+;                    ora        #DIRTY_BIT_BG1_REFRESH
+;                    tsb        DirtyBits
 
+;                    lda        #$FFFF
                     jsl        Render
 EvtLoop
                     jsl        ReadControl
-                    and        #$007F                  ; Ignore the buttons for now
+                    and        #$007F             ; Ignore the buttons for now
 
                     cmp        #'q'
                     bne        :1
@@ -68,17 +69,17 @@ EvtLoop
                     jsr        DumpBanks
                     bra        EvtLoop
 
-:3                  cmp        #'f'                    ; render a 'f'rame
+:3                  cmp        #'f'               ; render a 'f'rame
                     bne        :4
                     jsl        Render
                     bra        EvtLoop
 
-:4                  cmp        #'h'                    ; Show the 'h'eads up display
+:4                  cmp        #'h'               ; Show the 'h'eads up display
                     bne        :5
                     jsr        DoHUP
                     bra        EvtLoop
 
-:5                  cmp        #'1'                    ; User selects a new screen size
+:5                  cmp        #'1'               ; User selects a new screen size
                     bcc        :6
                     cmp        #'9'+1
                     bcs        :6
@@ -86,7 +87,7 @@ EvtLoop
                     sbc        #'1'
                     tax
                     jsl        SetScreenMode
-                    jsr        MovePlayerToOrigin
+;                    jsr        MovePlayerToOrigin
                     brl        EvtLoop
 
 :6                  cmp        #'t'
@@ -94,7 +95,7 @@ EvtLoop
                     jsr        DoTiles
                     brl        EvtLoop
 
-:7                  cmp        #$15                    ; left = $08, right = $15, up = $0B, down = $0A
+:7                  cmp        #$15               ; left = $08, right = $15, up = $0B, down = $0A
                     bne        :8
                     lda        #1
                     jsr        MoveRight
@@ -150,13 +151,13 @@ StartMusic
                     pea        #MusicFile
                     _NTPLoadOneMusic
 
-                    pea        $0001                   ; loop
+                    pea        $0001              ; loop
                     _NTPPlayMusic
                     rts
 
 ; Position the screen with the botom-left corner of the tilemap visible
 MovePlayerToOrigin
-                    lda        #0                      ; Set the player's position
+                    lda        #0                 ; Set the player's position
                     jsl        SetBG0XPos
                     lda        #0
                     jsl        SetBG1XPos
@@ -198,8 +199,8 @@ DoHUP
                     ldx        #{160-12*4}
                     ldy        #$7777
                     jsr        DrawString
-                    lda        OneSecondCounter        ; Number of elapsed seconds
-                    ldx        #{160-4*4}              ; Render the word 4 charaters from right edge
+                    lda        OneSecondCounter   ; Number of elapsed seconds
+                    ldx        #{160-4*4}         ; Render the word 4 charaters from right edge
                     jsr        DrawWord
 
                     lda        #TicksStr
@@ -220,7 +221,7 @@ DoTiles
 :column             equ        3
 :tile               equ        5
 
-                    pea        $0000                   ; Allocate local variable space
+                    pea        $0000              ; Allocate local variable space
                     pea        $0000
                     pea        $0000
 
@@ -250,7 +251,7 @@ DoTiles
                     cmp        #26
                     bcc        :rowloop
 
-                    pla                                ; restore the stack
+                    pla                           ; restore the stack
                     pla
                     pla
                     rts
@@ -264,7 +265,7 @@ DoLoadBG1
                     ldx        BankLoad
                     lda        #0
                     ldy        BG1DataBank
-                    jsr        CopyBinToBG1
+                    jsl        CopyBinToBG1
 
                     lda        BankLoad
                     ldx        #BG1AltDataFile
@@ -273,7 +274,7 @@ DoLoadBG1
                     ldx        BankLoad
                     lda        #0
                     ldy        BG1AltBank
-                    jsr        CopyBinToBG1
+                    jsl        CopyBinToBG1
 
                     rts
 
@@ -283,18 +284,18 @@ DoLoadFG
                     ldx        #FGName
                     jsr        LoadFile
 
-                    ldx        BankLoad                ; Copy it into the code field
+                    ldx        BankLoad           ; Copy it into the code field
                     lda        #0
-                    jsr        CopyBinToField
+                    jsl        CopyBinToField
                     rts
 
 ; Load a simple picture format onto the SHR screen
 DoLoadPic
                     lda        BankLoad
-                    ldx        #ImageName              ; Load+Unpack Boot Picture
-                    jsr        LoadPicture             ; X=Name, A=Bank to use for loading
+                    ldx        #ImageName         ; Load+Unpack Boot Picture
+                    jsr        LoadPicture        ; X=Name, A=Bank to use for loading
 
-                    ldx        BankLoad                ; Copy it into the code field
+                    ldx        BankLoad           ; Copy it into the code field
                     lda        #0
                     jsl        CopyPicToField
                     rts
@@ -335,43 +336,43 @@ DefaultPalette      dw         $0E51,$0EDB,$0000,$068F,$0BF1,$00A0,$0EEE,$0777,$
 ; Graphics helpers
 
 LoadPicture
-                    jsr        LoadFile                ; X=Nom Image, A=Banc de chargement XX/00
+                    jsr        LoadFile           ; X=Nom Image, A=Banc de chargement XX/00
                     bcc        :loadOK
                     rts
 :loadOK
-                    jsr        UnpackPicture           ; A=Packed Size
+                    jsr        UnpackPicture      ; A=Packed Size
                     rts
 
 
-UnpackPicture       sta        UP_PackedSize           ; Size of Packed Data
-                    lda        #$8000                  ; Size of output Data Buffer
+UnpackPicture       sta        UP_PackedSize      ; Size of Packed Data
+                    lda        #$8000             ; Size of output Data Buffer
                     sta        UP_UnPackedSize
-                    lda        BankLoad                ; Banc de chargement / Decompression
-                    sta        UP_Packed+1             ; Packed Data
+                    lda        BankLoad           ; Banc de chargement / Decompression
+                    sta        UP_Packed+1        ; Packed Data
                     clc
                     adc        #$0080
-                    stz        UP_UnPacked             ; On remet a zero car modifie par l'appel
+                    stz        UP_UnPacked        ; On remet a zero car modifie par l'appel
                     stz        UP_UnPacked+2
-                    sta        UP_UnPacked+1           ; Unpacked Data buffer
+                    sta        UP_UnPacked+1      ; Unpacked Data buffer
 
-                    PushWord   #0                      ; Space for Result : Number of bytes unpacked 
-                    PushLong   UP_Packed               ; Pointer to buffer containing the packed data
-                    PushWord   UP_PackedSize           ; Size of the Packed Data
-                    PushLong   #UP_UnPacked            ; Pointer to Pointer to unpacked buffer
-                    PushLong   #UP_UnPackedSize        ; Pointer to a Word containing size of unpacked data
+                    PushWord   #0                 ; Space for Result : Number of bytes unpacked 
+                    PushLong   UP_Packed          ; Pointer to buffer containing the packed data
+                    PushWord   UP_PackedSize      ; Size of the Packed Data
+                    PushLong   #UP_UnPacked       ; Pointer to Pointer to unpacked buffer
+                    PushLong   #UP_UnPackedSize   ; Pointer to a Word containing size of unpacked data
                     _UnPackBytes
-                    pla                                ; Number of byte unpacked
+                    pla                           ; Number of byte unpacked
                     rts
 
-UP_Packed           hex        00000000                ; Address of Packed Data
-UP_PackedSize       hex        0000                    ; Size of Packed Data
-UP_UnPacked         hex        00000000                ; Address of Unpacked Data Buffer (modified)
-UP_UnPackedSize     hex        0000                    ; Size of Unpacked Data Buffer (modified)
+UP_Packed           hex        00000000           ; Address of Packed Data
+UP_PackedSize       hex        0000               ; Size of Packed Data
+UP_UnPacked         hex        00000000           ; Address of Unpacked Data Buffer (modified)
+UP_UnPackedSize     hex        0000               ; Size of Unpacked Data Buffer (modified)
 
 ; Basic I/O function to load files
 
 LoadFile
-                    stx        openRec+4               ; X=File, A=Bank (high word) assumed zero for low
+                    stx        openRec+4          ; X=File, A=Bank (high word) assumed zero for low
                     stz        readRec+4
                     sta        readRec+6
                     jsr        ClearBankLoad
@@ -393,7 +394,7 @@ LoadFile
 
 :closeFile          _CloseGS   closeRec
                     clc
-                    lda        eofRec+4                ; File Size
+                    lda        eofRec+4           ; File Size
                     rts
 
 :openReadErr        jsr        :closeFile
@@ -426,22 +427,22 @@ BG1AltDataFile      strl       '1/bg1b.bin'
 ImageName           strl       '1/test.pic'
 FGName              strl       '1/fg1.bin'
 
-openRec             dw         2                       ; pCount
-                    ds         2                       ; refNum
-                    adrl       FGName                  ; pathname
+openRec             dw         2                  ; pCount
+                    ds         2                  ; refNum
+                    adrl       FGName             ; pathname
 
-eofRec              dw         2                       ; pCount
-                    ds         2                       ; refNum
-                    ds         4                       ; eof
+eofRec              dw         2                  ; pCount
+                    ds         2                  ; refNum
+                    ds         4                  ; eof
 
-readRec             dw         4                       ; pCount
-                    ds         2                       ; refNum
-                    ds         4                       ; dataBuffer
-                    ds         4                       ; requestCount
-                    ds         4                       ; transferCount
+readRec             dw         4                  ; pCount
+                    ds         2                  ; refNum
+                    ds         4                  ; dataBuffer
+                    ds         4                  ; requestCount
+                    ds         4                  ; transferCount
 
-closeRec            dw         1                       ; pCount
-                    ds         2                       ; refNum
+closeRec            dw         1                  ; pCount
+                    ds         2                  ; refNum
 
 qtRec               adrl       $0000
                     da         $00
@@ -453,36 +454,3 @@ qtRec               adrl       $0000
 
                     PUT        App.TileMapBG0.s
                     PUT        App.TileMapBG1.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

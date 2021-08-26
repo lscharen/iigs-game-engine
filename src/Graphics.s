@@ -121,7 +121,3 @@ WaitForVBL      sep   #$20
                 bpl   :wait2               ; spin until transition into VBL
                 rep   #$20
                 rts
-
-
-
-

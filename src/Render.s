@@ -84,8 +84,6 @@ _Render
             jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
             jsr   _ApplyBG1XPos       ; Patch the PEA instructions with exit BRA opcode
 
-; Copy any tiles that have come into view
-
 ; The code fields are locked in now and reder to be rendered
 
             jsr   ShadowOff
@@ -126,31 +124,3 @@ _Render
 
             stz   DirtyBits
             rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

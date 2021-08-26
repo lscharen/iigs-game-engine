@@ -62,6 +62,7 @@ InitTimers
 ;  A = timer slot ID if C = 0
 AddTimer        ENT
                 phb
+
                 php                                           ; Save the input parameters
                 phx
                 pha
@@ -135,6 +136,7 @@ RemoveTimer     ENT
 :exit
                 plb
                 rtl
+
 ; Execute the timer functions
 DoTimers        ENT
                 phb
@@ -201,6 +203,7 @@ _DoTimers
 
                 pla
                 rts
+
 
 
 

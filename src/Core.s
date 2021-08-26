@@ -45,9 +45,15 @@ EngineStartUp     ENT
                   rtl
 
 EngineShutDown    ENT
+                  phb
+                  phk
+                  plb
+
                   jsr       IntShutDown
                   jsr       SoundShutDown
                   jsr       ToolShutDown
+
+                  plb
                   rtl
 
 ToolStartUp
@@ -220,6 +226,11 @@ EngineReset
                   stz       TileMapHeight
                   stz       TileMapPtr
                   stz       TileMapPtr+2
+
+                  stz       BG1TileMapWidth
+                  stz       BG1TileMapHeight
+                  stz       BG1TileMapPtr
+                  stz       BG1TileMapPtr+2
 
                   stz       OneSecondCounter
 

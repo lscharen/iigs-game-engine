@@ -345,7 +345,6 @@ _ApplyBG0XPos
 ; Special note, the SaveOpcode function stores the opcode *within* the code field as it is
 ; used in odd-aligned cases to determine how to draw the 8-bit value on the left edge of the
 ; screen
-
                                                      ; y is already set to :base_address
                     tax                              ; :draw_count_x2
                     lda   :exit_address              ; Save from this location

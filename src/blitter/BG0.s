@@ -1,7 +1,7 @@
 ; Support routinges for the primary background
 _InitBG0
-                 jsr   _ApplyBG0YPos
-                 jsr   _ApplyBG0XPos
+                 lda   #DIRTY_BIT_BG0_X+DIRTY_BIT_BG0_Y
+                 tsb   DirtyBits
                  rts
 
 ; Copy a raw data file into the code field
@@ -53,7 +53,7 @@ _CopyBinToField
 
                  stz   :line_cnt
 :rloop
-                 lda   :line_cnt         ; get the pointer to the code field line
+                 lda   :line_cnt                         ; get the pointer to the code field line
                  asl
                  tax
 
@@ -63,90 +63,88 @@ _CopyBinToField
                  sta   :dstptr+2
 
 ;                     ldx        #162                    ; move backwards in the code field
-                 ldy   #0                ; move forward in the image data
+                 ldy   #0                                ; move forward in the image data
 
-                 lda   #82               ; keep a running column count
+                 lda   #82                               ; keep a running column count
                  sta   :col_cnt
 
 :cloop
                  phy
-                 lda   [:srcptr],y       ; load the picture data
+                 lda   [:srcptr],y                       ; load the picture data
                  cmp   :mask_color
-                 beq   :transparent      ; a value of $0000 is transparent
+                 beq   :transparent                      ; a value of $0000 is transparent
 
-                 jsr   :toMask           ; Infer a mask value for this. If it's $0000, then
+                 jsr   :toMask                           ; Infer a mask value for this. If it's $0000, then
                  cmp   #$0000
-                 bne   :mixed            ; the data is solid, otherwise mixed
+                 bne   :mixed                            ; the data is solid, otherwise mixed
 
 ; This is a solid word
 :solid
                  lda   [:srcptr],y
-                 pha                     ; Save the data
+                 pha                                     ; Save the data
 
-                 lda   Col2CodeOffset,y  ; Get the offset to the code from the line start
+                 lda   Col2CodeOffset,y                  ; Get the offset to the code from the line start
                  tay
 
-                 lda   #$00F4            ; PEA instruction
+                 lda   #$00F4                            ; PEA instruction
                  sta   [:dstptr],y
                  iny
                  pla
-                 sta   [:dstptr],y       ; PEA operand
+                 sta   [:dstptr],y                       ; PEA operand
                  bra   :next
 :transparent
-                 lda   :mask_color       ; Make sure we actually have to mask
+                 lda   :mask_color                       ; Make sure we actually have to mask
                  cmp   #$A5A5
                  beq   :solid
 
-                 lda   Col2CodeOffset,y  ; Get the offset to the code from the line start
+                 lda   Col2CodeOffset,y                  ; Get the offset to the code from the line start
                  tay
-                 lda   #$B1              ; LDA (dp),y
+                 lda   #$B1                              ; LDA (dp),y
                  sta   [:dstptr],y
                  iny
-                 lda   1,s               ; load the saved Y-index
-                 ora   #$4800            ; put a PHA after the offset
+                 lda   1,s                               ; load the saved Y-index
+                 ora   #$4800                            ; put a PHA after the offset
                  sta   [:dstptr],y
                  bra   :next
 
 :mixed
-                 sta   :mask             ; Save the mask
-                 lda   [:srcptr],y       ; Refetch the screen data
+                 sta   :mask                             ; Save the mask
+                 lda   [:srcptr],y                       ; Refetch the screen data
                  sta   :data
 
                  tyx
-                 lda   Col2CodeOffset,y  ; Get the offset into the code field
+                 lda   Col2CodeOffset,y                  ; Get the offset into the code field
                  tay
-                 lda   #$4C              ; JMP exception
+                 lda   #$4C                              ; JMP exception
                  sta   [:dstptr],y
                  iny
 
-                 lda   JTableOffset,x    ; Get the address offset and add to the base address
+                 lda   JTableOffset,x                    ; Get the address offset and add to the base address
                  clc
                  adc   :dstptr
                  sta   [:dstptr],y
 
-                 ldy   JTableOffset,x    ; This points to the code fragment
-                 lda   1,s               ; load the offset
+                 ldy   JTableOffset,x                    ; This points to the code fragment
+                 lda   1,s                               ; load the offset
                  xba
                  ora   #$00B1
-                 sta   [:dstptr],y       ; write the LDA (--),y instruction
+                 sta   [:dstptr],y                       ; write the LDA (--),y instruction
                  iny
                  iny
-                 iny                     ; advance to the AND #imm operand
+                 iny                                     ; advance to the AND #imm operand
                  lda   :mask
                  sta   [:dstptr],y
                  iny
                  iny
-                 iny                     ; advance to the ORA #imm operand
+                 iny                                     ; advance to the ORA #imm operand
                  lda   :mask
-                 eor   #$FFFF            ; invert the mask to clear up the data
+                 eor   #$FFFF                            ; invert the mask to clear up the data
                  and   :data
                  sta   [:dstptr],y
 
 :next
                  ply
 
-;                     dex
-;                     dex
                  iny
                  iny
 
@@ -167,10 +165,10 @@ _CopyBinToField
 :exit
                  rts
 
-:toMask          pha                     ; save original
+:toMask          pha                                     ; save original
 
                  lda   1,s
-                 eor   :mask_color       ; only identical bits produce zero
+                 eor   :mask_color                       ; only identical bits produce zero
                  and   #$F000
                  beq   *+7
                  pea   #$0000
@@ -212,7 +210,7 @@ _CopyBinToField
                  sta   1,s
                  pla
 
-                 sta   1,s               ; pop the saved word
+                 sta   1,s                               ; pop the saved word
                  pla
                  rts
 
@@ -245,7 +243,7 @@ _CopyPicToField
 
                  stz   :line_cnt
 :rloop
-                 lda   :line_cnt         ; get the pointer to the code field line
+                 lda   :line_cnt                         ; get the pointer to the code field line
                  asl
                  tax
 
@@ -255,76 +253,76 @@ _CopyPicToField
                  sta   :dstptr+2
 
 ;                     ldx        #162                    ; move backwards in the code field
-                 ldy   #0                ; move forward in the image data
+                 ldy   #0                                ; move forward in the image data
 
-                 lda   #80               ; keep a running column count
+                 lda   #80                               ; keep a running column count
 ;                     lda        #82                  ; keep a running column count
                  sta   :col_cnt
 
 :cloop
                  phy
-                 lda   [:srcptr],y       ; load the picture data
-                 beq   :transparent      ; a value of $0000 is transparent
+                 lda   [:srcptr],y                       ; load the picture data
+                 beq   :transparent                      ; a value of $0000 is transparent
 
-                 jsr   :toMask           ; Infer a mask value for this. If it's $0000, then
-                 bne   :mixed            ; the data is solid, otherwise mixed
+                 jsr   :toMask                           ; Infer a mask value for this. If it's $0000, then
+                 bne   :mixed                            ; the data is solid, otherwise mixed
 
 ; This is a solid word
                  lda   [:srcptr],y
-                 pha                     ; Save the data
+                 pha                                     ; Save the data
 
-                 lda   Col2CodeOffset,y  ; Get the offset to the code from the line start
+                 lda   Col2CodeOffset,y                  ; Get the offset to the code from the line start
                  tay
 
-                 lda   #$00F4            ; PEA instruction
+                 lda   #$00F4                            ; PEA instruction
                  sta   [:dstptr],y
                  iny
                  pla
-                 sta   [:dstptr],y       ; PEA operand
+                 sta   [:dstptr],y                       ; PEA operand
                  bra   :next
 :transparent
-                 lda   Col2CodeOffset,y  ; Get the offset to the code from the line start
+                 lda   Col2CodeOffset,y                  ; Get the offset to the code from the line start
                  tay
 
-                 lda   #$B1              ; LDA (dp),y
+                 lda   #$B1                              ; LDA (dp),y
                  sta   [:dstptr],y
                  iny
-                 lda   1,s               ; load the saved Y-index
-                 ora   #$4800            ; put a PHA after the offset
+                 lda   1,s                               ; load the saved Y-index
+                 ora   #$4800                            ; put a PHA after the offset
                  sta   [:dstptr],y
                  bra   :next
 
 :mixed
-                 sta   :mask             ; Save the mask
-                 lda   [:srcptr],y       ; Refetch the screen data
+                 sta   :mask                             ; Save the mask
+                 lda   [:srcptr],y                       ; Refetch the screen data
                  sta   :data
 
                  tyx
-                 lda   Col2CodeOffset,y  ; Get the offset into the code field
+                 lda   Col2CodeOffset,y                  ; Get the offset into the code field
                  tay
 
-                 lda   #$4C              ; JMP exception
+                 lda   #$4C                              ; JMP exception
                  sta   [:dstptr],y
                  iny
 
-                 lda   JTableOffset,x    ; Get the address offset and add to the base address
+                 lda   JTableOffset,x                    ; Get the address offset and add to the base address
                  clc
                  adc   :dstptr
                  sta   [:dstptr],y
 
-                 ldy   JTableOffset,x    ; This points to the code fragment
-                 lda   1,s               ; load the offset
+                 ldy   JTableOffset,x                    ; This points to the code fragment
+                 lda   1,s                               ; load the offset
                  xba
                  ora   #$00B1
-                 sta   [:dstptr],y       ; write the LDA (--),y instruction
+                 sta   [:dstptr],y                       ; write the LDA (--),y instruction
                  iny
                  iny
-                 iny                     ; advance to the AND #imm operand
+                 iny                                     ; advance to the AND #imm operand
                  lda   :mask
                  sta   [:dstptr],y
                  iny
                  iny
-                 iny                     ; advance to the ORA #imm operand
+                 iny                                     ; advance to the ORA #imm operand
                  lda   :data
                  sta   [:dstptr],y
 
@@ -379,8 +377,3 @@ _CopyPicToField
                  bra   *+5
                  ora   #$000F
                  rts
-
-
-
-
-

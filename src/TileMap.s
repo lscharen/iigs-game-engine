@@ -49,6 +49,12 @@ _UpdateBG0TileMap
 :BlkX              equ   tmp12
 :BlkY              equ   tmp13
 
+                   lda   TileMapPtr              ; Do nothing if no data is set
+                   ora   TileMapPtr+2
+                   bne   :valid
+                   rts
+
+:valid
                    lda   StartY                  ; calculate the tile index of the current location
                    lsr
                    lsr
@@ -390,6 +396,12 @@ _UpdateBG1TileMap
 :Top               equ   tmp2
 :Bottom            equ   tmp3
 
+                   lda   BG1TileMapPtr           ; Do nothing if no data is set
+                   ora   BG1TileMapPtr+2
+                   bne   :valid
+                   rts
+
+:valid
                    lda   BG1StartY               ; calculate the tile index of the current location
                    lsr
                    lsr
@@ -648,19 +660,3 @@ _DrawRectBG1
                    pla
 
                    rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
