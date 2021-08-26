@@ -4,7 +4,74 @@ _InitBG1
                           jsr   _ApplyBG1XPos
                           rts
 
-SetBG1XPos
+
+; Copy a binary image data file into BG1.  Assumes the file is the correct size.
+;
+; A=low word of picture address
+; X=high word of pixture address
+; Y=high word of BG1 bank
+CopyBinToBG1              ENT
+                          phb
+                          phk
+                          plb
+                          jsr   _CopyBinToBG1
+                          plb
+                          rtl
+_CopyBinToBG1
+:srcptr                   equ   tmp0
+:line_cnt                 equ   tmp2
+:dstptr                   equ   tmp3
+:col_cnt                  equ   tmp5
+
+                          sta   :srcptr
+                          stx   :srcptr+2
+                          sty   :dstptr+2                 ; Everything goes into this bank
+
+                                                          ; Advance over the header
+                          lda   :srcptr
+                          clc
+                          adc   #8
+                          sta   :srcptr
+
+                          stz   :line_cnt
+:rloop
+                          lda   :line_cnt                 ; get the pointer to the code field line
+                          asl
+                          tax
+
+                          lda   BG1YTable,x
+                          sta   :dstptr
+
+                          ldy   #0                        ; move forward in the image data and image data
+:cloop
+                          lda   [:srcptr],y
+                          sta   [:dstptr],y
+
+                          iny
+                          iny
+
+                          cpy   #164
+                          bcc   :cloop
+
+                          lda   [:srcptr]                 ; Duplicate the last byte in the extra space at the end of the line
+                          sta   [:dstptr],y
+
+                          lda   :srcptr
+                          clc
+                          adc   #164                      ; Each line is 328 pixels
+                          sta   :srcptr
+
+                          inc   :line_cnt
+                          lda   :line_cnt
+                          cmp   #208                      ; A total of 208 lines
+                          bcc   :rloop
+                          rts
+
+SetBG1XPos                ENT
+                          jsr   _SetBG1XPos
+                          rtl
+
+_SetBG1XPos
                           cmp   BG1StartX
                           beq   :out                      ; Easy, if nothing changed, then nothing changes
 
@@ -19,7 +86,11 @@ SetBG1XPos
 :out                      rts
 
 
-SetBG1YPos
+SetBG1YPos                ENT
+                          jsr   _SetBG1YPos
+                          rtl
+
+_SetBG1YPos
                           cmp   BG1StartY
                           beq   :out                      ; Easy, if nothing changed, then nothing changes
 
@@ -82,6 +153,14 @@ _ApplyBG1XPos
                           rts
 
 ANGLEBNK                  ext
+ApplyBG1XPosAngle         ENT
+                          phb
+                          phk
+                          plb
+                          jsr   _ApplyBG1XPosAngle
+                          plb
+                          rtl
+
 _ApplyBG1XPosAngle
 ;                          phy
 
@@ -146,6 +225,13 @@ _ClearBG1Buffer
 
                           plb
                           rts
+ApplyBG1YPosAngle         ENT
+                          phb
+                          phk
+                          plb
+                          jsr   _ApplyBG1YPosAngle
+                          plb
+                          rtl
 
 _ApplyBG1YPosAngle
 :virt_line                equ   tmp0

@@ -313,7 +313,7 @@ _UpdateBG0TileMap
 
                    ldx   :BlkX
                    ldy   :BlkY
-                   jsr   CopyTile
+                   jsr   _CopyBG0Tile
 
                    lda   :BlkX
                    inc
@@ -611,7 +611,7 @@ _DrawRectBG1
 
                    ldx   :BlkX
                    ldy   :BlkY
-                   jsr   CopyTileBG1
+                   jsr   _CopyBG1Tile
 
                    lda   :BlkX
                    inc
@@ -648,6 +648,7 @@ _DrawRectBG1
                    pla
 
                    rts
+
 
 
 

@@ -124,6 +124,14 @@ AllocOneBank   PushLong  #0
                rts
 
 ; Variation that returns the pointer in the X/A registers (X = low, A = high)
+AllocBank      ENT
+               phb
+               phk
+               plb
+               jsr       AllocOneBank2
+               plb
+               rtl
+
 AllocOneBank2  PushLong  #0
                PushLong  #$10000
                PushWord  UserId
@@ -134,3 +142,4 @@ AllocOneBank2  PushLong  #0
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                rts
+

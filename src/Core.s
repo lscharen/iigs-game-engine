@@ -170,7 +170,8 @@ OneSecHandler     mx        %11
                   rtl
                   mx        %00
 
-OneSecondCounter  dw        0
+OneSecondCounter  ENT
+                  dw        0
 OldOneSecVec      ds        4
 
 VBLTASK           hex       00000000
@@ -353,11 +354,9 @@ ReadControl       ENT
 
                   put       App.Init.s
                   put       Graphics.s
-;                  put       App.Msg.s
-;                  put       Actions.s
-;                  put       font.s
                   put       Render.s
-;                  put       Overlay.s
+                  put       Timer.s
+                  put       Script.s
                   put       blitter/Blitter.s
                   put       blitter/Horz.s
                   put       blitter/PEISlammer.s
@@ -365,64 +364,9 @@ ReadControl       ENT
                   put       blitter/Template.s
                   put       blitter/Tiles.s
                   put       blitter/Vert.s
+                  put       blitter/BG0.s
                   put       blitter/BG1.s
                   put       TileMap.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

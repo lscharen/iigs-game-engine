@@ -84,22 +84,22 @@ AddTimer        ENT
                 bra       :notimers
 
 :freeslot       pla
-                sta       Timer+0,x                           ; set the counter and 
-                stz       Timer+2,x                           ; default to a zero reset value
+                sta       Timers+0,x                          ; set the counter and 
+                stz       Timers+2,x                          ; default to a zero reset value
                 pla
-                sta       Timer+4,x                           ; set the callback address
+                sta       Timers+4,x                          ; set the callback address
                 pla
-                sta       Timer+6,x
+                sta       Timers+6,x
 
-                stz       Timer+8,x                           ; Clear the user data space
-                stz       Timer+10,x                          ; Clear the user data space
-                stz       Timer+12,x                          ; Clear the user data space
-                stz       Timer+14,x                          ; Clear the user data space
+                stz       Timers+8,x                          ; Clear the user data space
+                stz       Timers+10,x                         ; Clear the user data space
+                stz       Timers+12,x                         ; Clear the user data space
+                stz       Timers+14,x                         ; Clear the user data space
 
                 plp
                 bcc       :oneshot
-                lda       Timer+0,x                           ; if not a one-shot, put the counter
-                sta       Timer+2,x                           ; value into the reset field
+                lda       Timers+0,x                          ; if not a one-shot, put the counter
+                sta       Timers+2,x                          ; value into the reset field
 
 :oneshot        plb
                 txa                                           ; return the slot ID and a success status
@@ -127,10 +127,10 @@ RemoveTimer     ENT
                 bcs       :exit
 
                 tax
-                stz       Timer,x
-                stz       Timer+2,x
-                stz       Timer+4,x
-                stz       Timer+6,x
+                stz       Timers,x
+                stz       Timers+2,x
+                stz       Timers+4,x
+                stz       Timers+6,x
 
 :exit
                 plb
@@ -201,6 +201,7 @@ _DoTimers
 
                 pla
                 rts
+
 
 
 

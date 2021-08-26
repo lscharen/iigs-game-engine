@@ -13,7 +13,7 @@
   "scripts": {
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
     "debug": "%npm_package_config_crossrunner% src\\GTETestApp -Source src\\GTETestApp_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
-    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% src\\App.s",
+    "build": "%npm_package_config_merlin32% -V .\\macros src\\App.s",
     "build:watch": "watch \"npm run build\" src",
     "build:assets-smw": "node ./tools/png2iigs.js ./assets/donut-plains-2-8-color.png ./emu/bg1a.bin --start-index 6 && node ./tools/png2iigs.js ./assets/donut-plains-2-8-color-shift.png ./emu/bg1b.bin --start-index 6 && node ./tools/png2iigs.js ./assets/donut-plains-1-6-color.png ./emu/fg1.bin",
     "build:assets-fatdog": "node ./tools/png2iigs.js ./assets/armada-7-color.png ./emu/bg1a.bin --start-index 8 && node ./tools/png2iigs.js ./assets/armada-7-color-shift.png ./emu/bg1b.bin --start-index 8 && node ./tools/png2iigs.js ./assets/armada-7-color-shuffle.png ./emu/fg1.bin --start-index 1",

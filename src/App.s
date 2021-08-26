@@ -12,7 +12,12 @@
             ALI   None           ;   Boundary Alignment (None)
             SNA   Main
 
-; Segment #2 -- 64KB Tile Memory
+; Segment #2 -- Core GTE Code
+
+            ASM   Core.s
+            SNA   Core
+
+; Segment #3 -- 64KB Tile Memory
 
             ASM   App.TileSet.s
             DS    0
@@ -20,12 +25,11 @@
 ;            ALI   BANK
             SNA   Tiles
 
-; Segment #3 -- Rotation table data
+; Segment #4 -- Rotation table data
 
             ASM   RotData.s
             DS    0
             KND   #$1001         ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   RotData
-
 

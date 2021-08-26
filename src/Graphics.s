@@ -10,6 +10,13 @@ InitGraphics
                 ldx   #DefaultPalette
                 lda   #0
                 jsr   SetPalette
+
+                jsr   _InitBG0             ; Initialize the background layers
+                jsr   _InitBG1
+
+                lda   #0
+                jsr   _ClearBG1Buffer
+
                 rts
 
 DefaultPalette  dw    $0000,$007F,$0090,$0FF0
@@ -114,5 +121,7 @@ WaitForVBL      sep   #$20
                 bpl   :wait2               ; spin until transition into VBL
                 rep   #$20
                 rts
+
+
 
 

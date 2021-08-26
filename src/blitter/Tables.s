@@ -229,7 +229,8 @@ RTable            ds    400
                   ds    400
 
 ; Array of addresses for the banks that hold the blitter. 
-BlitBuff          ds    4*13
+BlitBuff          ENT
+                  ds    4*13
 
 ; The blitter table (BTable) is a double-length table that holds the full 4-byte address of each
 ; line of the blit fields.  We decompose arrays of pointers into separate high and low words so
@@ -254,6 +255,7 @@ BG1YTable         lup   208
 BG1YOffsetTable   lup   26
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
                   --^
+
 
 
 

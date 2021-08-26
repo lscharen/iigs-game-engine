@@ -12,7 +12,11 @@
 ; continuously overwrite it.
 ;
 ; We assume that there is a clean code field in this routine
-SetBG0XPos
+SetBG0XPos          ENT
+                    jsr   _SetBG0XPos
+                    rtl
+
+_SetBG0XPos
                     cmp   StartX
                     beq   :out                       ; Easy, if nothing changed, then nothing changes
 
@@ -746,17 +750,3 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
 :bottom             rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-

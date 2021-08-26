@@ -1,4 +1,4 @@
-; IIgs Game Engine
+; Fatdog Demos
 
             TYP   $B3                  ; S16 file
             DSK   GTEShooter
@@ -19,4 +19,5 @@
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   RotData
+
 

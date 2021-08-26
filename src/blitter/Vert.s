@@ -6,7 +6,11 @@
 ; SetBG0YPos
 ;
 ; Set the virtual position of the primary background layer.
-SetBG0YPos
+SetBG0YPos           ENT
+                     jsr   _SetBG0YPos
+                     rtl
+
+_SetBG0YPos
                      cmp   StartY
                      beq   :out                 ; Easy, if nothing changed, then nothing changes
 

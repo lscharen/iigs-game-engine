@@ -2,6 +2,7 @@
               DSK      MAINSEG
 
               use      EDS.GSOS.MACS.s
+              use      Tool222.Macs.s
               use      ../../src/GTE.s
               use      ../../src/Defs.s
 
@@ -119,57 +120,5 @@ tiledata      ENT
 ; Storage for sprites
 StackAddress  ds       2
               PUT      sprites/Ships.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

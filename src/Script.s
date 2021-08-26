@@ -119,7 +119,7 @@ _DoScriptSeq
                plx                   ; Pop off the update command address
 
                bit   #$8000          ; If the stop bit is set, we're done with this sequence
-               beq   :continue       ; Otherwise, keep going and fetch the next command word
+               beq   :loop           ; Otherwise, keep going and fetch the next command word
 
                txa                   ; save the current command address
                plb                   ; restore the data bank and the timer index
@@ -147,82 +147,26 @@ _SetPalEntry
 
 _SwapPalEntry  txy
 
-               ldx   ARG1,y          ; Load palette values
+               ldx:  ARG1,y          ; Load palette values
                ldal  SHR_PALETTES,x
                pha
-               ldx   ARG2,y
+               ldx:  ARG2,y
                ldal  SHR_PALETTES,x
 
-               ldx   ARG1,y          ; and swap
+               ldx:  ARG1,y          ; and swap
                stal  SHR_PALETTES,x
 
-               ldx   ARG2,y
+               ldx:  ARG2,y
                pla
                stal  SHR_PALETTES,x
                rts
 
-_UserCallback  lda   ARG1,x
+_UserCallback  lda:  ARG1,x
                sta   :dispatch+1
-               lda   ARG1+1,x
+               lda:  ARG1+1,x
                sta   :dispatch+2
-               lda   ARG3,x
+               lda:  ARG3,x
 :dispatch      jsl   $000000
                rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

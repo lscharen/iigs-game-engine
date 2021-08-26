@@ -3,8 +3,13 @@
                     REL
                     DSK        MAINSEG
 
+                    use        Locator.Macs.s
+                    use        Misc.Macs.s
                     use        EDS.GSOS.MACS.s
-                    put        ./GTE.s
+                    use        Tool222.Macs.s
+                    use        Util.Macs.s
+                    use        ./GTE.s
+                    use        ./Defs.s
 
                     mx         %00
 
@@ -16,7 +21,6 @@ NO_INTERRUPTS       equ        1                       ; turn off for crossrunne
 NO_MUSIC            equ        1                       ; turn music + tool loading off
 
 ; Typical init
-
                     phk
                     plb
 
@@ -25,18 +29,13 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                     ldx        #0
                     jsl        SetScreenMode
 
-                    jsr        _InitBG1                ; Initialize the second background
-
-                    lda        #0
-                    jsr        _ClearBG1Buffer
-
 ; Set up our level data
                     jsr        BG0SetUp
                     jsr        BG1SetUp
 
 ; Allocate room to load data
 
-                    jsr        AllocOneBank2           ; Alloc 64KB for Load/Unpack
+                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
                     sta        BankLoad                ; Store "Bank Pointer"
 
                     jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
@@ -86,7 +85,7 @@ EvtLoop
                     sec
                     sbc        #'1'
                     tax
-                    jsr        SetScreenMode
+                    jsl        SetScreenMode
                     jsr        MovePlayerToOrigin
                     brl        EvtLoop
 
@@ -158,9 +157,9 @@ StartMusic
 ; Position the screen with the botom-left corner of the tilemap visible
 MovePlayerToOrigin
                     lda        #0                      ; Set the player's position
-                    jsr        SetBG0XPos
+                    jsl        SetBG0XPos
                     lda        #0
-                    jsr        SetBG1XPos
+                    jsl        SetBG1XPos
 
                     lda        TileMapHeight
                     asl
@@ -169,9 +168,9 @@ MovePlayerToOrigin
                     sec
                     sbc        ScreenHeight
                     pha
-                    jsr        SetBG0YPos
+                    jsl        SetBG0YPos
                     pla
-                    jsr        SetBG1YPos
+                    jsl        SetBG1YPos
 
                     rts
 
@@ -237,7 +236,7 @@ DoTiles
                     lda        :column,s
                     tax
                     lda        :tile,s
-                    jsr        CopyTile
+                    jsl        CopyBG0Tile
 
                     lda        :column,s
                     inc
@@ -297,423 +296,7 @@ DoLoadPic
 
                     ldx        BankLoad                ; Copy it into the code field
                     lda        #0
-                    jsr        CopyPicToField
-                    rts
-
-; Copy a raw data file into the code field
-;
-; A=low word of picture address
-; X=high word of pixture address
-CopyBinToField
-:srcptr             equ        tmp0
-:line_cnt           equ        tmp2
-:dstptr             equ        tmp3
-:col_cnt            equ        tmp5
-:mask               equ        tmp6
-:data               equ        tmp7
-:mask_color         equ        tmp8
-
-                    sta        :srcptr
-                    stx        :srcptr+2
-
-; Check that this is a GTERAW image and save the transparent color
-
-                    ldy        #4
-:chkloop
-                    lda        [:srcptr],y
-                    cmp        :headerStr,y
-                    beq        *+3
-                    rts
-                    dey
-                    dey
-                    bpl        :chkloop
-
-; We have a valid header, now get the transparency word and load it in
-                    ldy        #6
-                    lda        [:srcptr],y
-                    sta        :mask_color
-
-; Advance over the header
-                    lda        :srcptr
-                    clc
-                    adc        #8
-                    sta        :srcptr
-
-                    stz        :line_cnt
-:rloop
-                    lda        :line_cnt               ; get the pointer to the code field line
-                    asl
-                    tax
-
-                    lda        BTableLow,x
-                    sta        :dstptr
-                    lda        BTableHigh,x
-                    sta        :dstptr+2
-
-;                     ldx        #162                    ; move backwards in the code field
-                    ldy        #0                      ; move forward in the image data
-
-                    lda        #82                     ; keep a running column count
-                    sta        :col_cnt
-
-:cloop
-                    phy
-                    lda        [:srcptr],y             ; load the picture data
-                    cmp        :mask_color
-                    beq        :transparent            ; a value of $0000 is transparent
-
-                    jsr        :toMask                 ; Infer a mask value for this. If it's $0000, then
-                    cmp        #$0000
-                    bne        :mixed                  ; the data is solid, otherwise mixed
-
-; This is a solid word
-:solid
-                    lda        [:srcptr],y
-                    pha                                ; Save the data
-
-                    lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
-                    tay
-
-                    lda        #$00F4                  ; PEA instruction
-                    sta        [:dstptr],y
-                    iny
-                    pla
-                    sta        [:dstptr],y             ; PEA operand
-                    bra        :next
-:transparent
-                    lda        :mask_color             ; Make sure we actually have to mask
-                    cmp        #$A5A5
-                    beq        :solid
-
-                    lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
-                    tay
-                    lda        #$B1                    ; LDA (dp),y
-                    sta        [:dstptr],y
-                    iny
-                    lda        1,s                     ; load the saved Y-index
-                    ora        #$4800                  ; put a PHA after the offset
-                    sta        [:dstptr],y
-                    bra        :next
-
-:mixed
-                    sta        :mask                   ; Save the mask
-                    lda        [:srcptr],y             ; Refetch the screen data
-                    sta        :data
-
-                    tyx
-                    lda        Col2CodeOffset,y        ; Get the offset into the code field
-                    tay
-                    lda        #$4C                    ; JMP exception
-                    sta        [:dstptr],y
-                    iny
-
-                    lda        JTableOffset,x          ; Get the address offset and add to the base address
-                    clc
-                    adc        :dstptr
-                    sta        [:dstptr],y
-
-                    ldy        JTableOffset,x          ; This points to the code fragment
-                    lda        1,s                     ; load the offset
-                    xba
-                    ora        #$00B1
-                    sta        [:dstptr],y             ; write the LDA (--),y instruction
-                    iny
-                    iny
-                    iny                                ; advance to the AND #imm operand
-                    lda        :mask
-                    sta        [:dstptr],y
-                    iny
-                    iny
-                    iny                                ; advance to the ORA #imm operand
-                    lda        :mask
-                    eor        #$FFFF                  ; invert the mask to clear up the data
-                    and        :data
-                    sta        [:dstptr],y
-
-:next
-                    ply
-
-;                     dex
-;                     dex
-                    iny
-                    iny
-
-                    dec        :col_cnt
-                    bne        :cloop
-
-                    lda        :srcptr
-                    clc
-                    adc        #164
-                    sta        :srcptr
-
-                    inc        :line_cnt
-                    lda        :line_cnt
-                    cmp        #200
-                    bcs        :exit
-                    brl        :rloop
-
-:exit
-                    rts
-
-:toMask             pha                                ; save original
-
-                    lda        1,s
-                    eor        :mask_color             ; only identical bits produce zero
-                    and        #$F000
-                    beq        *+7
-                    pea        #$0000
-                    bra        *+5
-                    pea        #$F000
-
-
-                    lda        3,s
-                    eor        :mask_color
-                    and        #$0F00
-                    beq        *+7
-                    pea        #$0000
-                    bra        *+5
-                    pea        #$0F00
-
-                    lda        5,s
-                    eor        :mask_color
-                    and        #$00F0
-                    beq        *+7
-                    pea        #$0000
-                    bra        *+5
-                    pea        #$00F0
-
-                    lda        7,s
-                    eor        :mask_color
-                    and        #$000F
-                    beq        *+7
-                    lda        #$0000
-                    bra        *+5
-                    lda        #$000F
-
-                    ora        1,s
-                    sta        1,s
-                    pla
-                    ora        1,s
-                    sta        1,s
-                    pla
-                    ora        1,s
-                    sta        1,s
-                    pla
-
-                    sta        1,s                     ; pop the saved word
-                    pla
-                    rts
-
-:headerStr          asc        'GTERAW'
-
-; Copy a loaded SHR picture into the code field
-;
-; A=low word of picture address
-; X=high workd of pixture address
-;
-; Picture must be within one bank
-CopyPicToField
-:srcptr             equ        tmp0
-:line_cnt           equ        tmp2
-:dstptr             equ        tmp3
-:col_cnt            equ        tmp5
-:mask               equ        tmp6
-:data               equ        tmp7
-
-                    sta        :srcptr
-                    stx        :srcptr+2
-
-                    stz        :line_cnt
-:rloop
-                    lda        :line_cnt               ; get the pointer to the code field line
-                    asl
-                    tax
-
-                    lda        BTableLow,x
-                    sta        :dstptr
-                    lda        BTableHigh,x
-                    sta        :dstptr+2
-
-;                     ldx        #162                    ; move backwards in the code field
-                    ldy        #0                      ; move forward in the image data
-
-                    lda        #80                     ; keep a running column count
-;                     lda        #82                  ; keep a running column count
-                    sta        :col_cnt
-
-:cloop
-                    phy
-                    lda        [:srcptr],y             ; load the picture data
-                    beq        :transparent            ; a value of $0000 is transparent
-
-                    jsr        :toMask                 ; Infer a mask value for this. If it's $0000, then
-                    bne        :mixed                  ; the data is solid, otherwise mixed
-
-; This is a solid word
-                    lda        [:srcptr],y
-                    pha                                ; Save the data
-
-                    lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
-                    tay
-
-                    lda        #$00F4                  ; PEA instruction
-                    sta        [:dstptr],y
-                    iny
-                    pla
-                    sta        [:dstptr],y             ; PEA operand
-                    bra        :next
-:transparent
-                    lda        Col2CodeOffset,y        ; Get the offset to the code from the line start
-                    tay
-
-                    lda        #$B1                    ; LDA (dp),y
-                    sta        [:dstptr],y
-                    iny
-                    lda        1,s                     ; load the saved Y-index
-                    ora        #$4800                  ; put a PHA after the offset
-                    sta        [:dstptr],y
-                    bra        :next
-
-:mixed
-                    sta        :mask                   ; Save the mask
-                    lda        [:srcptr],y             ; Refetch the screen data
-                    sta        :data
-
-                    tyx
-                    lda        Col2CodeOffset,y        ; Get the offset into the code field
-                    tay
-
-                    lda        #$4C                    ; JMP exception
-                    sta        [:dstptr],y
-                    iny
-
-                    lda        JTableOffset,x          ; Get the address offset and add to the base address
-                    clc
-                    adc        :dstptr
-                    sta        [:dstptr],y
-
-                    ldy        JTableOffset,x          ; This points to the code fragment
-                    lda        1,s                     ; load the offset
-                    xba
-                    ora        #$00B1
-                    sta        [:dstptr],y             ; write the LDA (--),y instruction
-                    iny
-                    iny
-                    iny                                ; advance to the AND #imm operand
-                    lda        :mask
-                    sta        [:dstptr],y
-                    iny
-                    iny
-                    iny                                ; advance to the ORA #imm operand
-                    lda        :data
-                    sta        [:dstptr],y
-
-:next
-                    ply
-
-;                     dex
-;                     dex
-                    iny
-                    iny
-
-                    dec        :col_cnt
-                    bne        :cloop
-
-                    lda        :srcptr
-                    clc
-;                     adc        #164
-                    adc        #160
-                    sta        :srcptr
-
-                    inc        :line_cnt
-                    lda        :line_cnt
-;                     cmp        #208
-                    cmp        #200
-                    bcs        :exit
-                    brl        :rloop
-
-:exit
-                    rts
-
-:toMask             bit        #$F000
-                    beq        *+7
-                    and        #$0FFF
-                    bra        *+5
-                    ora        #$F000
-
-                    bit        #$0F00
-                    beq        *+7
-                    and        #$F0FF
-                    bra        *+5
-                    ora        #$0F00
-
-                    bit        #$00F0
-                    beq        *+7
-                    and        #$FF0F
-                    bra        *+5
-                    ora        #$00F0
-
-                    bit        #$000F
-                    beq        *+7
-                    and        #$FFF0
-                    bra        *+5
-                    ora        #$000F
-                    rts
-
-; Copy a binary image data file into BG1.  Assumes the file is the correct size.
-;
-; A=low word of picture address
-; X=high word of pixture address
-; Y=high word of BG1 bank
-
-CopyBinToBG1
-:srcptr             equ        tmp0
-:line_cnt           equ        tmp2
-:dstptr             equ        tmp3
-:col_cnt            equ        tmp5
-
-                    sta        :srcptr
-                    stx        :srcptr+2
-                    sty        :dstptr+2               ; Everything goes into this bank
-
-                                                       ; Advance over the header
-                    lda        :srcptr
-                    clc
-                    adc        #8
-                    sta        :srcptr
-
-                    stz        :line_cnt
-:rloop
-                    lda        :line_cnt               ; get the pointer to the code field line
-                    asl
-                    tax
-
-                    lda        BG1YTable,x
-                    sta        :dstptr
-
-                    ldy        #0                      ; move forward in the image data and image data
-:cloop
-                    lda        [:srcptr],y
-                    sta        [:dstptr],y
-
-                    iny
-                    iny
-
-                    cpy        #164
-                    bcc        :cloop
-
-                    lda        [:srcptr]               ; Duplicate the last byte in the extra space at the end of the line
-                    sta        [:dstptr],y
-
-                    lda        :srcptr
-                    clc
-                    adc        #164                    ; Each line is 328 pixels
-                    sta        :srcptr
-
-                    inc        :line_cnt
-                    lda        :line_cnt
-                    cmp        #208                    ; A total of 208 lines
-                    bcc        :rloop
+                    jsl        CopyPicToField
                     rts
 
 ;DefaultPalette       dw         $0000,$007F,$0090,$0FF0
@@ -842,8 +425,6 @@ BG1AltDataFile      strl       '1/bg1b.bin'
 
 ImageName           strl       '1/test.pic'
 FGName              strl       '1/fg1.bin'
-;MasterId            ds         2
-;UserId              ds         2
 
 openRec             dw         2                       ; pCount
                     ds         2                       ; refNum
@@ -865,8 +446,20 @@ closeRec            dw         1                       ; pCount
 qtRec               adrl       $0000
                     da         $00
 
+                    PUT        App.Msg.s
+                    PUT        Actions.s
+                    PUT        font.s
+                    PUT        Overlay.s
+
                     PUT        App.TileMapBG0.s
                     PUT        App.TileMapBG1.s
+
+
+
+
+
+
+
 
 
 

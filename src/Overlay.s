@@ -7,29 +7,29 @@ Overlay
              ldx   #{160*:top+4}
              jsr   DrawString
              ldx   #{160*:top+12}
-             lda   LastTop
-             jsr   DrawWord
+;             lda   LastTop
+;             jsr   DrawWord
 
              lda   #BottomLabel
              ldx   #{160*:top+32}
              jsr   DrawString
              ldx   #{160*:top+40}
-             lda   LastBottom
-             jsr   DrawWord
+;             lda   LastBottom
+;             jsr   DrawWord
 
              lda   #LeftLabel
              ldx   #{160*:top+60}
              jsr   DrawString
              ldx   #{160*:top+68}
-             lda   LastLeft
-             jsr   DrawWord
+;             lda   LastLeft
+;             jsr   DrawWord
 
              lda   #RightLabel
              ldx   #{160*:top+88}
              jsr   DrawString
              ldx   #{160*:top+96}
-             lda   LastRight
-             jsr   DrawWord
+;             lda   LastRight
+;             jsr   DrawWord
 
 
              lda   #XLabel
@@ -97,5 +97,6 @@ YModLabel    str   'Y*'
 DirtyLabel   str   'D:'
 STWLabel     str   'STW:'
 STHLabel     str   'STH:'
+
 
 

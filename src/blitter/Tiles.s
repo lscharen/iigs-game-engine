@@ -667,14 +667,22 @@ dyn_masked
                 plx
                 rts
 
-; CopyTile
+; CopyBG0Tile
 ;
 ; A low-level function that copies 8x8 tiles directly into the code field space.
 ;
 ; A = Tile ID (0 - 511)
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
-CopyTile
+CopyBG0Tile     ENT
+                phb
+                phk
+                plb
+                jsr             _CopyBG0Tile
+                plb
+                rtl
+
+_CopyBG0Tile
                 phb                                               ; save the current bank
                 phx                                               ; save the original x-value
                 pha                                               ; save the tile ID
@@ -734,7 +742,15 @@ CopyTile
 ; A = Tile ID (0 - 511)
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
-CopyTileBG1
+CopyBG1Tile
+                phb
+                phk
+                plb
+                jsr             _CopyBG1Tile
+                plb
+                rtl
+
+_CopyBG1Tile
                 phb                                               ; save the current bank
                 phx                                               ; save the original x-value
                 pha                                               ; save the tile ID
@@ -765,14 +781,6 @@ CopyTileBG1
                 plx                                               ; pop the x-register
                 plb                                               ; restore the data bank and return
                 rts
-
-
-
-
-
-
-
-
 
 
 
