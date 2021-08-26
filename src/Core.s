@@ -36,10 +36,10 @@ EngineStartUp     ENT
                   jsr       IntStartUp          ; Enable certain iterrupts
 
                   jsr       InitMemory          ; Allocate and initialize memory for the engine
-                  jsr       InitGraphics        ; Initialize all of the graphics-related dat
-                  jsr       InitTimers          ; Initialize the timee subsystem
-
                   jsr       EngineReset         ; All of the resources are allocated, put the engine in a known state
+
+                  jsr       InitGraphics        ; Initialize all of the graphics-related data
+                  jsr       InitTimers          ; Initialize the timer subsystem
 
                   plb
                   rtl
@@ -367,6 +367,3 @@ ReadControl       ENT
                   put       blitter/BG0.s
                   put       blitter/BG1.s
                   put       TileMap.s
-
-
-
