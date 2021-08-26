@@ -31,11 +31,11 @@
             "scaleInEditor": 1
         },
         "tiled/world_1-1.tmx": {
-            "scale": 4,
+            "scale": 2,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 825.875,
-                "y": 191.125
+                "x": 210.5,
+                "y": 107.75
             }
         }
     },
