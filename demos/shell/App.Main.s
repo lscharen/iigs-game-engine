@@ -35,8 +35,8 @@ NO_MUSIC            equ        1                  ; turn music + tool loading of
 
 ; Allocate room to load data
 
-;                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
-;                    sta        BankLoad                ; Store "Bank Pointer"
+                    jsl        AllocBank          ; Alloc 64KB for Load/Unpack
+                    sta        BankLoad           ; Store "Bank Pointer"
 
 ;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
@@ -454,3 +454,4 @@ qtRec               adrl       $0000
 
                     PUT        App.TileMapBG0.s
                     PUT        App.TileMapBG1.s
+
