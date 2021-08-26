@@ -13,9 +13,9 @@ REM Cadius does not overwrite files, so clear the root folder first
 %CADIUS% CREATEFOLDER %IMAGE% %FOLDER%
 
 REM Now copy files and folders as needed
-%CADIUS% ADDFILE %IMAGE% %FOLDER% src\\GTETestApp
-%CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\test.pic
-%CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\bg1a.bin
-%CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\bg1b.bin
-%CADIUS% ADDFILE %IMAGE% %FOLDER% emu\\fg1.bin
-%CADIUS% ADDFILE %IMAGE% %FOLDER% assets\\music\\main.ntp
+%CADIUS% ADDFILE %IMAGE% %FOLDER% .\GTETestApp
+%CADIUS% ADDFILE %IMAGE% %FOLDER% gen\test.pic
+%CADIUS% ADDFILE %IMAGE% %FOLDER% gen\bg1a.bin
+%CADIUS% ADDFILE %IMAGE% %FOLDER% gen\bg1b.bin
+%CADIUS% ADDFILE %IMAGE% %FOLDER% gen\fg1.bin
+%CADIUS% ADDFILE %IMAGE% %FOLDER% assets\music\main.ntp

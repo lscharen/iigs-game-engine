@@ -1,0 +1,4 @@
+bg1a.bin=Type(06),Access(E3)
+bg1b.bin=Type(06),Access(E3)
+fg1.bin=Type(06),Access(E3)
+test.pic=Type(C0),Access(E3)

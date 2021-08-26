@@ -7,6 +7,7 @@ const StringBuilder  = require('string-builder');
 // Starting color index
 let startIndex = 0;
 let transparentColor = 0;
+let transparentIndex = -1;
 
 main(process.argv.slice(2)).then(
     () => process.exit(0), 
@@ -133,7 +134,8 @@ async function main(argv) {
         startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
         asTileData = getArg(argv, '--as-tile-data', null, 0);
 
-        transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), 0);
+        transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
+        transparentIndex = transparentColor;
 
         console.info(`; startIndex = ${startIndex}`);
 
