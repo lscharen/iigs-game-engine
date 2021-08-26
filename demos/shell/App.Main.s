@@ -8,8 +8,8 @@
                     use        EDS.GSOS.MACS.s
                     use        Tool222.Macs.s
                     use        Util.Macs.s
-                    use        ./GTE.s
-                    use        ./Defs.s
+                    use        ../../src/GTE.s
+                    use        ../../src/Defs.s
 
                     mx         %00
 
@@ -452,6 +452,10 @@ qtRec               adrl       $0000
                     PUT        font.s
                     PUT        Overlay.s
 
-                    PUT        App.TileMapBG0.s
-                    PUT        App.TileMapBG1.s
+                    PUT        gen/App.TileMapBG0.s
+                    PUT        gen/App.TileMapBG1.s
+
+
+
+
 

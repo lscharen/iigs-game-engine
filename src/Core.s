@@ -363,7 +363,7 @@ ReadControl       ENT
                   pla
                   rtl
 
-                  put       App.Init.s
+                  put       Memory.s
                   put       Graphics.s
                   put       Render.s
                   put       Timer.s
@@ -378,3 +378,4 @@ ReadControl       ENT
                   put       blitter/BG0.s
                   put       blitter/BG1.s
                   put       TileMap.s
+
