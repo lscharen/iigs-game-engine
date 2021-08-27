@@ -13,6 +13,10 @@
 PlayerX       equ      AppSpace
 PlayerY       equ      AppSpace+2
 
+; Timer handle
+TimerHndl     dw       $FFFF
+IntroCounter  ds       2
+
               phk
               plb
 
@@ -23,39 +27,30 @@ PlayerY       equ      AppSpace+2
 
               ldx      #0              ; Use full-screen mode
               jsl      SetScreenMode
+              bcs      *+5
+              sta      TimerHndl
+
+
+              stz      IntroCounter
+              ldx      #^IntroTask
+              lda      #IntroTask
+              ldy      #10             ; Play at 6 fps
+              jsl      AddTimer
+              bcs      *+5
+              sta      TimerHndl
 
 :loop
+              jsl      DoTimers
               jsl      ReadControl
               and      #$007F          ; Ignore the buttons for now
 
               cmp      #'q'
               beq      :exit
 
-; WASD for player movement
+; Just keep drawing the player.  The timer task will animate the position
 
-              cmp      #'w'
-              bne      :not_w
-              jsr      :moveup
-              brl      :loop
-:not_w
-
-              cmp      #'a'
-              bne      :not_a
-              jsr      :moveleft
-              brl      :loop
-:not_a
-
-              cmp      #'s'
-              bne      :not_s
-              jsr      :movedown
-              brl      :loop
-:not_s
-
-              cmp      #'d'
-              bne      :not_d
-              jsr      :moveright
-:not_d
-              brl      :loop
+              jsr      DrawPlayer
+              bra      :loop
 
 :moveup
               lda      PlayerY
@@ -103,6 +98,29 @@ PlayerY       equ      AppSpace+2
 qtRec         adrl     $0000
               da       $00
 
+; Play a scripted animation
+IntroTask
+              phb
+              phk
+              plb
+
+              lda      IntroCounter
+              and      #$0007
+              asl
+              asl
+              tax
+
+              lda      IntroPath,x     ; X coordinate
+              sta      PlayerX
+              lda      IntroPath+2,x   ; Y coordinate
+              sta      PlayerY
+
+              inc      IntroCounter
+              plb
+              rtl
+
+IntroPath     dw       0,0,10,0,20,0,20,5,20,7,35,15,50,17,80,20
+
 DrawPlayer
               lda      PlayerY
               asl
@@ -120,5 +138,19 @@ tiledata      ENT
 ; Storage for sprites
 StackAddress  ds       2
               PUT      sprites/Ships.s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
