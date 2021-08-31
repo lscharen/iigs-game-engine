@@ -226,6 +226,8 @@ EngineReset
                   stz       TileMapHeight
                   stz       TileMapPtr
                   stz       TileMapPtr+2
+                  stz       FringeMapPtr
+                  stz       FringeMapPtr+2
 
                   stz       BG1TileMapWidth
                   stz       BG1TileMapHeight
@@ -378,4 +380,3 @@ ReadControl       ENT
                   put       blitter/BG0.s
                   put       blitter/BG1.s
                   put       TileMap.s
-

@@ -313,9 +313,24 @@ _UpdateBG0TileMap
 :xloop
                    ldy   :Offset                 ; Set up the arguments and call the tile blitter
                    lda   [TileMapPtr],y
-                   iny                           ; pre-increment the address. A bit faster than two "INC DP" instructions
-                   iny
-                   sty   :Offset
+
+; Handle fringe tiles -- if the fringe bit is set, then we need to get the fringe tile index
+; and merge the tiles before rendering
+                   bit   #$TILE_FRINGE_BIT
+                   beq   :no_fringe
+                   jsr   _GetTileAddr
+                   tax
+                   lda   FringeMapPtr
+                   ora   FringeMapPtr+2
+                   beq   :no_fringe
+                   lda   [FringeMapPtr],y
+                   jsr   _GetTileAddr
+                   tay
+                   jsr   _MergeTiles
+
+:no_fringe
+                   inc   :Offset                 ; pre-increment the address.
+                   inc   :Offset
 
                    ldx   :BlkX
                    ldy   :BlkY

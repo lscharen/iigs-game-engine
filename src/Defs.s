@@ -70,12 +70,13 @@ OldBG1TileOriginY      equ   68
 TileMapWidth           equ   70
 TileMapHeight          equ   72
 TileMapPtr             equ   74
+FringeMapPtr           equ   78
 
-BG1TileMapWidth        equ   78
-BG1TileMapHeight       equ   80
-BG1TileMapPtr          equ   82
+BG1TileMapWidth        equ   82
+BG1TileMapHeight       equ   84
+BG1TileMapPtr          equ   86
 
-Next                   equ   86
+Next                   equ   90
 
 BankLoad               equ   128
 
