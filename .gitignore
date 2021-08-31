@@ -1,4 +1,4 @@
 node_modules
 emu
-src/*_Output.txt
+*_Output.txt
 src/GTETestApp
