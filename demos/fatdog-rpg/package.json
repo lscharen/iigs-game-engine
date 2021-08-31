@@ -1,0 +1,34 @@
+{
+    "name": "fatdog-rpg",
+    "version": "1.0.0",
+    "description": "Horizontal shoot-em-up",
+    "main": "index.js",
+    "config": {
+      "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+      "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+      "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+      "macros": "../../macros",
+      "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe",
+      "mrsprite": "C:\\Programs\\IIgsXDev\\bin\\MrSprite.exe"
+    },
+    "scripts": {
+      "build:app": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
+      "build:image": "build-image.bat %npm_package_config_cadius%",
+      "build:all": "npm run build:app && npm run build:image",
+      "build": "npm run build:app && npm run build:image",
+      "test": "npm run build && %npm_package_config_gsport%",
+      "debug": "%npm_package_config_crossrunner% GTEShooter -Source GTEShooter_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+    },
+    "author": "Lucas Scharenbroich",
+    "license": "Apache-2.0",
+    "bugs": {
+      "url": "https://github.com/lscharen/iigs-game-engine/issues"
+    },
+    "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+    "devDependencies": {
+    }
+}
