@@ -2,15 +2,14 @@
  * Read an exported Tiled project in JSON format and produce Merlin32 output files with
  * GTE-compatible setup code wrapped around it.
  */
- const fs = require('fs');
- const path = require('path');
-const { abort } = require('process');
- const process = require('process');
+const fs = require('fs');
+const path = require('path');
+const process = require('process');
 const StringBuilder = require('string-builder');
- const parser = require('xml2json');
- const png2iigs = require('./png2iigs');
+const parser = require('xml2json');
+const png2iigs = require('./png2iigs');
 
- main(process.argv.slice(2)).then(
+main(process.argv.slice(2)).then(
     () => process.exit(0), 
     (e) => {
         console.error(e);
@@ -87,9 +86,98 @@ function getArg(argv, arg, fn, defaultValue) {
     return defaultValue;
 }
 
+function writeTileAnimations(filename, animations) {
+    const init = new StringBuilder();
+    const scripts = new StringBuilder();
+
+    // First step is some initialization code that copies the first animated
+    // tile data into the dynamic tile space
+    const initLabel = 'TileAnimInit';
+    init.appendLine(`${initLabel}    ENT`);
+    init.appendLine();
+    for (const animation of animations) {
+        // Get the first tile of the animation
+        const firstTileId = animation.frames[0].tileId;
+
+        // Create code to copy it into the dynamic tile index location
+        init.appendLine('            ldx #' + firstTileId);
+        init.appendLine('            ldy #' + animation.dynTileId);
+        init.appendLine('            jsr CopyTileToDyn');
+    }
+
+    // Next, create the scripts to change the tile data based on the configured ticks delays. 
+    for (const animation of animations) {
+        // Get the animation frames
+        const frames = animation.frames;
+
+        // Look at the frames and get the number of ticks.  We only support a uniform animation period.
+        const numTicks = frames.map(f => f.ticks).reduce((x, y) => Math.min(x, y),Infinity);
+        if (frames.some(f => f.ticks !== numTicks)) {
+            console.warn(`Animated tiles must have a uniform animation delay. Setting ticks to ${numTicks}`);
+        }
+
+        const label = `TileAnim_${animation.tileId}`;
+        init.appendLine(`            lda #${label}`);
+        init.appendLine(`            ldx #^${label}`);
+        init.appendLine(`            ldy #${numTicks}`);
+        init.appendLine(`            jsl StartScript`);
+
+        scripts.appendLine(label);
+        for (let i = 0; i < frames.length ; i += 1) {
+            const last = (i === (frames.length - 1));
+            const command = 'YIELD+SET_DYN_TILE' + (last ? '+JUMP' : '');
+            const  jump = last ? `,-${frames.length - 1}` : '';
+
+            scripts.appendLine(`            dw ${command},${frames[i].tileId},${animation.dynTileId}${jump}`);
+        }
+    }
+
+    init.appendLine('            rts');
+
+    fs.writeFileSync(filename, init.toString() + scripts.toString());
+}
+
 function writeTiles(filename, tiles) {
     const tileSource = png2iigs.buildMerlinCodeForTiles(tiles);
     fs.writeFileSync(filename, tileSource);
+}
+
+function findAnimatedTiles(tileset) {
+    const animations = [];
+    let dynTileId = 0;
+
+    if (tileset.tile) {
+        for (const tile of tileset.tile) {
+            if (!tile.animation) {
+                continue;
+            }
+
+            const tileId = parseInt(tile.id, 10);
+            const frames = tile.animation.frame.map(f => {
+                const millis = parseInt(f.duration, 10);
+                const ticksPerMillis = 60. / 1000.;
+                return {
+                    tileId: parseInt(f.tileid, 10),
+                    ticks: Math.round(millis * ticksPerMillis),
+                    millis
+                };
+            });
+
+            animations.push({
+                tileId,
+                dynTileId,
+                frames
+            });
+
+            dynTileId += 1;
+            if (dynTileId > 31) {
+                console.warn('Only 32 animated tiles are supported');
+                break;
+            }
+        }
+    }
+
+    return animations;
 }
 
 /**
@@ -145,6 +233,8 @@ async function main(argv) {
     let bg0TileSet = null;
 
     for (const record of tileSets) {
+        console.log('Looking for animated tiles...');
+        const animations = findAnimatedTiles(record.tileset);
         console.log(`Importing tileset "${record.tileset.name}"`);
         const tiles = await readTileSet(workdir, record.tileset);
 
@@ -152,7 +242,22 @@ async function main(argv) {
         console.log(`Writing tiles to ${outputFilename}`);
         writeTiles(outputFilename, tiles);
         console.log(`Writing complete`);
+        
+        // Look for tiles with animation sequences.  If found, this information need to be propagated
+        // to the tilemap export to mark those tile IDs as Dynamic Tiles.
+        //
+        // Exporting the "animations" actually created two code stubs; one to copy the first
+        // tile of the animation into the dynamic tile space during initialization and a second
+        // that created the timer callbacks that replace the tile data based on the time animation
+        // rate.  We only have a VBL timer, so the animation time is rounded to the nearest
+        // 1/60 of a second.
+        if (animations.length > 0) {
+            console.log('Writing tile animation ');
+            const animationFilename = path.resolve(path.join(outdir, record.tileset.name + 'Anim.s'));
+            writeTileAnimations(animationFilename, animations);
+            console.log(`Writing complete`);
 
+        }
         bg0TileSet = tiles;
     }
 
