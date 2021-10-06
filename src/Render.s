@@ -86,13 +86,13 @@ _Render
 
 ; The code fields are locked in now and reder to be rendered
 
-            jsr   ShadowOff
+            jsr   _ShadowOff
 
 ;            ldx   #0                  ; Blit the full virtual buffer to the screen
 ;            ldy   #8
 ;            jsr   _BltRange
 
-            jsr   ShadowOn
+            jsr   _ShadowOn
 
 ;            ldx   #0                  ; Expose the top 8 rows
 ;            ldy   #8
@@ -124,3 +124,4 @@ _Render
 
             stz   DirtyBits
             rts
+

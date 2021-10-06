@@ -48,7 +48,7 @@ TILE_CTRL_MASK   equ             $1E00                             ; Deliberatel
 
 ; Low-level function to take a tile descriptor and return the address in the tiledata
 ; bank.  This is not too useful in the fast-path because the fast-path does more
-; incremental calculations, but it is handy for other utilitiy function
+; incremental calculations, but it is handy for other utility functions
 ;
 ; A = tile descriptor
 ;
@@ -58,7 +58,7 @@ _GetTileAddr
                  bit             #2*TILE_HFLIP_BIT                 ; Check if the horizontal flip bit is set
                  beq             :no_flip
                  inc                                               ; Set the LSB
-:no_flip         and             #$02FF                            ; Mask out non-id bits
+:no_flip         and             #TILE_ID_MASK                     ; Mask out non-id bits
                  asl                                               ; x4
                  asl                                               ; x8
                  asl                                               ; x16
@@ -529,7 +529,24 @@ DynamicTile
                  rep             #$20
                  rts
 
-; Helper function to copy tile data to the appropriate location in Bank 0
+; Helper functions to copy tile data to the appropriate location in Bank 0
+;  X = tile ID
+;  Y = dynamic tile ID
+CopyTileToDyn    ENT
+                 txa
+                 jsr             _GetTileAddr
+                 tax
+
+                 tya
+                 and             #$001F                            ; Maximum of 32 dynamic tiles
+                 asl
+                 asl                                               ; 4 bytes per page
+                 adc             BlitterDP                         ; Add to the bank 00 base address
+                 adc             #$0100                            ; Go to the next page
+                 tay
+                 jsr             CopyTileDToDyn                    ; Copy the tile data
+                 rtl
+
 ;  X = address of tile
 ;  Y = tile address in bank 0
 CopyTileDToDyn
@@ -681,7 +698,8 @@ dynamic
                  pla
                  asl
                  asl
-                 xba                                               ; Undo the x128 we just need x2
+                 asl
+                 xba                                               ; Undo the x128 we just need x4
                  plx
                  brl             DynamicTile
 
@@ -824,3 +842,21 @@ _CopyBG1Tile
                  plx                                               ; pop the x-register
                  plb                                               ; restore the data bank and return
                  rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

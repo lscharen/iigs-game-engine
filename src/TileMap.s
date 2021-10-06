@@ -316,7 +316,7 @@ _UpdateBG0TileMap
 
 ; Handle fringe tiles -- if the fringe bit is set, then we need to get the fringe tile index
 ; and merge the tiles before rendering
-                   bit   #$TILE_FRINGE_BIT
+                   bit   #TILE_FRINGE_BIT
                    beq   :no_fringe
                    jsr   _GetTileAddr
                    tax
@@ -675,3 +675,4 @@ _DrawRectBG1
                    pla
 
                    rts
+

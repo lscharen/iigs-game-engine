@@ -133,6 +133,7 @@ async function main(argv) {
         
         startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
         asTileData = getArg(argv, '--as-tile-data', null, 0);
+        maxTiles = getArg(argv, '--max-tiles', x => parseInt(x, 10), 64);
 
         transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
         transparentIndex = transparentColor;
@@ -175,7 +176,7 @@ async function main(argv) {
 
         if (buff && argv[1]) {
             if (asTileData) {
-                writeToTileDataSource(buff, png.width / 2);
+                writeToTileDataSource(buff, png.width / 2, maxTiles);
             }
             else {
                 console.log(`; Writing to output file ${argv[1]}`);
@@ -355,13 +356,11 @@ function buildMerlinCodeForTiles(tiles, label='tiledata') {
     return sb.toString();
 }
 
-function writeToTileDataSource(buff, width) {
+function writeToTileDataSource(buff, width, MAX_TILES = 64) {
     console.log('tiledata    ENT');
     console.log();
     console.log('; Reserved space (tile 0 is special...');
     console.log('            ds 128');
-
-    const MAX_TILES = 64;
 
     let count = 0;
     for (let y = 0; ; y += 8) {

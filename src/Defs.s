@@ -109,3 +109,13 @@ DIRTY_BIT_BG1_X        equ   $0004
 DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
+
+; Script definition
+YIELD                  equ   $8000
+JUMP                   equ   $4000
+
+SET_PALETTE_ENTRY      equ   $0002
+SWAP_PALETTE_ENTRY     equ   $0004
+SET_DYN_TILE           equ   $0006
+CALLBACK               equ   $0010
+

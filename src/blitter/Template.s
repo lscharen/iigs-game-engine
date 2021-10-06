@@ -118,7 +118,7 @@ SetScreenRect      sty   ScreenHeight                  ; Save the screen height 
 
 ; Clear the SHR screen and then infill the defined field
 FillScreen         lda   #0
-                   jsr   ClearToColor
+                   jsr   _ClearToColor
 
                    ldy   ScreenY0
 :yloop
@@ -272,6 +272,48 @@ SetConst                                               ; Need a blank line here,
                    sta:  $0000,y
 :bottom            rts
 
+; SetDPAddrs
+;
+; A = absolute address (largest)
+; Y = offset
+;
+; Initializes a bank of direct page offsets
+SetDPAddrs
+                   lda   #$0800
+                   sta   $F000,y
+                   lda   #$0700
+                   sta   $E000,y
+                   lda   #$0600
+                   sta   $D000,y
+                   lda   #$0500
+                   sta   $C000,y
+                   lda   #$0400
+                   sta   $B000,y
+                   lda   #$0300
+                   sta   $A000,y
+                   lda   #$0200
+                   sta   $9000,y
+                   lda   #$0100
+                   sta:  $8000,y
+
+                   lda   #$0800
+                   sta   $7000,y
+                   lda   #$0700
+                   sta   $6000,y
+                   lda   #$0600
+                   sta   $5000,y
+                   lda   #$0500
+                   sta   $4000,y
+                   lda   #$0400
+                   sta   $3000,y
+                   lda   #$0300
+                   sta   $2000,y
+                   lda   #$0200
+                   sta   $1000,y
+                   lda   #$0100
+                   sta:  $0000,y
+                   rts
+
 ; SetAbsAddrs
 ;
 ; A = absolute address (largest)
@@ -361,10 +403,16 @@ BuildBank
                    plb
                    plb
 
-                   lda   #$F000+{TWO_LYR_ENTRY}        ; Set the address from each line to the next
+; Change the patched value to one of DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based on the capabilities
+; that the engine needs.
+
+                   lda   #$F000+{DP_ENTRY}             ; Set the address from each line to the next
                    ldy   #CODE_EXIT+1
                    ldx   #15*2
                    jsr   SetAbsAddrs
+
+                   ldy   #DP_ADDR
+                   jsr   SetDPAddrs
 
                    ldy   #$F000+CODE_EXIT              ; Patch the last line with a JML to go to the next bank
                    lda   #{$005C+{TWO_LYR_ENTRY}*256}
@@ -480,7 +528,7 @@ odd_entry          jmp   $0100                         ; unconditionally jump in
 r_is_jmp           sep   #$41                          ; Set the C and V flags which tells a snippet to push only the low byte
 long_2             ldal  entry_jmp+1-base
 long_3             stal  *+5-base
-                   jmp   $0000                         ; Jumps into the exception code, which return to r_jmp_rtn
+                   jmp   $0000                         ; Jumps into the exception code, which returns to r_jmp_rtn
 
 ; The next labels are special, in that they are entry points into special subroutines.  They are special
 ; because they are within the first 256 bytes of each code field, which allows them to be selectable
@@ -530,7 +578,7 @@ odd_exit           ldal  l_is_jmp+1-base
                    sep   #$20
 long_6             ldal  l_is_jmp+3-base               ; get the high byte of the PEA operand
 
-; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimize
+; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimized
 ; for the PEA $0000 case -- only 19 cycles to handle the edge, so pretty good
 :left_byte
                    pha
@@ -580,7 +628,7 @@ epilogue_1         tsc
 ;     a. Overflow set   -> Low 8-bit write and return to the next code field operand
 ;     b. Overflow clear -> High 8-bit write and exit the line
 ;     c. Always clear the Carry flags. It's actually OK to leave the overflow bit in 
-;        its passed state, because having the carry bit clear prevent evaluation of
+;        its passed state, because having the carry bit clear prevents evaluation of
 ;        the V bit.
 ;
 ; Snippet Samples:
@@ -637,3 +685,11 @@ snippets           lup   82
 ]index             equ   ]index+1
                    --^
 top
+
+
+
+
+
+
+
+

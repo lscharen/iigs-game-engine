@@ -102,7 +102,7 @@ function writeTileAnimations(filename, animations) {
         // Create code to copy it into the dynamic tile index location
         init.appendLine('            ldx #' + firstTileId);
         init.appendLine('            ldy #' + animation.dynTileId);
-        init.appendLine('            jsr CopyTileToDyn');
+        init.appendLine('            jsl CopyTileToDyn');
     }
 
     // Next, create the scripts to change the tile data based on the configured ticks delays. 
@@ -122,13 +122,30 @@ function writeTileAnimations(filename, animations) {
         init.appendLine(`            ldy #${numTicks}`);
         init.appendLine(`            jsl StartScript`);
 
-        scripts.appendLine(label);
-        for (let i = 0; i < frames.length ; i += 1) {
-            const last = (i === (frames.length - 1));
-            const command = 'YIELD+SET_DYN_TILE' + (last ? '+JUMP' : '');
-            const  jump = last ? `,-${frames.length - 1}` : '';
+        //    bit 15     = 1 if the end of a sequence
+        //    bit 14     = 0 proceed to next action, 1 jump
+        //    bit 13     = 0 (Reserved)
+        //    bit 12     = 0 (Reserved)
+        //    bit 11 - 8 = signed jump displacement  F = -1, E = -2, D = -3, C = -4, B = -5, A = -6, 9 = -7, 8 = -8, 7 = 7, 6 = 6, ....
+        //    bit 8  - 0 = command number
+        const YIELD = 0x8000;
+        const JUMP  = 0x4000;
+        const SET_DYN_TILE = 0x0006;  // Command number
 
-            scripts.appendLine(`            dw ${command},${frames[i].tileId},${animation.dynTileId}${jump}`);
+        scripts.appendLine(label);
+        const lastValidIndex = frames.length - 1;
+        for (let i = 0; i < frames.length ; i += 1) {
+            const isLast = (i === lastValidIndex);
+            let command = YIELD | SET_DYN_TILE;
+            if (isLast) {
+                command |=  JUMP;
+                const offset = ((0x0010 - lastValidIndex) & 0x000F) * 256;
+                command |= offset;
+            }
+            command = '$' + toHex(command, 4);
+
+            // scripts.appendLine(`            ScriptStep #${command};#${frames[i].tileId};#${animation.dynTileId};#0`);
+            scripts.appendLine(`            dw ${command},${frames[i].tileId},${animation.dynTileId},0`);
         }
     }
 
@@ -242,11 +259,11 @@ async function main(argv) {
         console.log(`Writing tiles to ${outputFilename}`);
         writeTiles(outputFilename, tiles);
         console.log(`Writing complete`);
-        
+
         // Look for tiles with animation sequences.  If found, this information need to be propagated
         // to the tilemap export to mark those tile IDs as Dynamic Tiles.
         //
-        // Exporting the "animations" actually created two code stubs; one to copy the first
+        // Exporting the "animations" actually creates two code stubs; one to copy the first
         // tile of the animation into the dynamic tile space during initialization and a second
         // that created the timer callbacks that replace the tile data based on the time animation
         // rate.  We only have a VBL timer, so the animation time is rounded to the nearest
@@ -257,7 +274,12 @@ async function main(argv) {
             writeTileAnimations(animationFilename, animations);
             console.log(`Writing complete`);
 
+            // Modify the entries in the tileset that are animated
+            for (const animation of animations) {
+                tiles[animation.tileId].animation = animation;
+            }
         }
+
         bg0TileSet = tiles;
     }
 
@@ -351,6 +373,7 @@ function emitLayerData(sb, layer, tileset) {
  */
 function convertTileID(tileId, tileset) {
     const GTE_MASK_BIT  = 0x1000;
+    const GTE_DYN_BIT = 0x0800;
     const GTE_VFLIP_BIT = 0x0400;
     const GTE_HFLIP_BIT = 0x0200;
     const TILED_VFLIP_BIT = 0x40000000;
@@ -375,5 +398,16 @@ function convertTileID(tileId, tileset) {
     // because a special zero tile is inserted, but we have to manually adjust here
     const mask_bit = !tileset[tileIndex - 1].isSolid;
 
-    return (tileId & 0x1FFFFFFF) + (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
+    // Build up a partial set of control bits
+    let control_bits = (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
+
+    // Check if this is an animated tile.  If so, substitute the index of the animation slot for
+    // the tile ID
+    if (tileset[tileIndex - 1].animation) {
+        const animation = tileset[tileIndex - 1].animation;
+        tileId = animation.dynTileId;
+        control_bits = GTE_DYN_BIT;
+    }
+
+    return (tileId & 0x1FFFFFFF) + control_bits;
 }

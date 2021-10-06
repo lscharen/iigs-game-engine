@@ -39,28 +39,12 @@ AnimatePath
 ; at a time .  The slope of the lines are (X1 - X0) / Duration and (Y1 - Y0) / Duration.
 ;
 ; The tricky bit is that we *always* single-step in the "Y" direction (duration), so we
-; actaully need to use two differenct algorithms.
+; actually need to use two differenct algorithms.
 ;
-; If |X1 - X0| <= Duration, use a standard line-drawing approach (Bresenham's, DDA, etc.)
+; If |X1 - X0| <= Duration, use a standard Bresenham's
 ; If |X1 - X0|  > Duration, use the Run-Length Slice algorithm (https://www.phatcode.net/res/224/files/html/ch36/36-02.html)
 
+             lda   AnimX1
+
              lda   AnimY
-
-:stepx       lda
-
-
              cmp   AnimDuration  ; Handle the two cases
-
-
-
-
-
-
-
-
-
-
-
-
-
-

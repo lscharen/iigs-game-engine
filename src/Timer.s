@@ -29,6 +29,9 @@ TIMER_REC_SIZE  equ       16
 lastTick        ds        2
 Timers          ds        TIMER_REC_SIZE*MAX_TIMERS
 
+GetVBLTicks     ENT
+                jsr       _GetVBLTicks
+                rtl
 _GetVBLTicks
                 PushLong  #0
                 _GetTick
@@ -150,6 +153,12 @@ DoTimers        ENT
                 sec
                 sbc       lastTick
                 stx       lastTick
+
+; We don't want times to fire excessively.  If the timer has nt been evaluated for over 
+; one second, then just skip processing and wait for the next call.
+                cmp       #60
+                bcs       :exit
+
                 jsr       _DoTimers
 
 :exit           plb
@@ -196,13 +205,31 @@ _DoTimers
 
 :skip           txa
                 clc
-                adc       #8
+                adc       #TIMER_REC_SIZE
                 tax
-                cpx       #8*MAX_TIMERS
+                cpx       #{TIMER_REC_SIZE*MAX_TIMERS}
                 bcc       :loop
 
                 pla
                 rts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

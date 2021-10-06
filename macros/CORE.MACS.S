@@ -119,6 +119,15 @@ min             mac
                 lda   ]1
 mout            <<<
 
+; Macro to define script steps
+ScriptStep      MAC
+                IF    #=]5
+                dw    {]1+{{]5&#$000F}<<8}},]2,]3,]4
+                ELSE
+                dw    ]1,]2,]3,]4
+                FIN
+                <<<
+
 ; Macros to use in the Masked Tile renderer
 ;
 ; ]1 : tiledata offset
@@ -174,3 +183,14 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
+
+
+
+
+
+
+
+
+
+
+

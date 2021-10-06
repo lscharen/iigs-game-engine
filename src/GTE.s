@@ -7,12 +7,18 @@ EngineShutDown     EXT
 SetScreenMode      EXT
 ReadControl        EXT
 
+; Low-Level Functions
+SetPalette         EXT
+GetVBLTicks        EXT
+
+; Tilemap functions
 SetBG0XPos         EXT
 SetBG0YPos         EXT
 SetBG1XPos         EXT
 SetBG1YPos         EXT
 CopyBG0Tile        EXT
 CopyBG1Tile        EXT
+CopyTileToDyn      EXT
 Render             EXT
 
 ; Rotation
@@ -39,4 +45,7 @@ AllocBank          EXT
 ScreenAddr         EXT
 OneSecondCounter   EXT
 BlitBuff           EXT
+
+
+
 
