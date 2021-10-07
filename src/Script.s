@@ -69,6 +69,14 @@ ARG1           equ   2
 ARG2           equ   4
 ARG3           equ   6
 
+DoScriptSeq    ENT
+               phb
+               phk
+               plb
+               jsl   _DoScriptSeq       ; Yes, this is a special JSL, because _DoScriptSeq is a time callback
+               plb
+               rtl
+
 _DoScriptSeq
                phx                      ; save the timer index; will need to update user data at the end
                phb                      ; save the current data bank
@@ -178,8 +186,3 @@ _UserCallback
                lda:  ARG3,y
 :dispatch      jsl   $000000
                brl   _dss_cmd_rtn
-
-
-
-
-

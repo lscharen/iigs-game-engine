@@ -36,6 +36,9 @@ DoTimers           EXT
 StartScript        EXT
 StopScript         EXT
 
+; Direct access to internals
+DoScriptSeq        EXT
+
 ; Allocate a full 64K bank
 AllocBank          EXT
 
@@ -45,7 +48,3 @@ AllocBank          EXT
 ScreenAddr         EXT
 OneSecondCounter   EXT
 BlitBuff           EXT
-
-
-
-

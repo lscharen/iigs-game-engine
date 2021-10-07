@@ -101,7 +101,7 @@ AddTimer        ENT
                 stz       Timers+14,x                         ; Clear the user data space
 
                 plp
-                bcc       :oneshot
+                bcs       :oneshot
                 lda       Timers+0,x                          ; if not a one-shot, put the counter
                 sta       Timers+2,x                          ; value into the reset field
 
@@ -147,6 +147,7 @@ DoTimers        ENT
                 plb
 
                 jsr       _GetVBLTicks
+
                 cmp       lastTick                            ; Throttle to 60 fps
                 beq       :exit
                 tax                                           ; Calculate the increment
@@ -212,64 +213,3 @@ _DoTimers
 
                 pla
                 rts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
