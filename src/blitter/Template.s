@@ -2,24 +2,24 @@
 
                    mx    %00
 
-DP_ADDR            equ   entry_1-base+1                ; offset to patch in the direct page for dynamic tiles
-BG1_ADDR           equ   entry_2-base+1                ; offset to patch in the Y-reg for BG1 (dp),y addressing
-STK_ADDR           equ   entry_3-base+1                ; offset to patch in the stack (SHR) right edge address
+DP_ADDR            equ   entry_1-base+1             ; offset to patch in the direct page for dynamic tiles
+BG1_ADDR           equ   entry_2-base+1             ; offset to patch in the Y-reg for BG1 (dp),y addressing
+STK_ADDR           equ   entry_3-base+1             ; offset to patch in the stack (SHR) right edge address
 
 DP_ENTRY           equ   entry_1-base
 TWO_LYR_ENTRY      equ   entry_2-base
 ONE_LYR_ENTRY      equ   entry_3-base
 
 CODE_ENTRY_OPCODE  equ   entry_jmp-base
-CODE_ENTRY         equ   entry_jmp-base+1              ; low byte of the page-aligned jump address
+CODE_ENTRY         equ   entry_jmp-base+1           ; low byte of the page-aligned jump address
 ODD_ENTRY          equ   odd_entry-base+1
 CODE_TOP           equ   loop-base
 CODE_LEN           equ   top-base
 CODE_EXIT          equ   even_exit-base
-OPCODE_SAVE        equ   odd_save-base                 ; spot to save the code field opcode when patching exit BRA
-OPCODE_HIGH_SAVE   equ   odd_save-base+2               ; save the third byte
-FULL_RETURN        equ   full_return-base              ; offset that returns from the blitter
-ENABLE_INT         equ   enable_int-base               ; offset that re-enable interrupts and continues
+OPCODE_SAVE        equ   odd_save-base              ; spot to save the code field opcode when patching exit BRA
+OPCODE_HIGH_SAVE   equ   odd_save-base+2            ; save the third byte
+FULL_RETURN        equ   full_return-base           ; offset that returns from the blitter
+ENABLE_INT         equ   enable_int-base            ; offset that re-enable interrupts and continues
 LINES_PER_BANK     equ   16
 SNIPPET_BASE       equ   snippets-base
 
@@ -64,17 +64,17 @@ BankPatchNum       equ   *-BankPatches
 ; usually only be executed once during app initialization.  It doesn't get called
 ; with any significant frequency.
 
-SetScreenRect      sty   ScreenHeight                  ; Save the screen height and width
+SetScreenRect      sty   ScreenHeight               ; Save the screen height and width
                    stx   ScreenWidth
 
-                   tax                                 ; Temp save of the accumulator
+                   tax                              ; Temp save of the accumulator
                    and   #$00FF
                    sta   ScreenY0
                    clc
                    adc   ScreenHeight
                    sta   ScreenY1
 
-                   txa                                 ; Restore the accumulator
+                   txa                              ; Restore the accumulator
                    xba
                    and   #$00FF
                    sta   ScreenX0
@@ -82,31 +82,31 @@ SetScreenRect      sty   ScreenHeight                  ; Save the screen height 
                    adc   ScreenWidth
                    sta   ScreenX1
 
-                   lda   ScreenHeight                  ; Divide the height in scanlines by 8 to get the number tiles
+                   lda   ScreenHeight               ; Divide the height in scanlines by 8 to get the number tiles
                    lsr
                    lsr
                    lsr
                    sta   ScreenTileHeight
 
-                   lda   ScreenWidth                   ; Divide width in bytes by 4 to get the number of tiles
+                   lda   ScreenWidth                ; Divide width in bytes by 4 to get the number of tiles
                    lsr
                    lsr
                    sta   ScreenTileWidth
 
-                   lda   ScreenY0                      ; Calculate the address of the first byte
-                   asl                                 ; of the right side of the playfield
+                   lda   ScreenY0                   ; Calculate the address of the first byte
+                   asl                              ; of the right side of the playfield
                    tax
-                   lda   ScreenAddr,x                  ; This is the address for the left edge of the physical screen
+                   lda   ScreenAddr,x               ; This is the address for the left edge of the physical screen
                    clc
                    adc   ScreenX1
                    dec
-                   pha                                 ; Save for second loop
+                   pha                              ; Save for second loop
 
                    ldx   #0
                    ldy   ScreenHeight
                    jsr   :loop
-                   pla                                 ; Reset the address and continue filling in the
-                   ldy   ScreenHeight                  ; second half of the table
+                   pla                              ; Reset the address and continue filling in the
+                   ldy   ScreenHeight               ; second half of the table
 :loop              clc
                    sta   RTable,x
                    adc   #160
@@ -135,7 +135,7 @@ FillScreen         lda   #0
                    lsr
                    tay
                    lda   #$FFFF
-:xloop             stal  $E10000,x                     ; X is the absolute address
+:xloop             stal  $E10000,x                  ; X is the absolute address
                    inx
                    inx
                    dey
@@ -247,7 +247,7 @@ Mod208             cmp   #%1101000000000000
 ; A = value
 ;
 ; Set M to 0 or 1
-SetConst                                               ; Need a blank line here, otherwise the :tbl local variable resolveds backwards
+SetConst                                            ; Need a blank line here, otherwise the :tbl local variable resolveds backwards
                    jmp   (:tbl,x)
 :tbl               da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
@@ -381,13 +381,13 @@ BuildBank
                    lda   [:bankArray],y
                    sta   :target+2
 
-                   iny                                 ; move to the next item
+                   iny                              ; move to the next item
                    iny
-                   iny                                 ; middle byte
-                   cpy   #4*13                         ; if greater than the array length, wrap back to zero
+                   iny                              ; middle byte
+                   cpy   #4*13                      ; if greater than the array length, wrap back to zero
                    bcc   :ok
                    ldy   #1
-:ok                lda   [:bankArray],y                ; Get the middle and high bytes of the address
+:ok                lda   [:bankArray],y             ; Get the middle and high bytes of the address
                    sta   :nextBank
 
 :next
@@ -406,7 +406,7 @@ BuildBank
 ; Change the patched value to one of DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based on the capabilities
 ; that the engine needs.
 
-                   lda   #$F000+{DP_ENTRY}             ; Set the address from each line to the next
+                   lda   #$F000+{DP_ENTRY}          ; Set the address from each line to the next
                    ldy   #CODE_EXIT+1
                    ldx   #15*2
                    jsr   SetAbsAddrs
@@ -414,14 +414,14 @@ BuildBank
                    ldy   #DP_ADDR
                    jsr   SetDPAddrs
 
-                   ldy   #$F000+CODE_EXIT              ; Patch the last line with a JML to go to the next bank
-                   lda   #{$005C+{TWO_LYR_ENTRY}*256}
+                   ldy   #$F000+CODE_EXIT           ; Patch the last line with a JML to go to the next bank
+                   lda   #{$005C+{DP_ENTRY}*256}
                    sta   [:target],y
                    ldy   #$F000+CODE_EXIT+2
                    lda   :nextBank
                    sta   [:target],y
 
-                   ldy   #$8000+CODE_EXIT              ; Patch one line per bank to enable interrupts
+                   ldy   #$8000+CODE_EXIT           ; Patch one line per bank to enable interrupts
                    lda   #{$004C+{ENABLE_INT}*256}
                    sta   [:target],y
 
@@ -438,7 +438,7 @@ BuildBank
                    sta   :target+2
 
 :BuildLine2
-                   lda   #CODE_LEN                     ; round up to an even number of bytes
+                   lda   #CODE_LEN                  ; round up to an even number of bytes
                    inc
                    and   #$FFFE
                    beq   :nocopy
@@ -452,11 +452,11 @@ BuildBank
                    dey
                    bpl   :loop
 
-:nocopy            lda   #0                            ; copy is complete, now patch up the addresses
+:nocopy            lda   #0                         ; copy is complete, now patch up the addresses
                    sep   #$20
 
                    ldx   #0
-                   lda   :target+2                     ; patch in the bank for the absolute long addressing mode
+                   lda   :target+2                  ; patch in the bank for the absolute long addressing mode
 :dobank            ldy   BankPatches,x
                    sta   [:target],y
                    inx
@@ -465,7 +465,7 @@ BuildBank
                    bcc   :dobank
 
                    ldx   #0
-:dopage            ldy   PagePatches,x                 ; patch the page addresses by adding the page offset to each
+:dopage            ldy   PagePatches,x              ; patch the page addresses by adding the page offset to each
                    lda   [:target],y
                    clc
                    adc   :target+1
@@ -485,71 +485,71 @@ BuildBank
 ;
 ; The 'base' location is always assumed to be on a 4kb ($1000) boundary
 base
-entry_1            ldx   #0000                         ; Used for LDA 00,x addressing
-entry_2            ldy   #0000                         ; Used for LDA (00),y addressing
-entry_3            lda   #0000                         ; Sets screen address (right edge)
+entry_1            ldx   #0000                      ; Used for LDA 00,x addressing
+entry_2            ldy   #0000                      ; Used for LDA (00),y addressing
+entry_3            lda   #0000                      ; Sets screen address (right edge)
                    tcs
 
 long_0
 entry_jmp          jmp   $0100
-                   dfb   $00                           ; if the screen is odd-aligned, then the opcode is set to 
-                                                       ; $AF to convert to a LDA long instruction.  This puts the
-                                                       ; first two bytes of the instruction field in the accumulator
-                                                       ; and falls through to the next instruction.
+                   dfb   $00                        ; if the screen is odd-aligned, then the opcode is set to 
+                                                    ; $AF to convert to a LDA long instruction.  This puts the
+                                                    ; first two bytes of the instruction field in the accumulator
+                                                    ; and falls through to the next instruction.
 
-                                                       ; We structure the line so that the entry point only needs to
-                                                       ; update the low-byte of the address, the means it takes only
-                                                       ; an amortized 4-cycles per line to set the entry point break
+                                                    ; We structure the line so that the entry point only needs to
+                                                    ; update the low-byte of the address, the means it takes only
+                                                    ; an amortized 4-cycles per line to set the entry point break
 
-right_odd          bit   #$000B                        ; Check the bottom nibble to quickly identify a PEA instruction
-                   beq   r_is_pea                      ; This costs 6 cycles in the fast-path
+right_odd          bit   #$000B                     ; Check the bottom nibble to quickly identify a PEA instruction
+                   beq   r_is_pea                   ; This costs 6 cycles in the fast-path
 
-                   bit   #$0040                        ; Check bit 6 to distinguish between JMP and all of the LDA variants
+                   bit   #$0040                     ; Check bit 6 to distinguish between JMP and all of the LDA variants
                    bne   r_is_jmp
 
-long_1             stal  *+4-base                      ; Everything else is a two-byte LDA opcode + PHA
+long_1             stal  *+4-base                   ; Everything else is a two-byte LDA opcode + PHA
                    dfb   $00,$00
                    bra   r_jmp_rtn
 
-r_is_pea           xba                                 ; fast code for PEA
-r_jmp_rtn          sep   #$20                          ; shared return code path by all methods
+r_is_pea           xba                              ; fast code for PEA
+r_jmp_rtn          sep   #$20                       ; shared return code path by all methods
                    pha
                    rep   #$20
-odd_entry          jmp   $0100                         ; unconditionally jump into the "next" instruction in the 
-                                                       ; code field.  This is OK, even if the entry point was the
-                                                       ; last instruction, because there is a JMP at the end of
-                                                       ; the code field, so the code will simply jump to that
-                                                       ; instruction directly.
-                                                       ;
-                                                       ; As with the original entry point, because all of the
-                                                       ; code field is page-aligned, only the low byte needs to
-                                                       ; be updated when the scroll position changes
+odd_entry          jmp   $0100                      ; unconditionally jump into the "next" instruction in the 
+                                                    ; code field.  This is OK, even if the entry point was the
+                                                    ; last instruction, because there is a JMP at the end of
+                                                    ; the code field, so the code will simply jump to that
+                                                    ; instruction directly.
+                                                    ;
+                                                    ; As with the original entry point, because all of the
+                                                    ; code field is page-aligned, only the low byte needs to
+                                                    ; be updated when the scroll position changes
 
-r_is_jmp           sep   #$41                          ; Set the C and V flags which tells a snippet to push only the low byte
+r_is_jmp           sep   #$41                       ; Set the C and V flags which tells a snippet to push only the low byte
 long_2             ldal  entry_jmp+1-base
 long_3             stal  *+5-base
-                   jmp   $0000                         ; Jumps into the exception code, which returns to r_jmp_rtn
+                   jmp   $0000                      ; Jumps into the exception code, which returns to r_jmp_rtn
 
 ; The next labels are special, in that they are entry points into special subroutines.  They are special
 ; because they are within the first 256 bytes of each code field, which allows them to be selectable
 ; by patching the low byte of the JMP instructions.
 
 ; Return to caller -- the even_exit JMP from the previous line will jump here when a render is complete
-full_return        jml   blt_return                    ; Full exit
+full_return        jml   blt_return                 ; Full exit
 
 ; Re-enable interrupts and continue -- the even_exit JMP from the previous line will jump here every
 ; 8 or 16 lines in order to give the system some extra time to handle interrupts.
-enable_int         ldal  stk_save+1                    ; restore the stack
+enable_int         ldal  stk_save+1                 ; restore the stack
                    tcs
-                   sep   #$20                          ; 8-bit mode
-                   ldal  STATE_REG                     ; Read Bank 0 / Write Bank 0
+                   sep   #$20                       ; 8-bit mode
+                   ldal  STATE_REG                  ; Read Bank 0 / Write Bank 0
                    and   #$CF
                    stal  STATE_REG
                    cli
-                   nop                                 ; Give a couple of cycles
+                   nop                              ; Give a couple of cycles
                    sei
                    ldal  STATE_REG
-                   ora   #$10                          ; Read Bank 0 / Write Bank 1
+                   ora   #$10                       ; Read Bank 0 / Write Bank 1
                    stal  STATE_REG
                    rep   #$20
                    bra   entry_1
@@ -561,14 +561,14 @@ enable_int         ldal  stk_save+1                    ; restore the stack
 ; page-crossing penalty of the branch.
 
                    ds    166
-loop_exit_1        jmp   odd_exit-base                 ; +0   Alternate exit point depending on whether the left edge is 
-loop_exit_2        jmp   even_exit-base                ; +3   odd-aligned
+loop_exit_1        jmp   odd_exit-base              ; +0   Alternate exit point depending on whether the left edge is 
+loop_exit_2        jmp   even_exit-base             ; +3   odd-aligned
 
-loop               lup   82                            ; +6   Set up 82 PEA instructions, which is 328 pixels and consumes 246 bytes
-                   pea   $0000                         ;      This is 41 8x8 tiles in width.  Need to have N+1 tiles for screen overlap
+loop               lup   82                         ; +6   Set up 82 PEA instructions, which is 328 pixels and consumes 246 bytes
+                   pea   $0000                      ;      This is 41 8x8 tiles in width.  Need to have N+1 tiles for screen overlap
                    --^
-loop_back          jmp   loop-base                     ; +252 Ensure execution continues to loop around
-loop_exit_3        jmp   even_exit-base                ; +255
+loop_back          jmp   loop-base                  ; +252 Ensure execution continues to loop around
+loop_exit_3        jmp   even_exit-base             ; +255
 
 long_5
 odd_exit           ldal  l_is_jmp+1-base
@@ -576,7 +576,7 @@ odd_exit           ldal  l_is_jmp+1-base
                    bne   :chk_jmp
 
                    sep   #$20
-long_6             ldal  l_is_jmp+3-base               ; get the high byte of the PEA operand
+long_6             ldal  l_is_jmp+3-base            ; get the high byte of the PEA operand
 
 ; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimized
 ; for the PEA $0000 case -- only 19 cycles to handle the edge, so pretty good
@@ -585,8 +585,8 @@ long_6             ldal  l_is_jmp+3-base               ; get the high byte of th
                    rep   #$20
 
 ; JMP opcode = $4C, JML opcode = $5C
-even_exit          jmp   $1000                         ; Jump to the next line.
-                   ds    1                             ; space so that the last line in a bank can be patched into a JML
+even_exit          jmp   $1000                      ; Jump to the next line.
+                   ds    1                          ; space so that the last line in a bank can be patched into a JML
 
 :chk_jmp
                    bit   #$0040
@@ -600,8 +600,8 @@ l_jmp_rtn          xba
                    rep   #$20
                    bra   even_exit
 
-l_is_jmp           sec                                 ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
-odd_save           dfb   $00,$00,$00                   ; The odd exit 3-byte sequence is always stashed here
+l_is_jmp           sec                              ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
+odd_save           dfb   $00,$00,$00                ; The odd exit 3-byte sequence is always stashed here
 
 ; Special epilogue: skip a number of bytes and jump back into the code field. This is useful for
 ;                   large, floating panels in the attract mode of a game, or to overlay solid
@@ -611,8 +611,8 @@ epilogue_1         tsc
                    sec
                    sbc   #0
                    tcs
-                   jmp   $0000                         ; This jumps back into the code field
-:out               jmp   $0000                         ; This jumps to the next epilogue chain element
+                   jmp   $0000                      ; This jumps back into the code field
+:out               jmp   $0000                      ; This jumps to the next epilogue chain element
                    ds    1
 
 ; These are the special code snippets -- there is a 1:1 relationship between each snippet space
@@ -667,24 +667,26 @@ epilogue_1         tsc
 ;            ...
 
 
-                   ds    \,$00                         ; pad to the next page boundary
+                   ds    \,$00                      ; pad to the next page boundary
 ]index             equ   0
 snippets           lup   82
-                   ds    2                             ; space for a 2-byte sequence; LDA (00),y  LDA 00,x  LDA 0,s
-                   and   #$0000                        ; the mask operand will be set when the tile is drawn
-                   ora   #$0000                        ; the data operand will be set when the tile is drawn
+                   ds    2                          ; space for a 2-byte sequence; LDA (00),y  LDA 00,x  LDA 0,s
+                   and   #$0000                     ; the mask operand will be set when the tile is drawn
+                   ora   #$0000                     ; the data operand will be set when the tile is drawn
                    bcs   *+6
                    pha
-                   brl   loop+3+{3*]index}             ; use relative branch for convenience
-                   bvs   *+6                           ; overflow set means this is the right edge (entry)
-                   clc                                 ; carry is set only for edge operations; force clear
+                   brl   loop+3+{3*]index}          ; use relative branch for convenience
+                   bvs   *+6                        ; overflow set means this is the right edge (entry)
+                   clc                              ; carry is set only for edge operations; force clear
                    brl   l_jmp_rtn
-                   rep   #$41                          ; clear V and C
-                   brl   r_jmp_rtn                     ; 25 bytes
-                   ds    7                             ; padding
+                   rep   #$41                       ; clear V and C
+                   brl   r_jmp_rtn                  ; 25 bytes
+                   ds    7                          ; padding
 ]index             equ   ]index+1
                    --^
 top
+
+
 
 
 
