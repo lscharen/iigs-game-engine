@@ -209,7 +209,8 @@ RenderTile
                  jmp             (:actions,x)
 
 :actions         dw              solid,solid_hflip,solid_vflip,solid_hvflip
-                 dw              dynamic,dynamic,dynamic,dynamic
+;                 dw              dynamic,dynamic,dynamic,dynamic
+                 dw              dyn_masked,dyn_masked,dyn_masked,dyn_masked
                  dw              masked,masked_hflip,masked_vflip,masked_hvflip
                  dw              dyn_masked,dyn_masked,dyn_masked,dyn_masked
 
@@ -308,7 +309,7 @@ FillPEAOpcode
 
 ; Masked tiles
 ;
-; Can result in one or three different code sequences
+; Can result in one of three different code sequences
 ;
 ; If mask === $0000, then insert PEA $DATA
 ; If mask === $FFFF, then insert LDA (DP),y / PHA
@@ -529,6 +530,55 @@ DynamicTile
                  rep             #$20
                  rts
 
+DynamicTileM
+                 and             #$007F                            ; clamp to < (32 * 4)
+                 sta             _T_PTR
+                 stx             _X_REG
+
+                 CopyMaskedDWord  $0003
+                 CopyMaskedDWord  $1003
+                 CopyMaskedDWord  $2003
+                 CopyMaskedDWord  $3003
+                 CopyMaskedDWord  $4003
+                 CopyMaskedDWord  $5003
+                 CopyMaskedDWord  $6003
+                 CopyMaskedDWord  $7003
+
+                 inc             _T_PTR                            ; Move to the next column
+                 inc             _T_PTR
+                 inc             _X_REG                            ; Move to the next column
+                 inc             _X_REG
+
+                 CopyMaskedDWord  $0000
+                 CopyMaskedDWord  $1000
+                 CopyMaskedDWord  $2000
+                 CopyMaskedDWord  $3000
+                 CopyMaskedDWord  $4000
+                 CopyMaskedDWord  $5000
+                 CopyMaskedDWord  $6000
+                 CopyMaskedDWord  $7000
+
+                 sep             #$20
+                 lda             #$4C                              ; Set everything to JMP instructions
+                 sta:            $0000,y
+                 sta:            $0003,y
+                 sta             $1000,y
+                 sta             $1003,y
+                 sta             $2000,y
+                 sta             $2003,y
+                 sta             $3000,y
+                 sta             $3003,y
+                 sta             $4000,y
+                 sta             $4003,y
+                 sta             $5000,y
+                 sta             $5003,y
+                 sta             $6000,y
+                 sta             $6003,y
+                 sta             $7000,y
+                 sta             $7003,y
+                 rep             #$20
+                 rts
+
 ; Helper functions to copy tile data to the appropriate location in Bank 0
 ;  X = tile ID
 ;  Y = dynamic tile ID
@@ -545,6 +595,26 @@ CopyTileToDyn    ENT
                  adc             #$0100                            ; Go to the next page
                  tay
                  jsr             CopyTileDToDyn                    ; Copy the tile data
+                 jsr             CopyTileMToDyn                    ; Copy the tile data
+                 rtl
+
+; Helper functions to copy tile data and mask to the appropriate location in Bank 0
+;  X = tile ID
+;  Y = dynamic tile ID
+CopyTileAndMaskToDyn ENT
+                 txa
+                 jsr             _GetTileAddr
+                 tax
+
+                 tya
+                 and             #$001F                            ; Maximum of 32 dynamic tiles
+                 asl
+                 asl                                               ; 4 bytes per page
+                 adc             BlitterDP                         ; Add to the bank 00 base address
+                 adc             #$0100                            ; Go to the next page
+                 tay
+                 jsr             CopyTileDToDyn                    ; Copy the tile data
+                 jsr             CopyTileMToDyn                    ; Copy the tile data
                  rtl
 
 ;  X = address of tile
@@ -705,8 +775,12 @@ dynamic
 
 dyn_masked
                  pla
+                 asl
+                 asl
+                 asl
+                 xba                                               ; Undo the x128 we just need x4
                  plx
-                 rts
+                 brl             DynamicTileM
 
 ; Merge
 ;

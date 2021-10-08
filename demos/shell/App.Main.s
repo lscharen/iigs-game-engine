@@ -34,7 +34,7 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
 
 ; Set up our level data
                     jsr        BG0SetUp
-;                    jsr        BG1SetUp
+                    jsr        BG1SetUp
                     jsr        TileAnimInit
 
 ; Allocate room to load data
@@ -51,6 +51,9 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                     lda        #$FFFF
                     jsl        Render
 EvtLoop
+                    jsl        DoTimers
+                    jsl        Render
+
                     jsl        ReadControl
                     and        #$007F                  ; Ignore the buttons for now
 
@@ -59,16 +62,6 @@ EvtLoop
                     brl        Exit
 
 :1
-                    jsl        DoTimers
-                    jsl        Render
-                    bra        EvtLoop
-
-                    cmp        #'r'
-                    bne        EvtLoop
-
-                    jsl        Render
-                    brl        EvtLoop
-
                     cmp        #'l'
                     bne        :1_1
                     jsr        DoLoadFG
@@ -102,7 +95,7 @@ EvtLoop
                     sbc        #'1'
                     tax
                     jsl        SetScreenMode
-;                    jsr        MovePlayerToOrigin
+                    jsr        MovePlayerToOrigin
                     brl        EvtLoop
 
 :6                  cmp        #'t'

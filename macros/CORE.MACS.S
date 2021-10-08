@@ -149,21 +149,34 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
 
 ; This is the slowest path because there is a *lot* of work to do.  So much that it's
 ; worth it to change up the environment to optimize things a bit more.
+;
+; Need to fill in the first 8 bytes of the JMP handler with the following code sequence
+;
+;            lda  (00),y
+;            and  #MASK
+;            ora  #DATA
+
                 lda   #$004C          ; JMP instruction
                 sta:  ]3,y
 
                 ldx   _X_REG          ; Get the addressing offset
                 ldal  JTableOffset,x  ; Get the address offset and add to the base address
-;                clc                   ; may be able to be removed...
                 adc   _BASE_ADDR      ; of the current code field line
                 adc   #{]3&$F000}     ; adjust for the current row offset
                 sta:  ]3+1,y
 
                 tay                   ; This becomes the new address that we use to patch in
                 txa                   ; Get the offset and render a LDA (dp),y instruction
-                xba
-                ora   #$00B1
-                sta:  $0000,y
+
+                sep   #$20
+                sta:  $0001,y         ; LDA (00),y operand
+                lda   #$B1
+                sta:  $0000,y         ; LDA (00),y opcode
+                lda   #$29
+                sta:  $0002,y         ; AND #$0000 opcode
+                lda   #$09
+                sta:  $0005,y         ; ORA #$0000 opcode
+                rep   #$20
 
                 ldx   _T_PTR          ; restore the original x-register value
                 ldal  ]2,x            ; insert the tile mask and data into the exception
@@ -184,13 +197,49 @@ transparent
 next
                 eom
 
+; Masked renderer for a dynamic tile. What's interesting about this renderer is that the mask
+; value is not used directly, but simply indicates if we can use a LDA 0,x / PHA sequence,
+; a LDA (00),y / PHA, or a JMP to a blended render
+;
+; If a dynamic tile is animated, there is the possibility to create a special mask that marks
+; words of the tile that a front / back / mixed across all frames.
+;
+; ]1 : tiledata offset
+; ]2 : tilemask offset
+; ]3 : code field offset
+CopyMaskedDWord MAC
 
+; Need to fill in the first 8 bytes of the JMP handler with the following code sequence
+;
+;            lda  (00),y
+;            and  $80,x
+;            ora  $00,x
+;            bcc  *+4
 
+                ldx   _X_REG          ; Get the addressing offset
+                ldal  JTableOffset,x  ; Get the address offset and add to the base address
+                adc   _BASE_ADDR      ; of the current code field line
+                adc   #{]1&$F000}     ; adjust for the current row offset
+                sta:  ]1+1,y
 
+                tax                   ; This becomes the new address that we use to patch in
+                lda   _X_REG          ; Get the offset and render a LDA (dp),y instruction
 
+                sep   #$20            ; Easier to do 8-bit operations
+                sta:  $0001,x         ; Set the LDA (00),y operand
+                lda   #$B1
+                sta:  $0000,x         ; Set the LDA (00),y opcode
 
+                lda   _T_PTR
+                sta:  $0005,x         ; Set ORA 00,x operand
+                ora   #$80
+                sta:  $0003,x         ; Set AND 00,x operand
+                lda   #$35
+                sta:  $0002,x         ; Set AND 00,x operand
+                lda   #$15
+                sta:  $0004,x         ; Set ORA 00,x operand
+                rep   #$30
 
-
-
-
-
+                lda   #$0290          ; BCC *+4
+                sta:  $0006,x
+                eom

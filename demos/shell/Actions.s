@@ -7,7 +7,7 @@ MoveLeft
                      lsr
                      jsl   SetBG1XPos
 
-                     jsl   Render
+;                     jsl   Render
                      rts
 
 MoveRight
@@ -23,7 +23,7 @@ MoveRight
                      lsr
                      jsl   SetBG1XPos
 
-                     jsl   Render
+;                     jsl   Render
                      pla
                      rts
 
@@ -46,7 +46,7 @@ MoveUp
 ;                     lsr
 ;                     jsl       SetBG1YPos
 
-                     jsl   Render
+;                     jsl   Render
                      rts
 
 MoveDown
@@ -62,7 +62,7 @@ MoveDown
 ;                     lsr
 ;                     jsl       SetBG1YPos
 
-                     jsl   Render
+;                     jsl   Render
                      pla
                      rts
 
