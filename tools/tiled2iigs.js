@@ -174,7 +174,7 @@ function findAnimatedTiles(tileset) {
                 const millis = parseInt(f.duration, 10);
                 const ticksPerMillis = 60. / 1000.;
                 return {
-                    tileId: parseInt(f.tileid, 10),
+                    tileId: parseInt(f.tileid, 10) + 1,         // The IDs in the XML file appear to be zero-based.  The JSON files appear to be one-based
                     ticks: Math.round(millis * ticksPerMillis),
                     millis
                 };
@@ -370,6 +370,8 @@ function emitLayerData(sb, layer, tileset) {
 
 /**
  * Map the bit flags used in Tiled to compatible values in GTE
+ * 
+ * tileID is a value from the exported TileD data.  It starts at index 1.
  */
 function convertTileID(tileId, tileset) {
     const GTE_MASK_BIT  = 0x1000;
@@ -390,11 +392,11 @@ function convertTileID(tileId, tileset) {
 
     // Mask out the flip bits
     const tileIndex = tileId & 0x1FFFFFFF;
-    if (tileIndex > 511) {
+    if (tileIndex >= 512) {
         throw new Error('A maximum of 511 tiles are supported');
     }
 
-    // The tileId start at one, but the tile set starts at zero.  It's ok when we export,
+    // The tileId starts at one, but the tile set starts at zero.  It's ok when we export,
     // because a special zero tile is inserted, but we have to manually adjust here
     const mask_bit = !tileset[tileIndex - 1].isSolid;
 

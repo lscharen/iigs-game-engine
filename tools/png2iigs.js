@@ -286,6 +286,9 @@ function buildTiles(buff, width, transparentIndex = -1) {
                 return tiles;
             }
             const tile = buildTile(buff, width, x, y, transparentIndex);
+
+            // Tiled TileIDs start at 1
+            tile.tileId = count + 1;
             tiles.push(tile);
         }
     }

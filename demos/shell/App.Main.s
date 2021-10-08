@@ -58,55 +58,13 @@ EvtLoop
                     bne        :1
                     brl        Exit
 
-tcounter            dw         0
-tileIDs             dw         168,170,172,174,168,170,172,174
-                    dw         169,171,173,175,169,171,173,175
-                    dw         208,210,212,214,208,210,212,214
-                    dw         209,211,213,215,209,211,213,215
-
-;tileIDs             dw         1,1,1,1,1,1,1,5
-;                    dw         2,2,2,2,2,2,2,6
-;                    dw         3,3,3,3,3,3,3,7
-;                    dw         4,4,4,4,4,4,4,8
-
-
 :1
+                    jsl        DoTimers
+                    jsl        Render
+                    bra        EvtLoop
+
                     cmp        #'r'
                     bne        EvtLoop
-
-                    jsl        DoTimers
-
-                    inc        tcounter
-
-                    lda        tcounter
-                    and        #$0007
-                    asl
-                    tay
-                    lda        tileIDs,y
-                    pha
-                    lda        tileIDs+16,y
-                    pha
-                    lda        tileIDs+32,y
-                    pha
-                    ldx        tileIDs+48,y
-                    inx
-                    ldy        #3
-                    jsl        CopyTileToDyn
-
-                    plx
-                    inx
-                    ldy        #2
-                    jsl        CopyTileToDyn
-
-                    plx
-                    inx
-                    ldy        #1
-                    jsl        CopyTileToDyn
-
-                    plx
-                    inx
-                    ldy        #0
-                    jsl        CopyTileToDyn
 
                     jsl        Render
                     brl        EvtLoop
@@ -514,67 +472,3 @@ qtRec               adrl       $0000
                     PUT        gen/App.TileMapBG0.s
                     PUT        gen/App.TileMapBG1.s
                     PUT        gen/App.TileSetAnim.s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
