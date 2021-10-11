@@ -61,7 +61,7 @@ _GetTileAddr
                  bit             #2*TILE_HFLIP_BIT                 ; Check if the horizontal flip bit is set
                  beq             :no_flip
                  inc                                               ; Set the LSB
-:no_flip         and             #TILE_ID_MASK                     ; Mask out non-id bits
+:no_flip         and             #TILE_ID_MASK*2                   ; Mask out non-id bits
                  asl                                               ; x4
                  asl                                               ; x8
                  asl                                               ; x16
