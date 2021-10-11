@@ -88,9 +88,9 @@ _Render
 
             jsr   _ShadowOff
 
-;            ldx   #0                  ; Blit the full virtual buffer to the screen
-;            ldy   #8
-;            jsr   _BltRange
+            ldx   #0                  ; Blit the full virtual buffer to the screen
+            ldy   #8
+            jsr   _BltRange
 
             jsr   _ShadowOn
 
@@ -102,9 +102,15 @@ _Render
 ;            ldy   #16
 ;            jsr   _BltRange
 
-;            jsr   Overlay
+            lda   ScreenY0             ; pass the address of the first line of the overlay
+            asl
+            tax
+            lda   ScreenAddr,x
+            clc
+            adc   ScreenX0
+            jsl   Overlay
 
-            ldx   #0                  ; Blit the full virtual buffer to the screen
+            ldx   #8                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
 

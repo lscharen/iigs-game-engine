@@ -43,16 +43,20 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                     sta        BankLoad                ; Store "Bank Pointer"
 
                     jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
+                    
+                    jsr        InitOverlay             ; Initialize the status bar
 
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     ora        #DIRTY_BIT_BG1_REFRESH
                     tsb        DirtyBits
 
+                    stz        frameCount
                     lda        #$FFFF
                     jsl        Render
 EvtLoop
                     jsl        DoTimers
                     jsl        Render
+                    inc        frameCount
 
                     jsl        ReadControl
                     and        #$007F                  ; Ignore the buttons for now
@@ -340,8 +344,7 @@ DoLoadPic
                     dw         $0222,$0333,$0444,$0888,$09A0,$0680,$0470,$0051
 
 ; SMB
-DefaultPalette      dw         $0E51,$0EDB,$0000,$068F,$0BF1,$00A0,$0EEE,$0777,$0FA4,$0F59,$0E05,$0F30
-                    dw         $0680,$0470,$0051
+DefaultPalette      dw         $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$0FD7,$0EE6,$0F59,$068F,$01CE,$09B9,$0EDA,$0EEE
 
 ; Graphics helpers
 
@@ -460,8 +463,9 @@ qtRec               adrl       $0000
                     PUT        App.Msg.s
                     PUT        Actions.s
                     PUT        font.s
-                    PUT        Overlay.s
 
                     PUT        gen/App.TileMapBG0.s
                     PUT        gen/App.TileMapBG1.s
                     PUT        gen/App.TileSetAnim.s
+
+                    PUT        Overlay.s

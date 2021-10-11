@@ -24,7 +24,7 @@
     "build:assets-woz-fatbits": "node %npm_package_config_png2iigs% ./assets/woz-pixelated.png ./emu/bg1a.bin --start-index 6 && node %npm_package_config_png2iigs% ./assets/woz-shifted.png ./emu/bg1b.bin --start-index 6 && node %npm_package_config_png2iigs% ./assets/donut-plains-1-6-color.png ./emu/fg1.bin",
     "build:assets-color-cycle": "node %npm_package_config_png2iigs% ./assets/rotopattern.png ./emu/bg1a.bin --start-index 6 && node %npm_package_config_png2iigs% ./assets/woz-shifted.png ./emu/bg1b.bin --start-index 6 && node %npm_package_config_png2iigs% ./assets/donut-plains-1-6-color.png ./emu/fg1.bin",
     "build:map": "node %npm_package_config_tiled2iigs% ./assets/tiled/world_1-1.json --output-dir ./gen",
-    "build:tiles": "node %npm_package_config_png2iigs% ./assets/tilesets/smb-16.png --max-tiles 224 --as-tile-data --transparent-color-index 3 > ./gen/App.TileSet.s"
+    "build:tiles": "node %npm_package_config_png2iigs% ./assets/tilesets/smb-16.png --max-tiles 360 --as-tile-data --transparent-color-index 11 > ./gen/App.TileSet.s"
   },
   "repository": {
     "type": "git",

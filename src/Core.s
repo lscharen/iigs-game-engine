@@ -14,6 +14,9 @@ NO_MUSIC          equ       1                   ; turn music + tool loading off
 ; External data provided by the main program segment
 tiledata          EXT
 
+; IF there are overlays, they are provided as an external
+Overlay           EXT
+
 ; Core engine functionality.  The idea is that that source file can be PUT into
 ; a main source file and all of the functionality will be available.
 ;

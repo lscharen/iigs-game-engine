@@ -53,6 +53,9 @@ TILE_CTRL_MASK   equ             $1E00                             ; Deliberatel
 ; A = tile descriptor
 ;
 ; The address is the TileID * 128 + (HFLIP * 64)
+GetTileAddr      ENT
+                 jsr             _GetTileAddr
+                 rtl
 _GetTileAddr
                  asl                                               ; Multiply by 2
                  bit             #2*TILE_HFLIP_BIT                 ; Check if the horizontal flip bit is set

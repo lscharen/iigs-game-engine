@@ -665,6 +665,25 @@ epilogue_1         tsc
 ;            bcs  alt_exit      ; 2/3
 ;            pha
 ;            ...
+;
+; A theoretical exception handler that performed a full 3-level blend would be
+;
+;  start     lda  0,s
+;            and  [00],y
+;            ora  (00),y
+;            and  $80,x
+;            ora  $00,x
+;            and  #MASK
+;            ora  #DATA
+;            bcs  alt_exit
+;            pha                ; 4
+;  out       brl  next          ; 4 Fast-path completes in 5 additional cycles
+;
+;  alt_exit  bvs  r_edge        ; 2/3 
+;            clc                ; 2
+;            brl  l_jmp_rtn     ; 3
+;  r_edge    rep   #$41
+;            brl  r_jmp_rtn     ; 3
 
 
                    ds    \,$00                      ; pad to the next page boundary

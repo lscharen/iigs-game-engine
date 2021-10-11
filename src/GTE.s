@@ -38,6 +38,7 @@ StopScript         EXT
 
 ; Direct access to internals
 DoScriptSeq        EXT
+GetTileAddr        EXT
 
 ; Allocate a full 64K bank
 AllocBank          EXT
