@@ -51,12 +51,23 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                     tsb        DirtyBits
 
                     stz        frameCount
+                    ldal       OneSecondCounter
+                    sta        oldOneSecondCounter
+
                     lda        #$FFFF
                     jsl        Render
 EvtLoop
                     jsl        DoTimers
                     jsl        Render
                     inc        frameCount
+
+                    ldal       OneSecondCounter
+                    cmp        oldOneSecondCounter
+                    beq        :noudt
+                    sta        oldOneSecondCounter
+                    jsr        UdtOverlay
+                    stz        frameCount
+:noudt
 
                     jsl        ReadControl
                     and        #$007F                  ; Ignore the buttons for now
@@ -158,7 +169,7 @@ Exit
                     bcs        Fatal
 Fatal               brk        $00
 
-MyPalette           dw         $0E51,$0EDA,$0000,$068F,$0BF1,$00A0,$0EEE,$0777,$0FA4,$0F59,$0F31,$02E3,$09B9,$01CE,$0EE6
+MyPalette           dw         $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$0FD7,$0EE6,$0F59,$068F,$01CE,$09B9,$0EDA,$0EEE
 
 StartMusic
                     pea        #^MusicFile
@@ -313,38 +324,6 @@ DoLoadPic
                     lda        #0
                     jsl        CopyPicToField
                     rts
-
-;DefaultPalette       dw         $0000,$007F,$0090,$0FF0
-;                     dw         $000F,$0080,$0f70,$0FFF
-                    dw         $0fa9,$0ff0,$00e0,$04DF
-                    dw         $0d00,$078f,$0ccc,$0FFF
-
-; DefaultPalette       dw         $09BE,$0AA6,$0DC9,$0DB7,$09AA
-                    dw         $0080,$0f70,$0FFF
-                    dw         $0fa9,$0ff0,$00e0,$04DF
-                    dw         $0d00,$078f,$0ccc,$0FFF
-
-; Super Mario World Assets
-;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
-                    dw         $0FDA,$0DEE,$0000,$0CC5,$09A0,$0680,$0470,$0051
-
-;DefaultPalette       dw         $0000,$0000,$0778,$0BCC,$0368,$00AF,$0556,$0245
-                    dw         $0000,$0778,$0AAA,$0CFF,$0368,$00AF,$0556
-
-; Woz
-;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
-                    dw         $0666,$0999,$0CCC,$0222,$09A0,$0680,$0470,$0051
-
-; Fatdog color cycling
-;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
-                    dw         $0156,$0288,$03A8,$07B8,$0034,$0013,$0470,$0051
-
-; Plant
-;DefaultPalette       dw         $0EEF,$0342,$0C95,$0852,$0DB4,$00C0
-                    dw         $0222,$0333,$0444,$0888,$09A0,$0680,$0470,$0051
-
-; SMB
-DefaultPalette      dw         $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$0FD7,$0EE6,$0F59,$068F,$01CE,$09B9,$0EDA,$0EEE
 
 ; Graphics helpers
 

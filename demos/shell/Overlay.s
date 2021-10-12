@@ -15,50 +15,50 @@
 CHAR_TILE_BASE equ 241     ; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
 
 ; Define the sized of the left and right overlay buffers
-R_CHAR_COUNT equ   9       ; "TICK:XXX"
-L_CHAR_COUNT equ   8       ; "FPS:XXX"
+R_CHAR_COUNT equ   8       ; "TICK:XXX"
+L_CHAR_COUNT equ   7       ; "FPS:XXX"
 
 ; Allocate a single buffer for holding both the left and right overlay characters + masks
-OVRLY_SPAN  equ   {L_CHAR_COUNT+R_CHAR_COUNT}*4
 CHAR_WIDTH  equ   4
+OVRLY_SPAN  equ   {{L_CHAR_COUNT+R_CHAR_COUNT}*CHAR_WIDTH}
 
 ovrly_buff  ds    OVRLY_SPAN*8
 ovrly_mask  ds    OVRLY_SPAN*8
 
-r_line      equ   ovrly_buff+{L_CHAR_COUNT*4}
+r_line      equ   ovrly_buff+{L_CHAR_COUNT*CHAR_WIDTH}
 l_line      equ   ovrly_buff
-r_mask      equ   ovrly_mask+{L_CHAR_COUNT*4}
+r_mask      equ   ovrly_mask+{L_CHAR_COUNT*CHAR_WIDTH}
 l_mask      equ   ovrly_mask
 
 MASK_OFFSET equ   {ovrly_mask-ovrly_buff}
 
 InitOverlay
-             lda    #'F'-'0'
+             lda    #'F'
              ldy    #l_line+{CHAR_WIDTH*0}
              jsr    _DrawChar
-             lda    #'P'-'0'
+             lda    #'P'
              ldy    #l_line+{CHAR_WIDTH*1}
              jsr    _DrawChar
-             lda    #'S'-'0'
+             lda    #'S'
              ldy    #l_line+{CHAR_WIDTH*2}
              jsr    _DrawChar
-             lda    #':'-'0'
+             lda    #':'
              ldy    #l_line+{CHAR_WIDTH*3}
              jsr    _DrawChar
 
-             lda    #'T'-'0'
+             lda    #'T'
              ldy    #r_line+{CHAR_WIDTH*0}
              jsr    _DrawChar
-             lda    #'I'-'0'
+             lda    #'I'
              ldy    #r_line+{CHAR_WIDTH*1}
              jsr    _DrawChar
-             lda    #'C'-'0'
+             lda    #'C'
              ldy    #r_line+{CHAR_WIDTH*2}
              jsr    _DrawChar
-             lda    #'K'-'0'
+             lda    #'K'
              ldy    #r_line+{CHAR_WIDTH*3}
              jsr    _DrawChar
-             lda    #':'-'0'
+             lda    #':'
              ldy    #r_line+{CHAR_WIDTH*4}
              jsr    _DrawChar
              rts
@@ -69,11 +69,14 @@ _num2ascii
              cmp   #$000A
              bcc   :out
              clc
-             adc   #'A'-10
-:out         rts
+             adc   #'A'-'0'-10
+
+:out         clc
+             adc   #'0'
+             rts
 
 UdtOverlay
-             lda   frameCount                       ; reder the FPS value
+             lda   frameCount                       ; render the FPS value
              xba
              jsr   _num2ascii
              ldy   #l_line+{CHAR_WIDTH*4}
@@ -93,13 +96,13 @@ UdtOverlay
              ldy   #l_line+{CHAR_WIDTH*6}
              jsr    _DrawChar
 
-             lda   OneSecondCounter                   ; reder the number of remaining seconds
+             ldal  OneSecondCounter                   ; reder the number of remaining seconds
              xba
              jsr   _num2ascii
              ldy   #r_line+{CHAR_WIDTH*5}
              jsr    _DrawChar
 
-             lda   OneSecondCounter
+             ldal  OneSecondCounter
              lsr
              lsr
              lsr
@@ -108,9 +111,9 @@ UdtOverlay
              ldy   #r_line+{CHAR_WIDTH*6}
              jsr    _DrawChar
 
-             lda   OneSecondCounter
+             ldal  OneSecondCounter
              jsr   _num2ascii
-             ldy   #l_line+{CHAR_WIDTH*7}
+             ldy   #r_line+{CHAR_WIDTH*7}
              jsr    _DrawChar
 
              rts
@@ -129,24 +132,24 @@ Overlay      ENT
              adc   #L_CHAR_COUNT*CHAR_WIDTH          ; advance past the left characters
              sta   m_addr                            ; this is the DP for the TSB slam
 
-             lda   ScreenWidth
-             sec
-             sbc   #R_CHAR_COUNT*CHAR_WIDTH          ; calculate the left edge of the right side
+             lda   l_addr
              clc
-             adc   l_addr                            ; add to the left edge
-             dec
+             adc   ScreenWidth
+             sec
+             sbc   #{R_CHAR_COUNT*CHAR_WIDTH}
              sta   r_addr                            ; this is the DP for the right side
 
 ; Calculate the TSB slam entry point
 
-             lda   ScreenWidth                       ; subtract the width of all the characters to figure
-             sec                                     ; out what need to be shadowed in the middle
-             sbc   #{R_CHAR_COUNT+L_CHAR_COUNT}*CHAR_WIDTH                                  
-             eor   #$FFFF
-             inc                                     ; get the negative value
-             clc
-             adc   #m_end
+             sec
+             sbc   m_addr                            ; calculate the number of words between the two ends
+             and   #$FFFE
+             pha
+             lda   #m_end
+             sec
+             sbc   1,s
              sta   m_patch+1
+             pla
 
              sei
              _R1W1
@@ -194,26 +197,38 @@ l_ovrly_rtn
              plb
              rtl
 
-l_addr       ds   2
+l_addr       ds    2
 m_addr       ds    2
 r_addr       ds    2
 
 
 r_ovrly
 ]idx        equ   0
-            lup   16
-            lda   r_line+]idx,x
+            lup   R_CHAR_COUNT
+            lda   ]idx
+            and   r_line+MASK_OFFSET+]idx,x
+            ora   r_line+]idx,x
             sta   ]idx
-]idx        equ   ]idx+2
+            lda   ]idx+2
+            and   r_line+MASK_OFFSET+]idx+2,x
+            ora   r_line+]idx+2,x
+            sta   ]idx+2
+]idx        equ   ]idx+4
             --^
             jmp   r_ovrly_rtn                       ; In R1W1, so can't use the stack
 
 l_ovrly
 ]idx        equ   0
-            lup   20
-            lda   l_line+]idx,x
+            lup   L_CHAR_COUNT
+            lda   ]idx
+            and   l_line+MASK_OFFSET+]idx,x
+            ora   l_line+]idx,x
             sta   ]idx
-]idx        equ   ]idx+2
+            lda   ]idx+2
+            and   l_line+MASK_OFFSET+]idx+2,x
+            ora   l_line+]idx+2,x
+            sta   ]idx+2
+]idx        equ   ]idx+4
             --^
             jmp   l_ovrly_rtn
  
@@ -234,7 +249,18 @@ m_end
 ; Y = overlay address location
 tiledata     EXT
 
+_DCOut      rts
+
 _DrawChar
+            cmp             #'0'
+            bcc             _DCOut
+            cmp             #'Z'+1
+            bcs             _DCOut
+
+            sec
+            sbc             #'0'
+            clc
+            adc             #CHAR_TILE_BASE
             jsl             GetTileAddr
             tax
 
