@@ -30,12 +30,12 @@ DOWN_ARROW          equ        $0A
 
                     jsl        EngineStartUp
 
-                    lda        #^MyPalette
+                    lda        #^MyPalette               ; Fill Palette #0 with our colors
                     ldx        #MyPalette
                     ldy        #0
                     jsl        SetPalette
 
-                    ldx        #0
+                    ldx        #0                        ; Mode 0 is full-screen
                     jsl        SetScreenMode
 
 ; Set up our level data
@@ -43,14 +43,9 @@ DOWN_ARROW          equ        $0A
                     jsr        TileAnimInit
 
 ; Allocate room to load data
-
-                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
-                    sta        BankLoad                ; Store "Bank Pointer"
-
                     jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
-                    ora        #DIRTY_BIT_BG1_REFRESH
                     tsb        DirtyBits
 
                     lda        #$FFFF
@@ -92,8 +87,6 @@ MyPalette           dw         $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$
 MovePlayerToOrigin
                     lda        #0                      ; Set the player's position
                     jsl        SetBG0XPos
-                    lda        #0
-                    jsl        SetBG1XPos
 
                     lda        TileMapHeight
                     asl
@@ -101,11 +94,11 @@ MovePlayerToOrigin
                     asl
                     sec
                     sbc        ScreenHeight
-                    pha
                     jsl        SetBG0YPos
-                    pla
-                    jsl        SetBG1YPos
 
+                    ldx        #10
+                    ldy        #10
+                    jsl        AddSprite
                     rts
 
 qtRec               adrl       $0000
