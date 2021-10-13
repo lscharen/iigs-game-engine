@@ -1,0 +1,38 @@
+{
+  "name": "iigs-sprite-demo",
+  "version": "1.0.0",
+  "description": "A testbed for sprite development",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "../../macros",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe",
+    "png2iigs": "../../tools/png2iigs.js",
+    "tiled2iigs": "../../tools/tiled2iigs.js"
+  },
+  "scripts": {
+    "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+    "debug": "%npm_package_config_crossrunner% GTETestApp -Source GTETestApp_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
+    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
+    "build:map": "node %npm_package_config_tiled2iigs% ./assets/tiled/world_1-1.json --output-dir ./gen",
+    "build:tiles": "node %npm_package_config_png2iigs% ./assets/tilesets/smb-16.png --max-tiles 360 --as-tile-data --transparent-color-index 11 > ./gen/App.TileSet.s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+    "pngjs": "^6.0.0",
+    "string-builder": "^0.1.8",
+    "watch": "latest",
+    "xml2json": "^0.12.0"
+  }
+}
