@@ -67,7 +67,8 @@ InitMemory     PushLong  #0                          ; space for result
 ]step          equ       ]step+4
                --^
 
-; Fill in a tables with the adddress of all 208 scanlines across all 13 banks
+; Fill in a table with the adddress of all 208 scanlines across all 13 banks.  Also fill in
+; a shorter table that just holds the starting address of the 26 tile block rows.
 
                ldx       #0
                ldy       #0
@@ -99,9 +100,38 @@ InitMemory     PushLong  #0                          ; space for result
                adc       #4                          ; move to the next bank address
                tay
                cmp       #4*13
-               bcs       :exit
+               bcs       :exit1
                brl       :bloop
+:exit1
 
+               ldx       #0
+               ldy       #0
+:bloop2
+               lda       BlitBuff+2,y                ; Copy the high word first
+
+               sta       BRowTableHigh,x             ; Two rows per bank
+               sta       BRowTableHigh+{26*2},x
+               sta       BRowTableHigh+2,x
+               sta       BRowTableHigh+{26*2}+2,x
+
+               lda       BlitBuff,y
+               sta       BRowTableLow,x
+               sta       BRowTableLow+{26*2},x
+               clc
+               adc       #$8000
+               sta       BRowTableLow+2,x
+               sta       BRowTableLow+{26*2}+2,x
+
+               txa
+               adc       #4
+               tax
+
+               tya
+               adc       #4                          ; move to the next bank address
+               tay
+               cmp       #4*13
+               bcs       :exit
+               brl       :bloop2
 :exit
                rts
 

@@ -78,21 +78,38 @@ _Render
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
-            jsr   _UpdateBG0TileMap
-            jsr   _UpdateBG1TileMap
+            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
+            jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
+            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
-            jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
-            jsr   _ApplyBG1XPos       ; Patch the PEA instructions with exit BRA opcode
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
-; The code fields are locked in now and reder to be rendered
+            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
+            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+
+; The code fields are locked in now and ready to be rendered
 
             jsr   _ShadowOff
 
-            ldx   #0                  ; Blit the full virtual buffer to the screen
-            ldy   #8
-            jsr   _BltRange
+; Shadowing is turned off. Render all of the scan lines that need a second pass. These
+; are the lines that have a masked overlay, or a sprite.  One optimization that can
+; be done here is that the lines can be rendered in any order since it is not shown
+; on-screen yet.
+
+;           jsr   _RenderPhaseA         ; Draw all of the background lines
+;           jsr   _RenderSprites        ; Draw all of the sprites
+
+;            ldx   #152                  ; Blit the full virtual buffer to the screen
+;            ldy   #160
+;            jsr   _BltRange
+
+; Turn shadowing back on
 
             jsr   _ShadowOn
+
+; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
+
+;            jsr   _RenderPhaseB       ; Draw the mix of background lines overlays and PEI slams
 
 ;            ldx   #0                  ; Expose the top 8 rows
 ;            ldy   #8
@@ -102,15 +119,21 @@ _Render
 ;            ldy   #16
 ;            jsr   _BltRange
 
-            lda   ScreenY0             ; pass the address of the first line of the overlay
-            asl
-            tax
-            lda   ScreenAddr,x
-            clc
-            adc   ScreenX0
-            jsl   Overlay
+;            ldx   #0                  ; Blit the full virtual buffer to the screen
+;            ldy   #152
+;            jsr   _BltRange
 
-            ldx   #8                  ; Blit the full virtual buffer to the screen
+;            lda   ScreenY0             ; pass the address of the first line of the overlay
+;            clc
+;            adc   #152
+;            asl
+;            tax
+;            lda   ScreenAddr,x
+;            clc
+;            adc   ScreenX0
+;            jsl   Overlay
+
+            ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
 
@@ -131,3 +154,82 @@ _Render
             stz   DirtyBits
             rts
 
+MAX_SEGMENTS equ  128
+
+PhaseACount ds    0
+PhaseATop   ds    2*MAX_SEGMENTS
+PhaseABot   ds    2*MAX_SEGMENTS
+PhaseAOp    ds    2*MAX_SEGMENTS
+
+PhaseBCount ds    0
+PhaseBTop   ds    2*MAX_SEGMENTS
+PhaseBBot   ds    2*MAX_SEGMENTS
+PhaseBOp    ds    2*MAX_SEGMENTS
+
+; Initialize the rendering tree to just render all of the code fields 
+_InitRenderTree
+            lda   #1                    ; Put the whole screen into Phase B
+            sta   PhaseBCount
+
+            lda   #0
+            sta   PhaseBTop
+            lda   ScreenHeight
+            sta   PhaseBBot
+            lda   #_BltRange
+            sta   PhaseBOp
+
+            stz   PhaseACount           ; Phase A is initially empty
+            rts
+
+; Solid overlays are called in Phase B, but do not require the screen
+; to be drawn underneath, so this provides an opportunity to optimize
+; the rendering pipeline
+_AddSolidOverlay
+            rts
+
+; A mixed overlay signals that the underlying scan line data must be
+; redered first.
+_AddMixedOverlay
+            rts
+
+_RenderPhaseA
+            ldy   #0
+:loop
+            cpy   PhaseACount
+            bcs   :out
+            phy                         ; save the counter
+
+            lda   PhaseAOp,y            ; dispatch to the appropriate function
+            sta   :op+1
+            ldx   PhaseATop,y
+            lda   PhaseABot,y
+            tay
+:op         jsr   $0000
+
+            ply                         ; restore the counter
+            iny
+            iny
+            bra   :loop
+:out
+            rts
+
+_RenderPhaseB
+            ldy   #0
+:loop
+            cpy   PhaseBCount
+            bcs   :out
+            phy                         ; save the counter
+
+            lda   PhaseBOp,y            ; dispatch to the appropriate function
+            sta   :op+1
+            ldx   PhaseBTop,y
+            lda   PhaseBBot,y
+            tay
+:op         jsr   $0000
+
+            ply                         ; restore the counter
+            iny
+            iny
+            bra   :loop
+:out
+            rts

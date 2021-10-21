@@ -36,6 +36,9 @@ DoTimers           EXT
 StartScript        EXT
 StopScript         EXT
 
+; Sprite functions
+AddSprite          EXT
+
 ; Direct access to internals
 DoScriptSeq        EXT
 GetTileAddr        EXT

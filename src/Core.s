@@ -8,11 +8,15 @@
                   use       .\Defs.s
 
 ; Feature flags
-NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data provided by the main program segment
 tiledata          EXT
+
+; Sprite plane data and mask banks are provided as an exteral segment
+spritedata        EXT
+spritemask        EXT
 
 ; IF there are overlays, they are provided as an external
 Overlay           EXT
@@ -247,6 +251,8 @@ EngineReset
                   jsr       BuildBank
 ]step             equ       ]step+4
                   --^
+
+                  jsr       _InitDirtyTiles
                   rts
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes, or pass
@@ -370,6 +376,7 @@ ReadControl       ENT
 
                   put       Memory.s
                   put       Graphics.s
+                  put       Sprite.s
                   put       Render.s
                   put       Timer.s
                   put       Script.s
@@ -379,7 +386,9 @@ ReadControl       ENT
                   put       blitter/Tables.s
                   put       blitter/Template.s
                   put       blitter/Tiles.s
+                  put       blitter/Tiles00000.s
                   put       blitter/Vert.s
                   put       blitter/BG0.s
                   put       blitter/BG1.s
                   put       TileMap.s
+                 

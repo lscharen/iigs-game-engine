@@ -290,7 +290,7 @@ _UpdateBG0TileMap
                    sbc   #MAX_TILE_Y+1
                    sta   :BlkY                   ; This is the Y-block we start drawing from
 
-                   lda   StartXMod164            ; Dx the same thing for X, except only need to clamp by 4
+                   lda   StartXMod164            ; Do the same thing for X, except only need to clamp by 4
                    and   #$FFFC
                    lsr
                    lsr
@@ -316,25 +316,27 @@ _UpdateBG0TileMap
 
 ; Handle fringe tiles -- if the fringe bit is set, then we need to get the fringe tile index
 ; and merge the tiles before rendering
-                   bit   #TILE_FRINGE_BIT
-                   beq   :no_fringe
-                   jsr   _GetTileAddr
-                   tax
-                   lda   FringeMapPtr
-                   ora   FringeMapPtr+2
-                   beq   :no_fringe
-                   lda   [FringeMapPtr],y
-                   jsr   _GetTileAddr
-                   tay
-                   jsr   _MergeTiles
 
-:no_fringe
+;                   bit   #TILE_FRINGE_BIT
+;                   beq   :no_fringe
+;                   jsr   _GetTileAddr
+;                   tax
+;                   lda   FringeMapPtr
+;                   ora   FringeMapPtr+2
+;                   beq   :no_fringe
+;                   lda   [FringeMapPtr],y
+;                   jsr   _GetTileAddr
+;                   tay
+;                   jsr   _MergeTiles
+;
+;:no_fringe
                    inc   :Offset                 ; pre-increment the address.
                    inc   :Offset
 
                    ldx   :BlkX
                    ldy   :BlkY
-                   jsr   _CopyBG0Tile
+;                   jsr   _CopyBG0Tile
+                   jsr    _PushDirtyTile         ; queue this tile for processing
 
                    lda   :BlkX
                    inc

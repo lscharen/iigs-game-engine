@@ -90,8 +90,3 @@ stk_save        lda   #0000          ; load the stack
 
                 plb                  ; restore the bank
                 rts
-
-; Placeholder for actual sprite drawing.  The implementation will be simple because
-; we don't do anything sprite related; just call function pointers provided to us.
-_RenderSprites
-                rts

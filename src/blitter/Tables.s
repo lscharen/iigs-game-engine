@@ -221,6 +221,16 @@ ScreenAddr        ENT
 ]step             =     ]step+160
                   --^
 
+; Table of offsets into each row of a Tile Store table.  We currently have two tables defined; one
+; that is the backing store for the tiles rendered into the code field, and another that holds 
+; backlink information on the sprite entries that overlap various tiles.
+]step             equ   0
+TileStoreYTable   ENT
+                  lup   26
+                  dw    ]step
+]step             =     ]step+{41*2}
+                  --^
+
 ; This is a double-length table that holds the right-edge adresses of the playfield on the physical
 ; screen.  At most, it needs to hold 200 addresses for a full height playfield.  It is double-length
 ; so that code can pick any offset and copy values without needing to check for a wrap-around. If the
@@ -237,6 +247,10 @@ BlitBuff          ENT
 ; that everything can use the same indexing offsets
 BTableHigh        ds    208*2*2
 BTableLow         ds    208*2*2
+
+; A shorter table that just holds the blitter row addresses
+BRowTableHigh     ds    26*2*2
+BRowTableLow      ds    26*2*2
 
 ; A double-length table of addresses for the BG1 bank.  The BG1 buffer is 208 rows of 256 bytes each and
 ; the first row starts $1800 bytes in to cenrer the buffer in the bank
