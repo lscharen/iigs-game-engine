@@ -23,3 +23,15 @@
             DS    0
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             SNA   Tiles
+
+; Segment #4 -- 64KB Sprite Plane Data
+
+            ASM   SprData.s
+            KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
+            SNA   SPRDATA
+
+; Segment #5 -- 64KB Sprite Mask Data
+
+            ASM   SprMask.s
+            KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
+            SNA   SPRMASK

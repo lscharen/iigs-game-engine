@@ -45,6 +45,12 @@ DOWN_ARROW          equ        $0A
 ; Allocate room to load data
                     jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
+; Add a player sprite
+                    lda        #0                 ; tile id
+                    ldx        #10                ; x-pos relative to playfield upper-left corner
+                    ldy        #10                ; y-pos relative to playfield upper-left corner
+                    jsl        AddSprite
+
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     tsb        DirtyBits
 
@@ -95,10 +101,6 @@ MovePlayerToOrigin
                     sec
                     sbc        ScreenHeight
                     jsl        SetBG0YPos
-
-                    ldx        #10
-                    ldy        #10
-                    jsl        AddSprite
                     rts
 
 qtRec               adrl       $0000
