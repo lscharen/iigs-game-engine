@@ -14,7 +14,7 @@
 
 CHAR_TILE_BASE equ 241     ; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
 
-; Define the sized of the left and right overlay buffers
+; Define the sizes of the left and right overlay buffers
 R_CHAR_COUNT equ   8       ; "TICK:XXX"
 L_CHAR_COUNT equ   7       ; "FPS:XXX"
 
