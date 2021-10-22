@@ -477,8 +477,9 @@ TILE_STORE_SIZE  equ  {MAX_TILES*2}      ; The tile store contains a tile descri
 ; TIleStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
+; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
 
-TileStore         ds   TILE_STORE_SIZE*7
+TileStore         ds   TILE_STORE_SIZE*8
 TS_TILE_ID        equ  TILE_STORE_SIZE*0
 TS_DIRTY          equ  TILE_STORE_SIZE*1
 TS_SPRITE_FLAG    equ  TILE_STORE_SIZE*2
@@ -486,6 +487,7 @@ TS_TILE_ADDR      equ  TILE_STORE_SIZE*3      ; const value
 TS_CODE_ADDR_LOW  equ  TILE_STORE_SIZE*4      ; const value
 TS_CODE_ADDR_HIGH equ  TILE_STORE_SIZE*5      ; const value
 TS_WORD_OFFSET    equ  TILE_STORE_SIZE*6
+TS_BASE_ADDR      equ  TILE_STORE_SIZE*7
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2
@@ -494,12 +496,55 @@ DirtyTiles       ds   TILE_STORE_SIZE    ; At most this many tiles can possibly 
 ; Initialize the tile storage data structures.  This takes care of populating the tile records with the
 ; appropriate constant values.
 _InitDirtyTiles
-                 ldx  #TILE_STORE_SIZE-2                ; Initialize the tile backing store with zeros
+:col             equ  tmp0
+:row             equ  tmp1
 
-:loop            lda  #0
-                 sta  TileStore+TS_TILE_ID,x
-                 lda  #$FFFF
+                 ldx  #TILE_STORE_SIZE-2                ; Initialize the tile backing store with zeros
+                 lda  #25
+                 sta  :row
+                 lda  #40
+                 sta  :col
+
+:loop 
+
+; The first set of values in the Tile Store are changed during each frame based on the actions
+; that are happening
+
+                 stz  TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
+                 stz  TileStore+TS_TILE_ADDR,x
+
+                 stz  TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
+                 lda  #$FFFF                            ; none of the tiles are dirty
                  sta  TileStore+TS_DIRTY
+
+; The next set of values are constants that are simply used as cached parameters to avoid needing to
+; calculate any of these values during tile rendering
+
+                 lda  :row                              ; Set the long address of where this tile
+                 asl                                    ; exists in the code fields
+                 tay
+                 lda  BRowTableHigh,y
+                 sta  TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
+                 lda  BRowTableLow,y
+                 sta  TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
+
+                 lda  :col                              ; Set the offset values based on the column
+                 asl                                    ; of this tile
+                 asl
+                 sta  TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
+                 
+                 tay
+                 lda  Col2CodeOffset+2,y
+                 clc
+                 adc  TileStore+TS_BASE_ADDR,x
+                 sta  TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
+
+                 dec  :col
+                 bpl  :hop
+                 dec  :row
+                 lda  #40
+                 sta  :col
+:hop
 
                  dex
                  dex
@@ -507,12 +552,12 @@ _InitDirtyTiles
                  rts
 
 _ClearDirtyTiles
+                 bra  :hop
 :loop
-                 lda  DirtyTileCount
-                 beq  :done
                  jsr  _PopDirtyTile
-                 bra  :loop
-:done
+:hop
+                 lda  DirtyTileCount
+                 bne  :loop
                  rts
 
 ; Helper function to get the address offset into the tile cachce / tile backing store
@@ -588,10 +633,7 @@ _PushDirtyTile
                  inx
                  inx
                  stx  DirtyTileCount                 ; Commit
-                 rts
-
 :occupied
-                 ply
                  rts
 
 ; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
@@ -611,7 +653,7 @@ _PopDirtyTile2                                       ; alternate entry point
 
                  ldy  DirtyTiles,x                   ; load the offset into the Tile Store
                  lda  #$FFFF
-                 sta  DirtyTileCache,y               ; clear the occupied backlink
+                 sta  TileStore+TS_DIRTY,y           ; clear the occupied backlink
                  rts
 
 ; Run through the dirty tile list and render them into the code field

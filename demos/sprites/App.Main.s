@@ -40,13 +40,13 @@ DOWN_ARROW          equ        $0A
 
 ; Set up our level data
                     jsr        BG0SetUp
-                    jsr        TileAnimInit
+;                    jsr        TileAnimInit
 
 ; Allocate room to load data
-                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
+;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
 ; Add a player sprite
-                    lda        #0                 ; tile id
+                    lda        #32                ; tile id
                     ldx        #10                ; x-pos relative to playfield upper-left corner
                     ldy        #10                ; y-pos relative to playfield upper-left corner
                     jsl        AddSprite
@@ -54,8 +54,10 @@ DOWN_ARROW          equ        $0A
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     tsb        DirtyBits
 
-                    lda        #$FFFF
+;                    lda        #$FFFF
                     jsl        Render
+
+                    brl        Exit
 EvtLoop
                     jsl        DoTimers
                     jsl        Render

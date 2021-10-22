@@ -307,7 +307,8 @@ _UpdateBG0TileMap
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
 
-                   pei   :BlkX                   ; cache the starting X-block index to restore later
+                   pha
+;                   pei   :BlkX                   ; cache the starting X-block index to restore later
                    pei   :Width                  ; cache the Width value to restore later
 :yloop
 :xloop
@@ -335,8 +336,7 @@ _UpdateBG0TileMap
 
                    ldx   :BlkX
                    ldy   :BlkY
-;                   jsr   _CopyBG0Tile
-                   jsr    _PushDirtyTile         ; queue this tile for processing
+                   jsr    _SetTile               ; set the value in the tile store
 
                    lda   :BlkX
                    inc

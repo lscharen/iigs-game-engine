@@ -75,97 +75,17 @@ _RenderSprites
             lsr
             lsr
             lsr
-            pha
 
-; We have the code field tile that needs to be filled; calculate the address of the corresponding
-; location in the sprite plane
-;
-; Corner_X = -StartXMod164; if < -3, add 164
-; Corner_Y = -StartYMod208; if < -7, add 208
+; Mark the tile as dirty
 
-;            lda   StartXMod164
-;            cmp   #4
-;            bcc   *+5
-;            sbc   #164
-;            eor   #$FFFF
-;            inc
-;            pha
-
-;            lda   StartYMod208
-;            cmp   #8
-;            bcc   *+5
-;            sbc   #208
-;            eor   #$FFFF
-;            inc
-;            clc
-;            adc   #NUM_BUFF_LINES
-;            xba
-;            clc
-;            adc   1,s
-
-; Copy the tile from the direct page scratch space into the playfield
-            ply
+            tay
             plx
-            lda   #$FFFF                 ; Sentinel value to pick direct page rendering
+            jsr   _GetTileStoreOffset    ; Get the tile store value
             jsr   _PushDirtyTile         ; Enqueue for processing
 
-;            jsr   _CopyBG0Tile
+; TODO: Mark adjacent tiles as dirty based on tmp0 and tmp1 values
+
             brl   :next
-
-; X = address of sprite _plane
-; Y = address of tile
-_ComposeSpriteAndTileNoMask
-            phb
-            pea   #^tiledata
-            plb
-
-]line       equ   0
-            lup   8
-            lda:  tiledata+{]line*4},y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta   blttmp+{]line*4}
-
-            lda:  tiledata+{]line*4}+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   blttmp+{]line*4}+2
-            --^
-
-            plb
-            plb
-            rts
-
-; X = address of sprite plane
-; Y = address of tile
-_ComposeSpriteAndTileWithMask
-            phb
-            pea   #^tiledata
-            plb
-       
-
-]line       equ   0
-            lup   8
-            lda:  tiledata+{]line*4},y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta   blttmp+{]line*4}
-            lda:  tiledata+{]line*4}+32,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            sta   blttmp+{]line*4}+32
-
-            lda:  tiledata+{]line*4}+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   blttmp+{]line*4}+2
-            lda:  tiledata+{]line*4}+32+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   blttmp+{]line*4}+32+2
-            --^
-
-            plb
-            plb
-            rts
 
 ; _GetTileAt
 ;
@@ -245,8 +165,8 @@ _DrawTileSprite
             stal  spritemask+{]line*256},x
             
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            ora:  tiledata+{]line*4},y
             and:  tiledata+32+{]line*4},y
+            ora:  tiledata+{]line*4},y
             stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
 
             lda:  tiledata+32+{]line*4}+2,y
@@ -254,8 +174,8 @@ _DrawTileSprite
             stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
             
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            ora:  tiledata+{]line*4}+2,y
             and:  tiledata+32+{]line*4}+2,y
+            ora:  tiledata+{]line*4}+2,y
             stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
 ]line       equ   ]line+1
             --^
