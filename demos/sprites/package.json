@@ -14,7 +14,7 @@
   },
   "scripts": {
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
-    "debug": "%npm_package_config_crossrunner% GTETestApp -Source GTETestApp_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
+    "debug": "%npm_package_config_crossrunner% GTETestSprites -Source GTETestSprites_S02_MAINSEG_Output.txt -Source GTETestSprites_S03_Output.txt -Debug -CompatibilityLayer",
     "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
     "build:map": "node %npm_package_config_tiled2iigs% ./assets/tiled/world_1-1.json --output-dir ./gen",
     "build:tiles": "node %npm_package_config_png2iigs% ./assets/tilesets/smb-16.png --max-tiles 360 --as-tile-data --transparent-color-index 11 > ./gen/App.TileSet.s"
