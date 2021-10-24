@@ -38,6 +38,7 @@ StopScript         EXT
 
 ; Sprite functions
 AddSprite          EXT
+UpdateSprite       EXT
 
 ; Direct access to internals
 DoScriptSeq        EXT

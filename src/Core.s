@@ -46,6 +46,9 @@ EngineStartUp     ENT
                   jsr       EngineReset         ; All of the resources are allocated, put the engine in a known state
 
                   jsr       InitGraphics        ; Initialize all of the graphics-related data
+                  jsr       InitSprites         ; Initialize the sprite subsystem
+                  jsr       InitTiles           ; Initialize the tile subsystem
+
                   jsr       InitTimers          ; Initialize the timer subsystem
 
                   plb
@@ -252,7 +255,6 @@ EngineReset
 ]step             equ       ]step+4
                   --^
 
-                  jsr       _InitDirtyTiles
                   rts
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes, or pass

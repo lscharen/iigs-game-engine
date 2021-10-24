@@ -112,6 +112,7 @@ _RenderTile2
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ora   TileStore+TS_SPRITE_FLAG,y
                  and   #TILE_CTRL_MASK
+                 xba
                  tax
                  lda   TileProcs,x                    ; load and patch in the appropriate subroutine
                  sta   :tiledisp+1
@@ -123,10 +124,12 @@ _RenderTile2
                  pha
                  rep   #$20
                  lda   TileStore+TS_CODE_ADDR_LOW,y   ; load the address of the code field
+                 pha
+                 lda   TileStore+TS_BASE_ADDR,y   ; load the address of the code field
                  sta   _BASE_ADDR
 
                  lda   TileStore+TS_WORD_OFFSET,y
-                 ldy   _BASE_ADDR
+                 ply
                  plb                                  ; set the bank
 
 ; B is set to the correct code field bank
@@ -495,11 +498,26 @@ DirtyTiles       ds   TILE_STORE_SIZE    ; At most this many tiles can possibly 
 
 ; Initialize the tile storage data structures.  This takes care of populating the tile records with the
 ; appropriate constant values.
-_InitDirtyTiles
+InitTiles
 :col             equ  tmp0
 :row             equ  tmp1
 
-                 ldx  #TILE_STORE_SIZE-2                ; Initialize the tile backing store with zeros
+; Fill in the TileStoreYTable.  This is just a table of offsets into the Tile Store for each row.  There
+; are 26 rows with a stride of 41
+                 ldy  #0
+                 lda  #0
+:yloop
+                 sta  TileStoreYTable,y
+                 clc
+                 adc  #41*2
+                 iny
+                 iny
+                 cpy  #26*2
+                 bcc  :yloop
+
+; Next, initialize the Tile Store itself
+
+                 ldx  #TILE_STORE_SIZE-2
                  lda  #25
                  sta  :row
                  lda  #40
@@ -593,12 +611,13 @@ _SetTile
                  jsr  _GetTileStoreOffset0
                  tay
                  pla
+                 
                  cmp  TileStore+TS_TILE_ID,y
                  beq  :nochange
 
                  sta  TileStore+TS_TILE_ID,y
-                 tya
-                 jmp  _PushDirtyTile
+;                 tya
+;                 jmp  _PushDirtyTile
 
 :nochange        rts
            
@@ -606,10 +625,8 @@ _SetTile
 ; Append a new dirty tile record 
 ;
 ;  A = result of _GetTileStoreOffset for X, Y
-;  X = tile column [0, 40] (41 columns)
-;  Y = tile row    [0, 25] (26 rows)
 ;
-; The main purposed of this function is to
+; The main purpose of this function is to
 ;
 ;  1. Avoid marking the same tile dirty multiple times, and
 ;  2. Pre-calculating all of the information necessary to render the tile
@@ -623,7 +640,7 @@ _PushDirtyTile
 ; record fields.
 
                  ldx  DirtyTileCount
-                 
+
                  txa
                  sta  TileStore+TS_DIRTY,y           ; Store a back-link to this record
 
@@ -661,7 +678,7 @@ _ApplyTiles
                  bra  :begin
 
 :loop
-; Retrieve the offset of the next dirty Tile Store items
+; Retrieve the offset of the next dirty Tile Store items in the Y-register
 
                  jsr  _PopDirtyTile2
 

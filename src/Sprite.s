@@ -6,20 +6,20 @@
 ; wider and taller than the physical graphics screen.
 ;
 ; Initialize the sprite plane data and mask banks (all data = $0000, all masks = $FFFF)
-_InitSprite
+InitSprites
            ldx    #$FFFE
            lda    #0
-:loop      stal   spritedata,x
+:loop1     stal   spritedata,x
            dex
            dex
-           bpl    :loop
+           bpl    :loop1
 
            ldx    #$FFFE
            lda    #$FFFF
-:loop      stal   spritemask,x
+:loop2     stal   spritemask,x
            dex
            dex
-           bpl    :loop
+           bpl    :loop2
 
            rts
 
@@ -40,7 +40,8 @@ _RenderSprites
 ; This is the complicated part; we need to draw the sprite into the sprite place, but then
 ; calculate the code field tiles that this sprite potentially overlaps with and mark those
 ; tiles as dirty.
-:render     
+:render
+            phx                                       ; stash the X register
             jsr   _DrawTileSprite                     ; draw the sprite into the sprite plane
 
             stz   tmp0                                ; flags to mark if the sprite is aligned to the code field grid or not
@@ -59,7 +60,7 @@ _RenderSprites
             sbc   #164
             lsr
             lsr
-            pha                                       ; Save the tile
+            pha                                       ; Save the tile column
 
             lda   _Sprites+SPRITE_Y,x
             clc
@@ -81,10 +82,14 @@ _RenderSprites
             tay
             plx
             jsr   _GetTileStoreOffset    ; Get the tile store value
-            jsr   _PushDirtyTile         ; Enqueue for processing
+            jsr   _PushDirtyTile         ; Enqueue for processing (Returns offset in Y-register)
+
+            lda   #TILE_SPRITE_BIT       ; Mark this tile as having a sprite, regardless of whether it was already enqueued
+            sta   TileStore+TS_SPRITE_FLAG,y
 
 ; TODO: Mark adjacent tiles as dirty based on tmp0 and tmp1 values
 
+            plx                          ; Restore the X register
             brl   :next
 
 ; _GetTileAt
@@ -258,7 +263,7 @@ AddSprite   ENT
             rtl
 
 _AddSprite
-            phx                    ; Save the parameters
+            phx                                  ; Save the horizontal position and tile ID
             pha
 
             ldx   #0
@@ -271,6 +276,7 @@ _AddSprite
 
             pla                    ; Early out
             pla
+            sec                    ; Signal that no sprite slot was available
             rts
 
 :open       lda   #SPRITE_STATUS_DIRTY
@@ -284,10 +290,49 @@ _AddSprite
             adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
             xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
             clc
-            adc   1,s
+            adc   1,s                           ; Add the horizontal position
             sta   _Sprites+VBUFF_ADDR,x
 
-            pla
+            pla                                 ; Pop off the saved value
+            clc                                 ; Mark that the sprite was successfully added
+            txa                                 ; And return the sprite ID
+            rts
+
+; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
+; a full remove/add cycle needs to happen
+;
+; A = sprite ID
+; X = x position
+; Y = y position
+UpdateSprite ENT
+            phb
+            phk
+            plb
+            jsr    _UpdateSprite
+            plb
+            rtl
+
+_UpdateSprite
+            cmp   #MAX_SPRITES*2                ; Make sure we're in bounds
+            bcc   :ok
+            rts
+
+:ok
+            phx                                 ; Save the horizontal position
+            tax                                 ; Get the sprite index
+
+            lda   #SPRITE_STATUS_DIRTY          ; Position is changing, mark as dirty
+            sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn
+
+            tya
+            clc
+            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
+            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
+            clc
+            adc   1,s                           ; Add the horizontal position
+            sta   _Sprites+VBUFF_ADDR,x
+
+            pla                                 ; Pop off the saved value
             rts
 
 ; Sprite data structures.  We cache quite a few pieces of information about the sprite
