@@ -608,16 +608,20 @@ _GetTileStoreOffset0
 ; Y = tile row    [0, 25] (26 rows)
 _SetTile
                  pha
-                 jsr  _GetTileStoreOffset0
+                 jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
                  tay
                  pla
                  
-                 cmp  TileStore+TS_TILE_ID,y
+                 cmp  TileStore+TS_TILE_ID,y        ; Only set to dirty if the value changes
                  beq  :nochange
 
-                 sta  TileStore+TS_TILE_ID,y
-;                 tya
-;                 jmp  _PushDirtyTile
+                 sta  TileStore+TS_TILE_ID,y        ; Value is different, store it.
+
+                 jsr  _GetTileAddr
+                 sta  TileStore+TS_TILE_ADDR,y      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
+
+                 tya                                ; Add this tile to the list of dirty tiles to refresh
+                 jmp  _PushDirtyTile                ; on the next call to _ApplyTiles
 
 :nochange        rts
            
@@ -638,7 +642,6 @@ _PushDirtyTile
 
 ; At this point, keep the Y register value because it is the correct offset to all of the tile
 ; record fields.
-
                  ldx  DirtyTileCount
 
                  txa
