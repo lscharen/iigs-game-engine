@@ -533,7 +533,7 @@ InitTiles
 
                  stz  TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
                  lda  #$FFFF                            ; none of the tiles are dirty
-                 sta  TileStore+TS_DIRTY
+                 sta  TileStore+TS_DIRTY,x
 
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering
