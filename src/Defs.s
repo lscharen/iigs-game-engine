@@ -82,7 +82,7 @@ BankLoad               equ   128
 
 AppSpace               equ   160         ; 16 bytes of space reserved for application use
 
-tiletmp                equ   186         ; 8 bytes of temp storage for the tile renderers
+tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 
 tmp8                   equ   224         ; another 16 bytes of temporary space to be used as scratch 
