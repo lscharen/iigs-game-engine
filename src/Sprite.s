@@ -37,9 +37,10 @@ _RenderSprites
             bra   :loop
 :out        rts
 
-; This is the complicated part; we need to draw the sprite into the sprite place, but then
+; This is the complicated part; we need to draw the sprite into the sprite plane, but then
 ; calculate the code field tiles that this sprite potentially overlaps with and mark those
-; tiles as dirty.
+; tiles as dirty and store the appropriate sprite plane address that those tiles need to copy
+; from.
 :render
             phx                                       ; stash the X register
             jsr   _DrawTileSprite                     ; draw the sprite into the sprite plane
@@ -76,20 +77,45 @@ _RenderSprites
             lsr
             lsr
             lsr
+            tay
 
 ; Mark the tile as dirty
 
-            tay
-            plx
-            jsr   _GetTileStoreOffset    ; Get the tile store value
-            jsr   _PushDirtyTile         ; Enqueue for processing (Returns offset in Y-register)
+            plx                                   ; Pull the stashed tile column
+            jsr   _GetTileStoreOffset             ; Get the tile store value
+            jsr   _PushDirtyTile                  ; Enqueue for processing (Returns offset in Y-register)
 
-            lda   #TILE_SPRITE_BIT       ; Mark this tile as having a sprite, regardless of whether it was already enqueued
+            lda   #TILE_SPRITE_BIT                ; Mark this tile as having a sprite, regardless of whether it was already enqueued
             sta   TileStore+TS_SPRITE_FLAG,y
+
+            plx                                   ; Restore the X register
+
+; To calculate the sprite plane coordinate for this tile column.  We really just have to compensate
+; for the StartXMod164 mod 4 value, so the final value is (SPRITE_X + (StartXMod164 mod 4)) & 0xFFFC
+; for the horizontal and (SPRITE_Y + (StartYMod208 mod 8)) & 0xFFF8
+;
+; The final address is (Y + NUM_BUFF_LINES) * 256 + X
+
+            lda   StartYMod208
+            and   #$0007
+            clc
+            adc   _Sprites+SPRITE_Y,x
+            and   #$00F8
+            clc
+            adc   #NUM_BUFF_LINES
+            xba
+            sta   tmp2
+            lda   StartXMod164
+            and   #$0003
+            clc
+            adc   _Sprites+SPRITE_X,x
+            and   #$00FC
+            clc
+            adc   tmp2
+            sta   TileStore+TS_SPRITE_ADDR,y
 
 ; TODO: Mark adjacent tiles as dirty based on tmp0 and tmp1 values
 
-            plx                          ; Restore the X register
             brl   :next
 
 ; _GetTileAt

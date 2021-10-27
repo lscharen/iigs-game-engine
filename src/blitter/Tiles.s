@@ -49,12 +49,13 @@ TILE_HFLIP_BIT    equ             $0200
 TILE_CTRL_MASK    equ             $FE00
 TILE_PROC_MASK    equ             $F800                  ; Select tile proc for rendering
 
-; Temporary direct page locatinos used by some of the complext tile renderers
+; Temporary direct page locatinos used by some of the complex tile renderers
 
 _X_REG           equ             tiletmp
 _Y_REG           equ             tiletmp+2
 _T_PTR           equ             tiletmp+4                         ; Copy of the tile address pointer
 _BASE_ADDR       equ             tiletmp+6                         ; Copy of BTableLow for this tile
+_SPR_X_REG       equ             tiletmp+8                         ; Cache address of sprite plane source for a tile
 
 ; Low-level function to take a tile descriptor and return the address in the tiledata
 ; bank.  This is not too useful in the fast-path because the fast-path does more
@@ -111,6 +112,11 @@ _RenderTileBG1
 _RenderTile2
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ora   TileStore+TS_SPRITE_FLAG,y
+                 bpl   :nosprite                      ; save a few cycles on average -- the sprite flag is $8000, so easy bpl/bmi test
+                 ldx   TileStore+TS_SPRITE_ADDR,y
+                 stx   _SPR_X_REG
+
+:nosprite
                  and   #TILE_CTRL_MASK
                  xba
                  tax
@@ -164,7 +170,7 @@ TileProcs        dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0
                  dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01110 : high-priority fringed masked normal tiles
                  dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01111 : high-priority fringed masked dynamic tiles
 
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10000 : normal tiles w/sprite
+                 dw              _TBSolidSpriteTile_00,_TBSolidSpriteTile_0H,_TBSolidSpriteTile_V0,_TBSolidSpriteTile_VH  ; 10000 : normal tiles w/sprite
                  dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10001 : dynamic tiles w/sprite
                  dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10010 : masked normal tiles w/sprite
                  dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10011 : masked dynamic tiles w/sprite
@@ -476,13 +482,14 @@ TILE_STORE_SIZE  equ  {MAX_TILES*2}      ; The tile store contains a tile descri
 ; TileStore+TS_TILE_ID        : Tile descriptor
 ; TileStore+TS_DIRTY          : $FFFF is clean, otherwise stores a back-reference to the DirtyTiles array
 ; TileStore+TS_SPRITE_FLAG    : Set to TILE_SPRITE_BIT is a sprite is present at this tile location
+; TileStore+TS_SPRITE_ADDR    ; Address of the tile in the sprite plane
 ; TileStore+TS_TILE_ADDR      : Address of the tile in the tile data buffer
 ; TIleStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
 ; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
 
-TileStore         ds   TILE_STORE_SIZE*8
+TileStore         ds   TILE_STORE_SIZE*9
 TS_TILE_ID        equ  TILE_STORE_SIZE*0
 TS_DIRTY          equ  TILE_STORE_SIZE*1
 TS_SPRITE_FLAG    equ  TILE_STORE_SIZE*2
@@ -491,6 +498,7 @@ TS_CODE_ADDR_LOW  equ  TILE_STORE_SIZE*4      ; const value
 TS_CODE_ADDR_HIGH equ  TILE_STORE_SIZE*5      ; const value
 TS_WORD_OFFSET    equ  TILE_STORE_SIZE*6
 TS_BASE_ADDR      equ  TILE_STORE_SIZE*7
+TS_SPRITE_ADDR    equ  TILE_STORE_SIZE*8
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2

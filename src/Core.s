@@ -392,7 +392,7 @@ ReadControl       ENT
 ;                  put       blitter/Tiles00001.s
 ;                  put       blitter/Tiles00010.s
 ;                  put       blitter/Tiles00011.s
-;                  put       blitter/Tiles10000.s
+                  put       blitter/Tiles01000.s
 ;                  put       blitter/Tiles10001.s
 ;                  put       blitter/Tiles10010.s
 ;                  put       blitter/Tiles10011.s

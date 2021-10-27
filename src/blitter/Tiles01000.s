@@ -4,18 +4,8 @@
 ; data from the sprite plane, tile data and write to the code field (which are all in different banks),
 ; there is no way to do everything inline, so a composite tile is created on the fly and written to
 ; a direct page buffer.  This direct page buffer is then used to render the tile.
-_TBSolidSpriteTile  dw           _TBSolidSpriteTile_00
-                    dw           _TBSolidSpriteTile_0H
-                    dw           _TBSolidSpriteTile_V0
-                    dw           _TBSolidSpriteTile_VH
-
-                    dw           _TBFastSpriteTile_00
-                    dw           _TBFastSpriteTile_0H
-                    dw           _TBFastSpriteTile_V0
-                    dw           _TBFastSpriteTile_VH
-
 _TBSolidSpriteTile_00
-                 jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer
+                 jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer (using correct x-register)
                  jsr             _TBApplySpriteData         ; Overlay the data form the sprite plane (and copy into the code field)
                  jmp             _TBFillPEAOpcode           ; Fill in the code field opcodes
 
@@ -68,8 +58,6 @@ _TBApplySpriteData
                  sta:  $0001+{]line*$1000},y
 ]line            equ   ]line+1
                  --^
-
-                 ldx   _X_REG                                   ; restore the original value
                  rts 
 
 ; Copy tile data into the direct page compositing buffer.  The main reason to do this in full passes is
@@ -113,6 +101,7 @@ _TBCopyTileDataToCBuffV
                  sta             blttmp+{]dest*4}+2
 ]src             equ             ]src-1
 ]dest            equ             ]dest+1
+                 --^
                  rts
 
 _TBCopyTileDataToCBuffVH
@@ -126,6 +115,7 @@ _TBCopyTileDataToCBuffVH
                  sta             blttmp+{]dest*4}+2
 ]src             equ             ]src-1
 ]dest            equ             ]dest+1
+                 --^
                  rts
 
 ; Copy just the data into the code field from the composite buffer
