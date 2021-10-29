@@ -46,10 +46,15 @@ DOWN_ARROW          equ        $0A
 ;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
 ; Add a player sprite
-                    stz        PlayerX
-                    stz        PlayerXOld
-                    lda        #4
+                    lda        #80
+                    sta        PlayerX
+                    sta        PlayerXOld
+                    lda        #100
                     sta        PlayerY
+                    sta        PlayerYOld
+                    lda        #1
+                    sta        PlayerXVel
+                    sta        PlayerYVel
 
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     tsb        DirtyBits
@@ -59,11 +64,9 @@ DOWN_ARROW          equ        $0A
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
 ; the play field tiles.
 EvtLoop
-                    lda        PlayerX                 ; Move the player sprite a bit
-                    sta        PlayerXOld
-                    inc
-                    and        #$001F
-                    sta        PlayerX
+                    jsr        UpdatePlayerPos
+
+; Draw the sprite in the sprite plane
 
                     ldx        PlayerX
                     ldy        PlayerY
@@ -76,47 +79,19 @@ EvtLoop
 ; Now the sprite has been drawn. Enqueue the dirty tiles.  We blindly add the potential
 ; dirty tiles and rely on PushDirtyTile to elimate duplicates quickly
 
-                    lda        PlayerX
-                    lsr
-                    lsr
-                    tax
-                    ldy        #0                     ; Y is fixed
-                    jsr        MakeDirtyTile
-                    ldy        #1
-                    jsr        MakeDirtyTile
-
-                    lda        PlayerX
-                    clc
-                    adc        #3
-                    lsr
-                    lsr
-                    tax
-                    ldy        #0                     ; Y is fixed
-                    jsr        MakeDirtyTile
-                    ldy        #1
-                    jsr        MakeDirtyTile
+                    ldx        PlayerX
+                    ldy        PlayerY
+                    jsr        MakeDirtySprite8x8
 
 ; Add the tiles that the sprite was previously at as well.
 
-                    lda        PlayerXOld
-                    lsr
-                    lsr
-                    tax
-                    ldy        #0
-                    jsr        MakeDirtyTile
-                    ldy        #1
-                    jsr        MakeDirtyTile
+                    ldx        PlayerXOld
+                    ldy        PlayerYOld
+                    jsr        MakeDirtyTile8x8
 
-                    lda        PlayerXOld
-                    clc
-                    adc        #3
-                    lsr
-                    lsr
-                    tax
-                    ldy        #0
-                    jsr        MakeDirtyTile
-                    ldy        #1
-                    jsr        MakeDirtyTile
+; The dirty tile queue has been written to; apply it to the code field
+
+                    jsl        ApplyTiles
 
 ; Let's see what it looks like!
 
@@ -124,6 +99,7 @@ EvtLoop
 
                     ldx        PlayerLastPos           ; Delete the sprite because it moved
                     jsl        EraseTileSprite
+
 ;                    tax
 ;                    ldy        PlayerY
 ;                    lda        PlayerID
@@ -165,11 +141,144 @@ PlayerID            ds         2
 PlayerX             ds         2
 PlayerXOld          ds         2
 PlayerY             ds         2
+PlayerYOld          ds         2
 PlayerLastPos       ds         2
+PlayerXVel          ds         2
+PlayerYVel          ds         2
+
+UpdatePlayerPos
+                    lda        PlayerX                 ; Move the player sprite a bit
+                    sta        PlayerXOld
+                    clc
+                    adc        PlayerXVel
+                    sta        PlayerX
+
+                    cmp        #160-4
+                    bcc        :x_ok_1
+                    lda        #$FFFF
+                    sta        PlayerXVel
+:x_ok_1             cmp        #0
+                    bne        :x_ok_2
+                    lda        #$0001
+                    sta        PlayerXVel
+:x_ok_2
+
+                    lda        PlayerY                 
+                    sta        PlayerYOld
+                    clc
+                    adc        PlayerYVel
+                    sta        PlayerY
+
+                    cmp        #200-8
+                    bcc        :y_ok_1
+                    lda        #$FFFF
+                    sta        PlayerYVel
+:y_ok_1             cmp        #0
+                    bne        :y_ok_2
+                    lda        #$0001
+                    sta        PlayerYVel
+:y_ok_2
+                    rts
+; X = coordinate
+; Y = coordinate
+MakeDirtySprite8x8
+                    phx
+                    phy
+
+                    txa
+                    lsr
+                    lsr
+                    tax
+                    tya
+                    lsr
+                    lsr
+                    lsr
+                    tay
+                    jsr   MakeDirtySpriteTile    ; top-left
+
+                    lda   3,s
+                    clc
+                    adc   #3
+                    lsr
+                    lsr
+                    tax
+                    jsr   MakeDirtySpriteTile    ; top-right
+
+                    lda   1,s
+                    clc
+                    adc   #7
+                    lsr
+                    lsr
+                    tay
+                    jsr   MakeDirtySpriteTile    ; bottom-right
+
+                    lda   3,s
+                    lsr
+                    lsr
+                    tax
+                    jsr   MakeDirtySpriteTile    ; bottom-left
+
+                    ply
+                    plx
+                    rts
+
+; X = coordinate
+; Y = coordinate
+MakeDirtyTile8x8
+                    phx
+                    phy
+
+                    txa
+                    lsr
+                    lsr
+                    tax
+                    tya
+                    lsr
+                    lsr
+                    lsr
+                    tay
+                    jsr   MakeDirtyTile    ; top-left
+
+                    lda   3,s
+                    clc
+                    adc   #3
+                    lsr
+                    lsr
+                    tax
+                    jsr   MakeDirtyTile    ; top-right
+
+                    lda   1,s
+                    clc
+                    adc   #7
+                    lsr
+                    lsr
+                    tay
+                    jsr   MakeDirtyTile    ; bottom-right
+
+                    lda   3,s
+                    lsr
+                    lsr
+                    tax
+                    jsr   MakeDirtyTile    ; bottom-left
+
+                    ply
+                    plx
+                    rts
 
 ; x = column
 ; y = row
 MakeDirtyTile
+                    phx
+                    phy
+
+                    jsl        GetTileStoreOffset
+                    jsl        PushDirtyTile
+
+                    ply
+                    plx
+                    rts
+
+MakeDirtySpriteTile
                     phx
                     phy
 
@@ -197,8 +306,9 @@ MakeDirtyTile
                     stal       TileStore+TS_SPRITE_FLAG,x
                     pla
                     stal       TileStore+TS_SPRITE_ADDR,x
-                    txy
-                    jsl        RenderTile
+                    
+                    txa
+                    jsl        PushDirtyTile
 
                     ply
                     plx
