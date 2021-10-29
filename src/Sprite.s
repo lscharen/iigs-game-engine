@@ -12,14 +12,16 @@ InitSprites
 :loop1     stal   spritedata,x
            dex
            dex
-           bpl    :loop1
+           cpx    #$FFFE
+           bne    :loop1
 
            ldx    #$FFFE
            lda    #$FFFF
 :loop2     stal   spritemask,x
            dex
            dex
-           bpl    :loop2
+           cpx    #$FFFE
+           bne    :loop2
 
            rts
 
