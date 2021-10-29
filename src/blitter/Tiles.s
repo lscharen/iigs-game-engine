@@ -698,6 +698,14 @@ _PopDirtyTile2                                       ; alternate entry point
                  rts
 
 ; Run through the dirty tile list and render them into the code field
+ApplyTiles       ENT
+                 phb
+                 phk
+                 plb
+                 jsr  _ApplyTiles
+                 plb
+                 rtl
+
 _ApplyTiles
                  bra  :begin
 
