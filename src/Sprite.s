@@ -46,9 +46,16 @@ _RenderSprites
 ; from.
 :render
             stx   tmp0                                ; stash the X register
-;            jsr   _EraseSprite                        ; erase from the old position
-            ldx   tmp0
+
+            txy
+            ldx   _Sprites+OLD_VBUFF_ADDR,y   
+            jsr   _EraseTileSprite                    ; erase from the old position
+
+            ldx   _Sprites+VBUFF_ADDR,y
+            lda   _Sprites+TILE_DATA_OFFSET,y
+            tay
             jsr   _DrawTileSprite                     ; draw the sprite into the sprite plane
+            ldx   tmp0
 
             ldy   #0                                  ; flags to mark if the sprite is aligned to the code field grid or not
 
@@ -334,14 +341,14 @@ _DrawTileSprite
 ; Erase is easy -- set an 8x8 area of the data region to all $0000 and the corresponding mask
 ; resgion to all $FFFF
 ; 
-; A = sprite ID
+; X = address is sprite plane -- erases an 8x8 region
 SPRITE_PLANE_SPAN equ 256
 
-_EraseSprite
-            asl
-            tay
-            ldx   _Sprites+OLD_VBUFF_ADDR,y
+EraseTileSprite ENT
+            jsr    _EraseTileSprite
+            rtl
 
+_EraseTileSprite
             phb                                   ; Save the bank to switch to the sprite plane
 
             pea    #^spritedata
