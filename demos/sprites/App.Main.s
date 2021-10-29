@@ -47,6 +47,7 @@ DOWN_ARROW          equ        $0A
 
 ; Add a player sprite
                     stz        PlayerX
+                    stz        PlayerXOld
                     lda        #4
                     sta        PlayerY
 
@@ -58,42 +59,64 @@ DOWN_ARROW          equ        $0A
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
 ; the play field tiles.
 EvtLoop
-
                     ldx        PlayerX
                     ldy        PlayerY
                     jsl        GetSpriteVBuffAddr
                     tax                                ; put in X
                     ldy        #3*128                  ; draw the 3rd tile as a sprite
+                    stx        PlayerLastPos           ; save for erasure
                     jsl        DrawTileSprite
 
 ; Now the sprite has been drawn. Manually update the 4 top-left tiles. Since we have not scrolled
 ; the screen, these are the tiles in rows 0 and 1 and columns 0 and 1.  The next step is to mark
 ; those tiles as intersecting a sprite
 
-                    ldx        #0
-                    ldy        #0
+                    lda        PlayerX
+                    lsr
+                    lsr
+                    tax
+                    ldy        #0                     ; Y is fixed
                     jsr        MakeDirtyTile
-
-                    ldx        #1
-                    ldy        #0
-                    jsr        MakeDirtyTile
-
-                    ldx        #0
                     ldy        #1
                     jsr        MakeDirtyTile
 
-                    ldx        #1
+; If we are not aligned in the x-direction, dirty the tile in front
+                    lda        PlayerX
+                    bit        #$0003
+                    beq        :skip1
+                    inx
+                    ldy        #0
+                    jsr        MakeDirtyTile
                     ldy        #1
                     jsr        MakeDirtyTile
+:skip1
+
+; If we transitioned to an aligned status, then mark the prior tile as dirty
+                    lda        PlayerX
+                    bit        #$0003
+                    bne        :skip2
+                    lda        PlayerXOld
+                    lsr
+                    lsr
+                    tax
+                    ldy        #0
+                    jsr        MakeDirtyTile
+                    ldy        #1
+                    jsr        MakeDirtyTile
+:skip2
 
 ; Let's see what it looks like!
 
                     jsl        Render
 
                     lda        PlayerX                 ; Move the player sprite a bit
+                    sta        PlayerXOld
                     inc
                     and        #$001F
                     sta        PlayerX
+
+                    ldx        PlayerLastPos           ; Delete the sprite because it moved
+                    jsl        EraseTileSprite
 ;                    tax
 ;                    ldy        PlayerY
 ;                    lda        PlayerID
@@ -133,7 +156,9 @@ MyPalette           dw         $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$
 
 PlayerID            ds         2
 PlayerX             ds         2
+PlayerXOld          ds         2
 PlayerY             ds         2
+PlayerLastPos       ds         2
 
 ; x = column
 ; y = row
@@ -152,10 +177,12 @@ MakeDirtyTile
                     tay                    
                     jsl        GetSpriteVBuffAddr
 
-                    ply
-                    plx
-
                     pha
+
+                    lda        3,s
+                    tay
+                    lda        5,s
+                    tax
 
                     jsl        GetTileStoreOffset
                     tax
@@ -165,6 +192,9 @@ MakeDirtyTile
                     stal       TileStore+TS_SPRITE_ADDR,x
                     txy
                     jsl        RenderTile
+
+                    ply
+                    plx
                     rts
 
 ; Position the screen with the botom-left corner of the tilemap visible
