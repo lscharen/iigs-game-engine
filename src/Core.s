@@ -47,6 +47,7 @@ EngineStartUp     ENT
 
                   jsr       InitGraphics        ; Initialize all of the graphics-related data
                   jsr       InitSprites         ; Initialize the sprite subsystem
+                  nop
                   jsr       InitTiles           ; Initialize the tile subsystem
 
                   jsr       InitTimers          ; Initialize the timer subsystem

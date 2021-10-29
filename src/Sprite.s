@@ -30,8 +30,9 @@ _RenderSprites
             ldx   #0
 :loop       lda   _Sprites+SPRITE_STATUS,x
             beq   :out
-            cmp    #SPRITE_STATUS_DIRTY
-            beq   :render
+;            cmp   #SPRITE_STATUS_DIRTY
+;            beq   :render
+            bra   :render
 :next       inx
             inx
             bra   :loop
@@ -42,19 +43,23 @@ _RenderSprites
 ; tiles as dirty and store the appropriate sprite plane address that those tiles need to copy
 ; from.
 :render
-            phx                                       ; stash the X register
+            stx   tmp0                                ; stash the X register
+;            jsr   _EraseSprite                        ; erase from the old position
+            ldx   tmp0
             jsr   _DrawTileSprite                     ; draw the sprite into the sprite plane
 
-            stz   tmp0                                ; flags to mark if the sprite is aligned to the code field grid or not
-            stz   tmp1
+            ldy   #0                                  ; flags to mark if the sprite is aligned to the code field grid or not
 
             lda   _Sprites+SPRITE_X,x                 ; Will need some special handling for X < 0
+            sta   tmp3
+
             clc
             adc   StartXMod164
 
             bit   #$0003                              ; If the botton bit are zero, then we're aligned
-            beq   *+4
-            inc   tmp0
+            beq   :aligned_x
+            ldy   #4
+:aligned_x
 
             cmp   #164
             bcc   *+5
@@ -64,12 +69,16 @@ _RenderSprites
             pha                                       ; Save the tile column
 
             lda   _Sprites+SPRITE_Y,x
+            sta   tmp2
+
             clc
             adc   StartYMod208
 
             bit   #$0007
-            beq   *+4
-            inc   tmp1
+            beq   :aligned_y
+            iny
+            iny
+:aligned_y
 
             cmp   #208
             bcc   *+5
@@ -77,46 +86,146 @@ _RenderSprites
             lsr
             lsr
             lsr
-            tay
 
-; Mark the tile as dirty
+            tyx                                   ; stash the alignment in the x register for dispatch
+            jmp   (:mark_dirty,x)
+; :mark_dirty  dw   :corner,:column,:row,:square
+:mark_dirty  dw   :corner,:corner,:corner,:corner
 
-            plx                                   ; Pull the stashed tile column
+; Just mark the square with the sprite as dirty
+:corner     tay
+            plx
+            jsr   _MarkAsDirty
+            ldx   tmp0
+            brl   :next
+
+; Mark the left column (x, y) and (x, y+1) as dirty
+:column     tay
+            plx 
+            jsr   _MarkAsDirty
+
+            iny
+            cpy   #26
+            bcc   *+5
+            ldy   #0
+            lda   tmp2
+            clc
+            adc   #8
+            sta   tmp2
+
+            jsr   _MarkAsDirty
+            ldx   tmp0
+            brl   :next
+
+; Mark the top row (x, y) and (x+1, y) as dirty
+:row        tay
+            plx 
+            jsr   _MarkAsDirty
+
+            inx
+            cpx   #41
+            bcc   *+5
+            ldx   #0
+            lda   tmp3
+            clc
+            adc   #4
+            sta   tmp3
+
+
+            jsr   _MarkAsDirty
+            ldx   tmp0
+            brl   :next
+
+; Mark all four squares as dirty
+:square     tay
+            lda   1,s
+            tax
+            jsr   _MarkAsDirty
+
+            inx
+            cpx   #41
+            bcc   *+5
+            ldx   #0
+            lda   tmp3
+            clc
+            adc   #4
+            sta   tmp3
+
+            jsr   _MarkAsDirty
+
+            iny
+            cpy   #26
+            bcc   *+5
+            ldy   #0
+            lda   tmp2
+            clc
+            adc   #8
+            sta   tmp2
+
+            jsr   _MarkAsDirty
+
+            plx
+            lda   tmp3
+            sec
+            sbc   #4
+            sta   tmp3
+
+            jsr   _MarkAsDirty
+            ldx   tmp0
+            brl   :next
+
+_MarkAsDirty
+            phx
+            phy
+
             jsr   _GetTileStoreOffset             ; Get the tile store value
             jsr   _PushDirtyTile                  ; Enqueue for processing (Returns offset in Y-register)
+
+            lda   TileStore+TS_SPRITE_FLAG,y      ; If this tile has already been flagged on this frame, avoid recalculating the address
+            beq   :early_out
 
             lda   #TILE_SPRITE_BIT                ; Mark this tile as having a sprite, regardless of whether it was already enqueued
             sta   TileStore+TS_SPRITE_FLAG,y
 
-            plx                                   ; Restore the X register
+            jsr   _SetSpriteAddr
 
+:early_out
+            ply
+            plx
+            rts
+
+; Set the TileStore+TS_SPRITE_ADDR for tile that a sprite is on.
+;
 ; To calculate the sprite plane coordinate for this tile column.  We really just have to compensate
 ; for the StartXMod164 mod 4 value, so the final value is (SPRITE_X + (StartXMod164 mod 4)) & 0xFFFC
 ; for the horizontal and (SPRITE_Y + (StartYMod208 mod 8)) & 0xFFF8
 ;
 ; The final address is (Y + NUM_BUFF_LINES) * 256 + X
-
+;
+; tmp2 = sprite Y coordinate
+; tmp3 = sprite X coordinate
+; Y = tile record index
+_SetSpriteAddr
             lda   StartYMod208
             and   #$0007
             clc
-            adc   _Sprites+SPRITE_Y,x
+            adc   tmp2
             and   #$00F8
             clc
             adc   #NUM_BUFF_LINES
             xba
-            sta   tmp2
+            sta   tmp4
+
             lda   StartXMod164
             and   #$0003
             clc
-            adc   _Sprites+SPRITE_X,x
+            adc   tmp3
             and   #$00FC
             clc
-            adc   tmp2
+            adc   tmp4
             sta   TileStore+TS_SPRITE_ADDR,y
 
-; TODO: Mark adjacent tiles as dirty based on tmp0 and tmp1 values
-
-            brl   :next
+            rts
 
 ; _GetTileAt
 ;
@@ -168,23 +277,28 @@ _GetTileAt
 _DrawSprites
             ldx   #0
 :loop       lda   _Sprites+SPRITE_STATUS,x
-            bne   :draw                          ; The first open slot is the end of the list
-            rts
+            beq   :out                          ; The first open slot is the end of the list
+            cmp   #SPRITE_STATUS_DIRTY
+            bne   :skip
 
-:draw       cmp   #SPRITE_STATUS_DIRTY
-            bne   :loop
+            phx
 
+            lda   _Sprites+VBUFF_ADDR,x          ; Load the address in the sprite plane
+            ldy   _Sprites+TILE_DATA_OFFSET,x    ; Load the address in the tile data bank
+            tax
             jsr   _DrawTileSprite
+            plx
+:skip
+            inx
+            inx
             bra   :loop
+:out        rts
+
+DrawTileSprite ENT
+            jsr   _DrawTileSprite
+            rtl
 
 _DrawTileSprite 
-            phx                                  ; preserve the x register
-
-; Copy the tile data + mask into the sprite plane
-            lda   _Sprites+VBUFF_ADDR,x          ; Load the address in the sprite plane
-            ldy   _Sprites+TILE_DATA_OFFSET,x
-            tax
-
             phb
             pea   #^tiledata                     ; Set the bank to the tile data
             plb
@@ -213,7 +327,6 @@ _DrawTileSprite
 
             plb                                  ; pop extra byte
             plb
-            plx
             rts
 
 ; Erase is easy -- set an 8x8 area of the data region to all $0000 and the corresponding mask
@@ -225,9 +338,9 @@ SPRITE_PLANE_SPAN equ 256
 _EraseSprite
             asl
             tay
-            ldx   _Sprites+VBUFF_ADDR,y
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
 
-            phb
+            phb                                   ; Save the bank to switch to the sprite plane
 
             pea    #^spritedata
             plb
@@ -324,6 +437,19 @@ _AddSprite
             txa                                 ; And return the sprite ID
             rts
 
+; X = x coordinate
+; Y = y coordinate
+GetSpriteVBuffAddr ENT
+            tya
+            clc
+            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
+            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
+            phx
+            clc
+            adc   1,s
+            plx
+            rtl
+
 ; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
 ; a full remove/add cycle needs to happen
 ;
@@ -344,21 +470,29 @@ _UpdateSprite
             rts
 
 :ok
-            phx                                 ; Save the horizontal position
+            stx   tmp0                          ; Save the horizontal position
+            and   #$FFFE                        ; Defensive
             tax                                 ; Get the sprite index
 
             lda   #SPRITE_STATUS_DIRTY          ; Position is changing, mark as dirty
             sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn
 
-            tya
+            lda   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
+            sta   _Sprites+OLD_VBUFF_ADDR,x
+
+            lda   tmp0                          ; Update the X coordinate
+            sta   _Sprites+SPRITE_X,x
+
+            tya                                 ; Update the Y coordinate
+            sta   _Sprites+SPRITE_Y,x
+
             clc
             adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
             xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
             clc
-            adc   1,s                           ; Add the horizontal position
+            adc   tmp0                          ; Add the horizontal position
             sta   _Sprites+VBUFF_ADDR,x
 
-            pla                                 ; Pop off the saved value
             rts
 
 ; Sprite data structures.  We cache quite a few pieces of information about the sprite
@@ -374,7 +508,7 @@ _UpdateSprite
 NUM_BUFF_LINES equ 24
 
 MAX_SPRITES  equ 64
-SPRITE_REC_SIZE equ 10
+SPRITE_REC_SIZE equ 12
 
 SPRITE_STATUS_EMPTY equ 0
 SPRITE_STATUS_CLEAN equ 1
@@ -385,5 +519,6 @@ TILE_DATA_OFFSET equ {MAX_SPRITES*2}
 VBUFF_ADDR equ {MAX_SPRITES*4}
 SPRITE_X equ {MAX_SPRITES*6}
 SPRITE_Y equ {MAX_SPRITES*8}
+OLD_VBUFF_ADDR equ {MAX_SPRITES*10}
 
 _Sprites     ds  SPRITE_REC_SIZE*MAX_SPRITES

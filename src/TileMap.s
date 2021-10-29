@@ -307,8 +307,7 @@ _UpdateBG0TileMap
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
 
-                   pha
-;                   pei   :BlkX                   ; cache the starting X-block index to restore later
+                   pha                           ; cache the starting X-block index to restore later
                    pei   :Width                  ; cache the Width value to restore later
 :yloop
 :xloop

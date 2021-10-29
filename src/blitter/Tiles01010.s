@@ -7,22 +7,22 @@ _TBMaskedSpriteTile dw           _TBMaskedSpriteTile_00
                     dw           _TBMaskedSpriteTile_VH
 ;                    dw              _TBCopyData,_TBCopyDataH,_TBCopyDataV,_TBCopyDataVH
 
-_TBSolidSpriteTile_00
+_TBMaskedSpriteTile_00
                  jsr             _TBCreateComposite
                  jsr             _TBSolidComposite
                  jmp             _TBFillPEAOpcode
 
-_TBSolidSpriteTile_0H
+_TBMaskedSpriteTile_0H
                  jsr             _TBCreateCompositeH
                  jsr             _TBSolidComposite
                  jmp             _TBFillPEAOpcode
 
-_TBSolidSpriteTile_V0
+_TBMaskedSpriteTile_V0
                  jsr             _TBCreateCompositeV
                  jsr             _TBSolidComposite
                  jmp             _TBFillPEAOpcode
 
-_TBSolidSpriteTile_VH
+_TBMaskedSpriteTile_VH
                  jsr             _TBCreateCompositeVH
                  jsr             _TBSolidComposite
                  jmp             _TBFillPEAOpcode

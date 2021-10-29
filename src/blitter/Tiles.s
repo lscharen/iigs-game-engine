@@ -38,14 +38,6 @@
 ; It is simply too slow to try to horizontally reverse the pixel data on the fly.  This still allows
 ; for up to 512 tiles to be stored in a single bank, which should be sufficient.
 
-TILE_ID_MASK      equ             $01FF
-TILE_SPRITE_BIT   equ             $8000                  ; Set if this tile intersects an active sprite
-TILE_PRIORITY_BIT equ             $4000                  ; Put tile on top of sprite
-TILE_FRINGE_BIT   equ             $2000
-TILE_MASK_BIT     equ             $1000
-TILE_DYN_BIT      equ             $0800
-TILE_VFLIP_BIT    equ             $0400
-TILE_HFLIP_BIT    equ             $0200
 TILE_CTRL_MASK    equ             $FE00
 TILE_PROC_MASK    equ             $F800                  ; Select tile proc for rendering
 
@@ -109,6 +101,14 @@ _RenderTileBG1
 ; Store record contains all of the low-level information that's needed to call the renderer.
 ;
 ; Y = address of tile
+RenderTile       ENT
+                 phb
+                 phk
+                 plb
+                 jsr   _RenderTile2
+                 plb
+                 rtl
+
 _RenderTile2
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ora   TileStore+TS_SPRITE_FLAG,y
@@ -473,9 +473,6 @@ _CopyBG1Tile
                  plb                                               ; restore the data bank and return
                  rts
 
-MAX_TILES        equ  {26*41}            ; Number of tiles in the code field (41 columns * 26 rows)
-TILE_STORE_SIZE  equ  {MAX_TILES*2}      ; The tile store contains a tile descriptor in each slot
-
 ; Tile Store that holds tile records which contain all the essential information for rendering 
 ; a tile.
 ;
@@ -489,16 +486,8 @@ TILE_STORE_SIZE  equ  {MAX_TILES*2}      ; The tile store contains a tile descri
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
 ; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
 
-TileStore         ds   TILE_STORE_SIZE*9
-TS_TILE_ID        equ  TILE_STORE_SIZE*0
-TS_DIRTY          equ  TILE_STORE_SIZE*1
-TS_SPRITE_FLAG    equ  TILE_STORE_SIZE*2
-TS_TILE_ADDR      equ  TILE_STORE_SIZE*3      ; const value
-TS_CODE_ADDR_LOW  equ  TILE_STORE_SIZE*4      ; const value
-TS_CODE_ADDR_HIGH equ  TILE_STORE_SIZE*5      ; const value
-TS_WORD_OFFSET    equ  TILE_STORE_SIZE*6
-TS_BASE_ADDR      equ  TILE_STORE_SIZE*7
-TS_SPRITE_ADDR    equ  TILE_STORE_SIZE*8
+TileStore        ENT
+                 ds   TILE_STORE_SIZE*9
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2
@@ -589,6 +578,15 @@ _ClearDirtyTiles
 ; Helper function to get the address offset into the tile cachce / tile backing store
 ; X = tile column [0, 40] (41 columns)
 ; Y = tile row    [0, 25] (26 rows)
+GetTileStoreOffset ENT
+                 phb
+                 phk
+                 plb
+                 jsr  _GetTileStoreOffset
+                 plb
+                 rtl
+
+
 _GetTileStoreOffset
                  phx                        ; preserve the registers
                  phy
@@ -642,6 +640,13 @@ _SetTile
 ;
 ;  1. Avoid marking the same tile dirty multiple times, and
 ;  2. Pre-calculating all of the information necessary to render the tile
+PushDirtyTile    ENT
+                 phb
+                 phk
+                 plb
+                 jsr  _PushDirtyTile
+                 plb
+                 rtl
 
 _PushDirtyTile
                  tay                                 ; check if this already marked immediately
@@ -669,6 +674,14 @@ _PushDirtyTile
 ; because this routine merges the tile IDs stored in the Tile Store with the Sprite
 ; information to set the TILE_SPRITE_BIT.  This is the *only* place in the entire code base that
 ; applies this bit to a tile descriptor.
+PopDirtyTile     ENT
+                 phb
+                 phk
+                 plb
+                 jsr  _PopDirtyTile
+                 plb
+                 rtl
+
 _PopDirtyTile
                  ldx  DirtyTileCount
                  bne  _PopDirtyTile2

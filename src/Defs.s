@@ -119,3 +119,26 @@ SWAP_PALETTE_ENTRY     equ   $0004
 SET_DYN_TILE           equ   $0006
 CALLBACK               equ   $0010
 
+; Tile constants
+TILE_ID_MASK           equ   $01FF
+TILE_SPRITE_BIT        equ   $8000                  ; Set if this tile intersects an active sprite
+TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
+TILE_FRINGE_BIT        equ   $2000
+TILE_MASK_BIT          equ   $1000
+TILE_DYN_BIT           equ   $0800
+TILE_VFLIP_BIT         equ   $0400
+TILE_HFLIP_BIT         equ   $0200
+
+; Tile Store Offsets (internals)
+MAX_TILES             equ  {26*41}            ; Number of tiles in the code field (41 columns * 26 rows)
+TILE_STORE_SIZE       equ  {MAX_TILES*2}      ; The tile store contains a tile descriptor in each slot
+
+TS_TILE_ID            equ  TILE_STORE_SIZE*0
+TS_DIRTY              equ  TILE_STORE_SIZE*1
+TS_SPRITE_FLAG        equ  TILE_STORE_SIZE*2
+TS_TILE_ADDR          equ  TILE_STORE_SIZE*3      ; const value
+TS_CODE_ADDR_LOW      equ  TILE_STORE_SIZE*4      ; const value
+TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5      ; const value
+TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6
+TS_BASE_ADDR          equ  TILE_STORE_SIZE*7
+TS_SPRITE_ADDR        equ  TILE_STORE_SIZE*8
