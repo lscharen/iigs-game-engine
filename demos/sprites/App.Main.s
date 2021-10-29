@@ -64,6 +64,27 @@ DOWN_ARROW          equ        $0A
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
 ; the play field tiles.
 EvtLoop
+                    jsl        ReadControl
+                    and        #$007F                  ; Ignore the buttons for now
+
+                    cmp        #'q'
+                    bne        :1
+                    brl        Exit
+
+:1
+                    cmp        #'r'
+                    beq        :3
+
+                    cmp        #'n'
+                    beq        :2
+                    stz        KeyState
+                    bra        EvtLoop
+:2
+                    lda        KeyState                ; Wait for key up / key down
+                    bne        EvtLoop
+                    lda        #1
+                    sta        KeyState
+:3
                     jsr        UpdatePlayerPos
 
 ; Draw the sprite in the sprite plane
@@ -100,6 +121,10 @@ EvtLoop
                     ldx        PlayerLastPos           ; Delete the sprite because it moved
                     jsl        EraseTileSprite
 
+                    ldx        PlayerXOld              ; Remove the sprite flag from the tiles
+                    ldy        PlayerYOld              ; at the old position.
+                    jsr        ClearSpriteFlag8x8
+
 ;                    tax
 ;                    ldy        PlayerY
 ;                    lda        PlayerID
@@ -108,22 +133,6 @@ EvtLoop
 ;                    jsl        DoTimers
 ;                    jsl        Render
 
-                    jsl        ReadControl
-                    and        #$007F                  ; Ignore the buttons for now
-
-                    cmp        #'q'
-                    bne        :7
-                    brl        Exit
-
-:7                  cmp        #LEFT_ARROW
-                    bne        :8
-                    brl        EvtLoop
-
-:8                  cmp        #RIGHT_ARROW
-                    bne        :9
-                    brl        EvtLoop
-
-:9
                     brl        EvtLoop
 
 ; Exit code
@@ -145,6 +154,7 @@ PlayerYOld          ds         2
 PlayerLastPos       ds         2
 PlayerXVel          ds         2
 PlayerYVel          ds         2
+KeyState            ds         2
 
 UpdatePlayerPos
                     lda        PlayerX                 ; Move the player sprite a bit
@@ -209,6 +219,7 @@ MakeDirtySprite8x8
                     adc   #7
                     lsr
                     lsr
+                    lsr
                     tay
                     jsr   MakeDirtySpriteTile    ; bottom-right
 
@@ -252,6 +263,7 @@ MakeDirtyTile8x8
                     adc   #7
                     lsr
                     lsr
+                    lsr
                     tay
                     jsr   MakeDirtyTile    ; bottom-right
 
@@ -265,8 +277,62 @@ MakeDirtyTile8x8
                     plx
                     rts
 
+ClearSpriteFlag8x8
+                    phx
+                    phy
+
+                    txa
+                    lsr
+                    lsr
+                    tax
+                    tya
+                    lsr
+                    lsr
+                    lsr
+                    tay
+                    jsr   ClearSpriteFlag    ; top-left
+
+                    lda   3,s
+                    clc
+                    adc   #3
+                    lsr
+                    lsr
+                    tax
+                    jsr   ClearSpriteFlag    ; top-right
+
+                    lda   1,s
+                    clc
+                    adc   #7
+                    lsr
+                    lsr
+                    lsr
+                    tay
+                    jsr   ClearSpriteFlag    ; bottom-right
+
+                    lda   3,s
+                    lsr
+                    lsr
+                    tax
+                    jsr   ClearSpriteFlag    ; bottom-left
+
+                    ply
+                    plx
+                    rts
 ; x = column
 ; y = row
+ClearSpriteFlag
+                    phx
+                    phy
+
+                    jsl        GetTileStoreOffset
+                    tax
+                    lda        #0
+                    stal       TileStore+TS_SPRITE_FLAG,x
+
+                    ply
+                    plx
+                    rts
+
 MakeDirtyTile
                     phx
                     phy
