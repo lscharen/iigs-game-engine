@@ -45,11 +45,16 @@ DOWN_ARROW          equ        $0A
 ; Allocate room to load data
 ;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
+                    jsr        InitOverlay             ; Initialize the status bar
+                    stz        frameCount
+                    ldal       OneSecondCounter
+                    sta        oldOneSecondCounter
+
 ; Add a player sprite
-                    lda        #80
+                    lda        #0
                     sta        PlayerX
                     sta        PlayerXOld
-                    lda        #100
+                    lda        #14
                     sta        PlayerY
                     sta        PlayerYOld
                     lda        #1
@@ -68,25 +73,41 @@ EvtLoop
                     and        #$007F                  ; Ignore the buttons for now
 
                     cmp        #'q'
-                    bne        :1
+                    bne        :not_q
                     brl        Exit
 
-:1
+:not_q
+                    cmp        #'x'
+                    bne        :not_x
+                    lda        #$0001
+                    jsr        UpdatePlayerPos
+                    bra        :4
+:not_x
+
+                    cmp        #'y'
+                    bne        :not_y
+                    lda        #$0002
+                    jsr        UpdatePlayerPos
+                    bra        :4
+:not_y
+
                     cmp        #'r'
                     beq        :3
 
                     cmp        #'n'
                     beq        :2
                     stz        KeyState
-                    bra        EvtLoop
+                    bra        :4
 :2
                     lda        KeyState                ; Wait for key up / key down
-                    bne        EvtLoop
+                    bne        :4
                     lda        #1
                     sta        KeyState
 :3
+                    lda        #$0003
                     jsr        UpdatePlayerPos
 
+:4
 ; Draw the sprite in the sprite plane
 
                     ldx        PlayerX
@@ -104,12 +125,6 @@ EvtLoop
                     ldy        PlayerY
                     jsr        MakeDirtySprite8x8
 
-; Add the tiles that the sprite was previously at as well.
-
-                    ldx        PlayerXOld
-                    ldy        PlayerYOld
-                    jsr        MakeDirtyTile8x8
-
 ; The dirty tile queue has been written to; apply it to the code field
 
                     jsl        ApplyTiles
@@ -118,12 +133,33 @@ EvtLoop
 
                     jsl        Render
 
+; Update the performance counters
+
+                    inc        frameCount
+                    ldal       OneSecondCounter
+                    cmp        oldOneSecondCounter
+                    beq        :noudt
+                    sta        oldOneSecondCounter
+                    jsr        UdtOverlay
+                    stz        frameCount
+:noudt
+
+; Erase the sprites that moved
+
                     ldx        PlayerLastPos           ; Delete the sprite because it moved
                     jsl        EraseTileSprite
 
                     ldx        PlayerXOld              ; Remove the sprite flag from the tiles
                     ldy        PlayerYOld              ; at the old position.
                     jsr        ClearSpriteFlag8x8
+
+; Add the tiles that the sprite was previously at as well.
+
+                    ldx        PlayerXOld
+                    ldy        PlayerYOld
+                    jsr        MakeDirtyTile8x8
+
+
 
 ;                    tax
 ;                    ldy        PlayerY
@@ -156,46 +192,130 @@ PlayerXVel          ds         2
 PlayerYVel          ds         2
 KeyState            ds         2
 
-UpdatePlayerPos
+oldOneSecondCounter  ds    2
+frameCount           ds    2
+
+PLAYER_X_MIN        equ   65536-3
+PLAYER_X_MAX        equ   159
+PLAYER_Y_MIN        equ   65536-7
+PLAYER_Y_MAX        equ   199
+
+; Need to use signed comparisons here
+;  @see http://6502.org/tutorials/compare_beyond.html
+UpdatePlayerPosX
                     lda        PlayerX                 ; Move the player sprite a bit
                     sta        PlayerXOld
                     clc
                     adc        PlayerXVel
                     sta        PlayerX
 
-                    cmp        #160-4
-                    bcc        :x_ok_1
-                    lda        #$FFFF
-                    sta        PlayerXVel
-:x_ok_1             cmp        #0
-                    bne        :x_ok_2
-                    lda        #$0001
-                    sta        PlayerXVel
-:x_ok_2
+; Compate PlayerX with the X_MIN value. BMI if PlayerX < X_MIN, BPL is PlayerX >= X_MIN
 
-                    lda        PlayerY                 
+                    cmp        #PLAYER_X_MIN
+                    beq        :x_flip
+
+                    cmp        #PLAYER_X_MAX
+                    bne        :x_ok
+:x_flip
+                    lda        PlayerXVel
+                    eor        #$FFFF
+                    inc
+                    sta        PlayerXVel
+:x_ok
+                    rts
+    
+UpdatePlayerPosY
+                    lda        PlayerY
                     sta        PlayerYOld
                     clc
                     adc        PlayerYVel
                     sta        PlayerY
 
-                    cmp        #200-8
-                    bcc        :y_ok_1
-                    lda        #$FFFF
+                    cmp        #PLAYER_Y_MIN
+                    beq        :y_flip
+
+                    cmp        #PLAYER_Y_MAX
+                    bne        :y_ok
+:y_flip             
+                    lda        PlayerYVel
+                    eor        #$FFFF
+                    inc
                     sta        PlayerYVel
-:y_ok_1             cmp        #0
-                    bne        :y_ok_2
-                    lda        #$0001
-                    sta        PlayerYVel
-:y_ok_2
+:y_ok
                     rts
+
+UpdatePlayerPos
+                    pha
+                    bit        #$0001
+                    beq        :skip_x
+                    jsr        UpdatePlayerPosX
+
+:skip_x             pla
+                    bit        #$0002
+                    beq        :skip_y
+                    jsr        UpdatePlayerPosY
+
+:skip_y
+                    rts
+
+; Takes a signed playfield position (including off-screen coordinates) and a size and marks
+; the tiles that are impacted by this shape.  The main job of this subroutine is to ensure
+; that all of the tile coordinate s are within the valid bounds [0 - 40], [0 - 25].
+;
+; X = signed integer
+; Y = signed integer
+; A = sprite size (0 - 7)
+SpriteWidths  dw    4,4,8,8,12,8,12,16
+SpriteHeights dw    8,16,8,16,16,24,24,24
+ ;   000 - 8x8  (1x1 tile)
+;   001 - 8x16 (1x2 tiles)
+;   010 - 16x8 (2x1 tiles)
+;   011 - 16x16 (2x2 tiles)
+;   100 - 24x16 (3x2 tiles)
+;   101 - 16x24 (2x3 tiles)
+;   110 - 24x24 (3x3 tiles)
+;   111 - 32x24 (4x3 tiles)
+MarkTilesOut
+                ply
+                plx
+                sec
+                rts
+
+MarkTiles
+                phx
+                phy
+                
+                and  #$0007
+                asl
+                tax
+
+; First, do a bound check against the whole sprite.  It it's totally off-screen, do nothing because 
+; there are no physical tiles to mark.
+
+                lda  1,s          ; load the Y coordinate
+                bpl  :y_pos
+                eor  #$FFFF       ; for a negative coordinate, see if it's equal to or larger than the sprite height
+                inc
+                cmp  SpriteHeights,x
+                bcs  MarkTilesOut
+                bra  :y_ok
+:y_pos          cmp  ScreenHeight
+                bcc  :y_ok
+                bra  MarkTilesOut
+:y_ok
+                rts
+
+
+
+
 ; X = coordinate
 ; Y = coordinate
 MakeDirtySprite8x8
+
                     phx
                     phy
 
-                    txa
+                    txa  ; need to do a signed shift...
                     lsr
                     lsr
                     tax
@@ -397,10 +517,8 @@ MovePlayerToOrigin
 qtRec               adrl       $0000
                     da         $00
 
+                    PUT        ../shell/Overlay.s
                     PUT        gen/App.TileMapBG0.s
                     PUT        gen/App.TileSetAnim.s
-
-Overlay             ENT
-                    rtl
 
 ANGLEBNK            ENT

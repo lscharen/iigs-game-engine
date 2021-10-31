@@ -399,7 +399,30 @@ _EraseTileSprite
 
 ; Add a new sprite to the rendering pipeline
 ;
-; A = tileId
+; The tile id ithe range 0 - 511.  The top 7 bits are used as sprite control bits
+;
+; Bit 9        : Horizontal flip.
+; Bit 10       : Vertical flip.
+; Bits 11 - 13 : Sprite Size Selector
+;   000 - 8x8  (1x1 tile)
+;   001 - 8x16 (1x2 tiles)
+;   010 - 16x8 (2x1 tiles)
+;   011 - 16x16 (2x2 tiles)
+;   100 - 24x16 (3x2 tiles)
+;   101 - 16x24 (2x3 tiles)
+;   110 - 24x24 (3x3 tiles)
+;   111 - 32x24 (4x3 tiles)
+; Bit 14       : Low Sprite priority. Draws behind high priority tiles.
+; Bit 15       : Reserved. Must be zero.
+;
+; When a sprite has a size > 8x8, the horizontal tiles are taken from the next tile index and
+; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
+; with a width of 256 pixels.
+;
+; Single sprite are limited to 24 lines high because there are 28 lines of padding above and below the
+; sprite plane buffers, so a sprite that is 32 lines high could overflow the drawing area.
+;
+; A = tileId + flags
 ; X = x position
 ; Y = y position
 AddSprite   ENT
