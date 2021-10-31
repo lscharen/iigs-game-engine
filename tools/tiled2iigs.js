@@ -406,8 +406,16 @@ function convertTileID(tileId, tileset) {
         throw new Error('A maximum of 511 tiles are supported');
     }
 
+    if (tileIndex === 0) {
+        // This should be a warning
+        return 0;
+    }
+
     // The tileId starts at one, but the tile set starts at zero.  It's ok when we export,
     // because a special zero tile is inserted, but we have to manually adjust here
+    if (!tileset[tileIndex - 1]) {
+        throw new Error(`Tileset for tileId ${tileIndex} is underinfed`);
+    }
     const mask_bit = (!tileset[tileIndex - 1].isSolid) && (GLOBALS.tileLayers.length !== 1);
 
     // Build up a partial set of control bits

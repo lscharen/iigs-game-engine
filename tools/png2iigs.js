@@ -8,6 +8,7 @@ const StringBuilder  = require('string-builder');
 let startIndex = 0;
 let transparentColor = 0;
 let transparentIndex = -1;
+let maxTiles = 511;
 
 main(process.argv.slice(2)).then(
     () => process.exit(0), 
@@ -92,6 +93,18 @@ function pngToIIgsBuffRepeat(png) {
     return buff;
 }
 
+function paletteToHexString(palette) {
+    const r = Math.round(palette[0]);
+    const g = Math.round(palette[1]);
+    const b = Math.round(palette[2]);
+
+    return (
+        r.toString(16).toUpperCase().padStart(2, '0') + 
+        g.toString(16).toUpperCase().padStart(2, '0') + 
+        b.toString(16).toUpperCase().padStart(2, '0')
+    );
+}
+
 function paletteToIIgs(palette) {
     const r = Math.round(palette[0] / 17);
     const g = Math.round(palette[1] / 17);
@@ -133,10 +146,12 @@ async function main(argv) {
         
         startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
         asTileData = getArg(argv, '--as-tile-data', null, 0);
-        maxTiles = getArg(argv, '--max-tiles', x => parseInt(x, 10), 64);
+        maxTiles = getArg(argv, '--max-tiles', x => parseInt(x, 10), 511);
 
         transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
-        transparentIndex = transparentColor;
+        if (transparentColor !== -1) {
+            transparentIndex = transparentColor;
+        }
 
         console.info(`; startIndex = ${startIndex}`);
 
@@ -148,6 +163,17 @@ async function main(argv) {
         if (png.palette.length > 16) {
             console.warn('; Too many colors.  Must be 16 or less');
             return;
+        }
+
+        // Get the RGB triplets from the palette
+        const palette = png.palette.map(c => paletteToHexString(c));
+        transparentColorTriple = getArg(argv, '--transparent-color', x => x, null);
+        if (transparentColorTriple) {
+            console.log('; Looking for transparent color', transparentColorTriple);
+            transparentIndex = palette.findIndex(p => p === transparentColorTriple);
+            if (transparentIndex !== -1) {
+                console.log('; found color at palette index', transparentIndex);
+            }
         }
 
         // Dump the palette in IIgs hex format
@@ -277,12 +303,10 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
 function buildTiles(buff, width, transparentIndex = -1) {
     const tiles = [];
 
-    const MAX_TILES = 240;
-
     let count = 0;
     for (let y = 0; ; y += 8) {
         for (let x = 0; x < width; x += 4, count += 1) {
-            if (count >= MAX_TILES) {
+            if (count >= maxTiles) {
                 return tiles;
             }
             const tile = buildTile(buff, width, x, y, transparentIndex);
