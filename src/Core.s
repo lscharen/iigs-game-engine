@@ -8,7 +8,7 @@
                   use       .\Defs.s
 
 ; Feature flags
-NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data provided by the main program segment
@@ -342,7 +342,7 @@ ClearKbdStrobe    sep       #$20
                   rep       #$20
                   rts
 
-; Read the keyboard and paddle controls and return in a game-cotroller-like format
+; Read the keyboard and paddle controls and return in a game-controller-like format
 ReadControl       ENT
                   pea       $0000               ; low byte = key code, high byte = %------AB 
 
@@ -352,8 +352,8 @@ ReadControl       ENT
                   beq       :BNotDown
 
                   lda       #1
-                  ora       1,s
-                  sta       1,s
+                  ora       2,s
+                  sta       2,s
 
 :BNotDown
                   ldal      COMMAND_KEY_REG
@@ -361,8 +361,8 @@ ReadControl       ENT
                   beq       :ANotDown
 
                   lda       #2
-                  ora       1,s
-                  sta       1,s
+                  ora       2,s
+                  sta       2,s
 
 :ANotDown
                   ldal      KBD_STROBE_REG      ; read the keyboard

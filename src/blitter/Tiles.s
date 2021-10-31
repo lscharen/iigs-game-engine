@@ -113,6 +113,8 @@ _RenderTile2
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ora   TileStore+TS_SPRITE_FLAG,y
                  bpl   :nosprite                      ; save a few cycles on average -- the sprite flag is $8000, so easy bpl/bmi test
+                 tyx
+                 stz   TileStore+TS_SPRITE_FLAG,x     ; clear the sprite flag
                  ldx   TileStore+TS_SPRITE_ADDR,y
                  stx   _SPR_X_REG
 

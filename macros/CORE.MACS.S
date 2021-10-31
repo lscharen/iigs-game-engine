@@ -129,6 +129,25 @@ asr8            mac
                 ror
                 <<<
 
+; Inline macros for fast calculation of some internal values
+_TileStoreOffset mac
+                lda   ]2
+                asl
+                tay
+                lda   ]1
+                asl                            ; Assume in range, so asl puts a 0 bit into the carry
+                adc  TileStoreYTable,y
+                <<<
+
+_; Macro variant to calculate inline from any source
+_SpriteVBuffAddr mac
+                lda   ]2
+                clc
+                adc   #NUM_BUFF_LINES
+                xba
+                adc   ]1
+                <<<
+
 ; Macro to define script steps
 ScriptStep      MAC
                 IF    #=]5

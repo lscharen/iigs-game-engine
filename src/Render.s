@@ -78,8 +78,8 @@ _Render
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
-;            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
-;            nop
+            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
+
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
             jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
