@@ -41,6 +41,7 @@ DOWN_ARROW          equ        $0A
 ; Set up our level data
                     jsr        BG0SetUp
 ;                    jsr        TileAnimInit
+                    jsr        SetLimits
 
 ; Allocate room to load data
 ;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
@@ -50,16 +51,31 @@ DOWN_ARROW          equ        $0A
                     ldal       OneSecondCounter
                     sta        oldOneSecondCounter
 
-; Add a player sprite
-                    lda        #0
-                    sta        PlayerX
-                    sta        PlayerXOld
-                    lda        #14
-                    sta        PlayerY
-                    sta        PlayerYOld
-                    lda        #1
-                    sta        PlayerXVel
-                    sta        PlayerYVel
+; Initialize the sprite's global position (this is tracked outside of the tile engine)
+                    lda        #16
+                    sta        PlayerGlobalX
+                    lda        MaxGlobalY
+                    sec
+                    lda        #40                     ; 32 for tiles, 8 for sprite
+                    sta        PlayerGlobalY
+
+                    stz        PlayerXVel
+                    stz        PlayerYVel
+
+; Add a sprite to the engine and save it's sprite ID
+
+                    jsr        UpdatePlayerLocal
+                    lda        #3                      ; 8x8 sprite, tile ID = 3
+                    ldx        PlayerX
+                    ldy        PlayerY
+                    jsl        AddSprite
+                    bcc        :sprite_ok
+                    brl        Exit                    ; If we could not allocate a sprite, exit
+
+:sprite_ok
+                    sta        PlayerID
+
+; Draw the initial screen
 
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     tsb        DirtyBits
@@ -70,64 +86,118 @@ DOWN_ARROW          equ        $0A
 ; the play field tiles.
 EvtLoop
                     jsl        ReadControl
+
+; Check the buttons first
+                    pha
+
+                    bit        #$0100
+                    beq        :no_jump
+                    lda        PlayerStanding
+                    beq        :no_jump
+                    lda        #$FFF8
+                    sta        PlayerYVel
+:no_jump
+                    pla
                     and        #$007F                  ; Ignore the buttons for now
 
                     cmp        #'q'
                     bne        :not_q
                     brl        Exit
-
 :not_q
-                    cmp        #'x'
-                    bne        :not_x
-                    lda        #$0001
-                    jsr        UpdatePlayerPos
-                    bra        :4
-:not_x
 
-                    cmp        #'y'
-                    bne        :not_y
-                    lda        #$0002
-                    jsr        UpdatePlayerPos
-                    bra        :4
-:not_y
+                    cmp        #'d'
+                    bne        :not_d
+                    lda        StartX
+                    cmp        MaxBG0X
+                    bcs        :do_render
+                    inc
+                    jsl        SetBG0XPos
+                    bra        :do_render
+:not_d
 
-                    cmp        #'r'
-                    beq        :3
+                    cmp        #'a'
+                    bne        :not_a
+                    lda        StartX
+                    beq        :do_render
+                    dec
+                    jsl        SetBG0XPos
+                    bra        :do_render
+:not_a
 
-                    cmp        #'n'
-                    beq        :2
-                    stz        KeyState
-                    bra        :4
-:2
-                    lda        KeyState                ; Wait for key up / key down
-                    bne        :4
-                    lda        #1
-                    sta        KeyState
-:3
-                    lda        #$0003
-                    jsr        UpdatePlayerPos
+                    cmp        #'s'
+                    bne        :not_s
+                    lda        StartY
+                    cmp        MaxBG0Y
+                    bcs        :do_render
+                    inc
+                    jsl        SetBG0YPos
+                    bra        :do_render
+:not_s
 
-:4
+                    cmp        #'w'
+                    bne        :not_w
+                    lda        StartY
+                    beq        :do_render
+                    dec
+                    jsl        SetBG0YPos
+                    bra        :do_render
+:not_w
+
+; Do j,l to move the character left/right
+                    cmp        #'j'
+                    bne        :not_j
+                    lda        PlayerXVel
+                    bpl        :pos_xvel
+                    cmp        #$FFFA
+                    bcc        :not_j
+:pos_xvel           dec
+                    sta        PlayerXVel
+                    bra        :do_render
+:not_j
+
+                    cmp        #'l'
+                    bne        :not_l
+                    lda        PlayerXVel
+                    bmi        :neg_xvel
+                    cmp        #6
+                    bcs        :not_l
+:neg_xvel           inc
+                    sta        PlayerXVel
+                    bra        :do_render
+:not_l
+
+; Update the camera position
+
+:do_render
+;                    jsr        UpdatePlayerPos        ; Moves in global cordinates
+;                    jsr        UpdateCameraPos        ; Moves the screen
+;                    jsr        UpdatePlayerLocal      ; Gets local sprite coordinates
+
+;                    lda        PlayerID
+;                    ldx        PlayerX
+;                    ldy        PlayerY
+;                    jsl        UpdateSprite           ; Move the sprite to this local position
+
 ; Draw the sprite in the sprite plane
 
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        GetSpriteVBuffAddr
-                    tax                                ; put in X
-                    ldy        #3*128                  ; draw the 3rd tile as a sprite
-                    stx        PlayerLastPos           ; save for erasure
-                    jsl        DrawTileSprite
+;                    ldx        PlayerX
+;                    ldy        PlayerY
+;                    jsl        GetSpriteVBuffAddr
+;                    tax                                ; put in X
+;                    ldy        #3*128                  ; draw the 3rd tile as a sprite
+;                    stx        PlayerLastPos           ; save for erasure
+;                    jsl        DrawTileSprite
 
 ; Now the sprite has been drawn. Enqueue the dirty tiles.  We blindly add the potential
 ; dirty tiles and rely on PushDirtyTile to elimate duplicates quickly
 
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsr        MakeDirtySprite8x8
+;                    ldx        PlayerX
+;                    ldy        PlayerY
+;                    jsr        MakeDirtySprite8x8
 
 ; The dirty tile queue has been written to; apply it to the code field
 
-                    jsl        ApplyTiles
+;                    jsl        ApplyTiles
 
 ; Let's see what it looks like!
 
@@ -146,20 +216,14 @@ EvtLoop
 
 ; Erase the sprites that moved
 
-                    ldx        PlayerLastPos           ; Delete the sprite because it moved
-                    jsl        EraseTileSprite
-
-                    ldx        PlayerXOld              ; Remove the sprite flag from the tiles
-                    ldy        PlayerYOld              ; at the old position.
-                    jsr        ClearSpriteFlag8x8
+;                    ldx        PlayerLastPos           ; Delete the sprite because it moved
+;                    jsl        EraseTileSprite
 
 ; Add the tiles that the sprite was previously at as well.
 
-                    ldx        PlayerXOld
-                    ldy        PlayerYOld
-                    jsr        MakeDirtyTile8x8
-
-
+;                    ldx        PlayerXOld
+;                    ldy        PlayerYOld
+;                    jsr        MakeDirtyTile8x8
 
 ;                    tax
 ;                    ldy        PlayerY
@@ -180,7 +244,10 @@ Exit
                     bcs        Fatal
 Fatal               brk        $00
 
-MyPalette           dw         $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$0FD7,$0EE6,$0F59,$068F,$01CE,$09B9,$0EDA,$0EEE
+MyPalette           dw         $068F,$0EDA,$0000,$068F,$0BF1,$00A0,$0EEE,$0777,$01CE,$0FA4,$0F59,$0D40,$02E3,$09B9,$0F93,$0FD7
+
+PlayerGlobalX       ds         2
+PlayerGlobalY       ds         2
 
 PlayerID            ds         2
 PlayerX             ds         2
@@ -191,72 +258,168 @@ PlayerLastPos       ds         2
 PlayerXVel          ds         2
 PlayerYVel          ds         2
 KeyState            ds         2
+PlayerStanding      ds         2
+MaxGlobalX          ds         2
+MaxGlobalY          ds         2
+MaxBG0X             ds         2
+MaxBG0Y             ds         2
 
 oldOneSecondCounter  ds    2
 frameCount           ds    2
 
-PLAYER_X_MIN        equ   65536-3
-PLAYER_X_MAX        equ   159
-PLAYER_Y_MIN        equ   65536-7
-PLAYER_Y_MAX        equ   199
+PLAYER_X_MIN        equ   0
+PLAYER_X_MAX        equ   160-4
+PLAYER_Y_MIN        equ   0
+PLAYER_Y_MAX        equ   200-8
 
-; Need to use signed comparisons here
-;  @see http://6502.org/tutorials/compare_beyond.html
-UpdatePlayerPosX
-                    lda        PlayerX                 ; Move the player sprite a bit
-                    sta        PlayerXOld
+EMPTY_TILE          equ   $0029              ; the tile that makes up the background
+
+AdjustLocalX
                     clc
-                    adc        PlayerXVel
-                    sta        PlayerX
-
-; Compate PlayerX with the X_MIN value. BMI if PlayerX < X_MIN, BPL is PlayerX >= X_MIN
-
-                    cmp        #PLAYER_X_MIN
-                    beq        :x_flip
-
-                    cmp        #PLAYER_X_MAX
-                    bne        :x_ok
-:x_flip
-                    lda        PlayerXVel
-                    eor        #$FFFF
-                    inc
-                    sta        PlayerXVel
-:x_ok
+                    adc        StartXMod164
+                    cmp        #164
+                    bcc        *+5
+                    sbc        #164
                     rts
-    
-UpdatePlayerPosY
-                    lda        PlayerY
-                    sta        PlayerYOld
+AdjustLocalY
                     clc
-                    adc        PlayerYVel
-                    sta        PlayerY
-
-                    cmp        #PLAYER_Y_MIN
-                    beq        :y_flip
-
-                    cmp        #PLAYER_Y_MAX
-                    bne        :y_ok
-:y_flip             
-                    lda        PlayerYVel
-                    eor        #$FFFF
-                    inc
-                    sta        PlayerYVel
-:y_ok
+                    adc        StartYMod208
+                    cmp        #208
+                    bcc        *+5
+                    sbc        #208
                     rts
 
+SetLimits
+                    lda        TileMapWidth
+                    asl
+                    asl
+                    sta        MaxGlobalX
+                    sec
+                    sbc        ScreenWidth
+                    sta        MaxBG0X
+
+                    lda        TileMapHeight
+                    asl
+                    asl
+                    asl
+                    sta        MaxGlobalY
+                    sec
+                    sbc        ScreenHeight
+                    sta        MaxBG0Y
+                    rts
+
+; Set the scroll position based on the global cooridinate of the player
+; Try to center the player on the screen
+UpdateCameraPos
+                    lda        ScreenWidth
+                    lsr
+                    sta        tmp0
+                    lda        PlayerGlobalX
+                    sec
+                    sbc        tmp0
+                    bpl        :x_pos
+                    lda        #0
+:x_pos              cmp        MaxBG0X
+                    bcc        :x_ok
+                    lda        MaxBG0X
+:x_ok               jsl        SetBG0XPos
+
+                    lda        ScreenHeight
+                    lsr
+                    sta        tmp0
+                    lda        PlayerGlobalY
+                    sec
+                    sbc        tmp0
+                    bpl        :y_pos
+                    lda        #0
+:y_pos              cmp        MaxBG0Y
+                    bcc        :y_ok
+                    lda        MaxBG0Y
+:y_ok               jsl        SetBG0YPos
+                    rts
+
+; Convert the global coordinates to adjusted local coordinated (compensating for wrap-around)
+UpdatePlayerLocal
+            lda  PlayerGlobalX
+            sec
+            sbc  StartX
+            jsr  AdjustLocalX
+            sta  PlayerX
+
+            lda  PlayerGlobalY
+            sec
+            sbc  StartY
+            jsr  AdjustLocalY
+            sta  PlayerY
+            rts
+
+; Simple updates with gravity and collisions.  It's important that eveything in this
+; subroutine be done against 
 UpdatePlayerPos
-                    pha
-                    bit        #$0001
-                    beq        :skip_x
-                    jsr        UpdatePlayerPosX
+            stz  PlayerStanding
+            lda  PlayerYVel
+            bmi  :no_ground_check
 
-:skip_x             pla
-                    bit        #$0002
-                    beq        :skip_y
-                    jsr        UpdatePlayerPosY
+; Check if the player is standing on the ground at their current local position
 
-:skip_y
-                    rts
+            ldx  PlayerX
+            lda  PlayerY
+            clc
+            adc  #8
+            tay
+            jsr  GetTileAt
+            cmp  #EMPTY_TILE
+            beq  :no_ground_check
+
+            lda  PlayerGlobalY
+            and  #$fff8
+            sta  PlayerGlobalY
+            stz  PlayerYVel
+            lda  #1
+            sta  PlayerStanding
+
+:no_ground_check
+            lda  PlayerGlobalY
+            clc
+            adc  PlayerYVel
+            bpl  *+5
+            lda  #0
+
+            cmp  MaxGlobalY
+            bcc  *+5
+            lda  MaxGlobalY
+            sta  PlayerGlobalY
+
+            lda  PlayerGlobalX
+            clc
+            adc  PlayerXVel
+            bpl  *+5
+            lda  #0
+
+            cmp  MaxGlobalX
+            bcc  *+5
+            lda  MaxGlobalX
+            sta  PlayerGlobalX
+
+            lda  PlayerXVel
+            beq  :no_dxv
+            bpl  :pos_dxv
+            inc
+            bra  :no_dxv
+:pos_dxv
+            dec
+:no_dxv
+            sta  PlayerXVel
+
+            lda  PlayerYVel
+            inc
+            bmi  :is_neg
+            cmp  #4
+            bcs  :too_fast
+:is_neg
+            sta  PlayerYVel
+:too_fast
+            rts
 
 ; Takes a signed playfield position (including off-screen coordinates) and a size and marks
 ; the tiles that are impacted by this shape.  The main job of this subroutine is to ensure
@@ -306,7 +469,31 @@ MarkTiles
                 rts
 
 
+; X = coordinate
+; Y = coordinate
 
+GetTileAt
+                txa
+                bmi  :out
+                lsr
+                lsr
+                tax
+
+                tya
+                bmi  :out
+                lsr
+                lsr
+                lsr
+                tay
+
+                jsl  GetTileStoreOffset
+                tax
+                ldal  TileStore+TS_TILE_ID,x
+                rts
+
+:out
+                lda  #EMPTY_TILE
+                rts
 
 ; X = coordinate
 ; Y = coordinate
@@ -392,62 +579,6 @@ MakeDirtyTile8x8
                     lsr
                     tax
                     jsr   MakeDirtyTile    ; bottom-left
-
-                    ply
-                    plx
-                    rts
-
-ClearSpriteFlag8x8
-                    phx
-                    phy
-
-                    txa
-                    lsr
-                    lsr
-                    tax
-                    tya
-                    lsr
-                    lsr
-                    lsr
-                    tay
-                    jsr   ClearSpriteFlag    ; top-left
-
-                    lda   3,s
-                    clc
-                    adc   #3
-                    lsr
-                    lsr
-                    tax
-                    jsr   ClearSpriteFlag    ; top-right
-
-                    lda   1,s
-                    clc
-                    adc   #7
-                    lsr
-                    lsr
-                    lsr
-                    tay
-                    jsr   ClearSpriteFlag    ; bottom-right
-
-                    lda   3,s
-                    lsr
-                    lsr
-                    tax
-                    jsr   ClearSpriteFlag    ; bottom-left
-
-                    ply
-                    plx
-                    rts
-; x = column
-; y = row
-ClearSpriteFlag
-                    phx
-                    phy
-
-                    jsl        GetTileStoreOffset
-                    tax
-                    lda        #0
-                    stal       TileStore+TS_SPRITE_FLAG,x
 
                     ply
                     plx
