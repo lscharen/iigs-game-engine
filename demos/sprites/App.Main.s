@@ -40,16 +40,13 @@ DOWN_ARROW          equ        $0A
 
 ; Set up our level data
                     jsr        BG0SetUp
-;                    jsr        TileAnimInit
                     jsr        SetLimits
-
-; Allocate room to load data
-;                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
 
                     jsr        InitOverlay             ; Initialize the status bar
                     stz        frameCount
                     ldal       OneSecondCounter
                     sta        oldOneSecondCounter
+                    jsr        UdtOverlay
 
 ; Initialize the sprite's global position (this is tracked outside of the tile engine)
                     lda        #16
@@ -65,7 +62,7 @@ DOWN_ARROW          equ        $0A
 ; Add a sprite to the engine and save it's sprite ID
 
                     jsr        UpdatePlayerLocal
-                    lda        #3                      ; 8x8 sprite, tile ID = 3
+                    lda        #64                      ; 8x8 sprite, tile ID = 64
                     ldx        PlayerX
                     ldy        PlayerY
                     jsl        AddSprite
@@ -151,6 +148,7 @@ EvtLoop
                     cmp        #$FFFA
                     bcc        :not_j
 :pos_xvel           dec
+                    dec
                     sta        PlayerXVel
                     bra        :do_render
 :not_j
@@ -162,6 +160,7 @@ EvtLoop
                     cmp        #6
                     bcs        :not_l
 :neg_xvel           inc
+                    inc
                     sta        PlayerXVel
                     bra        :do_render
 :not_l
@@ -169,35 +168,14 @@ EvtLoop
 ; Update the camera position
 
 :do_render
-;                    jsr        UpdatePlayerPos        ; Moves in global cordinates
-;                    jsr        UpdateCameraPos        ; Moves the screen
-;                    jsr        UpdatePlayerLocal      ; Gets local sprite coordinates
+                    jsr        UpdatePlayerPos        ; Moves in global cordinates
+                    jsr        UpdateCameraPos        ; Moves the screen
+                    jsr        UpdatePlayerLocal      ; Gets local sprite coordinates
 
-;                    lda        PlayerID
-;                    ldx        PlayerX
-;                    ldy        PlayerY
-;                    jsl        UpdateSprite           ; Move the sprite to this local position
-
-; Draw the sprite in the sprite plane
-
-;                    ldx        PlayerX
-;                    ldy        PlayerY
-;                    jsl        GetSpriteVBuffAddr
-;                    tax                                ; put in X
-;                    ldy        #3*128                  ; draw the 3rd tile as a sprite
-;                    stx        PlayerLastPos           ; save for erasure
-;                    jsl        DrawTileSprite
-
-; Now the sprite has been drawn. Enqueue the dirty tiles.  We blindly add the potential
-; dirty tiles and rely on PushDirtyTile to elimate duplicates quickly
-
-;                    ldx        PlayerX
-;                    ldy        PlayerY
-;                    jsr        MakeDirtySprite8x8
-
-; The dirty tile queue has been written to; apply it to the code field
-
-;                    jsl        ApplyTiles
+                    lda        PlayerID
+                    ldx        PlayerX
+                    ldy        PlayerY
+                    jsl        UpdateSprite           ; Move the sprite to this local position
 
 ; Let's see what it looks like!
 
@@ -213,26 +191,6 @@ EvtLoop
                     jsr        UdtOverlay
                     stz        frameCount
 :noudt
-
-; Erase the sprites that moved
-
-;                    ldx        PlayerLastPos           ; Delete the sprite because it moved
-;                    jsl        EraseTileSprite
-
-; Add the tiles that the sprite was previously at as well.
-
-;                    ldx        PlayerXOld
-;                    ldy        PlayerYOld
-;                    jsr        MakeDirtyTile8x8
-
-;                    tax
-;                    ldy        PlayerY
-;                    lda        PlayerID
-;                    jsl        UpdateSprite
-
-;                    jsl        DoTimers
-;                    jsl        Render
-
                     brl        EvtLoop
 
 ; Exit code
@@ -343,13 +301,13 @@ UpdatePlayerLocal
             lda  PlayerGlobalX
             sec
             sbc  StartX
-            jsr  AdjustLocalX
+;            jsr  AdjustLocalX
             sta  PlayerX
 
             lda  PlayerGlobalY
             sec
             sbc  StartY
-            jsr  AdjustLocalY
+;            jsr  AdjustLocalY
             sta  PlayerY
             rts
 
@@ -411,6 +369,9 @@ UpdatePlayerPos
 :no_dxv
             sta  PlayerXVel
 
+            lda  PlayerStanding
+            bne  :too_fast
+
             lda  PlayerYVel
             inc
             bmi  :is_neg
@@ -421,72 +382,35 @@ UpdatePlayerPos
 :too_fast
             rts
 
-; Takes a signed playfield position (including off-screen coordinates) and a size and marks
-; the tiles that are impacted by this shape.  The main job of this subroutine is to ensure
-; that all of the tile coordinate s are within the valid bounds [0 - 40], [0 - 25].
-;
-; X = signed integer
-; Y = signed integer
-; A = sprite size (0 - 7)
-SpriteWidths  dw    4,4,8,8,12,8,12,16
-SpriteHeights dw    8,16,8,16,16,24,24,24
- ;   000 - 8x8  (1x1 tile)
-;   001 - 8x16 (1x2 tiles)
-;   010 - 16x8 (2x1 tiles)
-;   011 - 16x16 (2x2 tiles)
-;   100 - 24x16 (3x2 tiles)
-;   101 - 16x24 (2x3 tiles)
-;   110 - 24x24 (3x3 tiles)
-;   111 - 32x24 (4x3 tiles)
-MarkTilesOut
-                ply
-                plx
-                sec
-                rts
-
-MarkTiles
-                phx
-                phy
-                
-                and  #$0007
-                asl
-                tax
-
-; First, do a bound check against the whole sprite.  It it's totally off-screen, do nothing because 
-; there are no physical tiles to mark.
-
-                lda  1,s          ; load the Y coordinate
-                bpl  :y_pos
-                eor  #$FFFF       ; for a negative coordinate, see if it's equal to or larger than the sprite height
-                inc
-                cmp  SpriteHeights,x
-                bcs  MarkTilesOut
-                bra  :y_ok
-:y_pos          cmp  ScreenHeight
-                bcc  :y_ok
-                bra  MarkTilesOut
-:y_ok
-                rts
-
-
 ; X = coordinate
 ; Y = coordinate
-
 GetTileAt
                 txa
                 bmi  :out
+                clc
+                adc  StartXMod164
+                cmp  #164
+                bcc  *+5
+                sbc  #164
+                
                 lsr
                 lsr
                 tax
 
                 tya
                 bmi  :out
+                clc
+                adc  StartYMod208
+                cmp  #208
+                bcc  *+5
+                sbc  #208
+
                 lsr
                 lsr
                 lsr
                 tay
 
-                jsl  GetTileStoreOffset
+                jsl   GetTileStoreOffset
                 tax
                 ldal  TileStore+TS_TILE_ID,x
                 rts
@@ -494,142 +418,6 @@ GetTileAt
 :out
                 lda  #EMPTY_TILE
                 rts
-
-; X = coordinate
-; Y = coordinate
-MakeDirtySprite8x8
-
-                    phx
-                    phy
-
-                    txa  ; need to do a signed shift...
-                    lsr
-                    lsr
-                    tax
-                    tya
-                    lsr
-                    lsr
-                    lsr
-                    tay
-                    jsr   MakeDirtySpriteTile    ; top-left
-
-                    lda   3,s
-                    clc
-                    adc   #3
-                    lsr
-                    lsr
-                    tax
-                    jsr   MakeDirtySpriteTile    ; top-right
-
-                    lda   1,s
-                    clc
-                    adc   #7
-                    lsr
-                    lsr
-                    lsr
-                    tay
-                    jsr   MakeDirtySpriteTile    ; bottom-right
-
-                    lda   3,s
-                    lsr
-                    lsr
-                    tax
-                    jsr   MakeDirtySpriteTile    ; bottom-left
-
-                    ply
-                    plx
-                    rts
-
-; X = coordinate
-; Y = coordinate
-MakeDirtyTile8x8
-                    phx
-                    phy
-
-                    txa
-                    lsr
-                    lsr
-                    tax
-                    tya
-                    lsr
-                    lsr
-                    lsr
-                    tay
-                    jsr   MakeDirtyTile    ; top-left
-
-                    lda   3,s
-                    clc
-                    adc   #3
-                    lsr
-                    lsr
-                    tax
-                    jsr   MakeDirtyTile    ; top-right
-
-                    lda   1,s
-                    clc
-                    adc   #7
-                    lsr
-                    lsr
-                    lsr
-                    tay
-                    jsr   MakeDirtyTile    ; bottom-right
-
-                    lda   3,s
-                    lsr
-                    lsr
-                    tax
-                    jsr   MakeDirtyTile    ; bottom-left
-
-                    ply
-                    plx
-                    rts
-
-MakeDirtyTile
-                    phx
-                    phy
-
-                    jsl        GetTileStoreOffset
-                    jsl        PushDirtyTile
-
-                    ply
-                    plx
-                    rts
-
-MakeDirtySpriteTile
-                    phx
-                    phy
-
-                    txa
-                    asl
-                    asl
-                    tax
-                    tya
-                    asl
-                    asl
-                    asl
-                    tay                    
-                    jsl        GetSpriteVBuffAddr
-
-                    pha
-
-                    lda        3,s
-                    tay
-                    lda        5,s
-                    tax
-
-                    jsl        GetTileStoreOffset
-                    tax
-                    lda        #TILE_SPRITE_BIT
-                    stal       TileStore+TS_SPRITE_FLAG,x
-                    pla
-                    stal       TileStore+TS_SPRITE_ADDR,x
-                    
-                    txa
-                    jsl        PushDirtyTile
-
-                    ply
-                    plx
-                    rts
 
 ; Position the screen with the botom-left corner of the tilemap visible
 MovePlayerToOrigin

@@ -23,6 +23,14 @@ InitSprites
            cpx    #$FFFE
            bne    :loop2
 
+; Clear values in the sprite array
+
+           ldx    #{MAX_SPRITES-1}*2
+:loop3     stz    _Sprites+TILE_STORE_ADDR_1,x
+           dex
+           dex
+           bpl    :loop3
+
            rts
 
 
@@ -49,12 +57,12 @@ _RenderSprites
             sta   forceSpriteFlag
 :no_chng_y
 
-; Second step is to scan the list of spries.  A sprite is either clean or dirty.  If it's dirty,
+; Second step is to scan the list of sprites.  A sprite is either clean or dirty.  If it's dirty,
 ; then its position had changed, so we need to add tiles to the dirty queue to make sure the
-; playfield gets update.  If it's clean, we can skip eerything.
+; playfield gets update.  If it's clean, we can skip everything.
 
             ldx   #0
-:loop       lda   _Sprites+SPRITE_STATUS,x       ; If the sttus is zero, that's the sentinel value
+:loop       lda   _Sprites+SPRITE_STATUS,x       ; If the status is zero, that's the sentinel value
             beq   :out
             ora   forceSpriteFlag
             bit   #SPRITE_STATUS_DIRTY           ; If the dirty flag is set, do the things....
@@ -72,8 +80,32 @@ _RenderSprites
             stx   tmp0                                ; stash the X register
             txy                                       ; switch to the Y register
 
-;            ldx   _Sprites+OLD_VBUFF_ADDR,y   
-;            jsr   _EraseTileSprite                    ; erase from the old position
+; Run through the list of tile store offsets that this sprite was last drawn into and mark
+; those tiles as dirty.  The most tiles that a sprite could possibly cover is 20 (a 4x3 sprite)
+; that is offset, covering a 5x4 area of play field tiles.
+;
+; For now, we limit ourselved to 4 tiles until things are working....
+
+            lda   _Sprites+TILE_STORE_ADDR_1,y
+            beq   :erase_done
+            jsr   _PushDirtyTile
+            lda   _Sprites+TILE_STORE_ADDR_2,y
+            beq   :erase_done
+            jsr   _PushDirtyTile
+            lda   _Sprites+TILE_STORE_ADDR_3,y
+            beq   :erase_done
+            jsr   _PushDirtyTile
+            lda   _Sprites+TILE_STORE_ADDR_4,y
+            beq   :erase_done
+            jsr   _PushDirtyTile
+:erase_done
+
+; Really, we should only be erasing and redrawing a sprite if its local coordinateds change.  Look into this
+; as a future optimization.  Ideally, all of the sprites will be rendered into the sprite plane in a separate
+; pass from this function, which is primarily concerned with flagging dirty tiles in the Tile Store.
+
+            ldx   _Sprites+OLD_VBUFF_ADDR,y   
+            jsr   _EraseTileSprite                    ; erase from the old position
 
 ; Draw the sprite into the sprint plane buffer(s)
 
@@ -88,6 +120,8 @@ _RenderSprites
 
             ldx   tmp0                                ; Restore the index into the sprite array
             jsr   _MarkDirtySprite8x8                 ; Eventually will have routines for all sprite sizes
+
+            ldx   tmp0                                ; Restore the index again
             bra   :next
 
 ; Marks a 8x8 square as dirty.  The work here is mapping from local screen coordinates to the 
@@ -112,8 +146,11 @@ _RenderSprites
 ; ...
 ;
 ; For the Y-coordinate, we just use "mod 8" instead of "mod 4"
-
+;
+; On input, X register = Sprite Array Index
 _MarkDirtySprite8x8
+
+            stz   _Sprites+TILE_STORE_ADDR_1,x       ; Clear the Dirty Tiles in case of an early exit
 
 ; First, bounds check the X and Y coodinates of the sprite and, if they pass, pre-calculate some
 ; values that we can use later
@@ -194,28 +231,94 @@ _MarkDirtySprite8x8
             lsr
             sta   tmp4
 
+; tmp5 = X mod 4
+; tmp6 = Y mod 8
+;
+; Look at these values to determine, up front, exactly which tiles will need to be put into the
+; dirty tile queue.  
+;
+; tmp5   tmp6
+; ------------+
+;    0      0 | top-left only (1 tile)
+;   !0      0 | top row (2 tiles)
+;    0     !0 | left column (2 tiles)
+;   !0     !0 | square (4 tiles)
+
+            txy
+
+            ldx  #0
+            lda  tmp6
+            beq  :hop_y
+            ldx  #4
+:hop_y
+            lda  tmp5
+            beq  :hop_x
+            inx
+            inx
+:hop_x      
+            lda  #0                            ; shared value
+            jmp  (:mark,x)                     ; pick the appropriate marking routine
+:mark       dw   :mark1x1,:mark1x2,:mark2x1,:mark2x2
+
 ; At this point we have the top-left corner in the sprite plane (tmp1, tmp3) and the corresponding
 ; column and row in the tile store (tmp2, tmp4).  The next step is to add these tile locations to
 ; the dirty queue and set the sprite flag along with the VBUFF location.  We try to incrementally
 ; calculate new values to avoid re-doing work.
+:mark1x1
+            sta   _Sprites+TILE_STORE_ADDR_2,y     ; Terminate the list after one item
 
-            _SpriteVBuffAddr tmp3;tmp1
-            pha
-            _TileStoreOffset tmp4;tmp2
-            tax
-            lda   #TILE_SPRITE_BIT
-            sta   TileStore+TS_SPRITE_FLAG,x
-            pla
-            sta   TileStore+TS_SPRITE_ADDR,x
-            txa
+            jsr   :top_left
+            sta   _Sprites+TILE_STORE_ADDR_1,y     ; Returns the tile store offset
+            jmp   _PushDirtyTile
+
+:mark1x2
+            sta   _Sprites+TILE_STORE_ADDR_3,y     ; Terminate the list after two items
+            jsr   :calc_col1                       ; Calculate the values for the next column
+
+            jsr   :top_left
+            sta   _Sprites+TILE_STORE_ADDR_1,y 
             jsr   _PushDirtyTile
 
-; Now see if we need to extend to other tiles.  If the mod values are not equal to zero, then
-; the width of the sprite will extend into the adjacent code field tiles.
+            jsr   :top_right
+            sta   _Sprites+TILE_STORE_ADDR_2,y 
+            jmp   _PushDirtyTile
 
-            lda   tmp5
-            beq   :no_x_oflow
+:mark2x1
+            sta   _Sprites+TILE_STORE_ADDR_3,y     ; Terminate the list after two items
+            jsr   :calc_row1                       ; Calculate the values for the next row
 
+            jsr   :top_left
+            sta   _Sprites+TILE_STORE_ADDR_1,y
+            jsr   _PushDirtyTile
+
+            jsr   :bottom_left
+            sta   _Sprites+TILE_STORE_ADDR_2,y
+            jmp   _PushDirtyTile
+
+; This is the maximum value, so no need to terminate the list early
+:mark2x2
+            jsr   :calc_col1                       ; Calculate the next row and column values
+            jsr   :calc_row1
+
+            jsr   :top_left
+            sta   _Sprites+TILE_STORE_ADDR_1,y
+            jsr   _PushDirtyTile
+
+            jsr   :bottom_left
+            sta   _Sprites+TILE_STORE_ADDR_2,y
+            jsr   _PushDirtyTile
+
+            jsr   :top_right
+            sta   _Sprites+TILE_STORE_ADDR_3,y
+            jsr   _PushDirtyTile
+
+            jsr   :bottom_right
+            sta   _Sprites+TILE_STORE_ADDR_4,y
+            jmp   _PushDirtyTile
+
+; Functions to advance to the right, or down and cache the values in the direct page
+; temporary space for re-use. col0 and row0 is the original tile
+:calc_col1
             lda   tmp3
             clc
             adc   #4
@@ -226,60 +329,59 @@ _MarkDirtySprite8x8
             bcc   *+5
             lda   #0
             sta   tmp8
+            rts
 
-            _SpriteVBuffAddr tmp7;tmp1
-            pha
-            _TileStoreOffset tmp8;tmp2
-            tax
-            lda   #TILE_SPRITE_BIT
-            sta   TileStore+TS_SPRITE_FLAG,x
-            pla
-            sta   TileStore+TS_SPRITE_ADDR,x
-            txa
-            jsr   _PushDirtyTile
-
-:no_x_oflow
-            lda   tmp6
-            beq   :no_y_oflow
-
+:calc_row1
             lda   tmp1
             clc
             adc   #8
-            sta   tmp1
+            sta   tmp9
             lda   tmp2
             inc
             cmp   #26
             bcc   *+5
             lda   #0
-            sta   tmp2
+            sta   tmp10
+            rts
 
-            _SpriteVBuffAddr tmp3;tmp1
-            pha
-            _TileStoreOffset tmp4;tmp2
+:top_left
+            _TileStoreOffsetX tmp4;tmp2            ; Overwrites X
             tax
+            _SpriteVBuffAddr tmp3;tmp1             ; Does not affect X, Y
+            sta   TileStore+TS_SPRITE_ADDR,x
             lda   #TILE_SPRITE_BIT
             sta   TileStore+TS_SPRITE_FLAG,x
-            pla
-            sta   TileStore+TS_SPRITE_ADDR,x
             txa
-            jsr   _PushDirtyTile
+            rts
 
-            lda   tmp5
-            beq   :no_y_oflow
-
+:top_right
+            _TileStoreOffsetX tmp8;tmp2
+            tax
             _SpriteVBuffAddr tmp7;tmp1
-            pha
-            _TileStoreOffset tmp8;tmp2
-            tax
+            sta   TileStore+TS_SPRITE_ADDR,x
             lda   #TILE_SPRITE_BIT
             sta   TileStore+TS_SPRITE_FLAG,x
-            pla
-            sta   TileStore+TS_SPRITE_ADDR,x
             txa
-            jsr   _PushDirtyTile
+            rts
 
-:no_y_oflow
-            ldx   tmp0                                ; Restore X register
+:bottom_left
+            _TileStoreOffsetX tmp4;tmp10
+            tax
+            _SpriteVBuffAddr tmp3;tmp9
+            sta   TileStore+TS_SPRITE_ADDR,x
+            lda   #TILE_SPRITE_BIT
+            sta   TileStore+TS_SPRITE_FLAG,x
+            txa
+            rts
+
+:bottom_right
+            _TileStoreOffsetX tmp8;tmp10
+            tax
+            _SpriteVBuffAddr tmp7;tmp9
+            sta   TileStore+TS_SPRITE_ADDR,x
+            lda   #TILE_SPRITE_BIT
+            sta   TileStore+TS_SPRITE_FLAG,x
+            txa
             rts
 
 ; _GetTileAt
@@ -565,6 +667,12 @@ _UpdateSprite
             lda   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
             sta   _Sprites+OLD_VBUFF_ADDR,x
 
+;            lda   _Sprites+SPRITE_X,x
+;            sta   _Sprites+OLD_SPRITE_X,x
+
+;            lda   _Sprites+SPRITE_Y,x
+;            sta   _Sprites+OLD_SPRITE_Y,x
+
             lda   tmp0                          ; Update the X coordinate
             sta   _Sprites+SPRITE_X,x
 
@@ -589,8 +697,8 @@ _UpdateSprite
 ; Number of "off-screen" lines above logical (0,0)
 NUM_BUFF_LINES equ 24
 
-MAX_SPRITES  equ 64
-SPRITE_REC_SIZE equ 12
+MAX_SPRITES  equ 16
+SPRITE_REC_SIZE equ 20
 
 SPRITE_STATUS_EMPTY equ 0
 SPRITE_STATUS_CLEAN equ 1
@@ -602,5 +710,9 @@ VBUFF_ADDR equ {MAX_SPRITES*4}
 SPRITE_X equ {MAX_SPRITES*6}
 SPRITE_Y equ {MAX_SPRITES*8}
 OLD_VBUFF_ADDR equ {MAX_SPRITES*10}
+TILE_STORE_ADDR_1 equ {MAX_SPRITES*12}
+TILE_STORE_ADDR_2 equ {MAX_SPRITES*14}
+TILE_STORE_ADDR_3 equ {MAX_SPRITES*16}
+TILE_STORE_ADDR_4 equ {MAX_SPRITES*18}
 
 _Sprites     ds  SPRITE_REC_SIZE*MAX_SPRITES

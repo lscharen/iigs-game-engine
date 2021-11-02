@@ -5,7 +5,7 @@
 ; there is no way to do everything inline, so a composite tile is created on the fly and written to
 ; a direct page buffer.  This direct page buffer is then used to render the tile.
 _TBSolidSpriteTile_00
-                 ldx             #45*128
+;                 ldx             #45*128
                  jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer (using correct x-register)
                  jsr             _TBApplySpriteData         ; Overlay the data form the sprite plane (and copy into the code field)
                  jmp             _TBFillPEAOpcode           ; Fill in the code field opcodes

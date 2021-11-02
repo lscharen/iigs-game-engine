@@ -650,7 +650,7 @@ PushDirtyTile    ENT
                  plb
                  rtl
 
-_PushDirtyTile
+_PushDirtyTileOld
                  tay                                 ; check if this already marked immediately
                  lda  TileStore+TS_DIRTY,y           ; If the lookup === $FFFF (<$8000), it is free.
                  bpl  :occupied
@@ -671,6 +671,25 @@ _PushDirtyTile
 :occupied
                  rts
 
+; alternate version that is very slightly slower, but preserves the y-register
+_PushDirtyTile
+                 tax
+                 lda  TileStore+TS_DIRTY,x
+                 bpl  :occupied2
+
+                 lda  DirtyTileCount
+                 sta  TileStore+TS_DIRTY,x
+
+                 pha                                ; Would be nice to have an "exchange a and x" instruction
+                 txa
+                 plx
+                 sta  DirtyTiles,x
+
+                 inx
+                 inx
+                 stx  DirtyTileCount
+:occupied2
+                 rts
 ; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
 ; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update,
 ; because this routine merges the tile IDs stored in the Tile Store with the Sprite

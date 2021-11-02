@@ -139,6 +139,15 @@ _TileStoreOffset mac
                 adc  TileStoreYTable,y
                 <<<
 
+_TileStoreOffsetX mac
+                lda   ]2
+                asl
+                tax
+                lda   ]1
+                asl                            ; Assume in range, so asl puts a 0 bit into the carry
+                adc  TileStoreYTable,x
+                <<<
+
 _; Macro variant to calculate inline from any source
 _SpriteVBuffAddr mac
                 lda   ]2
