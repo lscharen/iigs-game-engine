@@ -36,9 +36,24 @@ DoTimers           EXT
 StartScript        EXT
 StopScript         EXT
 
+; Sprite functions
+AddSprite          EXT
+UpdateSprite       EXT
+
 ; Direct access to internals
 DoScriptSeq        EXT
 GetTileAddr        EXT
+
+PushDirtyTile      EXT    ; A = address from GetTileStoreOffset, marks as dirty (will not mark the same tile more than once)
+PopDirtyTile       EXT    ; No args, returns Y with tile store offset of the dirty tile
+ApplyTiles         EXT    ; Drain the dirty tile queue and call RenderTile on each
+RenderTile         EXT    ; Y = address from GetTileStoreOffset
+GetTileStoreOffset EXT    ; X = column, Y = row
+TileStore          EXT    ; Tile store internal data structure
+
+DrawTileSprite     EXT    ; X = target address in sprite plane, Y = address in tile bank
+EraseTileSprite    EXT    ; X = target address is sprite plane
+GetSpriteVBuffAddr EXT    ; X = x-coordinate (0 - 159), Y = y-coordinate (0 - 199). Return in Acc.
 
 ; Allocate a full 64K bank
 AllocBank          EXT

@@ -39,7 +39,6 @@
   "devDependencies": {
     "pngjs": "^6.0.0",
     "string-builder": "^0.1.8",
-    "watch": "latest",
     "xml2json": "^0.12.0"
   }
 }

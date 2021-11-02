@@ -8,11 +8,15 @@
                   use       .\Defs.s
 
 ; Feature flags
-NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data provided by the main program segment
 tiledata          EXT
+
+; Sprite plane data and mask banks are provided as an exteral segment
+spritedata        EXT
+spritemask        EXT
 
 ; IF there are overlays, they are provided as an external
 Overlay           EXT
@@ -42,6 +46,10 @@ EngineStartUp     ENT
                   jsr       EngineReset         ; All of the resources are allocated, put the engine in a known state
 
                   jsr       InitGraphics        ; Initialize all of the graphics-related data
+                  nop
+                  jsr       InitSprites         ; Initialize the sprite subsystem
+                  jsr       InitTiles           ; Initialize the tile subsystem
+
                   jsr       InitTimers          ; Initialize the timer subsystem
 
                   plb
@@ -247,6 +255,7 @@ EngineReset
                   jsr       BuildBank
 ]step             equ       ]step+4
                   --^
+
                   rts
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes, or pass
@@ -333,7 +342,7 @@ ClearKbdStrobe    sep       #$20
                   rep       #$20
                   rts
 
-; Read the keyboard and paddle controls and return in a game-cotroller-like format
+; Read the keyboard and paddle controls and return in a game-controller-like format
 ReadControl       ENT
                   pea       $0000               ; low byte = key code, high byte = %------AB 
 
@@ -343,8 +352,8 @@ ReadControl       ENT
                   beq       :BNotDown
 
                   lda       #1
-                  ora       1,s
-                  sta       1,s
+                  ora       2,s
+                  sta       2,s
 
 :BNotDown
                   ldal      COMMAND_KEY_REG
@@ -352,8 +361,8 @@ ReadControl       ENT
                   beq       :ANotDown
 
                   lda       #2
-                  ora       1,s
-                  sta       1,s
+                  ora       2,s
+                  sta       2,s
 
 :ANotDown
                   ldal      KBD_STROBE_REG      ; read the keyboard
@@ -370,6 +379,7 @@ ReadControl       ENT
 
                   put       Memory.s
                   put       Graphics.s
+                  put       Sprite.s
                   put       Render.s
                   put       Timer.s
                   put       Script.s
@@ -379,7 +389,18 @@ ReadControl       ENT
                   put       blitter/Tables.s
                   put       blitter/Template.s
                   put       blitter/Tiles.s
+                  put       blitter/Tiles00000.s
+;                  put       blitter/Tiles00001.s
+;                  put       blitter/Tiles00010.s
+;                  put       blitter/Tiles00011.s
+                  put       blitter/Tiles01000.s
+;                  put       blitter/Tiles10001.s
+;                  put       blitter/Tiles10010.s
+;                  put       blitter/Tiles10011.s
+;                  put       blitter/Tiles11000.s
+                  put       blitter/TilesBG1.s
                   put       blitter/Vert.s
                   put       blitter/BG0.s
                   put       blitter/BG1.s
                   put       TileMap.s
+                 

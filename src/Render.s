@@ -78,37 +78,43 @@ _Render
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
-            jsr   _UpdateBG0TileMap
-            jsr   _UpdateBG1TileMap
+            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
-            jsr   _ApplyBG0XPos       ; Patch the PEA instructions with exit BRA opcode
-            jsr   _ApplyBG1XPos       ; Patch the PEA instructions with exit BRA opcode
+            jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
+            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
-; The code fields are locked in now and reder to be rendered
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
+
+            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
+            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+
+; The code fields are locked in now and ready to be rendered
 
             jsr   _ShadowOff
+
+; Shadowing is turned off. Render all of the scan lines that need a second pass. One
+; optimization that can be done here is that the lines can be rendered in any order
+; since it is not shown on-screen yet.
 
             ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   #8
             jsr   _BltRange
 
+; Turn shadowing back on
+
             jsr   _ShadowOn
 
-;            ldx   #0                  ; Expose the top 8 rows
-;            ldy   #8
-;            jsr   _PEISlam
+; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
 
-;            ldx   #0                  ; Blit the full virtual buffer to the screen
-;            ldy   #16
-;            jsr   _BltRange
-
-            lda   ScreenY0             ; pass the address of the first line of the overlay
-            asl
-            tax
-            lda   ScreenAddr,x
-            clc
-            adc   ScreenX0
-            jsl   Overlay
+             lda   ScreenY0             ; pass the address of the first line of the overlay
+             clc
+             adc   #0
+             asl
+             tax
+             lda   ScreenAddr,x
+             clc
+             adc   ScreenX0
+             jsl   Overlay
 
             ldx   #8                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
@@ -130,4 +136,3 @@ _Render
 
             stz   DirtyBits
             rts
-

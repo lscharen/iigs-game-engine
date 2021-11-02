@@ -106,7 +106,7 @@ _SetBG1YPos
 
 
 ; Everytime either BG1 or BG0 X-position changes, we have to update the direct page values.  We 
-; *could* do this by adjusting the since address offset, but we have to change up to 200 values
+; *could* do this by adjusting the since the address offset, but we have to change up to 200 values
 ; when the vertical position changes, and only 41 when the horizontal value changes.  Plus
 ; these are all direct page values
 ;
