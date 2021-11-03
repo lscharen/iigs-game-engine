@@ -12,7 +12,7 @@
 
 ; Initialize the overlay be drawin gin static content that will not change over time
 
-CHAR_TILE_BASE equ 241     ; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
+CHAR_TILE_BASE equ 193     ; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
 
 ; Define the sizes of the left and right overlay buffers
 R_CHAR_COUNT equ   8       ; "TICK:XXX"

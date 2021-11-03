@@ -202,8 +202,7 @@ Exit
                     bcs        Fatal
 Fatal               brk        $00
 
-MyPalette           dw         $068F,$0EDA,$0000,$068F,$0BF1,$00A0,$0EEE,$0777,$01CE,$0FA4,$0F59,$0D40,$02E3,$09B9,$0F93,$0FD7
-
+MyPalette           dw         $068F,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
 PlayerGlobalX       ds         2
 PlayerGlobalY       ds         2
 
@@ -230,7 +229,7 @@ PLAYER_X_MAX        equ   160-4
 PLAYER_Y_MIN        equ   0
 PLAYER_Y_MAX        equ   200-8
 
-EMPTY_TILE          equ   $0029              ; the tile that makes up the background
+EMPTY_TILE          equ   33              ; the tile that makes up the background
 
 AdjustLocalX
                     clc
