@@ -4,12 +4,6 @@ const process = require('process');
 const { Buffer } = require('buffer');
 const StringBuilder  = require('string-builder');
 
-// Starting color index
-let startIndex = 0;
-let transparentColor = 0;
-let transparentIndex = -1;
-let maxTiles = 511;
-
 main(process.argv.slice(2)).then(
     () => process.exit(0), 
     (e) => {
@@ -18,24 +12,24 @@ main(process.argv.slice(2)).then(
     }
 );
 
-function findColorIndex(png, pixel) {
+function findColorIndex(options, png, pixel) {
     for (let i = 0; i < png.palette.length; i += 1) {
         const color = png.palette[i].slice(0, pixel.length); // Handle RGB or RGBA
         if (color.every((c, idx) => c === pixel[idx])) {
-            return i + startIndex;
+            return i + options.startIndex;
         }
     }
 
     return null;
 }
 
-function pngToIIgsBuff(png) {
+function pngToIIgsBuff(options, png) {
     let i = 0;
     const buff = Buffer.alloc(png.height * (png.width / 2), 0);
     for (let y = 0; y < png.height; y += 1) {
         for (let x = 0; x < png.width; x += 1, i += 4) {
             const pixel = png.data.slice(i, i + 4);
-            const index = findColorIndex(png, pixel);
+            const index = findColorIndex(options, png, pixel);
             const j = y * (png.width / 2) + Math.floor(x / 2);
 
             if (index > 15) {
@@ -65,13 +59,13 @@ function shiftImage(src) {
     return dst;
 }
 
-function pngToIIgsBuffRepeat(png) {
+function pngToIIgsBuffRepeat(options, png) {
     let i = 0;
     const buff = Buffer.alloc(png.height * png.width, 0);
     for (let y = 0; y < png.height; y += 1) {
         for (let x = 0; x < png.width; x += 1, i += 4) {
             const pixel = png.data.slice(i, i + 4);
-            const index = findColorIndex(png, pixel);
+            const index = findColorIndex(options, png, pixel);
             const j = y * png.width + Math.floor(x / 2);
 
             if (index > 15) {
@@ -91,6 +85,14 @@ function pngToIIgsBuffRepeat(png) {
     }
 
     return buff;
+}
+
+function hexStringToPalette(hex) {
+    return [
+        parseInt(hex.slice(0,2), 16),
+        parseInt(hex.slice(2,4), 16),
+        parseInt(hex.slice(4,6), 16)
+    ];
 }
 
 function paletteToHexString(palette) {
@@ -140,20 +142,24 @@ async function readPNG(filename) {
     return png;
 }
 
+function getOptions(argv) {
+    const options = {};
+    options.startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
+    options.asTileData = getArg(argv, '--as-tile-data', x => true, false);
+    options.maxTiles = getArg(argv, '--max-tiles', x => parseInt(x, 10), 511);
+    options.transparentIndex = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
+    options.transparentColor = getArg(argv, '--transparent-color', x => x, null);
+    options.backgroundColor = getArg(argv, '--background-color', x => x, null);
+
+    return options;
+}
+
 async function main(argv) {
-    try {
+    // try {
         const png = await readPNG(argv[0]);
+        const options = getOptions(argv);
         
-        startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
-        asTileData = getArg(argv, '--as-tile-data', null, 0);
-        maxTiles = getArg(argv, '--max-tiles', x => parseInt(x, 10), 511);
-
-        transparentColor = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
-        if (transparentColor !== -1) {
-            transparentIndex = transparentColor;
-        }
-
-        console.info(`; startIndex = ${startIndex}`);
+        console.info(`; startIndex = ${options.startIndex}`);
 
         if (png.colorType !== 3) {
             console.warn('; PNG must be in palette color type');
@@ -166,53 +172,54 @@ async function main(argv) {
         }
 
         // Get the RGB triplets from the palette
-        const palette = png.palette.map(c => paletteToHexString(c));
-        transparentColorTriple = getArg(argv, '--transparent-color', x => x, null);
-        if (transparentColorTriple) {
-            console.log('; Looking for transparent color', transparentColorTriple);
-            transparentIndex = palette.findIndex(p => p === transparentColorTriple);
-            if (transparentIndex !== -1) {
-                console.log('; found color at palette index', transparentIndex);
+        const palette = png.palette;
+        const paletteCSSTripplets = palette.map(c => paletteToHexString(c));
+
+        // If there is a transparent color / color index, make sure it gets shuffled
+        // into index 0
+        if (options.transparentIndex > 0) {
+            [palette[0], palette[options.transparentIndex]] = [palette[options.transparentIndex], palette[0]];
+            options.transparentIndex = 0;
+        }
+        if (options.transparentColor !== null) {
+            const index = paletteCSSTripplets.findIndex(p => p === options.transparentColor);
+            if (index !== -1) {
+                options.transparentIndex = 0;
+                [palette[0], palette[index]] = [palette[index], palette[0]];
+            } else {
+                console.warn(`; transparent color defined, ${options.transparentColor}, but not found in image`);
             }
         }
 
         // Dump the palette in IIgs hex format
         console.log('; Palette:');
-        const hexCodes = png.palette.map(c => '$' + paletteToIIgs(c));
+        const hexCodes = palette.map(c => '$' + paletteToIIgs(c));
+        if (options.backgroundColor !== null) {
+            hexCodes[options.transparentIndex] = '$' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
+        }
         console.log(';', hexCodes.join(','));
 
         // Just convert a paletted PNG to IIgs memory format.  We make sure that only a few widths
         // are supported
         let buff = null;
 
-        if (png.width === 512) {
-            console.log('; Converting to BG1 format...');
-            buff = pngToIIgsBuff(png);
-        }
-
-        if (png.width === 256) {
-            console.log('; Converting to BG1 format w/repeat...');
-            buff = pngToIIgsBuffRepeat(png);
-        }
-
-        if (png.width === 328 || png.width == 320) {
-            console.log('; Converting to BG0 format...');
-            buff = pngToIIgsBuff(png);
-        }
+        console.log('; Converting to BG0 format...');
+        buff = pngToIIgsBuff(options, png);
 
         if (buff && argv[1]) {
-            if (asTileData) {
-                writeToTileDataSource(buff, png.width / 2, maxTiles);
+            if (options.asTileData) {
+                writeToTileDataSource(options, buff, png.width / 2);
             }
             else {
                 console.log(`; Writing to output file ${argv[1]}`);
-                await writeBinayOutput(argv[1], buff);
+                await writeBinayOutput(options, argv[1], buff);
             }
         }
-    } catch (e) {
-        console.log(`; ${e}`);
-        process.exit(1);
-    }
+    //} 
+    // catch (e) {
+    //     console.log(`; ${e}`);
+    //    process.exit(1);
+    //}
 }
 
 function reverse(str) {
@@ -250,7 +257,7 @@ function toMask(hex, transparentIndex) {
 /**
  * Return all four 32 byte chunks of data for a single 8x8 tile
  */
-function buildTile(buff, width, x, y, transparentIndex = -1) {
+function buildTile(options, buff, width, x, y) {
     const tile = {
         isSolid: true,
         normal: {
@@ -271,7 +278,7 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
         const hex3 = buff[offset + dy * width + 3];
 
         const raw = [hex0, hex1, hex2, hex3];
-        const mask = raw.map(h => toMask(h, transparentIndex));
+        const mask = raw.map(h => toMask(h, options.transparentIndex));
         const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.normal.data.push(data);
@@ -290,7 +297,7 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
         const hex3 = swap(buff[offset + dy * width + 3]);
 
         const raw = [hex3, hex2, hex1, hex0];
-        const mask = raw.map(h => toMask(h, transparentIndex));
+        const mask = raw.map(h => toMask(h, options.transparentIndex));
         const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.flipped.data.push(data);
@@ -300,16 +307,16 @@ function buildTile(buff, width, x, y, transparentIndex = -1) {
     return tile;
 }
 
-function buildTiles(buff, width, transparentIndex = -1) {
+function buildTiles(options, buff, width) {
     const tiles = [];
 
     let count = 0;
     for (let y = 0; ; y += 8) {
         for (let x = 0; x < width; x += 4, count += 1) {
-            if (count >= maxTiles) {
+            if (count >= options.maxTiles) {
                 return tiles;
             }
-            const tile = buildTile(buff, width, x, y, transparentIndex);
+            const tile = buildTile(options, buff, width, x, y);
 
             // Tiled TileIDs start at 1
             tile.tileId = count + 1;
@@ -326,15 +333,14 @@ function writeTileToStream(stream, data) {
     }
 }
 
-function writeTilesToStream(stream, tiles, label='tiledata') {
+function writeTilesToStream(options, stream, tiles, label='tiledata') {
     stream.write(`${label}    ENT\n`);
     stream.write('');
     stream.write('; Reserved space (tile 0 is special...)\n');
     stream.write('            ds 128\n');
 
-    const MAX_TILES = 511;
     let count = 0;
-    for (const tile of tiles.slice(0, MAX_TILES)) {
+    for (const tile of tiles.slice(0, options.maxTiles)) {
         console.log(`Writing tile ${count + 1}`);
         stream.write(`; Tile ID ${count + 1}, isSolid: ${tile.isSolid}\n`);
         writeTileToStream(stream, tile.normal.data);
@@ -359,16 +365,15 @@ function buildMerlinCodeForTile(data) {
     return sb.toString();
 }
 
-function buildMerlinCodeForTiles(tiles, label='tiledata') {
+function buildMerlinCodeForTiles(options, tiles, label='tiledata') {
     const sb = new StringBuilder();
     sb.appendLine(`${label}    ENT`);
     sb.appendLine();
     sb.appendLine('; Reserved space (tile 0 is special...)');
     sb.appendLine('            ds 128');
 
-    const MAX_TILES = 511;
     let count = 0;
-    for (const tile of tiles.slice(0, MAX_TILES)) {
+    for (const tile of tiles.slice(0, options.maxTiles)) {
         console.log(`Writing tile ${count + 1}`);
         sb.appendLine(`; Tile ID ${count + 1}, isSolid: ${tile.isSolid}`);
         sb.append(buildMerlinCodeForTile(tile.normal.data));
@@ -383,7 +388,7 @@ function buildMerlinCodeForTiles(tiles, label='tiledata') {
     return sb.toString();
 }
 
-function writeToTileDataSource(buff, width, MAX_TILES = 64) {
+function writeToTileDataSource(options, buff, width) {
     console.log('tiledata    ENT');
     console.log();
     console.log('; Reserved space (tile 0 is special...');
@@ -392,13 +397,13 @@ function writeToTileDataSource(buff, width, MAX_TILES = 64) {
     let count = 0;
     for (let y = 0; ; y += 8) {
         for (let x = 0; x < width; x += 4, count += 1) {
-            if (count >= MAX_TILES) {
+            if (count >= options.maxTiles) {
                 return;
             }
             console.log('; Tile ID ' + (count + 1));
             console.log('; From image coordinates ' + (x * 2) + ', ' + y);
 
-            const tile = buildTile(buff, width, x, y, transparentIndex);
+            const tile = buildTile(options, buff, width, x, y);
 
             // Output the tile data
             for (const row of tile.normal.data) {
@@ -431,7 +436,7 @@ function writeToTileDataSource(buff, width, MAX_TILES = 64) {
     }
 }
 
-async function writeBinayOutput(filename, buff) {
+async function writeBinayOutput(options, filename, buff) {
     // Write a small header.  This is useful and avoids triggering a sparse file load
     // bug when the first block of the file on the GS/OS drive is sparse.
 
@@ -440,10 +445,10 @@ async function writeBinayOutput(filename, buff) {
     header.write('GTERAW', 'latin1');
 
     // Use the special value $A5A5 to identify no transparency
-    if (typeof transparentColor !== 'number') {
+    if (options.transparentIndex < 0) {
         header.writeUInt16LE(0xA5A5);
     } else {
-        header.writeUInt16LE(0x1111 * transparentColor, 6);
+        header.writeUInt16LE(0x1111 * options.transparentIndex, 6);
     }
 
     await fs.writeFile(filename, Buffer.concat([header, buff]));
