@@ -119,6 +119,35 @@ min             mac
                 lda   ]1
 mout            <<<
 
+; Increment a value mod some number.  
+incmod          mac
+                inc
+                cmp   ]1
+                bcc   out
+                lda   #0
+out             <<<
+
+decmod          mac
+                dec
+                bpl   out
+                lda   ]1
+                dec
+out             <<<
+
+adcmod          mac
+                adc   ]1
+                cmp   ]2
+                bcc   out
+                sbc   ]2
+out             <<<
+
+sbcmod          mac
+                sbc   ]1
+                bpl   out
+                clc
+                adc   ]2
+out             <<<
+
 asr16           mac
                 cmp   #$8000
                 ror

@@ -480,16 +480,16 @@ _CopyBG1Tile
 ;
 ; TileStore+TS_TILE_ID        : Tile descriptor
 ; TileStore+TS_DIRTY          : $FFFF is clean, otherwise stores a back-reference to the DirtyTiles array
-; TileStore+TS_SPRITE_FLAG    : Set to TILE_SPRITE_BIT is a sprite is present at this tile location
+; TileStore+TS_SPRITE_FLAG    : Set to TILE_SPRITE_BIT if a sprite is present at this tile location
 ; TileStore+TS_SPRITE_ADDR    ; Address of the tile in the sprite plane
 ; TileStore+TS_TILE_ADDR      : Address of the tile in the tile data buffer
-; TIleStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
+; TileStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
 ; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
 
 TileStore        ENT
-                 ds   TILE_STORE_SIZE*9
+                 ds   TILE_STORE_SIZE*10
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2
@@ -674,6 +674,9 @@ _PushDirtyTileOld
 ; alternate version that is very slightly slower, but preserves the y-register
 _PushDirtyTile
                  tax
+
+; alternate entry point if the x-register is already set
+_PushDirtyTileX
                  lda  TileStore+TS_DIRTY,x
                  bpl  :occupied2
 
