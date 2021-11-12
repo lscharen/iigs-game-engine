@@ -80,46 +80,75 @@ _RenderSprites
             txy                                       ; switch to the Y register
 
 ; Run through the list of tile store offsets that this sprite was last drawn into and mark
-; those tiles as dirty.  The largest number  tiles that a sprite could possibly cover is 20
+; those tiles as dirty.  The largest number of tiles that a sprite could possibly cover is 20
 ; (an unaligned 4x3 sprite), covering a 5x4 area of play field tiles.
 ;
 ; For now, we limit ourselves to 4 tiles until things are working....
+;
+; There is only one sprite, so clear the TS_SPRITE_FLAG field, too
 
-            lda   _Sprites+TILE_STORE_ADDR_1,y
+            ldx   _Sprites+TILE_STORE_ADDR_1,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_2,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_2,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_3,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_3,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_4,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_4,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_5,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_5,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_6,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_6,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_7,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_7,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_8,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_8,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_9,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_9,y
             beq   :erase_done
-            jsr   _PushDirtyTile
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
 :erase_done
 
 ; Really, we should only be erasing and redrawing a sprite if its local coordinates change.  Look into this
 ; as a future optimization.  Ideally, all of the sprites will be rendered into the sprite plane in a separate
 ; pass from this function, which is primarily concerned with flagging dirty tiles in the Tile Store.
 
-            ldx   _Sprites+OLD_VBUFF_ADDR,y   
-;            jsr   _EraseTileSprite                    ; erase from the old position
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
+            beq   :noerase
+            jsr   _EraseTileSprite                    ; erase from the old position
+            inx
+            inx
+            inx
+            inx
+            jsr   _EraseTileSprite
+            txa
+            clc
+            adc   #8*256
+            tax
+            jsr   _EraseTileSprite
+            dex
+            dex
+            dex
+            dex
+            jsr   _EraseTileSprite
+:noerase
 
 ; Draw the sprite into the sprint plane buffer(s)
 
