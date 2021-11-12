@@ -62,7 +62,7 @@ DOWN_ARROW          equ        $0A
 ; Add a sprite to the engine and save it's sprite ID
 
                     jsr        UpdatePlayerLocal
-                    lda        #64                      ; 8x8 sprite, tile ID = 64
+                    lda        #$1800+145              ; 16x16 sprite, tile ID = 64
                     ldx        PlayerX
                     ldy        PlayerY
                     jsl        AddSprite
@@ -322,7 +322,7 @@ UpdatePlayerPos
             ldx  PlayerX
             lda  PlayerY
             clc
-            adc  #8
+            adc  #16
             tay
             jsr  GetTileAt
             cmp  #EMPTY_TILE

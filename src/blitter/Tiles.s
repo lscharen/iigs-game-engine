@@ -111,10 +111,10 @@ RenderTile       ENT
 
 _RenderTile2
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
-                 ora   TileStore+TS_SPRITE_FLAG,y
-                 bpl   :nosprite                      ; save a few cycles on average -- the sprite flag is $8000, so easy bpl/bmi test
-                 tyx
-                 stz   TileStore+TS_SPRITE_FLAG,x     ; clear the sprite flag
+                 ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
+                 beq   :nosprite
+
+                 ora   #TILE_SPRITE_BIT
                  ldx   TileStore+TS_SPRITE_ADDR,y
                  stx   _SPR_X_REG
 
@@ -480,16 +480,16 @@ _CopyBG1Tile
 ;
 ; TileStore+TS_TILE_ID        : Tile descriptor
 ; TileStore+TS_DIRTY          : $FFFF is clean, otherwise stores a back-reference to the DirtyTiles array
-; TileStore+TS_SPRITE_FLAG    : Set to TILE_SPRITE_BIT is a sprite is present at this tile location
+; TileStore+TS_SPRITE_FLAG    : Set to TILE_SPRITE_BIT if a sprite is present at this tile location
 ; TileStore+TS_SPRITE_ADDR    ; Address of the tile in the sprite plane
 ; TileStore+TS_TILE_ADDR      : Address of the tile in the tile data buffer
-; TIleStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
+; TileStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
 ; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
 
 TileStore        ENT
-                 ds   TILE_STORE_SIZE*9
+                 ds   TILE_STORE_SIZE*10
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2
@@ -674,6 +674,9 @@ _PushDirtyTileOld
 ; alternate version that is very slightly slower, but preserves the y-register
 _PushDirtyTile
                  tax
+
+; alternate entry point if the x-register is already set
+_PushDirtyTileX
                  lda  TileStore+TS_DIRTY,x
                  bpl  :occupied2
 
@@ -688,8 +691,11 @@ _PushDirtyTile
                  inx
                  inx
                  stx  DirtyTileCount
-:occupied2
                  rts
+:occupied2
+                 txa                                ; Make sure TileStore offset is returned in the accumulator
+                 rts
+
 ; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
 ; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update,
 ; because this routine merges the tile IDs stored in the Tile Store with the Sprite

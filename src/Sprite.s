@@ -40,8 +40,8 @@ forceSpriteFlag ds 2
 _RenderSprites
 
 ; First step is to look at the StartX and StartY values.  If the offsets have changed from the
-; last time that the frame was rederer, then we need to mark all of the sprites as dirty so that
-; the tiles that they were located at on the previous frame will be refreshed
+; last time that the frame was redered, then we need to mark all of the sprites as dirty so that
+; the tiles on which they were located at the previous frame will be refreshed
 
             stz   forceSpriteFlag
             lda   StartX
@@ -65,7 +65,7 @@ _RenderSprites
 :loop       lda   _Sprites+SPRITE_STATUS,x       ; If the status is zero, that's the sentinel value
             beq   :out
             ora   forceSpriteFlag
-            bit   #SPRITE_STATUS_DIRTY           ; If the dirty flag is set, do the things....
+            ora   #SPRITE_STATUS_DIRTY           ; If the dirty flag is set, do the things....
             bne   :render
 :next       inx
             inx
@@ -73,39 +73,82 @@ _RenderSprites
 :out        rts
 
 ; This is the complicated part; we need to draw the sprite into the sprite plane, but then
-; calculate the code field tiles that this sprite potentially overlaps with and mark those
-; tiles as dirty and store the appropriate sprite plane address that those tiles need to copy
-; from.
+; calculate the tiles that overlap with the sprite potentially and mark those as dirty _AND_
+; store the appropriate sprite plane address from which those tiles need to copy.
 :render
             stx   tmp0                                ; stash the X register
             txy                                       ; switch to the Y register
 
 ; Run through the list of tile store offsets that this sprite was last drawn into and mark
-; those tiles as dirty.  The most tiles that a sprite could possibly cover is 20 (a 4x3 sprite)
-; that is offset, covering a 5x4 area of play field tiles.
+; those tiles as dirty.  The largest number of tiles that a sprite could possibly cover is 20
+; (an unaligned 4x3 sprite), covering a 5x4 area of play field tiles.
 ;
-; For now, we limit ourselved to 4 tiles until things are working....
+; For now, we limit ourselves to 4 tiles until things are working....
+;
+; There is only one sprite, so clear the TS_SPRITE_FLAG field, too
 
-            lda   _Sprites+TILE_STORE_ADDR_1,y
+            ldx   _Sprites+TILE_STORE_ADDR_1,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_2,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_2,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_3,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_3,y
             beq   :erase_done
-            jsr   _PushDirtyTile
-            lda   _Sprites+TILE_STORE_ADDR_4,y
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_4,y
             beq   :erase_done
-            jsr   _PushDirtyTile
+            stz   TileStore+TS_SPRITE_FLAG,x
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_5,y
+            beq   :erase_done
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_6,y
+            beq   :erase_done
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_7,y
+            beq   :erase_done
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_8,y
+            beq   :erase_done
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
+            ldx   _Sprites+TILE_STORE_ADDR_9,y
+            beq   :erase_done
+            stz   TileStore+TS_SPRITE_FLAG,x
+            jsr   _PushDirtyTileX
 :erase_done
 
-; Really, we should only be erasing and redrawing a sprite if its local coordinateds change.  Look into this
+; Really, we should only be erasing and redrawing a sprite if its local coordinates change.  Look into this
 ; as a future optimization.  Ideally, all of the sprites will be rendered into the sprite plane in a separate
 ; pass from this function, which is primarily concerned with flagging dirty tiles in the Tile Store.
 
-            ldx   _Sprites+OLD_VBUFF_ADDR,y   
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
+            beq   :noerase
             jsr   _EraseTileSprite                    ; erase from the old position
+            inx
+            inx
+            inx
+            inx
+            jsr   _EraseTileSprite
+            txa
+            clc
+            adc   #8*256
+            tax
+            jsr   _EraseTileSprite
+            dex
+            dex
+            dex
+            dex
+            jsr   _EraseTileSprite
+:noerase
 
 ; Draw the sprite into the sprint plane buffer(s)
 
@@ -113,26 +156,54 @@ _RenderSprites
             lda   _Sprites+TILE_DATA_OFFSET,y         ; and the tile address of the tile
             tay
             jsr   _DrawTileSprite                     ; draw the sprite into the sprite plane
+            tya
+            clc
+            adc   #128
+            tay
+            txa
+            clc
+            adc   #4
+            tax
+            jsr   _DrawTileSprite
+
+            tya
+            clc
+            adc   #128*31
+            tay
+            txa
+            clc
+            adc   #{8*256}-4
+            tax
+            jsr   _DrawTileSprite
+            tya
+            clc
+            adc   #128
+            tay
+            txa
+            clc
+            adc   #4
+            tax
+            jsr   _DrawTileSprite
 
 ; Mark the appropriate tiles as dirty and as occupied by a sprite so that the ApplyTiles
 ; subroutine will get the drawn data from the sprite plane into the code field where it 
 ; can be drawn to the screen
 
             ldx   tmp0                                ; Restore the index into the sprite array
-            jsr   _MarkDirtySprite8x8                 ; Eventually will have routines for all sprite sizes
+            jsr   _MarkDirtySprite                    ; Mark the tiles that this sprite overlaps as dirty
 
             ldx   tmp0                                ; Restore the index again
-            bra   :next
+            brl   :next
 
-; Marks a 8x8 square as dirty.  The work here is mapping from local screen coordinates to the 
+; Marks an 8x8 square as dirty.  The work here is mapping from local screen coordinates to the 
 ; tile store indices.  The first step is to adjust the sprite coordinates based on the current
 ; code field offsets and then cache variations of this value needed in the rest of the subroutine
 ;
-; The SpritX is always the MAXIMUM value of the corner coordinates.  We subtract (SpriteX + StartX) mod 4
-; to find the coordinate in the sprite plane that match up with the tile in the play field and 
-; then use that to calculate the VBUFF address to copy sprite data from.
+; The SpriteX is always the MAXIMUM value of the corner coordinates.  We subtract (SpriteX + StartX) mod 4
+; to find the coordinate in the sprite plane that matches up with the tile in the play field and 
+; then use that to calculate the VBUFF address from which to copy sprite data.
 ;
-; StartX   SpriteX   z = * mod 4   (SprietX - z)
+; StartX   SpriteX   z = * mod 4   (SpriteX - z)
 ; ----------------------------------------------
 ; 0        8         0             8
 ; 1        8         1             7
@@ -150,10 +221,10 @@ _RenderSprites
 ; On input, X register = Sprite Array Index
 _MarkDirtySprite8x8
 
-            stz   _Sprites+TILE_STORE_ADDR_1,x       ; Clear the Dirty Tiles in case of an early exit
+            stz   _Sprites+TILE_STORE_ADDR_1,x       ; Clear the Dirty Tile list in case of an early exit
 
 ; First, bounds check the X and Y coodinates of the sprite and, if they pass, pre-calculate some
-; values that we can use later
+; values that we can use later.
 
             lda   _Sprites+SPRITE_Y,x                ; This is a signed value
             bpl   :y_is_pos
@@ -166,7 +237,7 @@ _MarkDirtySprite8x8
 :y_is_ok
 
 ; The sprite's Y coordinate is in a range that it will impact the visible tiles that make up the play
-; field.  Figure out what tile(s) they are and what part fo the sprite plane data/mask need to be
+; field.  Figure out what tile(s) they are and what part of the sprite plane data/mask need to be
 ; accessed to overlay with the tile pixels
 
             clc
@@ -234,7 +305,7 @@ _MarkDirtySprite8x8
 ; tmp5 = X mod 4
 ; tmp6 = Y mod 8
 ;
-; Look at these values to determine, up front, exactly which tiles will need to be put into the
+; Look at these values to determine, up front, exactly which bounding tiles will need to be put into the
 ; dirty tile queue.  
 ;
 ; tmp5   tmp6
@@ -264,6 +335,36 @@ _MarkDirtySprite8x8
 ; column and row in the tile store (tmp2, tmp4).  The next step is to add these tile locations to
 ; the dirty queue and set the sprite flag along with the VBUFF location.  We try to incrementally
 ; calculate new values to avoid re-doing work.
+;
+; The sprite plane address calculation is x + 256 * y and there are no wrap-around considerations,
+; so we can take the calculated VBUFF address and just add a single, pre-calculate constant for each
+; tile
+;
+; The tile store addresses are more involved, because we could wrap around in the X or Y direction
+; at any step, so they need to be tracked separately.  However, they can be decomposed so that we
+; can update each independently.  If the values are pre-multiplied by 2, then calculating the
+; Tile Store for X and Y is just
+;
+;     txa
+;     adc  TileStoreYTable,y
+;
+; One other consideration is that the visibility tests for the sprite coverage vs the tile store
+; coverage are different.  We get into the main loop is *any* part of the sprite is potentially
+; visible in the play field.  However, for multi-tile sprites, some of the sub-tiles that 
+; comprise the sprite could be totally off-screen.
+;
+; To handle this, we pre-filter the tile list while calculating the sprite plane and tile store
+; addresses to remove any tiles that are off-screen.  This provides a natural break in the subroutine
+; where the actually updating values in the TileStore and _Sprites tables and marking tiles as
+; dirty involves walking a single list.
+;
+; A final note.  Although this seems like a lot of code, rendering each tile requires, at a minimum,
+; 16 LDA/STA pairs plus the overhead of the dirty tile list (~50 cycles), and possible much more.
+; It's safe to assume that each tile no drawn saves around 500 cycles per frame.
+;
+; The worst-case for sprites is 16 sprites, all the maximum size of 4x3 and all unaligned, so
+; 16 * 5 * 4 = 320 tiles total.  There are, at most, 1066 tiles visible on a full-screen.  This
+; would effectively halve the framerate.
 :mark1x1
             sta   _Sprites+TILE_STORE_ADDR_2,y     ; Terminate the list after one item
 
@@ -273,7 +374,7 @@ _MarkDirtySprite8x8
 
 :mark1x2
             sta   _Sprites+TILE_STORE_ADDR_3,y     ; Terminate the list after two items
-            jsr   :calc_col1                       ; Calculate the values for the next column
+;            jsr   :calc_col1                       ; Calculate the values for the next column
 
             jsr   :top_left
             sta   _Sprites+TILE_STORE_ADDR_1,y 
@@ -285,7 +386,7 @@ _MarkDirtySprite8x8
 
 :mark2x1
             sta   _Sprites+TILE_STORE_ADDR_3,y     ; Terminate the list after two items
-            jsr   :calc_row1                       ; Calculate the values for the next row
+;            jsr   :calc_row1                       ; Calculate the values for the next row
 
             jsr   :top_left
             sta   _Sprites+TILE_STORE_ADDR_1,y
@@ -295,10 +396,11 @@ _MarkDirtySprite8x8
             sta   _Sprites+TILE_STORE_ADDR_2,y
             jmp   _PushDirtyTile
 
-; This is the maximum value, so no need to terminate the list early
 :mark2x2
-            jsr   :calc_col1                       ; Calculate the next row and column values
-            jsr   :calc_row1
+            sta   _Sprites+TILE_STORE_ADDR_3,y     ; Terminate the list after four items
+
+;            jsr   :calc_col1                       ; Calculate the next row and column values
+;            jsr   :calc_row1
 
             jsr   :top_left
             sta   _Sprites+TILE_STORE_ADDR_1,y
@@ -315,34 +417,6 @@ _MarkDirtySprite8x8
             jsr   :bottom_right
             sta   _Sprites+TILE_STORE_ADDR_4,y
             jmp   _PushDirtyTile
-
-; Functions to advance to the right, or down and cache the values in the direct page
-; temporary space for re-use. col0 and row0 is the original tile
-:calc_col1
-            lda   tmp3
-            clc
-            adc   #4
-            sta   tmp7
-            lda   tmp4
-            inc
-            cmp   #41
-            bcc   *+5
-            lda   #0
-            sta   tmp8
-            rts
-
-:calc_row1
-            lda   tmp1
-            clc
-            adc   #8
-            sta   tmp9
-            lda   tmp2
-            inc
-            cmp   #26
-            bcc   *+5
-            lda   #0
-            sta   tmp10
-            rts
 
 :top_left
             _TileStoreOffsetX tmp4;tmp2            ; Overwrites X
@@ -551,17 +625,14 @@ _EraseTileSprite
 ;
 ; Bit 9        : Horizontal flip.
 ; Bit 10       : Vertical flip.
-; Bits 11 - 13 : Sprite Size Selector
-;   000 - 8x8  (1x1 tile)
-;   001 - 8x16 (1x2 tiles)
-;   010 - 16x8 (2x1 tiles)
-;   011 - 16x16 (2x2 tiles)
-;   100 - 24x16 (3x2 tiles)
-;   101 - 16x24 (2x3 tiles)
-;   110 - 24x24 (3x3 tiles)
-;   111 - 32x24 (4x3 tiles)
-; Bit 14       : Low Sprite priority. Draws behind high priority tiles.
-; Bit 15       : Reserved. Must be zero.
+; Bits 11 - 12 : Sprite Size Selector
+;   00 - 8x8  (1x1 tile)
+;   01 - 8x16 (1x2 tiles)
+;   10 - 16x8 (2x1 tiles)
+;   11 - 16x16 (2x2 tiles)
+; Bit 13       : Reserved. Must be zero.
+; Bit 14       : Reserved. Must be zero.
+; Bit 15       : Low Sprite priority. Draws behind high priority tiles.
 ;
 ; When a sprite has a size > 8x8, the horizontal tiles are taken from the next tile index and
 ; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
@@ -601,6 +672,7 @@ _AddSprite
 :open       lda   #SPRITE_STATUS_DIRTY
             sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn
             pla
+            sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
             sta   _Sprites+TILE_DATA_OFFSET,x
 
@@ -698,21 +770,28 @@ _UpdateSprite
 NUM_BUFF_LINES equ 24
 
 MAX_SPRITES  equ 16
-SPRITE_REC_SIZE equ 20
+SPRITE_REC_SIZE equ 34
 
 SPRITE_STATUS_EMPTY equ 0
 SPRITE_STATUS_CLEAN equ 1
 SPRITE_STATUS_DIRTY equ 2
 
-SPRITE_STATUS equ 0
+SPRITE_STATUS equ {MAX_SPRITES*0}
 TILE_DATA_OFFSET equ {MAX_SPRITES*2}
 VBUFF_ADDR equ {MAX_SPRITES*4}
-SPRITE_X equ {MAX_SPRITES*6}
-SPRITE_Y equ {MAX_SPRITES*8}
-OLD_VBUFF_ADDR equ {MAX_SPRITES*10}
-TILE_STORE_ADDR_1 equ {MAX_SPRITES*12}
-TILE_STORE_ADDR_2 equ {MAX_SPRITES*14}
-TILE_STORE_ADDR_3 equ {MAX_SPRITES*16}
-TILE_STORE_ADDR_4 equ {MAX_SPRITES*18}
+SPRITE_ID equ {MAX_SPRITES*6}
+SPRITE_X equ {MAX_SPRITES*8}
+SPRITE_Y equ {MAX_SPRITES*10}
+OLD_VBUFF_ADDR equ {MAX_SPRITES*12}
+TILE_STORE_ADDR_1 equ {MAX_SPRITES*14}
+TILE_STORE_ADDR_2 equ {MAX_SPRITES*16}
+TILE_STORE_ADDR_3 equ {MAX_SPRITES*18}
+TILE_STORE_ADDR_4 equ {MAX_SPRITES*20}
+TILE_STORE_ADDR_5 equ {MAX_SPRITES*22}
+TILE_STORE_ADDR_6 equ {MAX_SPRITES*24}
+TILE_STORE_ADDR_7 equ {MAX_SPRITES*26}
+TILE_STORE_ADDR_8 equ {MAX_SPRITES*28}
+TILE_STORE_ADDR_9 equ {MAX_SPRITES*30}
+TILE_STORE_ADDR_10 equ {MAX_SPRITES*32}
 
 _Sprites     ds  SPRITE_REC_SIZE*MAX_SPRITES

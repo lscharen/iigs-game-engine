@@ -224,11 +224,32 @@ ScreenAddr        ENT
 ; Table of offsets into each row of a Tile Store table.  We currently have two tables defined; one
 ; that is the backing store for the tiles rendered into the code field, and another that holds 
 ; backlink information on the sprite entries that overlap various tiles.
-]step             equ   0
+;
+; This table is double-length to support accessing off the end modulo its legth
 TileStoreYTable   ENT
+]step             equ   0
                   lup   26
                   dw    ]step
 ]step             =     ]step+{41*2}
+                  --^
+]step             equ   0
+                  lup   26
+                  dw    ]step
+]step             =     ]step+{41*2}
+                  --^
+
+; Create a table to look up the "next" column with modulo wraparound.  Basically a[i] = i
+; and the table is double-length.  Use contanct offsets to pick an amount to advance
+NextCol
+]step             equ   0
+                  lup   41
+                  dw    ]step
+]step             =     ]step+2
+                  --^
+]step             equ   0
+                  lup   41
+                  dw    ]step
+]step             =     ]step+2
                   --^
 
 ; This is a double-length table that holds the right-edge adresses of the playfield on the physical
