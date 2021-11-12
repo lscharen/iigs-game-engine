@@ -133,7 +133,7 @@ _RenderTile2
                  rep   #$20
                  lda   TileStore+TS_CODE_ADDR_LOW,y   ; load the address of the code field
                  pha
-                 lda   TileStore+TS_BASE_ADDR,y   ; load the address of the code field
+                 lda   TileStore+TS_BASE_ADDR,y       ; load the base address of the code field
                  sta   _BASE_ADDR
 
                  lda   TileStore+TS_WORD_OFFSET,y
@@ -152,45 +152,47 @@ _RenderTile2
 ;
 ; One set for normal, horizontally flipped, vertically flipped and hors & vert flipped.
 ; A second set that are optimized for when EngineMode has BG1 disabled.
-TileProcs        dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00000 : normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00001 : dynamic tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00010 : masked normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00011 : masked dynamic tiles
+TileProcs        dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00000 : normal tiles
+                 dw     _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00  ; 00001 : dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00010 : masked normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00011 : masked dynamic tiles
 
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00100 : fringed normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00101 : fringed dynamic tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00110 : fringed masked normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 00111 : fringed masked dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00100 : fringed normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00101 : fringed dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00110 : fringed masked normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00111 : fringed masked dynamic tiles
 
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01000 : high-priority normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01001 : high-priority dynamic tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01010 : high-priority masked normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01011 : high-priority masked dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01000 : high-priority normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01001 : high-priority dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01010 : high-priority masked normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01011 : high-priority masked dynamic tiles
 
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01100 : high-priority fringed normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01101 : high-priority fringed dynamic tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01110 : high-priority fringed masked normal tiles
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 01111 : high-priority fringed masked dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01100 : high-priority fringed normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01101 : high-priority fringed dynamic tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01110 : high-priority fringed masked normal tiles
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01111 : high-priority fringed masked dynamic tiles
 
-                 dw              _TBSolidSpriteTile_00,_TBSolidSpriteTile_0H,_TBSolidSpriteTile_V0,_TBSolidSpriteTile_VH  ; 10000 : normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10001 : dynamic tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10010 : masked normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10011 : masked dynamic tiles w/sprite
+                 dw     _TBSolidSpriteTile_00,_TBSolidSpriteTile_0H,
+                 dw     _TBSolidSpriteTile_V0,_TBSolidSpriteTile_VH                              ; 10000 : normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10001 : dynamic tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10010 : masked normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10011 : masked dynamic tiles w/sprite
 
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10100 : fringed normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10101 : fringed dynamic tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10110 : fringed masked normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 10111 : fringed masked dynamic tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10100 : fringed normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10101 : fringed dynamic tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10110 : fringed masked normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10111 : fringed masked dynamic tiles w/sprite
 
-                 dw              _TBSolidPrioritySpriteTile_00,_TBSolidPrioritySpriteTile_0H,_TBSolidPrioritySpriteTile_V0,_TBSolidPrioritySpriteTile_VH  ; 11000 : high-priority normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11001 : high-priority dynamic tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11010 : high-priority masked normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11011 : high-priority masked dynamic tiles w/sprite
+                 dw     _TBSolidPrioritySpriteTile_00,_TBSolidPrioritySpriteTile_0H,
+                 dw     _TBSolidPrioritySpriteTile_V0,_TBSolidPrioritySpriteTile_VH              ; 11000 : high-priority normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11001 : high-priority dynamic tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11010 : high-priority masked normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11011 : high-priority masked dynamic tiles w/sprite
 
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11100 : high-priority fringed normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11101 : high-priority fringed dynamic tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11110 : high-priority fringed masked normal tiles w/sprite
-                 dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH  ; 11111 : high-priority fringed masked dynamic tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11100 : high-priority fringed normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11101 : high-priority fringed dynamic tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11110 : high-priority fringed masked normal tiles w/sprite
+                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11111 : high-priority fringed masked dynamic tiles w/sprite
 
 ; _TBConstTile
 ;

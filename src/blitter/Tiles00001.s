@@ -8,19 +8,14 @@
 ; This tile type does not explicitly support horizontal or vertical flipping.  An appropriate tile
 ; descriptor should be passed into CopyTileToDyn to put the horizontally or vertically flipped source
 ; data into the dynamic tile buffer
-_TBDynamicTile   dw              _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00
-                 dw              _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00
-
 _TBDynamicTile_00
                  jsr             _TBDynamicData
                  jmp             _TBFillLdaDpOpcode
 
-; Primitives to render a dynamic tile
+; Primitive to render a dynamic tile
 ;
 ; LDA 00,x / PHA where the operand is fixed when the tile is rendered
 ; $B5 $00 $48
-;
-; A = dynamic tile id (must be <32)
 _TBDynamicData
                  txa
                  asl
@@ -43,6 +38,7 @@ _TBDynamicData
                  lup             8
                  sta:            $0001+{]line*$1000},y
 ]line            equ             ]line+1
+                 --^
 
                  rts
 

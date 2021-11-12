@@ -404,7 +404,7 @@ ReadControl       ENT
                   put       blitter/Template.s
                   put       blitter/Tiles.s
                   put       blitter/Tiles00000.s
-;                  put       blitter/Tiles00001.s
+                  put       blitter/Tiles00001.s
 ;                  put       blitter/Tiles00010.s
 ;                  put       blitter/Tiles00011.s
                   put       blitter/Tiles10000.s
