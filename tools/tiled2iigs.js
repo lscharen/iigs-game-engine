@@ -31,14 +31,14 @@ async function readTileSet(workdir, tileset) {
     const pngfile = path.resolve(path.join(workdir, tileset.image.source));
     console.log(`Reading PNG file from ${pngfile}`);
     const png = await png2iigs.readPNG(pngfile);
-
+    
     // Find the index of the transparent color (if defined)
     console.log(`Looking for transparency...`);
     let transparentIndex = -1;
     if (tileset.image.trans) {
         const color = hexToRbg(tileset.image.trans);
         console.log(`Found color ${color} as transparent marker`);
-        transparentIndex = png2iigs.findColorIndex(png, color);
+        transparentIndex = png2iigs.findColorIndex(GLOBALS.options, png, color);
         if (typeof transparentIndex !== 'number') {
             console.log('Could not find color in palette');
             console.log(png.palette);
@@ -49,10 +49,10 @@ async function readTileSet(workdir, tileset) {
     }
 
     console.log(`Converting PNG to IIgs bitmap format...`);
-    const buff = png2iigs.pngToIIgsBuff(png);
+    const buff = png2iigs.pngToIIgsBuff(GLOBALS.options, png);
 
     console.log(`Building tiles...`);
-    const tiles = png2iigs.buildTiles(buff, png.width / 2, transparentIndex);
+    const tiles = png2iigs.buildTiles(GLOBALS.options, buff, png.width / 2, transparentIndex);
 
     // Return the tiles
     return tiles;
@@ -155,7 +155,7 @@ function writeTileAnimations(filename, animations) {
 }
 
 function writeTiles(filename, tiles) {
-    const tileSource = png2iigs.buildMerlinCodeForTiles(tiles);
+    const tileSource = png2iigs.buildMerlinCodeForTiles(GLOBALS.options, tiles);
     fs.writeFileSync(filename, tileSource);
 }
 
@@ -198,7 +198,15 @@ function findAnimatedTiles(tileset) {
 }
 
 // Global reference object
-let GLOBALS = {};
+let GLOBALS = {
+    options: {
+        startIndex: 0,
+        asTileData: true,
+        maxTiles: 360,
+        transparentColor: 'FF00FF',
+        backgroundColor: '6B8CFF'
+    }
+};
 
 /**
  * Command line arguments
@@ -251,6 +259,7 @@ async function main(argv) {
 
     // Create a global reference object
     GLOBALS = {
+        ...GLOBALS,
         outdir,
         tileSets,
         tileLayers
@@ -364,15 +373,26 @@ function emitLayerData(sb, layer, tileset) {
     //
     // Merlin32 errors out with errno 3221226505 is the line is too long (>1047 characters)
     const N = 64;
-    const chunks = [];
+    const rows = [];
     const tileIDs = layer.data;
-    for (let i = 0; i < tileIDs.length; i += N) {
-        chunks.push(tileIDs.slice(i, i + N).map(tID => convertTileID(tID, tileset)))
+
+    // Create cunks of chunks so we can put a break between logical rows
+    for (let j = 0; j < tileIDs.length; j += layer.width) {
+        const row = tileIDs.slice(j, j + layer.width);
+        const chunks = [];
+        for (let i = 0; i < row.length; i += N) {
+            chunks.push(row.slice(i, i + N).map(tID => convertTileID(tID, tileset)))
+        }
+        rows.push(chunks);
     }
+
     // Tiled starts numbering its tiles at 1. This is OK since Tile 0 is reserved in
     // GTE, also
-    for (const chunk of chunks) {
-        sb.appendLine('        dw ' + chunk.map(id => '$' + toHex(id, 4)).join(','));
+    for (const row of rows) {
+        for (const chunk of row) {
+            sb.appendLine('        dw ' + chunk.map(id => '$' + toHex(id, 4)).join(','));
+        }
+        sb.appendLine('');
     }
 
     return sb;
