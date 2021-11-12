@@ -8,7 +8,7 @@
                   use       .\Defs.s
 
 ; Feature flags
-NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data provided by the main program segment
@@ -394,7 +394,8 @@ ReadControl       ENT
 ;                  put       blitter/Tiles00001.s
 ;                  put       blitter/Tiles00010.s
 ;                  put       blitter/Tiles00011.s
-                  put       blitter/Tiles01000.s
+                  put       blitter/Tiles10000.s
+                  put       blitter/Tiles11000.s
 ;                  put       blitter/Tiles10001.s
 ;                  put       blitter/Tiles10010.s
 ;                  put       blitter/Tiles10011.s
