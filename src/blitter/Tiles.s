@@ -111,10 +111,10 @@ RenderTile       ENT
 
 _RenderTile2
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
-                 ora   TileStore+TS_SPRITE_FLAG,y
-                 bpl   :nosprite                      ; save a few cycles on average -- the sprite flag is $8000, so easy bpl/bmi test
-                 tyx
-                 stz   TileStore+TS_SPRITE_FLAG,x     ; clear the sprite flag
+                 ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
+                 beq   :nosprite
+
+                 ora   #TILE_SPRITE_BIT
                  ldx   TileStore+TS_SPRITE_ADDR,y
                  stx   _SPR_X_REG
 
@@ -691,8 +691,11 @@ _PushDirtyTileX
                  inx
                  inx
                  stx  DirtyTileCount
-:occupied2
                  rts
+:occupied2
+                 txa                                ; Make sure TileStore offset is returned in the accumulator
+                 rts
+
 ; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
 ; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update,
 ; because this routine merges the tile IDs stored in the Tile Store with the Sprite
