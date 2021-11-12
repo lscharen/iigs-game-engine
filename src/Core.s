@@ -343,6 +343,7 @@ ClearKbdStrobe    sep       #$20
                   rts
 
 ; Read the keyboard and paddle controls and return in a game-controller-like format
+LastKey           db        0
 ReadControl       ENT
                   pea       $0000               ; low byte = key code, high byte = %------AB 
 
@@ -351,7 +352,7 @@ ReadControl       ENT
                   and       #$80
                   beq       :BNotDown
 
-                  lda       #1
+                  lda       #PAD_BUTTON_B
                   ora       2,s
                   sta       2,s
 
@@ -360,7 +361,7 @@ ReadControl       ENT
                   and       #$80
                   beq       :ANotDown
 
-                  lda       #2
+                  lda       #PAD_BUTTON_A
                   ora       2,s
                   sta       2,s
 
@@ -372,7 +373,19 @@ ReadControl       ENT
                   ora       1,s
                   sta       1,s
 
+                  cmpl      LastKey
+                  beq       :KbdDown
+                  stal      LastKey
+
+                  lda       #PAD_KEY_DOWN       ; set the keydown flag
+                  ora       2,s
+                  sta       2,s
+                  bra       :KbdDown
+
 :KbdNotDwn
+                  lda       #0
+                  stal      LastKey
+:KbdDown
                   rep       #$20
                   pla
                   rtl

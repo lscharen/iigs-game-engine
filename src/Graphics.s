@@ -126,6 +126,9 @@ _ShadowOff
                  rep   #$20
                  rts
 
+GetVerticalCounter ENT
+                 jsr   _GetVBL
+                 rtl
 _GetVBL
                  sep   #$20
                  ldal  VBL_HORZ_REG

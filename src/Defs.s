@@ -119,6 +119,11 @@ SWAP_PALETTE_ENTRY     equ   $0004
 SET_DYN_TILE           equ   $0006
 CALLBACK               equ   $0010
 
+; ReadControl return value bits
+PAD_BUTTON_B           equ   $01
+PAD_BUTTON_A           equ   $02
+PAD_KEY_DOWN           equ   $04
+
 ; Tile constants
 TILE_ID_MASK           equ   $01FF
 TILE_SPRITE_BIT        equ   $8000                  ; Set if this tile intersects an active sprite

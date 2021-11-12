@@ -94,6 +94,22 @@ EvtLoop
                     lda        #$FFF8
                     sta        PlayerYVel
 :no_jump
+
+
+; Enable/disable v-sync
+                    lda        1,s
+                    bit        #$0400
+                    beq        :no_key_down
+                    and        #$007F
+                    cmp        #'v'
+                    bne        :not_v
+                    lda        #$0001
+                    eor        vsync
+                    sta        vsync
+:not_v
+:no_key_down
+
+
                     pla
                     and        #$007F                  ; Ignore the buttons for now
 
@@ -165,6 +181,7 @@ EvtLoop
                     bra        :do_render
 :not_l
 
+
 ; Update the camera position
 
 :do_render
@@ -178,8 +195,25 @@ EvtLoop
                     jsl        UpdateSprite           ; Move the sprite to this local position
 
 ; Let's see what it looks like!
-
+                    lda        vsync
+                    beq        :no_vsync
+:vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
+                    cmp        ScreenY0
+                    bcc        :vsyncloop
+                    sec
+                    sbc        ScreenY0
+                    cmp        #8
+                    bcs        :vsyncloop
+                    lda        #1
+                    jsl        SetBorderColor
+:no_vsync
                     jsl        Render
+    
+                    lda        vsync
+                    beq        :no_vsync2
+                    lda        #0
+                    jsl        SetBorderColor
+:no_vsync2
 
 ; Update the performance counters
 
@@ -434,6 +468,8 @@ MovePlayerToOrigin
 
 qtRec               adrl       $0000
                     da         $00
+
+vsync               dw         $0000
 
                     PUT        ../shell/Overlay.s
                     PUT        gen/App.TileMapBG0.s

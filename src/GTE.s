@@ -10,6 +10,8 @@ ReadControl        EXT
 ; Low-Level Functions
 SetPalette         EXT
 GetVBLTicks        EXT
+GetVerticalCounter EXT
+SetBorderColor     EXT
 
 ; Tilemap functions
 SetBG0XPos         EXT
