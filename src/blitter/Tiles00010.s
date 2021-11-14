@@ -2,14 +2,16 @@
 ;
 ; These tile renderes are for "normal" tiles that also apply their mask data.  If the case of the second
 ; background being disabled, the optimized variants are the same as Tile00000
-_TBMaskedTile    dw              _TBMaskedTile_00,_TBMaskedTile_0H,_TBMaskedTile_V0,_TBMaskedTile_VH
-                 dw              _TBCopyData,_TBCopyDataH,_TBCopyDataV,_TBCopyDataVH
-
+;
+; Y register  = address of code field tile
+; X register  = tile address
+; Accumulator = logical word offset of the tile (0, 2, 4, ..., 82)
+;
+; Need to slightly remap these register inputs to save into the direct page cached values
 _TBMaskedTile_00
-                 stx             _X_REG                            ; Save these values as we will need to reload them
+                 sta             _X_REG                            ; Save these values as we will need to reload them
                  sty             _Y_REG                            ; at certain points
-                 sta             _T_PTR
-                 tax
+                 stx             _T_PTR
 
 ; Do the left column first
 
@@ -43,10 +45,9 @@ _TBMaskedTile_00
                  rts
 
 _TBMaskedTile_0H
-                 stx             _X_REG                            ; Save these values as we will need to reload them
-                 sty             _Y_REG                            ; at certain points
-                 sta             _T_PTR
-                 tax
+                 sta             _X_REG
+                 sty             _Y_REG
+                 stx             _T_PTR
 
                  CopyMaskedWord  tiledata+64+0;tiledata+64+32+0;$0003
                  CopyMaskedWord  tiledata+64+4;tiledata+64+32+4;$1003
@@ -72,10 +73,9 @@ _TBMaskedTile_0H
                  rts
 
 _TBMaskedTile_V0
-                 stx             _X_REG                            ; Save these values as we will need to reload them
-                 sty             _Y_REG                            ; at certain points
-                 sta             _T_PTR
-                 tax
+                 sta             _X_REG
+                 sty             _Y_REG
+                 stx             _T_PTR
 
                  CopyMaskedWord  tiledata+0;tiledata+32+0;$7003
                  CopyMaskedWord  tiledata+4;tiledata+32+4;$6003
@@ -101,10 +101,9 @@ _TBMaskedTile_V0
                  rts
 
 _TBMaskedTile_VH
-                 stx             _X_REG                            ; Save these values as we will need to reload them
-                 sty             _Y_REG                            ; at certain points
-                 sta             _T_PTR
-                 tax
+                 sta             _X_REG
+                 sty             _Y_REG
+                 stx             _T_PTR
 
                  CopyMaskedWord  tiledata+64+0;tiledata+64+32+0;$7003
                  CopyMaskedWord  tiledata+64+4;tiledata+64+32+4;$6003
