@@ -14,6 +14,8 @@ COMMAND_KEY_REG        equ   $E0C061
 OPTION_KEY_REG         equ   $E0C062
 
 SHADOW_SCREEN          equ   $012000
+SHADOW_SCREEN_SCB      equ   $019D00
+SHADOW_SCREEN_PALETTES equ   $019E00
 SHR_SCREEN             equ   $E12000
 SHR_SCB                equ   $E19D00
 SHR_PALETTES           equ   $E19E00
@@ -76,7 +78,8 @@ BG1TileMapWidth        equ   82
 BG1TileMapHeight       equ   84
 BG1TileMapPtr          equ   86
 
-Next                   equ   90
+SCBArrayPtr            equ   90          ; USed for palette binding
+Next                   equ   94
 
 BankLoad               equ   128
 

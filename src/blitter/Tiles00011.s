@@ -2,9 +2,6 @@
 ;
 ; Insert a code sequence to mask the dynamic tile against the background.  This is quite a slow process because
 ; every word needs to be handled with a JMP exception; but it looks good!
-_TBDynamicMaskTile dw            _TBDynamicMaskTile_00,_TBDynamicMaskTile_00,_TBDynamicMaskTile_00,_TBDynamicMaskTile_00
-                   dw            _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00
-
 _TBDynamicMaskTile_00
                  jsr             _TBDynamicDataAndMask
                  jmp             _TBFillJMPOpcode

@@ -108,15 +108,15 @@ _Render
 
 ; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
 
-             lda   ScreenY0             ; pass the address of the first line of the overlay
-             clc
-             adc   #0
-             asl
-             tax
-             lda   ScreenAddr,x
-             clc
-             adc   ScreenX0
-             jsl   Overlay
+            lda   ScreenY0             ; pass the address of the first line of the overlay
+            clc
+            adc   #0
+            asl
+            tax
+            lda   ScreenAddr,x
+            clc
+            adc   ScreenX0
+            jsl   Overlay
 
             ldx   #8                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight

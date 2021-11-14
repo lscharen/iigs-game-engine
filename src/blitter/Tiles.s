@@ -154,24 +154,31 @@ _RenderTile2
 ; A second set that are optimized for when EngineMode has BG1 disabled.
 TileProcs        dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00000 : normal tiles
                  dw     _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00  ; 00001 : dynamic tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00010 : masked normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00011 : masked dynamic tiles
+                 dw     _TBMaskedTile_00,_TBMaskedTile_0H,_TBMaskedTile_V0,_TBMaskedTile_VH      ; 00010 : masked normal tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00                              ; 00011 : masked dynamic tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00
 
+; Fringe tiles not supported yet, so just repeat the block from above
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00100 : fringed normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00101 : fringed dynamic tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00110 : fringed masked normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 00111 : fringed masked dynamic tiles
+                 dw     _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00  ; 00101 : fringed dynamic tiles
+                 dw     _TBMaskedTile_00,_TBMaskedTile_0H,_TBMaskedTile_V0,_TBMaskedTile_VH      ; 00110 : fringed masked normal tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00                              ; 00111 : fringed masked dynamic tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00
 
+; High-priority tiles without a sprite in front of them are just normal tiles.  Repeat the top half
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01000 : high-priority normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01001 : high-priority dynamic tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01010 : high-priority masked normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01011 : high-priority masked dynamic tiles
+                 dw     _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00  ; 01001 : high-priority dynamic tiles
+                 dw     _TBMaskedTile_00,_TBMaskedTile_0H,_TBMaskedTile_V0,_TBMaskedTile_VH      ; 01010 : high-priority masked normal tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00                              ; 01011 : high-priority masked dynamic tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00
 
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01100 : high-priority fringed normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01101 : high-priority fringed dynamic tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01110 : high-priority fringed masked normal tiles
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 01111 : high-priority fringed masked dynamic tiles
+                 dw     _TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00,_TBDynamicTile_00  ; 01101 : high-priority fringed dynamic tiles
+                 dw     _TBMaskedTile_00,_TBMaskedTile_0H,_TBMaskedTile_V0,_TBMaskedTile_VH      ; 01110 : high-priority fringed masked normal tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00                              ; 01111 : high-priority fringed masked dynamic tiles
+                 dw     _TBDynamicMaskTile_00,_TBDynamicMaskTile_00
 
+; Here are all the sprite variants of the tiles
                  dw     _TBSolidSpriteTile_00,_TBSolidSpriteTile_0H,
                  dw     _TBSolidSpriteTile_V0,_TBSolidSpriteTile_VH                              ; 10000 : normal tiles w/sprite
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10001 : dynamic tiles w/sprite
