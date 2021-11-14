@@ -13,23 +13,37 @@ main(process.argv.slice(2)).then(
 );
 
 function findColorIndex(options, png, pixel) {
+    let mask = true;
+    let index = -1;
     for (let i = 0; i < png.palette.length; i += 1) {
         const color = png.palette[i].slice(0, pixel.length); // Handle RGB or RGBA
         if (color.every((c, idx) => c === pixel[idx])) {
-            return i + options.startIndex;
+            if (i === options.transparentIndex) {
+                mask = false;
+            }
+            index = i + options.startIndex;
         }
     }
 
-    return null;
+    if (index === -1) {
+        return [null, mask];
+    }
+
+    if (options.paletteMap) {
+        index = options.paletteMap[index];
+    }
+
+    return [index, mask];
 }
 
 function pngToIIgsBuff(options, png) {
     let i = 0;
     const buff = Buffer.alloc(png.height * (png.width / 2), 0);
+    const mask = Buffer.alloc(png.height * (png.width / 2), 0);
     for (let y = 0; y < png.height; y += 1) {
         for (let x = 0; x < png.width; x += 1, i += 4) {
             const pixel = png.data.slice(i, i + 4);
-            const index = findColorIndex(options, png, pixel);
+            const [index, ismask] = findColorIndex(options, png, pixel);
             const j = y * (png.width / 2) + Math.floor(x / 2);
 
             if (index > 15) {
@@ -39,52 +53,16 @@ function pngToIIgsBuff(options, png) {
 
             if (x % 2 === 0) {
                 buff[j] = 16 * index;
+                mask[j] = ismask ? 0 : 240;
             }
             else {
                 buff[j] = buff[j] | index;
+                mask[j] = mask[j] | (ismask ? 0 : 15);
             }
         }
     }
     
-    return buff;
-}
-
-function shiftImage(src) {
-    const { width, height, colorType, bitDepth } = src;
-    const dst = new PNG({ width, height, colorType, bitDepth });
-
-    PNG.bitblt(src, dst, 1, 0, width - 1, height, 0, 0);
-    PNG.bitblt(src, dst, 0, 0, 1, height, width - 1, 0);
-
-    return dst;
-}
-
-function pngToIIgsBuffRepeat(options, png) {
-    let i = 0;
-    const buff = Buffer.alloc(png.height * png.width, 0);
-    for (let y = 0; y < png.height; y += 1) {
-        for (let x = 0; x < png.width; x += 1, i += 4) {
-            const pixel = png.data.slice(i, i + 4);
-            const index = findColorIndex(options, png, pixel);
-            const j = y * png.width + Math.floor(x / 2);
-
-            if (index > 15) {
-                console.warn('; Pixel index greater than 15. Skipping...');
-                continue;
-            }
-
-            if (x % 2 === 0) {
-                buff[j] = 16 * index;
-            }
-            else {
-                buff[j] = buff[j] | index;
-            }
-
-            buff[j + (png.width / 2)] = buff[j];
-        }
-    }
-
-    return buff;
+    return [buff, mask];
 }
 
 function hexStringToPalette(hex) {
@@ -150,6 +128,7 @@ function getOptions(argv) {
     options.transparentIndex = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
     options.transparentColor = getArg(argv, '--transparent-color', x => x, null);
     options.backgroundColor = getArg(argv, '--background-color', x => x, null);
+    options.targetPalette = getArg(argv, '--palette', x => x.split(',').map(c => hexStringToPalette(c)), null)
 
     return options;
 }
@@ -171,44 +150,70 @@ async function main(argv) {
             return;
         }
 
-        // Get the RGB triplets from the palette
-        const palette = png.palette;
-        const paletteCSSTripplets = palette.map(c => paletteToHexString(c));
+        if (options.palette && options.palette.length > 16) {
+            console.warn('; Too many colors on command line.  Must be 16 or less');
+            return;
+        }
 
-        // If there is a transparent color / color index, make sure it gets shuffled
-        // into index 0
+        // Get the RGB triplets from the palette
+        const sourcePalette = png.palette;
+        const targetPalette = options.targetPalette || sourcePalette;
+        const paletteCSSTripplets = sourcePalette.map(c => paletteToHexString(c));
+
+        // Start with an identity map
+        const paletteMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+        // If there is a transparent color / color index, make sure it gets mapped to index 0
         if (options.transparentIndex > 0) {
-            [palette[0], palette[options.transparentIndex]] = [palette[options.transparentIndex], palette[0]];
-            options.transparentIndex = 0;
+            paletteMap[options.transparentIndex] = 0;
         }
         if (options.transparentColor !== null) {
             const index = paletteCSSTripplets.findIndex(p => p === options.transparentColor);
             if (index !== -1) {
-                options.transparentIndex = 0;
-                [palette[0], palette[index]] = [palette[index], palette[0]];
+                options.transparentIndex = index;
+                paletteMap[index] = 0;
             } else {
                 console.warn(`; transparent color defined, ${options.transparentColor}, but not found in image`);
             }
         }
 
+        // Match up the source palette with the target palette
+        const targetTriplets = targetPalette.map(c => paletteToHexString(c));
+        paletteCSSTripplets.forEach((color, i) => {
+            if (i !== options.transparentIndex) {
+                const j = targetTriplets.findIndex(p => p === color);
+                if (j !== -1) {
+                    console.warn(`Assigned color index ${i} (${color}) to the target palette index ${j}`);
+                    paletteMap[i] = j;
+                } else {
+                    console.warn(`Could not map color index ${i} (${color}) to the target palette`);
+                }
+            }
+        });
+
+        options.paletteMap = paletteMap;
+
         // Dump the palette in IIgs hex format
         console.log('; Palette:');
-        const hexCodes = palette.map(c => '$' + paletteToIIgs(c));
+        const hexCodes = targetPalette.map(c => '$' + paletteToIIgs(c));
+
+        // The transparent color is always mapped into color 0, so if a background color is set it goes into index 0
         if (options.backgroundColor !== null) {
-            hexCodes[options.transparentIndex] = '$' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
+            hexCodes[0] = '$' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
         }
         console.log(';', hexCodes.join(','));
 
         // Just convert a paletted PNG to IIgs memory format.  We make sure that only a few widths
         // are supported
         let buff = null;
+        let mask = null;
 
         console.log('; Converting to BG0 format...');
-        buff = pngToIIgsBuff(options, png);
+        [buff, mask] = pngToIIgsBuff(options, png);
 
         if (buff && argv[1]) {
             if (options.asTileData) {
-                writeToTileDataSource(options, buff, png.width / 2);
+                writeToTileDataSource(options, buff, mask, png.width / 2);
             }
             else {
                 console.log(`; Writing to output file ${argv[1]}`);
@@ -257,7 +262,7 @@ function toMask(hex, transparentIndex) {
 /**
  * Return all four 32 byte chunks of data for a single 8x8 tile
  */
-function buildTile(options, buff, width, x, y) {
+function buildTile(options, buff, _mask, width, x, y) {
     const tile = {
         isSolid: true,
         normal: {
@@ -277,9 +282,14 @@ function buildTile(options, buff, width, x, y) {
         const hex2 = buff[offset + dy * width + 2];
         const hex3 = buff[offset + dy * width + 3];
 
-        const raw = [hex0, hex1, hex2, hex3];
-        const mask = raw.map(h => toMask(h, options.transparentIndex));
-        const data = raw.map((h, i) => h & ~mask[i]);
+        const mask0 = _mask[offset + dy * width + 0];
+        const mask1 = _mask[offset + dy * width + 1];
+        const mask2 = _mask[offset + dy * width + 2];
+        const mask3 = _mask[offset + dy * width + 3];
+
+        const data = [hex0, hex1, hex2, hex3];
+        const mask = [mask0, mask1, mask2, mask3]; // raw.map(h => toMask(h, options.transparentIndex));
+        // const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.normal.data.push(data);
         tile.normal.mask.push(mask);
@@ -296,9 +306,14 @@ function buildTile(options, buff, width, x, y) {
         const hex2 = swap(buff[offset + dy * width + 2]);
         const hex3 = swap(buff[offset + dy * width + 3]);
 
-        const raw = [hex3, hex2, hex1, hex0];
-        const mask = raw.map(h => toMask(h, options.transparentIndex));
-        const data = raw.map((h, i) => h & ~mask[i]);
+        const mask0 = swap(_mask[offset + dy * width + 0]);
+        const mask1 = swap(_mask[offset + dy * width + 1]);
+        const mask2 = swap(_mask[offset + dy * width + 2]);
+        const mask3 = swap(_mask[offset + dy * width + 3]);
+
+        const data = [hex3, hex2, hex1, hex0];
+        const mask = [mask0, mask1, mask2, mask3]; // raw.map(h => toMask(h, options.transparentIndex));
+        // const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.flipped.data.push(data);
         tile.flipped.mask.push(mask);
@@ -307,7 +322,7 @@ function buildTile(options, buff, width, x, y) {
     return tile;
 }
 
-function buildTiles(options, buff, width) {
+function buildTiles(options, buff, mask, width) {
     const tiles = [];
 
     let count = 0;
@@ -316,7 +331,7 @@ function buildTiles(options, buff, width) {
             if (count >= options.maxTiles) {
                 return tiles;
             }
-            const tile = buildTile(options, buff, width, x, y);
+            const tile = buildTile(options, buff, mask, width, x, y);
 
             // Tiled TileIDs start at 1
             tile.tileId = count + 1;
@@ -388,7 +403,7 @@ function buildMerlinCodeForTiles(options, tiles, label='tiledata') {
     return sb.toString();
 }
 
-function writeToTileDataSource(options, buff, width) {
+function writeToTileDataSource(options, buff, mask, width) {
     console.log('tiledata    ENT');
     console.log();
     console.log('; Reserved space (tile 0 is special...');
@@ -403,7 +418,7 @@ function writeToTileDataSource(options, buff, width) {
             console.log('; Tile ID ' + (count + 1));
             console.log('; From image coordinates ' + (x * 2) + ', ' + y);
 
-            const tile = buildTile(options, buff, width, x, y);
+            const tile = buildTile(options, buff, mask, width, x, y);
 
             // Output the tile data
             for (const row of tile.normal.data) {

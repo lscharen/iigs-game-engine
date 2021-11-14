@@ -212,6 +212,8 @@ let GLOBALS = {
  * Command line arguments
  * 
  * --output-dir : sets the output folder to write all assets into
+ * --force-masked : sets the masked flag on the BG0 map data, event if a BG1 layer is not present.  Useful if manually locaing a second background.
+ * --empty-tile : designates a specific tile as the empty (background) tile
  */
 async function main(argv) {
     // Read in the JSON data
@@ -219,6 +221,8 @@ async function main(argv) {
     const workdir = path.dirname(fullpath);
 
     const outdir = getArg(argv, '--output-dir', x => x, workdir);
+    const forceMasked = getArg(argv, '--output-dir', x => true, false);
+    const emptyTile = getArg(argv, '--empty-tile', x => parseInt(x, 10), -1);
 
     console.log(`Reading Tiled JSON file from ${fullpath}`);
     const raw = fs.readFileSync(fullpath);
@@ -261,6 +265,8 @@ async function main(argv) {
     GLOBALS = {
         ...GLOBALS,
         outdir,
+        forceMasked,
+        emptyTile,
         tileSets,
         tileLayers
     };
@@ -436,7 +442,7 @@ function convertTileID(tileId, tileset) {
     if (!tileset[tileIndex - 1]) {
         throw new Error(`Tileset for tileId ${tileIndex} is underinfed`);
     }
-    const mask_bit = (!tileset[tileIndex - 1].isSolid) && (GLOBALS.tileLayers.length !== 1);
+    const mask_bit = (!tileset[tileIndex - 1].isSolid || tileIndex === GLOBALS.emptyTile) && ((GLOBALS.tileLayers.length !== 1) || GLOBALS.forceMasked);
 
     // Build up a partial set of control bits
     let control_bits = (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
