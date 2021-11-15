@@ -133,6 +133,50 @@ function getOptions(argv) {
     return options;
 }
 
+function getPaletteMap(options, png) {
+    // Get the RGB triplets from the palette
+    const sourcePalette = png.palette;
+    const targetPalette = options.targetPalette || sourcePalette;
+    const paletteCSSTripplets = sourcePalette.map(c => paletteToHexString(c));
+
+    // Start with an identity map
+    const paletteMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+    // If there is a transparent color / color index, make sure it gets mapped to index 0
+    if (options.transparentIndex > 0) {
+        paletteMap[options.transparentIndex] = 0;
+    }
+    if (options.transparentColor !== null) {
+        const index = paletteCSSTripplets.findIndex(p => p === options.transparentColor);
+        if (index !== -1) {
+            options.transparentIndex = index;
+            paletteMap[index] = 0;
+        } else {
+            console.warn(`; transparent color defined, ${options.transparentColor}, but not found in image`);
+        }
+    }
+
+    // Match up the source palette with the target palette
+    const targetTriplets = targetPalette.map(c => paletteToHexString(c));
+    paletteCSSTripplets.forEach((color, i) => {
+        if (i !== options.transparentIndex) {
+            const j = targetTriplets.findIndex(p => p === color);
+            if (j !== -1) {
+                console.warn(`Assigned color index ${i} (${color}) to the target palette index ${j}`);
+                paletteMap[i] = j;
+            } else {
+                console.warn(`Could not map color index ${i} (${color}) to the target palette`);
+            }
+        }
+    });
+
+    return {
+        paletteMap,
+        sourcePalette,
+        targetPalette
+    };
+}
+
 async function main(argv) {
     // try {
         const png = await readPNG(argv[0]);
@@ -156,41 +200,7 @@ async function main(argv) {
         }
 
         // Get the RGB triplets from the palette
-        const sourcePalette = png.palette;
-        const targetPalette = options.targetPalette || sourcePalette;
-        const paletteCSSTripplets = sourcePalette.map(c => paletteToHexString(c));
-
-        // Start with an identity map
-        const paletteMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-
-        // If there is a transparent color / color index, make sure it gets mapped to index 0
-        if (options.transparentIndex > 0) {
-            paletteMap[options.transparentIndex] = 0;
-        }
-        if (options.transparentColor !== null) {
-            const index = paletteCSSTripplets.findIndex(p => p === options.transparentColor);
-            if (index !== -1) {
-                options.transparentIndex = index;
-                paletteMap[index] = 0;
-            } else {
-                console.warn(`; transparent color defined, ${options.transparentColor}, but not found in image`);
-            }
-        }
-
-        // Match up the source palette with the target palette
-        const targetTriplets = targetPalette.map(c => paletteToHexString(c));
-        paletteCSSTripplets.forEach((color, i) => {
-            if (i !== options.transparentIndex) {
-                const j = targetTriplets.findIndex(p => p === color);
-                if (j !== -1) {
-                    console.warn(`Assigned color index ${i} (${color}) to the target palette index ${j}`);
-                    paletteMap[i] = j;
-                } else {
-                    console.warn(`Could not map color index ${i} (${color}) to the target palette`);
-                }
-            }
-        });
-
+        const { targetPalette, paletteMap } = getPaletteMap(options, png);
         options.paletteMap = paletteMap;
 
         // Dump the palette in IIgs hex format
@@ -297,6 +307,11 @@ function buildTile(options, buff, _mask, width, x, y) {
         // If we run across any non-zero mask value, then the tile is not solid
         if (mask.some(h => h != 0)) {
             tile.isSolid = false;
+        }
+
+        if (x === 120 && y === 8) {
+            console.warn(`isSolid: ${tile.isSolid}` );
+            console.warn(data.map(d => d.toString(16)), mask);
         }
     }
 
@@ -475,6 +490,7 @@ module.exports = {
     buildMerlinCodeForTiles,
     buildMerlinCodeForTile,
     findColorIndex,
+    getPaletteMap,
     paletteToIIgs,
     pngToIIgsBuff,
     readPNG,

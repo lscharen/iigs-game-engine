@@ -28,7 +28,8 @@ function hexToRbg(hex) {
 
 async function readTileSet(workdir, tileset) {
     // Load up the PNG image
-    const pngfile = path.resolve(path.join(workdir, tileset.image.source));
+    const imageSource = GLOBALS.options.tilesetImage || tileset.image.source;
+    const pngfile = path.resolve(path.join(workdir, imageSource));
     console.log(`Reading PNG file from ${pngfile}`);
     const png = await png2iigs.readPNG(pngfile);
     
@@ -38,7 +39,7 @@ async function readTileSet(workdir, tileset) {
     if (tileset.image.trans) {
         const color = hexToRbg(tileset.image.trans);
         console.log(`Found color ${color} as transparent marker`);
-        transparentIndex = png2iigs.findColorIndex(GLOBALS.options, png, color);
+        [transparentIndex] = png2iigs.findColorIndex(GLOBALS.options, png, color);
         if (typeof transparentIndex !== 'number') {
             console.log('Could not find color in palette');
             console.log(png.palette);
@@ -47,9 +48,14 @@ async function readTileSet(workdir, tileset) {
             console.log(`Transparent color palette index is ${transparentIndex}`);
         }
     }
+    GLOBALS.options.transparentIndex = transparentIndex
 
     console.log(`Converting PNG to IIgs bitmap format...`);
     const [buff, mask] = png2iigs.pngToIIgsBuff(GLOBALS.options, png);
+
+    console.log(`Mapping source and target palettes`);
+    const { paletteMap } = png2iigs.getPaletteMap(GLOBALS.options, png);
+    GLOBALS.options.paletteMap = paletteMap;
 
     console.log(`Building tiles...`);
     const tiles = png2iigs.buildTiles(GLOBALS.options, buff, mask, png.width / 2, transparentIndex);
@@ -225,6 +231,7 @@ async function main(argv) {
     const forceMasked = getArg(argv, '--force-masked', x => true, false);
     const noGenTiles = getArg(argv, '--no-gen-tiles', x => true, false);
     const emptyTile = getArg(argv, '--empty-tile', x => parseInt(x, 10), -1);
+    const tileSet = getArg(argv, '--tile-set', x => x, null);
 
     console.log(`Reading Tiled JSON file from ${fullpath}`);
     const raw = fs.readFileSync(fullpath);
@@ -262,6 +269,10 @@ async function main(argv) {
 
     // Load up any/all tilesets
     const tileSets = await Promise.all(doc.tilesets.map(tileset => loadTileset(workdir, tileset)));
+
+    if (tileSets.length === 1 && tileSet !== null) {
+        tileSets[0].tileset.image.source = tileSet;
+    }
 
     // Create a global reference object
     GLOBALS = {
@@ -448,6 +459,14 @@ function convertTileID(tileId, tileset) {
         throw new Error(`Tileset for tileId ${tileIndex} is underinfed`);
     }
     const mask_bit = (!tileset[tileIndex - 1].isSolid || tileIndex === GLOBALS.emptyTile) && ((GLOBALS.tileLayers.length !== 1) || GLOBALS.forceMasked);
+
+    if (tileIndex === 48) {
+        console.warn('isSolid: ', tileset[tileIndex - 1].isSolid);
+        console.warn('GLOBALS.emptyTile: ', GLOBALS.emptyTile);
+        console.warn('GLOBALS.tileLayers.length: ', GLOBALS.tileLayers.length);
+        console.warn('GLOBALS.forceMasked: ', GLOBALS.forceMasked);
+        console.warn('mask_bit: ', mask_bit);
+    }
 
     // Build up a partial set of control bits
     let control_bits = (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
