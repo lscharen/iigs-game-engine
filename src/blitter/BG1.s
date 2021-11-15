@@ -5,7 +5,7 @@ _InitBG1
                           rts
 
 
-; Copy a binary image data file into BG1.  Assumes the file is the correct size.
+; Copy a binary image data file into BG1.  Assumes the file is the correct size (328 x 208)
 ;
 ; A=low word of picture address
 ; X=high word of pixture address
@@ -17,21 +17,61 @@ CopyBinToBG1              ENT
                           jsr   _CopyBinToBG1
                           plb
                           rtl
+
 _CopyBinToBG1
+:src_width                equ   tmp6
+:src_height               equ   tmp7
+
+                          clc
+                          adc   #8                        ; Advance over the header
+                          pha
+
+                          lda   #164
+                          sta   :src_width
+                          lda   #208
+                          sta   :src_height
+
+                          pla
+                          jmp   _CopyToBG1
+
+
+; Copy a IIgs $C1 picture into BG1.  Assumes the file is the correct size (320 x 200)
+;
+; A=low word of picture address
+; X=high word of pixture address
+; Y=high word of BG1 bank
+CopyPicToBG1              ENT
+                          phb
+                          phk
+                          plb
+                          jsr   _CopyPicToBG1
+                          plb
+                          rtl
+
+_CopyPicToBG1
+:src_width                equ   tmp6
+:src_height               equ   tmp7
+
+                          pha
+                          lda    #160
+                          sta    :src_width
+                          lda    #200
+                          sta    :src_height
+                          pla
+                          jmp    _CopyToBG1
+
+; Generic routine to copy image data into BG1
+_CopyToBG1
 :srcptr                   equ   tmp0
 :line_cnt                 equ   tmp2
 :dstptr                   equ   tmp3
 :col_cnt                  equ   tmp5
+:src_width                equ   tmp6
+:src_height               equ   tmp7
 
                           sta   :srcptr
                           stx   :srcptr+2
                           sty   :dstptr+2                 ; Everything goes into this bank
-
-                                                          ; Advance over the header
-                          lda   :srcptr
-                          clc
-                          adc   #8
-                          sta   :srcptr
 
                           stz   :line_cnt
 :rloop
@@ -50,20 +90,21 @@ _CopyBinToBG1
                           iny
                           iny
 
-                          cpy   #164
+                          cpy   :src_width
                           bcc   :cloop
 
+                          ldy   #254
                           lda   [:srcptr]                 ; Duplicate the last byte in the extra space at the end of the line
                           sta   [:dstptr],y
 
                           lda   :srcptr
                           clc
-                          adc   #164                      ; Each line is 328 pixels
+                          adc   :src_width
                           sta   :srcptr
 
                           inc   :line_cnt
                           lda   :line_cnt
-                          cmp   #208                      ; A total of 208 lines
+                          cmp   :src_height
                           bcc   :rloop
                           rts
 

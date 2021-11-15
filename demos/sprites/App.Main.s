@@ -35,7 +35,7 @@ DOWN_ARROW          equ        $0A
                     ldy        #0
                     jsl        SetPalette
 
-                    ldx        #0                        ; Mode 0 is full-screen
+                    ldx        #5                        ; Mode 0 is full-screen, mode 5 is 256x160
                     jsl        SetScreenMode
 
 ; Set up our level data
@@ -47,6 +47,51 @@ DOWN_ARROW          equ        $0A
                     ldal       OneSecondCounter
                     sta        oldOneSecondCounter
                     jsr        UdtOverlay
+
+; Allocate a buffer for loading files
+                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
+                    sta        BankLoad                ; Store "Bank Pointer"
+
+; Load in the 256 color background into BG1 buffer
+DoLoadBG1
+                    lda        BankLoad
+                    ldx        #BG1DataFile
+                    jsr        LoadFile
+
+                    ldx        BankLoad
+                    lda        #0
+                    ldy        BG1DataBank
+                    jsl        CopyPicToBG1
+
+; Copy the palettes into place
+
+                    stz        tmp0
+:ploop
+                    lda        tmp0
+                    tay
+                    asl
+                    asl
+                    asl
+                    asl
+                    asl
+                    clc
+                    adc        #$7E00
+                    tax
+
+                    lda        BankLoad
+                    jsl        SetPalette
+
+                    inc        tmp0
+                    lda        tmp0
+                    cmp        #16
+                    bcc        :ploop
+
+; Bind the SCBs
+
+                    lda        BankLoad
+                    ora        #$8000                     ; set high bit to bind to BG1 Y-position
+                    ldx        #$7D00
+                    jsl        SetSCBArray
 
 ; Initialize the sprite's global position (this is tracked outside of the tile engine)
                     lda        #16
@@ -70,7 +115,7 @@ DOWN_ARROW          equ        $0A
                     brl        Exit                    ; If we could not allocate a sprite, exit
 
 :sprite_ok
-                    sta        PlayerID
+;                    sta        PlayerID
 
 ; Draw the initial screen
 
@@ -236,7 +281,12 @@ Exit
                     bcs        Fatal
 Fatal               brk        $00
 
-MyPalette           dw         $068F,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
+BG1DataFile         strl       '1/octane.c1'
+
+; Color palette
+; MyPalette           dw         $068F,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
+; B&W Palette
+MyPalette           dw         $0000,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FFF
 PlayerGlobalX       ds         2
 PlayerGlobalY       ds         2
 
@@ -327,6 +377,10 @@ UpdateCameraPos
                     bcc        :y_ok
                     lda        MaxBG0Y
 :y_ok               jsl        SetBG0YPos
+
+                    lda        StartY
+                    lsr
+                    jsl        SetBG1YPos
                     rts
 
 ; Convert the global coordinates to adjusted local coordinated (compensating for wrap-around)
@@ -359,6 +413,7 @@ UpdatePlayerPos
             adc  #16
             tay
             jsr  GetTileAt
+            and  #$1FF
             cmp  #EMPTY_TILE
             beq  :no_ground_check
 
@@ -466,10 +521,75 @@ MovePlayerToOrigin
                     jsl        SetBG0YPos
                     rts
 
+openRec             dw         2                       ; pCount
+                    ds         2                       ; refNum
+                    adrl       BG1DataFile             ; pathname
+
+eofRec              dw         2                       ; pCount
+                    ds         2                       ; refNum
+                    ds         4                       ; eof
+
+readRec             dw         4                       ; pCount
+                    ds         2                       ; refNum
+                    ds         4                       ; dataBuffer
+                    ds         4                       ; requestCount
+                    ds         4                       ; transferCount
+
+closeRec            dw         1                       ; pCount
+                    ds         2                       ; refNum
+
 qtRec               adrl       $0000
                     da         $00
 
 vsync               dw         $0000
+
+
+LoadFile
+                    stx        openRec+4               ; X=File, A=Bank (high word) assumed zero for low
+                    stz        readRec+4
+                    sta        readRec+6
+
+:openFile           _OpenGS    openRec
+                    bcs        :openReadErr
+                    lda        openRec+2
+                    sta        eofRec+2
+                    sta        readRec+2
+
+                    _GetEOFGS  eofRec
+                    lda        eofRec+4
+                    sta        readRec+8
+                    lda        eofRec+6
+                    sta        readRec+10
+
+                    _ReadGS    readRec
+                    bcs        :openReadErr
+
+:closeFile          _CloseGS   closeRec
+                    clc
+                    lda        eofRec+4                ; File Size
+                    rts
+
+:openReadErr        jsr        :closeFile
+                    nop
+                    nop
+
+                    PushWord   #0
+                    PushLong   #msgLine1
+                    PushLong   #msgLine2
+                    PushLong   #msgLine3
+                    PushLong   #msgLine4
+                    _TLTextMountVolume
+                    pla
+                    cmp        #1
+                    bne        :loadFileErr
+                    brl        :openFile
+:loadFileErr        sec
+                    rts
+
+msgLine1            str        'Unable to load File'
+msgLine2            str        'Press a key :'
+msgLine3            str        ' -> Return to Try Again'
+msgLine4            str        ' -> Esc to Quit'
 
                     PUT        ../shell/Overlay.s
                     PUT        gen/App.TileMapBG0.s

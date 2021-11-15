@@ -62,7 +62,7 @@ SetPalette       ENT
                  plb                        ; pop 8-bit bank register
                  tya
                  jsr   _SetPalette
-                 plb                        ; pop the other half og the 16-bit push off
+                 plb                        ; pop the other half of the 16-bit push off
                  plb                        ; restore the original data bank
                  rtl
 

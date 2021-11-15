@@ -49,10 +49,10 @@ async function readTileSet(workdir, tileset) {
     }
 
     console.log(`Converting PNG to IIgs bitmap format...`);
-    const buff = png2iigs.pngToIIgsBuff(GLOBALS.options, png);
+    const [buff, mask] = png2iigs.pngToIIgsBuff(GLOBALS.options, png);
 
     console.log(`Building tiles...`);
-    const tiles = png2iigs.buildTiles(GLOBALS.options, buff, png.width / 2, transparentIndex);
+    const tiles = png2iigs.buildTiles(GLOBALS.options, buff, mask, png.width / 2, transparentIndex);
 
     // Return the tiles
     return tiles;
@@ -214,6 +214,7 @@ let GLOBALS = {
  * --output-dir : sets the output folder to write all assets into
  * --force-masked : sets the masked flag on the BG0 map data, event if a BG1 layer is not present.  Useful if manually locaing a second background.
  * --empty-tile : designates a specific tile as the empty (background) tile
+ * --no-gen-tiles : do not try and create the tile set
  */
 async function main(argv) {
     // Read in the JSON data
@@ -221,7 +222,8 @@ async function main(argv) {
     const workdir = path.dirname(fullpath);
 
     const outdir = getArg(argv, '--output-dir', x => x, workdir);
-    const forceMasked = getArg(argv, '--output-dir', x => true, false);
+    const forceMasked = getArg(argv, '--force-masked', x => true, false);
+    const noGenTiles = getArg(argv, '--no-gen-tiles', x => true, false);
     const emptyTile = getArg(argv, '--empty-tile', x => parseInt(x, 10), -1);
 
     console.log(`Reading Tiled JSON file from ${fullpath}`);
@@ -266,6 +268,7 @@ async function main(argv) {
         ...GLOBALS,
         outdir,
         forceMasked,
+        noGenTiles,
         emptyTile,
         tileSets,
         tileLayers
@@ -280,10 +283,12 @@ async function main(argv) {
         console.log(`Importing tileset "${record.tileset.name}"`);
         const tiles = await readTileSet(workdir, record.tileset);
 
-        const outputFilename = path.resolve(path.join(outdir, record.tileset.name + '.s'));
-        console.log(`Writing tiles to ${outputFilename}`);
-        writeTiles(outputFilename, tiles);
-        console.log(`Writing complete`);
+        if (!GLOBALS.noGenTiles) {
+            const outputFilename = path.resolve(path.join(outdir, record.tileset.name + '.s'));
+            console.log(`Writing tiles to ${outputFilename}`);
+            writeTiles(outputFilename, tiles);
+            console.log(`Writing complete`);
+        }
 
         // Look for tiles with animation sequences.  If found, this information need to be propagated
         // to the tilemap export to mark those tile IDs as Dynamic Tiles.

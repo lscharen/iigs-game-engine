@@ -34,6 +34,7 @@ ApplyBG1YPosAngle  EXT
 
 CopyPicToField     EXT
 CopyBinToField     EXT
+CopyPicToBG1       EXT
 CopyBinToBG1       EXT
 
 AddTimer           EXT

@@ -98,9 +98,9 @@ _Render
 ; optimization that can be done here is that the lines can be rendered in any order
 ; since it is not shown on-screen yet.
 
-            ldx   #0                  ; Blit the full virtual buffer to the screen
-            ldy   #8
-            jsr   _BltRange
+;            ldx   #0                  ; Blit the full virtual buffer to the screen
+;            ldy   #8
+;            jsr   _BltRange
 
 ; Turn shadowing back on
 
@@ -116,11 +116,15 @@ _Render
             lda   ScreenAddr,x
             clc
             adc   ScreenX0
-            jsl   Overlay
+;            jsl   Overlay
 
-            ldx   #8                  ; Blit the full virtual buffer to the screen
+            ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
+
+            ldx   #0
+            ldy   ScreenHeight
+            jsr   _BltSCB
 
             lda   StartY              ; Restore the fields back to their original state
             ldx   ScreenHeight

@@ -47,14 +47,14 @@ _BltSCB
 
             lda   ScreenHeight  ; Calculate the number of scan lines / entry point
             asl
-            asl
+            and   #$FFFC        ; Make sure it's a multiple of 4
             eor   #$FFFF
             inc
             clc
             adc   #:scb_end
             sta   :entry+1
 
-            lda   ScreenY1       ; Get the SCB address to but into the stack register
+            lda   ScreenY1       ; Get the SCB address to put into the stack register
             dec
             clc
             adc   #SHADOW_SCREEN_SCB
@@ -83,7 +83,7 @@ _BltSCB
             rts
 
 
-; Quick helper to set the pointer (X = low word, A = hgih work)
+; Quick helper to set the pointer (X = low word, A = high work)
 SetSCBArray ENT
         jsr   _SetSCBArray
         rtl
