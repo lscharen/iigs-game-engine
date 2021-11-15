@@ -93,7 +93,7 @@ _CopyToBG1
                           cpy   :src_width
                           bcc   :cloop
 
-                          ldy   #254
+                          ldy   #164
                           lda   [:srcptr]                 ; Duplicate the last byte in the extra space at the end of the line
                           sta   [:dstptr],y
 
