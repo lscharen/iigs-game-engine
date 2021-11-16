@@ -182,7 +182,8 @@ TileProcs        dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolid
                  dw     _TBSolidSpriteTile_00,_TBSolidSpriteTile_0H,
                  dw     _TBSolidSpriteTile_V0,_TBSolidSpriteTile_VH                              ; 10000 : normal tiles w/sprite
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10001 : dynamic tiles w/sprite
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10010 : masked normal tiles w/sprite
+                 dw     _TBMaskedSpriteTile_00,_TBMaskedSpriteTile_0H,
+                 dw     _TBMaskedSpriteTile_V0,_TBMaskedSpriteTile_VH                            ; 10010 : masked normal tiles w/sprite
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10011 : masked dynamic tiles w/sprite
 
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 10100 : fringed normal tiles w/sprite

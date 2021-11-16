@@ -3,7 +3,6 @@
 ; When the sprite is composited with the tile data, the tile mask is used to place the tile data on top of
 ; any sprite data
 _TBSolidPrioritySpriteTile_00
-;                 ldx             #45*128
                  jsr             _TBCopyTileDataToCBuff       ; Copy the tile data into the compositing buffer (using correct x-register)
                  jsr             _TBCopyTileMaskToCBuff       ; Copy the tile mask into the compositing buffer (using correct x-register)
                  jsr             _TBApplyPrioritySpriteData   ; Underlay the data fromthe sprite plane (and copy into the code field)

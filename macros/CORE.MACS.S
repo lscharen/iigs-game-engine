@@ -209,7 +209,7 @@ CopyMaskedWordD MAC
 ; This is a solid word
                 lda   #$00F4          ; PEA instruction
                 sta:  ]2,y
-                ldal  ]1              ; load the tile data
+                lda   ]1              ; load the tile data
                 sta:  ]2+1,y          ; PEA operand
                 bra   next
 
