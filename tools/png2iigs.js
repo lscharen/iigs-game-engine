@@ -308,11 +308,6 @@ function buildTile(options, buff, _mask, width, x, y) {
         if (mask.some(h => h != 0)) {
             tile.isSolid = false;
         }
-
-        if (x === 120 && y === 8) {
-            console.warn(`isSolid: ${tile.isSolid}` );
-            console.warn(data.map(d => d.toString(16)), mask);
-        }
     }
 
     for (dy = 0; dy < 8; dy += 1) {

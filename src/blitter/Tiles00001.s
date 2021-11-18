@@ -17,7 +17,7 @@ _TBDynamicTile_00
 ; LDA 00,x / PHA where the operand is fixed when the tile is rendered
 ; $B5 $00 $48
 _TBDynamicData
-                 txa
+;                 txa
                  asl
                  asl
                  asl

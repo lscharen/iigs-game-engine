@@ -372,9 +372,9 @@ CopyMaskedDWord MAC
                 ora   #$80
                 sta:  $0003,x         ; Set AND 00,x operand
                 lda   #$35
-                sta:  $0002,x         ; Set AND 00,x operand
+                sta:  $0002,x         ; Set AND 00,x opcode
                 lda   #$15
-                sta:  $0004,x         ; Set ORA 00,x operand
+                sta:  $0004,x         ; Set ORA 00,x opcode
                 rep   #$30
 
                 lda   #$0290          ; BCC *+4

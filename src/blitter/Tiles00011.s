@@ -8,9 +8,11 @@ _TBDynamicMaskTile_00
 
 ; A = dynamic tile id (must be <32)
 _TBDynamicDataAndMask
+                 sta             _X_REG
+
+                 txa
                  and             #$007F                            ; clamp to < (32 * 4)
                  sta             _T_PTR
-                 stx             _X_REG
 
                  CopyMaskedDWord  $0003
                  CopyMaskedDWord  $1003
