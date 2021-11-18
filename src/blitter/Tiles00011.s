@@ -10,7 +10,7 @@ _TBDynamicMaskTile_00
 _TBDynamicDataAndMask
                  sta             _X_REG
 
-                 txa
+                 lda             tmp0                              ; get the original tile descriptor
                  and             #$007F                            ; clamp to < (32 * 4)
                  sta             _T_PTR
 

@@ -119,6 +119,7 @@ _RenderTile2
                  stx   _SPR_X_REG
 
 :nosprite
+                 sta   tmp0                           ; Some tile blitters need to get the tile descriptor
                  and   #TILE_CTRL_MASK
                  xba
                  tax

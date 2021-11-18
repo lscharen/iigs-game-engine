@@ -382,9 +382,7 @@ CopyMaskedDWord MAC
                 eom
 
 
-; Masked renderer for a dynamic tile with sprite data overlaid. What's interesting about this renderer is that the mask
-; value is not used directly, but simply indicates if we can use a LDA 0,x / PHA sequence,
-; a LDA (00),y / PHA, or a JMP to a blended render
+; Masked renderer for a dynamic tile with sprite data overlaid.
 ;
 ; If a dynamic tile is animated, there is the possibility to create a special mask that marks
 ; words of the tile that a front / back / mixed across all frames.
@@ -404,6 +402,15 @@ CopyMaskedDynSpriteWord MAC
 ;
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Masked
 ; code.
+;
+; If the tile priority bit is set, then we use an alternate bit of code that changes to oder
+; of operations to and can't make an assumption about the transparency
+;
+;            lda  (00),y
+;            and  #MASK
+;            ora  #DATA
+;            and  $80,x
+;            ora  $00,x
 
 
                 ldx   _X_REG          ; Get the addressing offset

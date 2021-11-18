@@ -17,11 +17,7 @@ _TBDynamicTile_00
 ; LDA 00,x / PHA where the operand is fixed when the tile is rendered
 ; $B5 $00 $48
 _TBDynamicData
-;                 txa
-                 asl
-                 asl
-                 asl
-                 xba                                               ; Undo the x128 we just need x4
+                 lda             tmp0                              ; Get the original tile descriptor
                  and             #$007F                            ; clamp to < (32 * 4)
                  ora             #$4800                            ; insert the PHA instruction
 
