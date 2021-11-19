@@ -36,10 +36,13 @@ DOWN_ARROW          equ        $0A
                     jsl        SetPalette
 
                     ldx        #5                        ; Mode 0 is full-screen, mode 5 is 256x160
+                    ldx        #320
+                    ldy        #144
                     jsl        SetScreenMode
 
 ; Set up our level data
                     jsr        BG0SetUp
+                    jsr        TileAnimInit
                     jsr        SetLimits
 
                     jsr        InitOverlay             ; Initialize the status bar
@@ -239,7 +242,11 @@ EvtLoop
                     ldy        PlayerY
                     jsl        UpdateSprite           ; Move the sprite to this local position
 
+; Update the timers
+                    jsl        DoTimers
+
 ; Let's see what it looks like!
+
                     lda        vsync
                     beq        :no_vsync
 :vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
@@ -281,7 +288,7 @@ Exit
                     bcs        Fatal
 Fatal               brk        $00
 
-BG1DataFile         strl       '1/octane.c1'
+BG1DataFile         strl       '1/sunset.c1'
 
 ; Color palette
 ; MyPalette           dw         $068F,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7

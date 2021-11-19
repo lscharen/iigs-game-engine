@@ -460,6 +460,7 @@ function convertTileID(tileId, tileset) {
     }
     const mask_bit = (!tileset[tileIndex - 1].isSolid || tileIndex === GLOBALS.emptyTile) && ((GLOBALS.tileLayers.length !== 1) || GLOBALS.forceMasked);
 
+    /*
     if (tileIndex === 48) {
         console.warn('isSolid: ', tileset[tileIndex - 1].isSolid);
         console.warn('GLOBALS.emptyTile: ', GLOBALS.emptyTile);
@@ -467,6 +468,7 @@ function convertTileID(tileId, tileset) {
         console.warn('GLOBALS.forceMasked: ', GLOBALS.forceMasked);
         console.warn('mask_bit: ', mask_bit);
     }
+    */
 
     // Build up a partial set of control bits
     let control_bits = (mask_bit ? GTE_MASK_BIT : 0) + (hflip ? GTE_HFLIP_BIT : 0) + (vflip ? GTE_VFLIP_BIT : 0);
@@ -477,6 +479,11 @@ function convertTileID(tileId, tileset) {
         const animation = tileset[tileIndex - 1].animation;
         tileId = animation.dynTileId;
         control_bits = GTE_DYN_BIT;
+
+        console.warn('Dyanmic animation tile found!');
+        console.warn('isSolid: ', tileset[tileIndex - 1].isSolid);
+        console.warn('dynTileId: ',  animation.dynTileId);
+        console.warn('mask_bit: ', mask_bit);
     }
 
     return (tileId & 0x1FFFFFFF) + control_bits;

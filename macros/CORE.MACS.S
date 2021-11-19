@@ -219,7 +219,7 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
 ; This is the slowest path because there is a *lot* of work to do.  So much that it's
 ; worth it to change up the environment to optimize things a bit more.
 ;
-; Need to fill in the first 8 bytes of the JMP handler with the following code sequence
+; Need to fill in the first 10 bytes of the JMP handler with the following code sequence
 ;
 ;            lda  (00),y
 ;            and  #MASK
@@ -251,6 +251,9 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
                 sta:  $0003,y         ; handler.
                 lda   ]1
                 sta:  $0006,y
+
+                lda   #$0D80          ; branch to the prologue (BRA *+15)
+                sta:  $0008,y
 
                 ldy   _Y_REG          ; restore original y-register value and move on
                 bra   next
@@ -321,6 +324,9 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
                 ldal  ]1,x
                 sta:  $0006,y
 
+                lda   #$0D80          ; branch to the prologue (BRA *+15)
+                sta:  $0008,y
+
                 ldy   _Y_REG          ; restore original y-register value and move on
                 bra   next
 
@@ -332,104 +338,4 @@ transparent
                 ora   #$4800          ; put a PHA after the offset
                 sta:  ]3+1,y
 next
-                eom
-
-; Masked renderer for a dynamic tile. What's interesting about this renderer is that the mask
-; value is not used directly, but simply indicates if we can use a LDA 0,x / PHA sequence,
-; a LDA (00),y / PHA, or a JMP to a blended render
-;
-; If a dynamic tile is animated, there is the possibility to create a special mask that marks
-; words of the tile that a front / back / mixed across all frames.
-;
-; ]1 : tiledata offset
-; ]2 : tilemask offset
-; ]3 : code field offset
-CopyMaskedDWord MAC
-
-; Need to fill in the first 8 bytes of the JMP handler with the following code sequence
-;
-;            lda  (00),y
-;            and  $80,x
-;            ora  $00,x
-;            bcc  *+4
-
-                ldx   _X_REG          ; Get the addressing offset
-                ldal  JTableOffset,x  ; Get the address offset and add to the base address
-                adc   _BASE_ADDR      ; of the current code field line
-                adc   #{]1&$F000}     ; adjust for the current row offset
-                sta:  ]1+1,y
-
-                tax                   ; This becomes the new address that we use to patch in
-                lda   _X_REG          ; Get the offset and render a LDA (dp),y instruction
-
-                sep   #$20            ; Easier to do 8-bit operations
-                sta:  $0001,x         ; Set the LDA (00),y operand
-                lda   #$B1
-                sta:  $0000,x         ; Set the LDA (00),y opcode
-
-                lda   _T_PTR
-                sta:  $0005,x         ; Set ORA 00,x operand
-                ora   #$80
-                sta:  $0003,x         ; Set AND 00,x operand
-                lda   #$35
-                sta:  $0002,x         ; Set AND 00,x operand
-                lda   #$15
-                sta:  $0004,x         ; Set ORA 00,x operand
-                rep   #$30
-
-                lda   #$0290          ; BCC *+4
-                sta:  $0006,x
-                eom
-
-
-; Masked renderer for a dynamic tile with sprite data overlaid. What's interesting about this renderer is that the mask
-; value is not used directly, but simply indicates if we can use a LDA 0,x / PHA sequence,
-; a LDA (00),y / PHA, or a JMP to a blended render
-;
-; If a dynamic tile is animated, there is the possibility to create a special mask that marks
-; words of the tile that a front / back / mixed across all frames.
-;
-; ]1 : tiledata offset
-; ]2 : tilemask offset
-; ]3 : code field offset
-CopyMaskedDynSpriteWord MAC
-
-; Need to fill in the first 12(!!) bytes of the JMP handler with the following code sequence
-;
-;            lda  (00),y
-;            and  $80,x
-;            ora  $00,x
-;            and  #MASK
-;            ora  #DATA
-;
-; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Masked
-; code.
-
-
-                ldx   _X_REG          ; Get the addressing offset
-                ldal  JTableOffset,x  ; Get the address offset and add to the base address
-                adc   _BASE_ADDR      ; of the current code field line
-                adc   #{]1&$F000}     ; adjust for the current row offset
-                sta:  ]1+1,y
-
-                tax                   ; This becomes the new address that we use to patch in
-                lda   _X_REG          ; Get the offset and render a LDA (dp),y instruction
-
-                sep   #$20            ; Easier to do 8-bit operations
-                sta:  $0001,x         ; Set the LDA (00),y operand
-                lda   #$B1
-                sta:  $0000,x         ; Set the LDA (00),y opcode
-
-                lda   _T_PTR
-                sta:  $0005,x         ; Set ORA 00,x operand
-                ora   #$80
-                sta:  $0003,x         ; Set AND 00,x operand
-                lda   #$35
-                sta:  $0002,x         ; Set AND 00,x operand
-                lda   #$15
-                sta:  $0004,x         ; Set ORA 00,x operand
-                rep   #$30
-
-                lda   #$0290          ; BCC *+4
-                sta:  $0006,x
                 eom

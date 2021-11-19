@@ -8,7 +8,7 @@
                   use       .\Defs.s
 
 ; Feature flags
-NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data provided by the main program segment
@@ -412,10 +412,15 @@ ReadControl       ENT
                   put       blitter/Tiles00011.s      ; dynamic masked tiles
 
                   put       blitter/Tiles10000.s      ; normal tiles + sprites
-;                  put       blitter/Tiles10001.s
+                  put       blitter/Tiles10001.s      ; dynamic tiles + sprites
                   put       blitter/Tiles10010.s      ; normal masked tiles + sprites
-;                  put       blitter/Tiles10011.s
-                  put       blitter/Tiles11000.s      ; normal high priority tile + sprites
+                  put       blitter/Tiles10011.s      ; dynamic masked tiles + sprites
+
+                  put       blitter/Tiles11000.s      ; normal high priority tiles + sprites
+                  put       blitter/Tiles11001.s      ; dynamic high priority tiles + sprites
+                  put       blitter/Tiles11010.s      ; normal high priority masked tiles + sprites
+                  put       blitter/Tiles11011.s      ; dynamic high priority masked tiles + sprites
+
                   put       blitter/TilesBG1.s
                   put       blitter/Vert.s
                   put       blitter/BG0.s
