@@ -219,7 +219,7 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
 ; This is the slowest path because there is a *lot* of work to do.  So much that it's
 ; worth it to change up the environment to optimize things a bit more.
 ;
-; Need to fill in the first 8 bytes of the JMP handler with the following code sequence
+; Need to fill in the first 10 bytes of the JMP handler with the following code sequence
 ;
 ;            lda  (00),y
 ;            and  #MASK
@@ -251,6 +251,9 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
                 sta:  $0003,y         ; handler.
                 lda   ]1
                 sta:  $0006,y
+
+                lda   #$0D80          ; branch to the prologue (BRA *+15)
+                sta:  $0008,y
 
                 ldy   _Y_REG          ; restore original y-register value and move on
                 bra   next
@@ -321,6 +324,9 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
                 ldal  ]1,x
                 sta:  $0006,y
 
+                lda   #$0D80          ; branch to the prologue (BRA *+15)
+                sta:  $0008,y
+
                 ldy   _Y_REG          ; restore original y-register value and move on
                 bra   next
 
@@ -346,12 +352,11 @@ next
 ; ]3 : code field offset
 CopyMaskedDWord MAC
 
-; Need to fill in the first 8 bytes of the JMP handler with the following code sequence
+; Need to fill in the first 6 bytes of the JMP handler with the following code sequence
 ;
 ;            lda  (00),y
 ;            and  $80,x
 ;            ora  $00,x
-;            bcc  *+4
 
                 ldx   _X_REG          ; Get the addressing offset
                 ldal  JTableOffset,x  ; Get the address offset and add to the base address
@@ -377,7 +382,7 @@ CopyMaskedDWord MAC
                 sta:  $0004,x         ; Set ORA 00,x opcode
                 rep   #$30
 
-                lda   #$0290          ; BCC *+4
+                lda   #$0F80          ; branch to the prologue (BRA *+17)
                 sta:  $0006,x
                 eom
 
@@ -392,25 +397,17 @@ CopyMaskedDWord MAC
 ; ]3 : code field offset
 CopyMaskedDynSpriteWord MAC
 
-; Need to fill in the first 12(!!) bytes of the JMP handler with the following code sequence
+; Need to fill in the first 12 bytes of the JMP handler with the following code sequence
 ;
 ;            lda  (00),y
 ;            and  $80,x
 ;            ora  $00,x
 ;            and  #MASK
 ;            ora  #DATA
+;            bra  *+11
 ;
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Masked
 ; code.
-;
-; If the tile priority bit is set, then we use an alternate bit of code that changes to oder
-; of operations to and can't make an assumption about the transparency
-;
-;            lda  (00),y
-;            and  #MASK
-;            ora  #DATA
-;            and  $80,x
-;            ora  $00,x
 
 
                 ldx   _X_REG          ; Get the addressing offset
@@ -432,11 +429,21 @@ CopyMaskedDynSpriteWord MAC
                 ora   #$80
                 sta:  $0003,x         ; Set AND 00,x operand
                 lda   #$35
-                sta:  $0002,x         ; Set AND 00,x operand
+                sta:  $0002,x         ; Set AND 00,x opcode
                 lda   #$15
-                sta:  $0004,x         ; Set ORA 00,x operand
-                rep   #$30
+                sta:  $0004,x         ; Set ORA 00,x opcode
 
-                lda   #$0290          ; BCC *+4
-                sta:  $0006,x
+                lda   #$29
+                sta:  $0006,y         ; AND #$0000 opcode
+                lda   #$09
+                sta:  $0009,y         ; ORA #$0000 opcode
+                rep   #$20
+
+                lda   ]1+32           ; insert the tile mask and data into the exception
+                sta:  $0007,y         ; handler.
+                lda   ]1
+                sta:  $000A,y
+
+                lda   #$0990          ; BCC *+11
+                sta:  $000C,x
                 eom

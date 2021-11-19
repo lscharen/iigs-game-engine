@@ -37,8 +37,18 @@ PagePatches        da    {long_0-base+2}
                    da    {loop_back-base+2}
                    da    {loop_exit_3-base+2}
                    da    {even_exit-base+2}
+                   da    {jmp_rtn_1-base+2}
+                   da    {jmp_rtn_2-base+2}
+
+]index             equ   0
+                   lup   82                                 ; All the snippet addresses. The two JMP
+                   da    {snippets-base+{]index*32}+31}     ; instructino are at the end of each of
+                   da    {snippets-base+{]index*32}+28}     ; the 32-byte buffers
+]index             equ   ]index+1
+                   --^
 PagePatchNum       equ   *-PagePatches
 
+; Location that need a bank byte set for long addressing modes
 BankPatches        da    {long_0-base+3}
                    da    {long_1-base+3}
                    da    {long_2-base+3}
@@ -483,7 +493,9 @@ BuildBank
 ; 13 banks for a total of 208 lines, which is what is required to render 26 tiles
 ; to cover the full screen vertical scrolling.
 ;
-; The 'base' location is always assumed to be on a 4kb ($1000) boundary
+; The 'base' location is always assumed to be on a 4kb ($1000) boundary.  We make sure that
+; the code is assembled on a page boundary to help will alignment
+                   ds    \,$00                      ; pad to the next page boundary
 base
 entry_1            ldx   #0000                      ; Used for LDA 00,x addressing
 entry_2            ldy   #0000                      ; Used for LDA (00),y addressing
@@ -538,7 +550,7 @@ long_3             stal  *+5-base
 full_return        jml   blt_return                 ; Full exit
 
 ; Re-enable interrupts and continue -- the even_exit JMP from the previous line will jump here every
-; 8 or 16 lines in order to give the system some extra time to handle interrupts.
+; 8 or 16 lines in order to give the system time to handle interrupts.
 enable_int         ldal  stk_save+1                 ; restore the stack
                    tcs
                    sep   #$20                       ; 8-bit mode
@@ -554,13 +566,26 @@ enable_int         ldal  stk_save+1                 ; restore the stack
                    rep   #$20
                    bra   entry_1
 
+; The even/odd branch of this line's exception handler will return here.  This is mostly
+; a space-saving measure to allow for more code in the exeption handers themselved, but
+; also simplified the relocation process since we only have to update a single address
+; in each exception handler, rather than two.
+;
+; Oce working, this code should be able to be interleaved with the r_jmp_rtn code
+; above to eliminate a couple of branches
+jmp_rtn
+                   bvs   jmp_rtn_v                  ; overflow set means this is the right edge (entry)
+                   clc                              ; carry is set only for edge operations; force clear
+jmp_rtn_1          jmp   l_jmp_rtn-base
+jmp_rtn_v          rep   #$41                       ; clear V and C
+jmp_rtn_2          jmp   r_jmp_rtn-base
 
 ; This is the spot that needs to be page-aligned. In addition to simplifying the entry address
 ; and only needing to update a byte instad of a word, because the code breaks out of the
 ; code field with a BRA instruction, we keep everything within a page to avoid the 1-cycle
 ; page-crossing penalty of the branch.
 
-                   ds    166
+                   ds    \,$00                      ; pad to the next page boundary
 loop_exit_1        jmp   odd_exit-base              ; +0   Alternate exit point depending on whether the left edge is 
 loop_exit_2        jmp   even_exit-base             ; +3   odd-aligned
 
@@ -685,32 +710,25 @@ epilogue_1         tsc
 ;  r_edge    rep   #$41
 ;            brl  r_jmp_rtn     ; 3
 
-
+; Each snippet is provided 32 bytes of space.  The constant code is filled in from the end and
+; it is the responsibility of the code that fills in the hander to create valid program in the
+; first 23 bytes are available to be manipulated.
+;
+; Note that the code that's assembled in the first bytes of these snippets is just an example.  Every
+; routine that created an exception handler *MUST* write a full set of instructions since there is
+; no guarantee of what was written previously.
                    ds    \,$00                      ; pad to the next page boundary
 ]index             equ   0
 snippets           lup   82
-                   ds    2                          ; space for a 2-byte sequence; LDA (00),y  LDA 00,x  LDA 0,s
+                   ds    2                          ; space for all exception handlers
                    and   #$0000                     ; the mask operand will be set when the tile is drawn
                    ora   #$0000                     ; the data operand will be set when the tile is drawn
-                   bcs   *+6
-                   pha
-                   brl   loop+3+{3*]index}          ; use relative branch for convenience
-                   bvs   *+6                        ; overflow set means this is the right edge (entry)
-                   clc                              ; carry is set only for edge operations; force clear
-                   brl   l_jmp_rtn
-                   rep   #$41                       ; clear V and C
-                   brl   r_jmp_rtn                  ; 25 bytes
-                   ds    7                          ; padding
+                   ds    15                         ; extra padding
+
+                   bcs   :byte                      ; if C = 0, just push the data and return
+                   pha                              ; 1 byte 
+                   jmp   loop+3+{3*]index}-base     ; 3 bytes : use relative branch for convenience
+:byte              jmp   jmp_rtn-base               ; 3 bytes
 ]index             equ   ]index+1
                    --^
 top
-
-
-
-
-
-
-
-
-
-
