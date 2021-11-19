@@ -412,7 +412,7 @@ ReadControl       ENT
                   put       blitter/Tiles00011.s      ; dynamic masked tiles
 
                   put       blitter/Tiles10000.s      ; normal tiles + sprites
-;                  put       blitter/Tiles10001.s
+                  put       blitter/Tiles10001.s
                   put       blitter/Tiles10010.s      ; normal masked tiles + sprites
 ;                  put       blitter/Tiles10011.s
                   put       blitter/Tiles11000.s      ; normal high priority tile + sprites
