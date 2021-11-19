@@ -39,10 +39,8 @@ _TBDynamicDataAndMask
                  CopyMaskedDWord  $7003
 
                  ldx             _X_REG
-                 inx
-                 inx
                  clc
-                 ldal            JTableOffset,x       ; Get the address offset and add to the base address
+                 ldal            JTableOffset+2,x     ; Get the address offset and add to the base address
                  adc             _BASE_ADDR           ; of the current code field line
                  sta             _JTBL_CACHE
 
@@ -117,7 +115,7 @@ CopyMaskedDWord MAC
                 sta:  $0000,x         ; LDA (00),y
                 lda   _T_PTR
                 sta:  $0002,x         ; AND $80,x
-                eor   #$2080          ; Switch the opcode to an ORA and remove the high bit of the operand
+                eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
                 sta:  $0004,x         ; ORA $00,x
                 lda   #$0F80          ; branch to the prologue (BRA *+17)
                 sta:  $0006,x
