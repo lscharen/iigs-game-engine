@@ -203,7 +203,8 @@ TileProcs        dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolid
                  dw     _TBDynamicPrioritySpriteTile_00,_TBDynamicPrioritySpriteTile_00          ; 11001 : high-priority dynamic tiles w/sprite
                  dw     _TBMaskedPrioritySpriteTile_00,_TBMaskedPrioritySpriteTile_0H
                  dw     _TBMaskedPrioritySpriteTile_V0,_TBMaskedPrioritySpriteTile_VH            ; 11010 : high-priority masked normal tiles w/sprite
-                 dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11011 : high-priority masked dynamic tiles w/sprite
+                 dw     _TBDynamicMaskedPrioritySpriteTile_00,_TBDynamicMaskedPrioritySpriteTile_00
+                 dw     _TBDynamicMaskedPrioritySpriteTile_00,_TBDynamicMaskedPrioritySpriteTile_00 ; 11011 : high-priority masked dynamic tiles w/sprite
 
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11100 : high-priority fringed normal tiles w/sprite
                  dw     _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH          ; 11101 : high-priority fringed dynamic tiles w/sprite
