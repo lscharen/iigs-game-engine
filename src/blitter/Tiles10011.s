@@ -109,13 +109,12 @@ mixed
                 eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
                 sta:  $0004,y         ; ORA $00,x
 
+                lda   #$0029          ; AND #SPRITE_MASK
+                sta:  $0006,y
                 ldal  spritemask+]1,x 
                 cmp   #$FFFF          ; All 1's in the mask is a fully transparent sprite word
                 beq   transparent     ; so we can use the Tile00011 method
-
                 sta:  $0007,y
-                lda   #$0029          ; AND #SPRITE_MASK
-                sta:  $0006,y
 
                 lda   #$0009          ; ORA #SPRITE_DATA
                 sta:  $0009,y
