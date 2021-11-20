@@ -5,40 +5,26 @@
 ; there is no way to do everything inline, so a composite tile is created on the fly and written to
 ; a direct page buffer.  This direct page buffer is then used to render the tile.
 _TBSolidSpriteTile_00
+_TBSolidSpriteTile_0H
                  jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer (using correct x-register)
                  jsr             _TBApplySpriteData         ; Overlay the data from the sprite plane (and copy into the code field)
                  jmp             _TBFillPEAOpcode           ; Fill in the code field opcodes
 
-_TBSolidSpriteTile_0H
-                 jsr             _TBCopyTileDataToCBuffH
-                 jsr             _TBApplySpriteData
-                 jmp             _TBFillPEAOpcode
-
 _TBSolidSpriteTile_V0
-                 jsr             _TBCopyTileDataToCBuffV
-                 jsr             _TBApplySpriteData
-                 jmp             _TBFillPEAOpcode
-
 _TBSolidSpriteTile_VH
-                 jsr             _TBCopyTileDataToCBuffVH
+                 jsr             _TBCopyTileDataToCBuffV
                  jsr             _TBApplySpriteData
                  jmp             _TBFillPEAOpcode
 
 ; Fast variation that does not need to set the opcode
 _TBFastSpriteTile_00
+_TBFastSpriteTile_0H
                  jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer
                  jmp             _TBApplySpriteData         ; Overlay the data form the sprite plane (and copy into the code field)
 
-_TBFastSpriteTile_0H
-                 jsr             _TBCopyTileDataToCBuffH
-                 jmp             _TBApplySpriteData
-
 _TBFastSpriteTile_V0
-                 jsr             _TBCopyTileDataToCBuffV
-                 jmp             _TBApplySpriteData
-
 _TBFastSpriteTile_VH
-                 jsr             _TBCopyTileDataToCBuffVH
+                 jsr             _TBCopyTileDataToCBuffV
                  jmp             _TBApplySpriteData
 
 ; Need to update the X-register before calling this
@@ -78,17 +64,17 @@ _TBCopyTileDataToCBuff
                  --^
                  rts
 
-_TBCopyTileDataToCBuffH
-]line            equ   0
-                 lup   8
-                 ldal  tiledata+{]line*4}+64,x
-                 sta   blttmp+{]line*4}
-
-                 ldal  tiledata+{]line*4}+64+2,x
-                 sta   blttmp+{]line*4}+2
-]line            equ   ]line+1
-                 --^
-                 rts
+;_TBCopyTileDataToCBuffH
+;]line            equ   0
+;                 lup   8
+;                 ldal  tiledata+{]line*4}+64,x
+;                 sta   blttmp+{]line*4}
+;
+;                 ldal  tiledata+{]line*4}+64+2,x
+;                 sta   blttmp+{]line*4}+2
+;]line            equ   ]line+1
+;                 --^
+;                 rts
 
 _TBCopyTileDataToCBuffV
 ]src             equ             7
@@ -104,19 +90,19 @@ _TBCopyTileDataToCBuffV
                  --^
                  rts
 
-_TBCopyTileDataToCBuffVH
-]src             equ             7
-]dest            equ             0
-                 lup             8
-                 ldal            tiledata+{]src*4}+64,x
-                 sta             blttmp+{]dest*4}
-
-                 ldal            tiledata+{]src*4}+64+2,x
-                 sta             blttmp+{]dest*4}+2
-]src             equ             ]src-1
-]dest            equ             ]dest+1
-                 --^
-                 rts
+;_TBCopyTileDataToCBuffVH
+;]src             equ             7
+;]dest            equ             0
+;                 lup             8
+;                 ldal            tiledata+{]src*4}+64,x
+;                 sta             blttmp+{]dest*4}
+;
+;                 ldal            tiledata+{]src*4}+64+2,x
+;                 sta             blttmp+{]dest*4}+2
+;]src             equ             ]src-1
+;]dest            equ             ]dest+1
+;                 --^
+;                 rts
 
 
 ; Copy tile mask data into the direct page compositing buffer.
@@ -132,17 +118,17 @@ _TBCopyTileMaskToCBuff
                  --^
                  rts
 
-_TBCopyTileMaskToCBuffH
-]line            equ   0
-                 lup   8
-                 ldal  tiledata+{]line*4}+32+64,x
-                 sta   blttmp+{]line*4}+32
-
-                 ldal  tiledata+{]line*4}+32+64+2,x
-                 sta   blttmp+{]line*4}+32+2
-]line            equ   ]line+1
-                 --^
-                 rts
+;_TBCopyTileMaskToCBuffH
+;]line            equ   0
+;                 lup   8
+;                 ldal  tiledata+{]line*4}+32+64,x
+;                 sta   blttmp+{]line*4}+32
+;
+;                 ldal  tiledata+{]line*4}+32+64+2,x
+;                 sta   blttmp+{]line*4}+32+2
+;]line            equ   ]line+1
+;                 --^
+;                 rts
 
 _TBCopyTileMaskToCBuffV
 ]src             equ             7
@@ -158,19 +144,19 @@ _TBCopyTileMaskToCBuffV
                  --^
                  rts
 
-_TBCopyTileMaskToCBuffVH
-]src             equ             7
-]dest            equ             0
-                 lup             8
-                 ldal            tiledata+{]src*4}+32+64,x
-                 sta             blttmp+{]dest*4}+32
-
-                 ldal            tiledata+{]src*4}+32+64+2,x
-                 sta             blttmp+{]dest*4}+32+2
-]src             equ             ]src-1
-]dest            equ             ]dest+1
-                 --^
-                 rts
+;_TBCopyTileMaskToCBuffVH
+;]src             equ             7
+;]dest            equ             0
+;                 lup             8
+;                 ldal            tiledata+{]src*4}+32+64,x
+;                 sta             blttmp+{]dest*4}+32
+;
+;                 ldal            tiledata+{]src*4}+32+64+2,x
+;                 sta             blttmp+{]dest*4}+32+2
+;]src             equ             ]src-1
+;]dest            equ             ]dest+1
+;                 --^
+;                 rts
 
 
 ; Copy just the data into the code field from the composite buffer

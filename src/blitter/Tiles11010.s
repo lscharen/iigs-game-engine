@@ -2,6 +2,7 @@
 ;
 ; Renders a composited tile with masking to the code field.  The sprite is underlaid
 _TBMaskedPrioritySpriteTile_00
+_TBMaskedPrioritySpriteTile_0H
                  sta             _X_REG                       ; Immedately stash the parameters
                  sty             _Y_REG
 
@@ -10,15 +11,16 @@ _TBMaskedPrioritySpriteTile_00
                  jsr             _TBUnderlaySpriteDataAndMask ; Underlay the data and mask from the sprite plane into the compositing buffer
                  jmp             _TBMaskedCBuff               ; Render the masked tile from the compositing buffer into the code field
 
-_TBMaskedPrioritySpriteTile_0H
-                 sta             _X_REG
-                 sty             _Y_REG
-                 jsr             _TBCopyTileDataToCBuffH
-                 jsr             _TBCopyTileMaskToCBuffH
-                 jsr             _TBUnderlaySpriteDataAndMask
-                 jmp             _TBMaskedCBuff
+;_TBMaskedPrioritySpriteTile_0H
+;                 sta             _X_REG
+;                 sty             _Y_REG
+;                 jsr             _TBCopyTileDataToCBuffH
+;                 jsr             _TBCopyTileMaskToCBuffH
+;                 jsr             _TBUnderlaySpriteDataAndMask
+;                 jmp             _TBMaskedCBuff
 
 _TBMaskedPrioritySpriteTile_V0
+_TBMaskedPrioritySpriteTile_VH
                  sta             _X_REG
                  sty             _Y_REG
                  jsr             _TBCopyTileDataToCBuffV
@@ -26,13 +28,13 @@ _TBMaskedPrioritySpriteTile_V0
                  jsr             _TBUnderlaySpriteDataAndMask
                  jmp             _TBMaskedCBuff
 
-_TBMaskedPrioritySpriteTile_VH
-                 sta             _X_REG
-                 sty             _Y_REG
-                 jsr             _TBCopyTileDataToCBuffVH
-                 jsr             _TBCopyTileMaskToCBuffVH
-                 jsr             _TBUnderlaySpriteDataAndMask
-                 jmp             _TBMaskedCBuff
+;_TBMaskedPrioritySpriteTile_VH
+;                 sta             _X_REG
+;                 sty             _Y_REG
+;                 jsr             _TBCopyTileDataToCBuffVH
+;                 jsr             _TBCopyTileMaskToCBuffVH
+;                 jsr             _TBUnderlaySpriteDataAndMask
+;                 jmp             _TBMaskedCBuff
 
 _TBUnderlaySpriteDataAndMask
                  ldx   _SPR_X_REG                               ; set to the unaligned tile block address in the sprite plane

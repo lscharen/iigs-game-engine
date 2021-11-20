@@ -3,28 +3,30 @@
 ; When the sprite is composited with the tile data, the tile mask is used to place the tile data on top of
 ; any sprite data
 _TBSolidPrioritySpriteTile_00
+_TBSolidPrioritySpriteTile_0H
                  jsr             _TBCopyTileDataToCBuff       ; Copy the tile data into the compositing buffer (using correct x-register)
                  jsr             _TBCopyTileMaskToCBuff       ; Copy the tile mask into the compositing buffer (using correct x-register)
                  jsr             _TBApplyPrioritySpriteData   ; Underlay the data fromthe sprite plane (and copy into the code field)
                  jmp             _TBFillPEAOpcode             ; Fill in the code field opcodes
 
-_TBSolidPrioritySpriteTile_0H
-                 jsr             _TBCopyTileDataToCBuffH
-                 jsr             _TBCopyTileMaskToCBuffH
-                 jsr             _TBApplyPrioritySpriteData
-                 jmp             _TBFillPEAOpcode
+;_TBSolidPrioritySpriteTile_0H
+;                 jsr             _TBCopyTileDataToCBuffH
+;                 jsr             _TBCopyTileMaskToCBuffH
+;                 jsr             _TBApplyPrioritySpriteData
+;                 jmp             _TBFillPEAOpcode
 
 _TBSolidPrioritySpriteTile_V0
+_TBSolidPrioritySpriteTile_VH
                  jsr             _TBCopyTileDataToCBuffV
                  jsr             _TBCopyTileMaskToCBuffV
                  jsr             _TBApplyPrioritySpriteData
                  jmp             _TBFillPEAOpcode
 
-_TBSolidPrioritySpriteTile_VH
-                 jsr             _TBCopyTileDataToCBuffVH
-                 jsr             _TBCopyTileMaskToCBuffVH
-                 jsr             _TBApplyPrioritySpriteData
-                 jmp             _TBFillPEAOpcode
+;_TBSolidPrioritySpriteTile_VH
+;                 jsr             _TBCopyTileDataToCBuffVH
+;                 jsr             _TBCopyTileMaskToCBuffVH
+;                 jsr             _TBApplyPrioritySpriteData
+;                 jmp             _TBFillPEAOpcode
 
 ; Need to update the X-register before calling this
 _TBApplyPrioritySpriteData
