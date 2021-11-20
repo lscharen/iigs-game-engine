@@ -8,15 +8,13 @@
 ;  X : address of base tile in the tiledata bank (tileId * 128)
 ;  Y : address of the top-left corder of the tile location in the code field
 ;  B : set to the code field bank  
-;_TBSolidTile     dw              _TBSolidTile_00,_TBSolidTile_0H,_TBSolidTile_V0,_TBSolidTile_VH
-;                 dw              _TBCopyData,_TBCopyDataH,_TBCopyDataV,_TBCopyDataVH
 
 _TBSolidTile_00
                  jsr             _TBCopyData
                  jmp             _TBFillPEAOpcode
 
 _TBSolidTile_0H
-                 jsr             _TBCopyDataH
+                 jsr             _TBCopyData
                  jmp             _TBFillPEAOpcode
 
 _TBSolidTile_V0
@@ -24,7 +22,7 @@ _TBSolidTile_V0
                  jmp             _TBFillPEAOpcode
 
 _TBSolidTile_VH
-                 jsr             _TBCopyDataVH
+                 jsr             _TBCopyDataV
                  jmp             _TBFillPEAOpcode
 
 ; The workhorse blitter.  This blitter copies tile data into the code field without masking.  This is the
@@ -49,16 +47,16 @@ _TBCopyData
                  --^
                  rts
 
-_TBCopyDataH
-]line            equ             0
-                 lup             8
-                 ldal            tiledata+{]line*4}+64,x
-                 sta:            $0004+{]line*$1000},y
-                 ldal            tiledata+{]line*4}+66,x
-                 sta:            $0001+{]line*$1000},y
-]line            equ             ]line+1
-                 --^
-                 rts
+;_TBCopyDataH
+;]line            equ             0
+;                 lup             8
+;                 ldal            tiledata+{]line*4}+64,x
+;                 sta:            $0004+{]line*$1000},y
+;                 ldal            tiledata+{]line*4}+66,x
+;                 sta:            $0001+{]line*$1000},y
+;]line            equ             ]line+1
+;                 --^
+;                 rts
 
 _TBCopyDataV
 ]src             equ             7
@@ -73,18 +71,18 @@ _TBCopyDataV
                  --^
                  rts
 
-_TBCopyDataVH
-]src             equ             7
-]dest            equ             0
-                 lup             8
-                 ldal            tiledata+{]src*4}+64,x
-                 sta:            $0004+{]dest*$1000},y
-                 ldal            tiledata+{]src*4}+66,x
-                 sta:            $0001+{]dest*$1000},y
-]src             equ             ]src-1
-]dest            equ             ]dest+1
-                 --^
-                 rts
+;_TBCopyDataVH
+;]src             equ             7
+;]dest            equ             0
+;                 lup             8
+;                 ldal            tiledata+{]src*4}+64,x
+;                 sta:            $0004+{]dest*$1000},y
+;                 ldal            tiledata+{]src*4}+66,x
+;                 sta:            $0001+{]dest*$1000},y
+;]src             equ             ]src-1
+;]dest            equ             ]dest+1
+;                 --^
+;                 rts
 
 ; A simple helper function that fill in all of the opcodes of a tile with the PEA opcode.  This is
 ; a common function since a tile must be explicitly flagged to use a mask, so this routine is used

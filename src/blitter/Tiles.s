@@ -638,7 +638,7 @@ _SetTile
                  tay
                  pla
                  
-                 cmp  TileStore+TS_TILE_ID,y        ; Only set to dirty if the value changes
+                 cmp  TileStore+TS_TILE_ID,y        ; Only set to dirty if the value changed
                  beq  :nochange
 
                  sta  TileStore+TS_TILE_ID,y        ; Value is different, store it.
@@ -667,27 +667,6 @@ PushDirtyTile    ENT
                  jsr  _PushDirtyTile
                  plb
                  rtl
-
-_PushDirtyTileOld
-                 tay                                 ; check if this already marked immediately
-                 lda  TileStore+TS_DIRTY,y           ; If the lookup === $FFFF (<$8000), it is free.
-                 bpl  :occupied
-
-; At this point, keep the Y register value because it is the correct offset to all of the tile
-; record fields.
-                 ldx  DirtyTileCount
-
-                 txa
-                 sta  TileStore+TS_DIRTY,y           ; Store a back-link to this record
-
-                 tya
-                 sta  DirtyTiles,x                   ; Store the lookup address in the list
-
-                 inx
-                 inx
-                 stx  DirtyTileCount                 ; Commit
-:occupied
-                 rts
 
 ; alternate version that is very slightly slower, but preserves the y-register
 _PushDirtyTile

@@ -130,25 +130,7 @@ _RenderSprites
 ; as a future optimization.  Ideally, all of the sprites will be rendered into the sprite plane in a separate
 ; pass from this function, which is primarily concerned with flagging dirty tiles in the Tile Store.
 
-            ldx   _Sprites+OLD_VBUFF_ADDR,y
-            beq   :noerase
-            jsr   _EraseTileSprite                    ; erase from the old position
-            inx
-            inx
-            inx
-            inx
-            jsr   _EraseTileSprite
-            txa
-            clc
-            adc   #8*256
-            tax
-            jsr   _EraseTileSprite
-            dex
-            dex
-            dex
-            dex
-            jsr   _EraseTileSprite
-:noerase
+            jsr   _EraseSpriteY
 
 ; Draw the sprite into the sprint plane buffer(s)
 
@@ -491,6 +473,66 @@ _DrawSprites
 :out        rts
 
 ; X = _Sprites array offset
+_EraseSprite
+             txy
+_EraseSpriteY
+             lda   _Sprites+OLD_VBUFF_ADDR,y
+             beq   :noerase
+             lda   _Sprites+SPRITE_ID,y
+             and   #$1800                        ; use bits 11 and 12 to dispatch (oly care about size)
+             lsr
+             lsr
+             xba
+             tax
+             jmp   (:erase_sprite,x)
+:noerase     rts
+:erase_sprite dw   erase_8x8,erase_8x16,erase_16x8,erase_16x16
+
+erase_8x8
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
+            jmp   _EraseTileSprite                    ; erase from the old position
+
+erase_8x16
+            clc
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
+            jsr   _EraseTileSprite
+
+            txa
+            adc   #{8*SPRITE_PLANE_SPAN}
+            tax
+            jmp   _EraseTileSprite
+
+erase_16x8
+            clc
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
+            jsr   _EraseTileSprite
+
+            txa
+            adc   #4
+            tax
+            jmp   _EraseTileSprite
+
+erase_16x16
+            clc
+            ldx   _Sprites+OLD_VBUFF_ADDR,y
+            jsr   _EraseTileSprite
+
+            txa
+            adc   #4
+            tax
+            jsr   _EraseTileSprite
+
+            txa
+            adc   #{8*SPRITE_PLANE_SPAN}-4
+            tax
+            jsr   _EraseTileSprite
+
+            txa
+            adc   #4
+            tax
+            jmp   _EraseTileSprite
+
+; X = _Sprites array offset
 _DrawSprite
              txy
 _DrawSpriteY
@@ -805,10 +847,6 @@ _DrawTile8x8V
 ; 
 ; X = address is sprite plane -- erases an 8x8 region
 SPRITE_PLANE_SPAN equ 256
-
-EraseTileSprite ENT
-            jsr    _EraseTileSprite
-            rtl
 
 _EraseTileSprite
             phb                                   ; Save the bank to switch to the sprite plane
