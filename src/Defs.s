@@ -137,7 +137,14 @@ TILE_DYN_BIT           equ   $0800
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
 
-; Tile Store Offsets (internals)
+; Sprite constants
+SPRITE_16X16           equ   $1800
+SPRITE_16X8            equ   $1000
+SPRITE_8X16            equ   $0800
+SPRITE_8X8             equ   $0000
+SPRITE_VFLIP           equ   $0400
+SPRITE_HFLIP           equ   $0200
+
 MAX_TILES             equ  {26*41}            ; Number of tiles in the code field (41 columns * 26 rows)
 TILE_STORE_SIZE       equ  {MAX_TILES*2}      ; The tile store contains a tile descriptor in each slot
 

@@ -152,38 +152,7 @@ _RenderSprites
 
 ; Draw the sprite into the sprint plane buffer(s)
 
-            ldx   _Sprites+VBUFF_ADDR,y               ; Get the address in the sprite plane to draw at
-            lda   _Sprites+TILE_DATA_OFFSET,y         ; and the tile address of the tile
-            tay
-            jsr   _DrawTileSprite                     ; draw the sprite into the sprite plane
-            tya
-            clc
-            adc   #128
-            tay
-            txa
-            clc
-            adc   #4
-            tax
-            jsr   _DrawTileSprite
-
-            tya
-            clc
-            adc   #128*31
-            tay
-            txa
-            clc
-            adc   #{8*256}-4
-            tax
-            jsr   _DrawTileSprite
-            tya
-            clc
-            adc   #128
-            tay
-            txa
-            clc
-            adc   #4
-            tax
-            jsr   _DrawTileSprite
+            jsr   _DrawSpriteY                        ; Use variant that takes the Y-register arg
 
 ; Mark the appropriate tiles as dirty and as occupied by a sprite so that the ApplyTiles
 ; subroutine will get the drawn data from the sprite plane into the code field where it 
@@ -501,7 +470,7 @@ _GetTileAt
             clc
             rts
 
-; _DrawSprite
+; _DrawSprites
 ;
 ; Draw the sprites on the _Sprite list into the Sprite Plane data and mask buffers. This is using the 
 ; tile data right now, but could be replaced with compiled sprite routines.
@@ -513,11 +482,7 @@ _DrawSprites
             bne   :skip
 
             phx
-
-            lda   _Sprites+VBUFF_ADDR,x          ; Load the address in the sprite plane
-            ldy   _Sprites+TILE_DATA_OFFSET,x    ; Load the address in the tile data bank
-            tax
-            jsr   _DrawTileSprite
+            jsr   _DrawSprite
             plx
 :skip
             inx
@@ -525,11 +490,186 @@ _DrawSprites
             bra   :loop
 :out        rts
 
+; X = _Sprites array offset
+_DrawSprite
+             txy
+_DrawSpriteY
+             lda   _Sprites+SPRITE_ID,y
+             and   #$1E00                        ; use bits 9, 10, 11 and 12 to dispatch
+             xba
+             tax
+             jmp   (:draw_sprite,x)
+:draw_sprite dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
+             dw    draw_8x16,draw_8x16h,draw_8x16v,draw_8x16hv
+             dw    draw_16x8,draw_16x8h,draw_16x8v,draw_16x8hv
+             dw    draw_16x16,draw_16x16h,draw_16x16,draw_16x16h
+
+draw_8x8
+draw_8x8h
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jmp   _DrawTile8x8
+
+draw_8x8v
+draw_8x8hv
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jmp   _DrawTile8x8V
+
+draw_8x16
+draw_8x16h
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jsr   _DrawTile8x8
+             clc
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}
+             tax
+             tya
+             adc   #{128*32}                      ; 32 tiles to the next verical one, each tile is 128 bytes
+             tay
+             jmp   _DrawTile8x8
+
+draw_8x16v
+draw_8x16hv
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jsr   _DrawTile8x8V
+             clc
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}
+             tax
+             tya
+             adc   #{128*32}
+             tay
+             jmp   _DrawTile8x8V
+
+draw_16x8
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jsr   _DrawTile8x8
+             clc
+             txa
+             adc   #4
+             tax
+             tya
+             adc   #128                           ; Next tile is 128 bytes away
+             tay
+             jmp   _DrawTile8x8
+
+draw_16x8h
+             clc
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             pha
+             adc   #128
+             tay
+             jsr   _DrawTile8x8
+             txa
+             adc   #4
+             tax
+             ply
+             jmp   _DrawTile8x8
+
+draw_16x8v
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jsr   _DrawTile8x8V
+             clc
+             txa
+             adc   #4
+             tax
+             tya
+             adc   #128
+             tay
+             jmp   _DrawTile8x8V
+
+draw_16x8hv
+             clc
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             pha
+             adc   #128
+             tay
+             jsr   _DrawTile8x8V
+             txa
+             adc   #4
+             tax
+             ply
+             jmp   _DrawTile8x8V
+
+draw_16x16
+             clc
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             tay
+             jsr   _DrawTile8x8
+             txa
+             adc   #4
+             tax
+             tya
+             adc   #128
+             tay
+             jsr   _DrawTile8x8
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}-4
+             tax
+             tya
+             adc    #{128*{32-1}}
+             tay
+             jsr   _DrawTile8x8
+             txa
+             adc   #4
+             tax
+             tya
+             adc   #128
+             tay
+             jmp   _DrawTile8x8
+
+draw_16x16h
+             clc
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             pha
+             adc   #128
+             tay
+             jsr   _DrawTile8x8
+
+             txa
+             adc   #4
+             tax
+             ply
+             jsr   _DrawTile8x8
+
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}-4
+             tax
+             tya
+             adc    #{128*32}
+             pha
+             adc    #128
+             tay
+             jsr   _DrawTile8x8
+
+             txa
+             adc   #4
+             tax
+             ply
+             jmp   _DrawTile8x8
+
 DrawTileSprite ENT
-            jsr   _DrawTileSprite
+            jsr   _DrawTile8x8
             rtl
 
-_DrawTileSprite 
+; X = sprite vbuff address
+; Y = tile data pointer
+_DrawTile8x8
             phb
             pea   #^tiledata                     ; Set the bank to the tile data
             plb
@@ -552,6 +692,41 @@ _DrawTileSprite
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
             and:  tiledata+32+{]line*4}+2,y
             ora:  tiledata+{]line*4}+2,y
+            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+]line       equ   ]line+1
+            --^
+
+            plb                                  ; pop extra byte
+            plb
+            rts
+
+; X = sprite vbuff address
+; Y = tile data pointer
+;
+; Draws the tile vertically flipped
+_DrawTile8x8V
+            phb
+            pea   #^tiledata                     ; Set the bank to the tile data
+            plb
+
+]line       equ   0
+            lup   8
+            lda:  tiledata+32+{{7-]line}*4},y
+            andl  spritemask+{]line*256},x
+            stal  spritemask+{]line*256},x
+            
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+            and:  tiledata+32+{{7-]line}*4},y
+            ora:  tiledata+{{7-]line}*4},y
+            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+
+            lda:  tiledata+32+{{7-]line}*4}+2,y
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+            and:  tiledata+32+{{7-]line}*4}+2,y
+            ora:  tiledata+{{7-]line}*4}+2,y
             stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
 ]line       equ   ]line+1
             --^
@@ -738,12 +913,6 @@ _UpdateSprite
 
             lda   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
             sta   _Sprites+OLD_VBUFF_ADDR,x
-
-;            lda   _Sprites+SPRITE_X,x
-;            sta   _Sprites+OLD_SPRITE_X,x
-
-;            lda   _Sprites+SPRITE_Y,x
-;            sta   _Sprites+OLD_SPRITE_Y,x
 
             lda   tmp0                          ; Update the X coordinate
             sta   _Sprites+SPRITE_X,x

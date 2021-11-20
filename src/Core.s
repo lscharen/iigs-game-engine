@@ -8,7 +8,7 @@
                   use       .\Defs.s
 
 ; Feature flags
-NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data provided by the main program segment
