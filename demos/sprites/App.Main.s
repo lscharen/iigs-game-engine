@@ -37,7 +37,7 @@ DOWN_ARROW          equ        $0A
 
                     ldx        #5                        ; Mode 0 is full-screen, mode 5 is 256x160
                     ldx        #320
-                    ldy        #144
+                    ldy        #200
                     jsl        SetScreenMode
 
 ; Set up our level data
@@ -56,6 +56,7 @@ DOWN_ARROW          equ        $0A
                     sta        BankLoad                ; Store "Bank Pointer"
 
 ; Load in the 256 color background into BG1 buffer
+                    brl        :nobackground
 DoLoadBG1
                     lda        BankLoad
                     ldx        #BG1DataFile
@@ -95,6 +96,7 @@ DoLoadBG1
                     ora        #$8000                     ; set high bit to bind to BG1 Y-position
                     ldx        #$7D00
                     jsl        SetSCBArray
+:nobackground
 
 ; Initialize the sprite's global position (this is tracked outside of the tile engine)
                     lda        #16
@@ -292,9 +294,9 @@ Fatal               brk        $00
 BG1DataFile         strl       '1/sunset.c1'
 
 ; Color palette
-; MyPalette           dw         $068F,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
+MyPalette           dw         $068F,$0EDA,$0000,$0000,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
 ; B&W Palette
-MyPalette           dw         $0000,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FFF
+;MyPalette           dw         $0000,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FFF
 PlayerGlobalX       ds         2
 PlayerGlobalY       ds         2
 
@@ -457,7 +459,7 @@ UpdatePlayerPos
             lda  MaxGlobalX
             sta  PlayerGlobalX
 
-            ldx  #0
+            ldx  LastHFlip
             lda  PlayerXVel
             beq  :no_dxv
             bpl  :pos_dxv
@@ -465,10 +467,11 @@ UpdatePlayerPos
             inc
             bra  :no_dxv
 :pos_dxv
+            ldx  #0
             dec
 :no_dxv
             sta  PlayerXVel
-            stx  tmp0
+            stx  LastHFlip
 
             ldx  #0
             lda  PlayerStanding
@@ -485,7 +488,7 @@ UpdatePlayerPos
 :too_fast
 
             txa
-            ora  tmp0
+            ora  LastHFlip
             ora  #SPRITE_ID
             tax
             lda  PlayerID
@@ -493,6 +496,7 @@ UpdatePlayerPos
 
             rts
 
+LastHFlip       dw   0
 ; X = coordinate
 ; Y = coordinate
 GetTileAt
