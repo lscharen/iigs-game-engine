@@ -502,7 +502,7 @@ _DrawSpriteY
 :draw_sprite dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
              dw    draw_8x16,draw_8x16h,draw_8x16v,draw_8x16hv
              dw    draw_16x8,draw_16x8h,draw_16x8v,draw_16x8hv
-             dw    draw_16x16,draw_16x16h,draw_16x16,draw_16x16h
+             dw    draw_16x16,draw_16x16h,draw_16x16v,draw_16x16hv
 
 draw_8x8
 draw_8x8h
@@ -662,6 +662,71 @@ draw_16x16h
              tax
              ply
              jmp   _DrawTile8x8
+
+draw_16x16v
+             clc
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             pha                                        ; store some copies
+             phx
+             pha
+             adc   #{128*32}
+             tay
+             jsr   _DrawTile8x8V
+
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}
+             tax
+             ply
+             jsr   _DrawTile8x8V
+
+             pla
+             adc   #4
+             tax
+             lda   1,s
+             adc   #{128*{32+1}}
+             tay
+             jsr   _DrawTile8x8V
+
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}
+             tax
+             pla
+             adc   #128
+             tay
+             jmp   _DrawTile8x8V
+
+; TODO
+draw_16x16hv
+             clc
+             ldx   _Sprites+VBUFF_ADDR,y
+             lda   _Sprites+TILE_DATA_OFFSET,y
+             pha
+             adc   #128+{128*32}                        ; Bottom-right source to top-left 
+             tay
+             jsr   _DrawTile8x8V
+
+             txa
+             adc   #4
+             tax
+             lda   1,s
+             adc   #{128*32}
+             tay
+             jsr   _DrawTile8x8V
+
+             txa
+             adc   #{8*SPRITE_PLANE_SPAN}-4
+             tax
+             lda    1,s
+             adc    #128
+             tay
+             jsr   _DrawTile8x8V
+
+             txa
+             adc   #4
+             tax
+             ply
+             jmp   _DrawTile8x8V
 
 DrawTileSprite ENT
             jsr   _DrawTile8x8
