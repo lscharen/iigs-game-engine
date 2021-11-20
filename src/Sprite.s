@@ -884,12 +884,11 @@ _GetSpriteVBuffAddr
             pla
             rts
 
-; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
-; a full remove/add cycle needs to happen
+; Update the sprite's flags. We do not allow the size fo a sprite to be changed.  That required
+; the sprite to be removed and re-added.
 ;
-; A = sprite ID
-; X = x position
-; Y = y position
+; A = Sprite ID
+; X = Sprite Tile ID and Flags
 UpdateSprite ENT
             phb
             phk
@@ -898,7 +897,41 @@ UpdateSprite ENT
             plb
             rtl
 
+
 _UpdateSprite
+            cmp   #MAX_SPRITES*2                ; Make sure we're in bounds
+            bcc   :ok
+            rts
+
+:ok
+            stx   tmp0                          ; Save the horizontal position
+            and   #$FFFE                        ; Defensive
+            tax                                 ; Get the sprite index
+
+            lda   #SPRITE_STATUS_DIRTY          ; Content is changing, mark as dirty
+            sta   _Sprites+SPRITE_STATUS,x
+
+            lda   tmp0                          ; Update the Tile ID
+            sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
+            jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
+            sta   _Sprites+TILE_DATA_OFFSET,x
+            rts
+
+; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
+; a full remove/add cycle needs to happen
+;
+; A = sprite ID
+; X = x position
+; Y = y position
+MoveSprite  ENT
+            phb
+            phk
+            plb
+            jsr    _MoveSprite
+            plb
+            rtl
+
+_MoveSprite
             cmp   #MAX_SPRITES*2                ; Make sure we're in bounds
             bcc   :ok
             rts

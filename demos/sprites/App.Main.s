@@ -108,9 +108,10 @@ DoLoadBG1
                     stz        PlayerYVel
 
 ; Add a sprite to the engine and save it's sprite ID
+SPRITE_ID           equ        {SPRITE_16X16+145}
 
                     jsr        UpdatePlayerLocal
-                    lda        #$1800+145              ; 16x16 sprite, tile ID = 64
+                    lda        #SPRITE_ID              ; 16x16 sprite, tile ID = 145
                     ldx        PlayerX
                     ldy        PlayerY
                     jsl        AddSprite
@@ -240,7 +241,7 @@ EvtLoop
                     lda        PlayerID
                     ldx        PlayerX
                     ldy        PlayerY
-                    jsl        UpdateSprite           ; Move the sprite to this local position
+                    jsl        MoveSprite             ; Move the sprite to this local position
 
 ; Update the timers
                     jsl        DoTimers
@@ -408,6 +409,8 @@ UpdatePlayerLocal
 ; Simple updates with gravity and collisions.  It's important that eveything in this
 ; subroutine be done against 
 UpdatePlayerPos
+            stz  tmp0                        ; build up some flags
+
             stz  PlayerStanding
             lda  PlayerYVel
             bmi  :no_ground_check
@@ -454,16 +457,20 @@ UpdatePlayerPos
             lda  MaxGlobalX
             sta  PlayerGlobalX
 
+            ldx  #0
             lda  PlayerXVel
             beq  :no_dxv
             bpl  :pos_dxv
+            ldx  #SPRITE_HFLIP
             inc
             bra  :no_dxv
 :pos_dxv
             dec
 :no_dxv
             sta  PlayerXVel
+            stx  tmp0
 
+            ldx  #0
             lda  PlayerStanding
             bne  :too_fast
 
@@ -473,8 +480,17 @@ UpdatePlayerPos
             cmp  #4
             bcs  :too_fast
 :is_neg
+            ldx  #SPRITE_VFLIP
             sta  PlayerYVel
 :too_fast
+
+            txa
+            ora  tmp0
+            ora  #SPRITE_ID
+            tax
+            lda  PlayerID
+            jsl  UpdateSprite                          ; Change the tile ID and / or flags
+
             rts
 
 ; X = coordinate

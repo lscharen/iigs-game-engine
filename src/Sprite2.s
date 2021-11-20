@@ -25,7 +25,7 @@ _MarkDirtySprite
 ; Clip the sprite's extent to the screen so we can assume (mostly) position values from here on out.  Note that
 ; the sprite width and height are _only_ used in the clip and afterward all calculation use the clip rect
 ;
-; OPTIMIZATION NODE: These values can be calculated in AddSprite/UpdateSprite once and stored in the sprite
+; OPTIMIZATION NODE: These values can be calculated in AddSprite/MoveSprite once and stored in the sprite
 ;                    record since the screen size doesn't change.
 
         lda   _Sprites+SPRITE_ID,x               ; Get an index into the height/width tables based on the sprite bits

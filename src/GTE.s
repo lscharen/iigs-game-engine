@@ -46,7 +46,8 @@ StopScript         EXT
 
 ; Sprite functions
 AddSprite          EXT
-UpdateSprite       EXT
+MoveSprite         EXT    ; Set an existing sprite's position
+UpdateSprite       EXT    ; Change an existing sprite's flags
 
 ; Direct access to internals
 DoScriptSeq        EXT
