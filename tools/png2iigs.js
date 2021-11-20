@@ -322,7 +322,7 @@ function buildTile(options, buff, _mask, width, x, y) {
         const mask3 = swap(_mask[offset + dy * width + 3]);
 
         const data = [hex3, hex2, hex1, hex0];
-        const mask = [mask0, mask1, mask2, mask3]; // raw.map(h => toMask(h, options.transparentIndex));
+        const mask = [mask3, mask2, mask1, mask0]; // raw.map(h => toMask(h, options.transparentIndex));
         // const data = raw.map((h, i) => h & ~mask[i]);
 
         tile.flipped.data.push(data);
