@@ -15,6 +15,28 @@ ColLeft  equ   tmp9
 SpriteBit equ  tmp10     ; set the bit of the value that if the current sprite index
 VBuffOrigin equ tmp11
 
+; Marks asprite as dirty.  The work here is mapping from local screen coordinates to the 
+; tile store indices.  The first step is to adjust the sprite coordinates based on the current
+; code field offsets and then cache variations of this value needed in the rest of the subroutine
+;
+; The SpriteX is always the MAXIMUM value of the corner coordinates.  We subtract (SpriteX + StartX) mod 4
+; to find the coordinate in the sprite plane that matches up with the tile in the play field and 
+; then use that to calculate the VBUFF address from which to copy sprite data.
+;
+; StartX   SpriteX   z = * mod 4   (SpriteX - z)
+; ----------------------------------------------
+; 0        8         0             8
+; 1        8         1             7
+; 2        8         2             6
+; 3        8         3             5
+; 4        9         1             8
+; 5        9         2             7
+; 6        9         3             6
+; 7        9         0             9
+; 8        10        2             8
+; ...
+;
+; For the Y-coordinate, we just use "mod 8" instead of "mod 4"
 mdsOut  rts
 _MarkDirtySprite
 
@@ -189,7 +211,7 @@ _MarkDirtySprite
         sta   _Sprites+TILE_STORE_ADDR_4,y
         rts
 
-:mark1x2
+:mark2x1
         jsr   :mark_0_0
         sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_1_0
@@ -456,3 +478,4 @@ _SpriteCols         dw 1,2,1,2
 
 ; Convert sprite index to a bit position
 _SpriteBits         dw $0001,$0002,$0004,$0008,$0010,$0020,$0040,$0080,$0100,$0200,$0400,$0800,$1000,$2000,$4000,$8000
+_SpriteBitsNot      dw $FFFE,$FFFD,$FFFB,$FFF7,$FFEF,$FFDF,$FFBF,$FF7F,$FEFF,$FDFF,$FBFF,$F7FF,$EFFF,$DFFF,$BFFF,$7FFF

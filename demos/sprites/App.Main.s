@@ -111,6 +111,12 @@ DoLoadBG1
 
 ; Add a sprite to the engine and save it's sprite ID
 SPRITE_ID           equ        {SPRITE_16X16+145}
+MUSHROOM_ID         equ        {SPRITE_16X16+255}
+
+                    lda        #MUSHROOM_ID              ; 16x16 sprite, tile ID = 145
+                    ldx        #80
+                    ldy        #152
+                    jsl        AddSprite
 
                     jsr        UpdatePlayerLocal
                     lda        #SPRITE_ID              ; 16x16 sprite, tile ID = 145
@@ -119,9 +125,8 @@ SPRITE_ID           equ        {SPRITE_16X16+145}
                     jsl        AddSprite
                     bcc        :sprite_ok
                     brl        Exit                    ; If we could not allocate a sprite, exit
-
 :sprite_ok
-;                    sta        PlayerID
+                    sta        PlayerID
 
 ; Draw the initial screen
 
