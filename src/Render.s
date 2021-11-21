@@ -78,9 +78,7 @@ _Render
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
-            nop
             jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
-            nop
 
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
             jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
@@ -122,9 +120,9 @@ _Render
             ldy   ScreenHeight
             jsr   _BltRange
 
-            ldx   #0
-            ldy   ScreenHeight
-            jsr   _BltSCB
+;            ldx   #0
+;            ldy   ScreenHeight
+;            jsr   _BltSCB
 
             lda   StartY              ; Restore the fields back to their original state
             ldx   ScreenHeight

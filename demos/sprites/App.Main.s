@@ -411,8 +411,6 @@ UpdatePlayerLocal
 ; Simple updates with gravity and collisions.  It's important that eveything in this
 ; subroutine be done against 
 UpdatePlayerPos
-            stz  tmp0                        ; build up some flags
-
             stz  PlayerStanding
             lda  PlayerYVel
             bmi  :no_ground_check
@@ -490,13 +488,32 @@ UpdatePlayerPos
             txa
             ora  LastHFlip
             ora  #SPRITE_ID
-            tax
+            sta  SpriteFrame
+
+; If the player is standing and XVel != 0, pick a frame
+            lda  PlayerStanding
+            beq  :frame
+            lda  PlayerXVel
+            beq  :frame
+
+            jsl  GetVBLTicks
+            and  #$0003
+            inc
+            and  #$0003
+            asl
+            adc  SpriteFrame
+            sta  SpriteFrame
+:frame
+            ldx  SpriteFrame
+
             lda  PlayerID
             jsl  UpdateSprite                          ; Change the tile ID and / or flags
 
             rts
 
 LastHFlip       dw   0
+SpriteFrame     ds   2
+
 ; X = coordinate
 ; Y = coordinate
 GetTileAt
