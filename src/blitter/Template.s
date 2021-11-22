@@ -38,7 +38,7 @@ PagePatches        da    {long_0-base+2}
                    da    {loop_exit_3-base+2}
                    da    {even_exit-base+2}
                    da    {jmp_rtn_1-base+2}
-                   da    {jmp_rtn_2-base+2}
+;                   da    {jmp_rtn_2-base+2}
 
 ]index             equ   0
                    lup   82                                 ; All the snippet addresses. The two JMP
@@ -526,7 +526,7 @@ long_1             stal  *+4-base                   ; Everything else is a two-b
 r_is_pea           xba                              ; fast code for PEA
 r_jmp_rtn          sep   #$20                       ; shared return code path by all methods
                    pha
-                   rep   #$20
+                   rep   #$61                       ; Clear Carry, Overflow and M bits #$20
 odd_entry          jmp   $0100                      ; unconditionally jump into the "next" instruction in the 
                                                     ; code field.  This is OK, even if the entry point was the
                                                     ; last instruction, because there is a JMP at the end of
@@ -549,6 +549,18 @@ long_3             stal  *+5-base
 ; Return to caller -- the even_exit JMP from the previous line will jump here when a render is complete
 full_return        jml   blt_return                 ; Full exit
 
+
+; The even/odd branch of this line's exception handler will return here.  This is mostly
+; a space-saving measure to allow for more code in the exeption handers themselved, but
+; also simplified the relocation process since we only have to update a single address
+; in each exception handler, rather than two.
+;
+; Oce working, this code should be able to be interleaved with the r_jmp_rtn code
+; above to eliminate a couple of branches
+jmp_rtn
+                   bvs   r_jmp_rtn
+jmp_rtn_1          jmp   l_jmp_rtn-base             ; Could inline the code and save 3 cycles / line
+
 ; Re-enable interrupts and continue -- the even_exit JMP from the previous line will jump here every
 ; 8 or 16 lines in order to give the system time to handle interrupts.
 enable_int         ldal  stk_save+1                 ; restore the stack
@@ -565,20 +577,6 @@ enable_int         ldal  stk_save+1                 ; restore the stack
                    stal  STATE_REG
                    rep   #$20
                    bra   entry_1
-
-; The even/odd branch of this line's exception handler will return here.  This is mostly
-; a space-saving measure to allow for more code in the exeption handers themselved, but
-; also simplified the relocation process since we only have to update a single address
-; in each exception handler, rather than two.
-;
-; Oce working, this code should be able to be interleaved with the r_jmp_rtn code
-; above to eliminate a couple of branches
-jmp_rtn
-                   bvs   jmp_rtn_v                  ; overflow set means this is the right edge (entry)
-                   clc                              ; carry is set only for edge operations; force clear
-jmp_rtn_1          jmp   l_jmp_rtn-base
-jmp_rtn_v          rep   #$41                       ; clear V and C
-jmp_rtn_2          jmp   r_jmp_rtn-base
 
 ; This is the spot that needs to be page-aligned. In addition to simplifying the entry address
 ; and only needing to update a byte instad of a word, because the code breaks out of the
@@ -622,7 +620,7 @@ long_4             stal  *+4-base
 l_jmp_rtn          xba
                    sep   #$20
                    pha
-                   rep   #$20
+                   rep   #$61                      ; Clear everything C, V and M
                    bra   even_exit
 
 l_is_jmp           sec                              ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
