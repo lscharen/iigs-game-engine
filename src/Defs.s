@@ -138,6 +138,7 @@ TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
 
 ; Sprite constants
+SPRITE_HIDE            equ   $8000
 SPRITE_16X16           equ   $1800
 SPRITE_16X8            equ   $1000
 SPRITE_8X16            equ   $0800

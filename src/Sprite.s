@@ -190,7 +190,11 @@ _RenderSprites
 
 ; Draw the sprite into the sprint plane buffer(s)
 
-            jsr   _DrawSpriteY                        ; Use variant that takes the Y-register arg
+            lda   _Sprites+SPRITE_ID,y
+            bit   #SPRITE_HIDE
+            bne   :next
+
+            jsr   _DrawSpriteYA                       ; Use variant that takes the Y-register arg
 
 ; Mark the appropriate tiles as dirty and as occupied by a sprite so that the ApplyTiles
 ; subroutine will get the drawn data from the sprite plane into the code field where it 
@@ -199,8 +203,8 @@ _RenderSprites
             ldx   tmp0                                ; Restore the index into the sprite array
             jsr   _MarkDirtySprite                    ; Mark the tiles that this sprite overlaps as dirty
 
-            ldx   tmp0                                ; Restore the index again
-            brl   :next
+            ldy   tmp0                                ; Restore the index again
+            bra   :next
 
 ; _GetTileAt
 ;
@@ -330,6 +334,7 @@ _DrawSprite
              txy
 _DrawSpriteY
              lda   _Sprites+SPRITE_ID,y
+_DrawSpriteYA
              and   #$1E00                        ; use bits 9, 10, 11 and 12 to dispatch
              xba
              tax
