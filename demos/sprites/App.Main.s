@@ -163,6 +163,15 @@ EvtLoop
                     eor        vsync
                     sta        vsync
 :not_v
+                    cmp        #'f'
+                    bne        :not_f
+                    lda        SpriteToggle
+                    eor        #SPRITE_HIDE
+                    sta        SpriteToggle
+                    bne        :not_f
+                    stz        SpriteCount
+
+:not_f
 :no_key_down
 
 
@@ -495,6 +504,10 @@ UpdatePlayerPos
             ora  #SPRITE_ID
             sta  SpriteFrame
 
+            lda  SpriteCount
+            eor  SpriteToggle
+            sta  SpriteCount
+
 ; If the player is standing and XVel != 0, pick a frame
             lda  PlayerStanding
             beq  :frame
@@ -509,7 +522,9 @@ UpdatePlayerPos
             adc  SpriteFrame
             sta  SpriteFrame
 :frame
-            ldx  SpriteFrame
+            lda  SpriteFrame
+            ora  SpriteCount
+            tax
 
             lda  PlayerID
             jsl  UpdateSprite                          ; Change the tile ID and / or flags
@@ -518,6 +533,8 @@ UpdatePlayerPos
 
 LastHFlip       dw   0
 SpriteFrame     ds   2
+SpriteCount     dw   0
+SpriteToggle    dw   0
 
 ; X = coordinate
 ; Y = coordinate
