@@ -301,8 +301,8 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
 
                 ldx   _X_REG          ; Get the addressing offset
                 ldal  JTableOffset,x  ; Get the address offset and add to the base address
-                adc   _BASE_ADDR      ; of the current code field line
-                adc   #{]3&$F000}     ; adjust for the current row offset
+                ora   _BASE_ADDR      ; of the current code field row (2 rows per bank) $0000 or $8000
+                ora   #{]3&$7000}     ; adjust for the current line offset within the row
                 sta:  ]3+1,y
 
                 tay                   ; This becomes the new address that we use to patch in
@@ -324,8 +324,22 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is fully transparent
                 ldal  ]1,x
                 sta:  $0006,y
 
-                lda   #$0D80          ; branch to the prologue (BRA *+15)
-                sta:  $0008,y
+; Copy the top 9 bytes down. We have 23 bytes of space and are only using 8.  Since 9 + 8 = 17 < 23, we
+; can save 3 cycles per word by eliminating the BRA instruction
+
+;                lda   #$0D80          ; branch to the prologue (BRA *+15)
+;                sta:  $0008,y
+
+                lda:   $0017,y
+                sta:   $0008,y
+                lda:   $0019,y
+                sta:   $000A,y
+                lda:   $001B,y
+                sta:   $000C,y
+                lda:   $001D,y
+                sta:   $000E,y
+                lda:   $001E,y
+                sta:   $000F,y
 
                 ldy   _Y_REG          ; restore original y-register value and move on
                 bra   next
