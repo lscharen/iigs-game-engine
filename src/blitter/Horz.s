@@ -224,11 +224,7 @@ _ApplyBG0XPos
 ;  | JMP loop  |
 ;  +-----------+
 
-;                    lda   #163
-;                    sec
-;                    sbc   StartXMod164
                     lda   StartXMod164
-;                    tay
 
 ; Right now we have the offset of the left-edge visible byte. Move one byte earlier to figure out
 ; where the exit will be patched in
@@ -261,7 +257,7 @@ _ApplyBG0XPos
 :odd_exit           tax
                     lda   CodeFieldOddBRA,x
                     sta   :exit_bra
-                    lda   Col2CodeOffset,X
+                    lda   Col2CodeOffset,x
                     sta   :exit_offset
                     sta   LastPatchOffset            ; Cache as a flag for later
 
