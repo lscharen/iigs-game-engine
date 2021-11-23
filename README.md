@@ -34,7 +34,7 @@ qtRec   adrl     $0000
 
 Once the engine is initialized, the play field must be set up.  The play field defines a rectangular area of the physical graphics screen that is managed by the Tile Engine.
 
-The size of the play field can be set directly by passing the width and height in the `x` and `y` registers.  Also, there are 9 pre-defined[^1] screen sizes that correspond to well-known Apple IIgs software titles and hardware of the era which can be selected by the `x` register argument.
+The size of the play field can be set directly by passing the width and height in the `x` and `y` registers.  Also, there are 9 predefined[^1] screen sizes that correspond to well-known Apple IIgs software titles and hardware of the era which can be selected by the `x` register argument.
 
 ```asm
 ; Main code here...
@@ -43,7 +43,7 @@ The size of the play field can be set directly by passing the width and height i
         ldy      #HEIGHT
         jsl      SetScreenMode
 
-; Alternatively pick a pre-defined size
+; Alternatively, pick a predefined size
 
         ldx      #0                   ; 0 = full screen (320x200)
         jsl      SetScreenMode
@@ -55,18 +55,18 @@ The size of the play field can be set directly by passing the width and height i
 
 By default, the play field will be centered on the graphics screen.  If a custom placement of the play field is desired, then the `SetScreenRect` subroutine can be used directly to set a specific area of the graphics screen as the managed area.
 
-[^1]:
+[^1]: Table of predefined `SetScreenMode` sizes 
  | Play Field Id | Width | Height |                   | Size (bytes) | Percent of Full Screen |
  |---------------|-------|--------|-------------------|---|----|
  | 0             | 320   | 200    | Full Screen       | 32,000 | 100% |
  | 1             | 272   | 192    | Sword of Sodan    | 26,112 | 81.6% |
  | 2             | 256   | 200    | NES (approx.)     | 25,600 | 80.0% |
- | 3             | 256   | 176    |  Task Force | 22,528 bytes | 70.4% |
- | 4             | 280   | 160    | Defender of the World | 22,400 bytes | 70.0% |
- |  5            | 256   | 160  | Rastan | 20,480 | 64.0% |
-  |  6           | 240   | 160  | Game Boy Advanced | 19,200 bytes | 60.0% |
- | 7             | 288  | 128 | Ancient Land of Y's | 18,432 bytes | 57.6% |
- | 8             | 160   | 144 | Game Boy Color | 11,520 bytes | 36.0% |
+ | 3             | 256   | 176    |  Task Force       | 22,528  | 70.4% |
+ | 4             | 280   | 160    | Defender of the World | 22,400  | 70.0% |
+ | 5             | 256   | 160    | Rastan            | 20,480   | 64.0%  |
+ | 6             | 240   | 160    | Game Boy Advanced | 19,200 | 60.0% |
+ | 7             | 288   | 128    | Ancient Land of Y's | 18,432 | 57.6% |
+ | 8             | 160   | 144    | Game Boy Color    | 11,520 | 36.0% |
 # API
 
 
