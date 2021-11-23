@@ -69,8 +69,6 @@ By default, the play field will be centered on the graphics screen.  If a custom
  | 8             | 160   | 144    | Game Boy Color    | 11,520 | 36.0% |
 # API
 
-
-
 GTE provides the following capabilities
 
 # References
