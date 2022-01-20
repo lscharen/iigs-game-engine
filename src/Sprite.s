@@ -177,7 +177,8 @@ _RenderSprites
             ora   forceSpriteFlag
             and   #SPRITE_STATUS_DIRTY           ; If the dirty flag is set, do the things....
             bne   :render
-:next       iny
+:next       
+            iny
             iny
             bra   :loop
 :out        rts
@@ -312,7 +313,8 @@ erase_16x8
 erase_16x16
             clc
             ldx   _Sprites+OLD_VBUFF_ADDR,y
-            jsr   _EraseTileSprite
+            jmp   _EraseTileSprite16x16
+;            jsr   _EraseTileSprite
 
             txa
             adc   #4
@@ -449,7 +451,9 @@ draw_16x16
              ldx   _Sprites+VBUFF_ADDR,y
              lda   _Sprites+TILE_DATA_OFFSET,y
              tay
-             jsr   _DrawTile8x8
+             jmp   _DrawTile16x16
+
+;             jsr   _DrawTile8x8
              txa
              adc   #4
              tax
@@ -607,6 +611,102 @@ _DrawTile8x8
 
 ; X = sprite vbuff address
 ; Y = tile data pointer
+_DrawTile16x16
+            phb
+            pea   #^tiledata                     ; Set the bank to the tile data
+            plb
+
+]line       equ   0
+            lup   8
+            lda:  tiledata+32+{]line*4},y
+            andl  spritemask+{]line*256},x
+            stal  spritemask+{]line*256},x
+            
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+            and:  tiledata+32+{]line*4},y
+            ora:  tiledata+{]line*4},y
+            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+
+            lda:  tiledata+32+{]line*4}+2,y
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+            and:  tiledata+32+{]line*4}+2,y
+            ora:  tiledata+{]line*4}+2,y
+            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+
+            lda:  tiledata+32+128+{]line*4},y
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+4,x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+4,x
+            
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+4,x
+            and:  tiledata+32+128+{]line*4},y
+            ora:  tiledata+128+{]line*4},y
+            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+4,x
+
+            lda:  tiledata+32+128+{]line*4}+2,y
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+6,x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+6,x
+            
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+6,x
+            and:  tiledata+32+128+{]line*4}+2,y
+            ora:  tiledata+128+{]line*4}+2,y
+            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+6,x
+
+]line       equ   ]line+1
+            --^
+
+TILE_ROW_STRIDE equ 32*128
+SPRITE_ROW_STRIDE equ 8*SPRITE_PLANE_SPAN
+
+]line       equ   0
+            lup   8
+            lda:  tiledata+TILE_ROW_STRIDE+32+{]line*4},y
+            andl  spritemask+SPRITE_ROW_STRIDE+{]line*256},x
+            stal  spritemask+SPRITE_ROW_STRIDE+{]line*256},x
+            
+            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
+            and:  tiledata+TILE_ROW_STRIDE+32+{]line*4},y
+            ora:  tiledata+TILE_ROW_STRIDE+{]line*4},y
+            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
+
+            lda:  tiledata+TILE_ROW_STRIDE+32+{]line*4}+2,y
+            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
+            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
+            
+            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
+            and:  tiledata+TILE_ROW_STRIDE+32+{]line*4}+2,y
+            ora:  tiledata+TILE_ROW_STRIDE+{]line*4}+2,y
+            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
+
+            lda:  tiledata+TILE_ROW_STRIDE+32+128+{]line*4},y
+            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
+            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
+            
+            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
+            and:  tiledata+TILE_ROW_STRIDE+32+128+{]line*4},y
+            ora:  tiledata+TILE_ROW_STRIDE+128+{]line*4},y
+            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
+
+            lda:  tiledata+TILE_ROW_STRIDE+32+128+{]line*4}+2,y
+            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
+            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
+            
+            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
+            and:  tiledata+TILE_ROW_STRIDE+128+32+{]line*4}+2,y
+            ora:  tiledata+TILE_ROW_STRIDE+128+{]line*4}+2,y
+            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
+
+]line       equ   ]line+1
+            --^
+
+            plb                                  ; pop extra byte
+            plb
+            rts
+
+; X = sprite vbuff address
+; Y = tile data pointer
 ;
 ; Draws the tile vertically flipped
 _DrawTile8x8V
@@ -695,6 +795,38 @@ _EraseTileSprite
             plb
             rts
 
+_EraseTileSprite16x16
+            phb                                   ; Save the bank to switch to the sprite plane
+
+            pea    #^spritedata
+            plb
+
+            lda    #0
+]line       equ    0
+            lup    16
+            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+4,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+6,x
+]line       equ   ]line+1
+            --^
+
+            pea    #^spritemask
+            plb
+
+            lda    #$FFFF
+]line       equ    0
+            lup    16
+            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+4,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+6,x
+]line       equ   ]line+1
+            --^
+
+            pla
+            plb
+            rts
 ; Add a new sprite to the rendering pipeline
 ;
 ; The tile id ithe range 0 - 511.  The top 7 bits are used as sprite control bits
@@ -783,6 +915,36 @@ _GetSpriteVBuffAddr
             adc   1,s
             sta   1,s
             pla
+            rts
+
+
+; Remove a sprite from the list. Just mark its STATUS as FREE and it will be
+; picked up in the next AddSprite. We have to be carful not to set it to zero
+; as that will truncate the sprite list
+;
+; A = Sprite ID
+RemoveSprite ENT
+            phb
+            phk
+            plb
+            jsr    _RemoveSprite
+            plb
+            rtl
+
+
+_RemoveSprite
+            cmp   #MAX_SPRITES*2                ; Make sure we're in bounds
+            bcc   :ok
+            rts
+
+:ok
+            lda   #SPRITE_STATUS_FREE
+            sta   _Sprites+SPRITE_STATUS,x
+
+            lda   tmp0                          ; Update the Tile ID
+            sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
+            jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
+            sta   _Sprites+TILE_DATA_OFFSET,x
             rts
 
 ; Update the sprite's flags. We do not allow the size fo a sprite to be changed.  That required
@@ -878,6 +1040,7 @@ SPRITE_REC_SIZE equ 34
 SPRITE_STATUS_EMPTY equ 0
 SPRITE_STATUS_CLEAN equ 1
 SPRITE_STATUS_DIRTY equ 2
+SPRITE_STATUS_FREE  equ 4
 
 SPRITE_STATUS equ {MAX_SPRITES*0}
 TILE_DATA_OFFSET equ {MAX_SPRITES*2}

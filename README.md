@@ -166,7 +166,7 @@ There are four subroutines that are available to provide sprite support in GTE: 
 
 # Rendering a Frame
 
-There is a single `Render` subroutine that applies all of the frame changes and efficiently renders to the super hires screen.  It bear repeating here that most of the GTE functions operate in a deferred manner; any expensive operation that involved updating internal data structures is delayed until the `Render` function in called.
+There is a single `Render` subroutine that applies all of the frame changes and efficiently renders to the super hires screen.  It bears repeating here that most of the GTE functions operate in a deferred manner; any expensive operation that involved updating internal data structures is delayed until the `Render` function in called.
 
 ```asm
             jsl      Render
@@ -186,3 +186,4 @@ GTE provides the following capabilities
 * [Adaptive Tile Refresh](https://en.wikipedia.org/wiki/Adaptive_tile_refresh)
 * [A Guide to the Graphics of the Sega Mega Drive / Genesis](https://rasterscroll.com/mdgraphics/)
 * [Jon Burton / Traveller's Tales / Coding Secrets](https://ttjontt.wixsite.com/gamehut/coding-secrets)
+* [Lou's Pseudo 3d Page](http://www.extentofthejam.com/pseudo/)

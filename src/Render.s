@@ -140,3 +140,141 @@ _Render
 
             stz   DirtyBits
             rts
+
+; This is a specialized redner function that only updated the dirty tiles *and* draws them
+; directly onto the SHR graphics buffer.  The playfield is not used at all.  In some way, this
+; ignores almost all of the capabilities of GTE, but it does provide a convenient way to use
+; the sprite subsystem + tile attributes for single-screen games which should be able to run
+; close to 60 fps.
+RenderDirty ENT
+            phb
+            phk
+            plb
+            jsr   _RenderDirty
+            plb
+            rtl
+
+; In this renderer, we assume that thwere is no scrolling, so no need to update any information about
+; the BG0/BG1 positions
+_RenderDirty
+            jsr   _RenderSprites
+            jsr   _ApplyDirtyTiles
+            rts
+
+_ApplyDirtyTiles
+            bra  :begin
+
+:loop
+; Retrieve the offset of the next dirty Tile Store items in the Y-register
+
+            jsr  _PopDirtyTile2
+
+; Call the generic dispatch with the Tile Store record pointer at by the Y-register.  
+
+            phb
+            jsr  _RenderDirtyTile
+            plb
+
+; Loop again until the list of dirty tiles is empty
+
+:begin      ldx  DirtyTileCount
+            bne  :loop
+            rts
+
+; Only render solid tiles and sprites
+_RenderDirtyTile
+            lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
+            and   #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
+            xba
+
+            ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
+            beq   :nosprite
+
+            ldx   TileStore+TS_SPRITE_ADDR,y
+            stx   _SPR_X_REG
+
+            tax
+            lda   DirtyTileSpriteProcs,x
+            sta   :tiledisp+1
+            bra   :sprite
+
+:nosprite
+            tax
+            lda   DirtyTileProcs,x                    ; load and patch in the appropriate subroutine
+            sta   :tiledisp+1
+
+:sprite
+            ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
+            lda   TileStore+TS_SCREEN_ADDR,y    ; Get the on-screen address of this tile
+            pha
+
+            lda   TileStore+TS_WORD_OFFSET,y
+            ply
+            pea   $0101
+            plb
+            plb                                  ; set the bank
+
+; B is set to Bank 01
+; A is set to the tile word offset (0 through 80 in steps of 4)
+; Y is set to the top-left address of the tile in SHR screen
+; X is set to the address of the tile data
+
+:tiledisp   jmp   $0000                          ; render the tile
+
+DirtyTileProcs       dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
+DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
+
+; Blit tiles directly to the screen.
+_TBDirtyTile_00
+_TBDirtyTile_0H
+]line            equ             0
+                 lup             8
+                 ldal            tiledata+{]line*4},x
+                 sta:            $0000+{]line*160},y
+                 ldal            tiledata+{]line*4}+2,x
+                 sta:            $0002+{]line*160},y
+]line            equ             ]line+1
+                 --^
+                 rts
+
+_TBDirtyTile_V0
+_TBDirtyTile_VH
+]src             equ             7
+]dest            equ             0
+                 lup             8
+                 ldal            tiledata+{]src*4},x
+                 sta:            $0000+{]dest*160},y
+                 ldal            tiledata+{]src*4}+2,x
+                 sta:            $0002+{]dest*160},y
+]src             equ             ]src-1
+]dest            equ             ]dest+1
+                 --^
+                 rts
+
+_TBDirtySpriteTile_00
+_TBDirtySpriteTile_0H
+                 jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer (using correct x-register)
+                 jmp             _TBApplyDirtySpriteData    ; Overlay the data from the sprite plane (and copy into the code field)
+
+_TBDirtySpriteTile_V0
+_TBDirtySpriteTile_VH
+                 jsr             _TBCopyTileDataToCBuffV
+                 jmp             _TBApplyDirtySpriteData
+
+_TBApplyDirtySpriteData
+                 ldx   _SPR_X_REG                               ; set to the unaligned tile block address in the sprite plane
+
+]line            equ   0
+                 lup   8
+                 lda   blttmp+{]line*4}
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
+                 sta:  $0000+{]line*160},y
+
+                 lda   blttmp+{]line*4}+2
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+                 sta:  $0002+{]line*160},y
+]line            equ   ]line+1
+                 --^
+                 rts 

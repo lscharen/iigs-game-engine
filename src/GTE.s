@@ -48,6 +48,7 @@ StopScript         EXT
 AddSprite          EXT
 MoveSprite         EXT    ; Set an existing sprite's position
 UpdateSprite       EXT    ; Change an existing sprite's flags
+RemoveSprite       EXT
 
 ; Direct access to internals
 DoScriptSeq        EXT
@@ -59,6 +60,8 @@ ApplyTiles         EXT    ; Drain the dirty tile queue and call RenderTile on ea
 RenderTile         EXT    ; Y = address from GetTileStoreOffset
 GetTileStoreOffset EXT    ; X = column, Y = row
 TileStore          EXT    ; Tile store internal data structure
+
+RenderDirty        EXT    ; Render only dirty tiles + sprites directly to the SHR screen
 
 GetSpriteVBuffAddr EXT    ; X = x-coordinate (0 - 159), Y = y-coordinate (0 - 199). Return in Acc.
 

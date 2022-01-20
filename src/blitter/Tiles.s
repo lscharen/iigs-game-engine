@@ -505,9 +505,10 @@ _CopyBG1Tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
 ; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
+; TileStore+TS_SCREEN_ADDR    : Address ont he physical screen corresponding to this tile (for direct rendering)
 
 TileStore        ENT
-                 ds   TILE_STORE_SIZE*10
+                 ds   TILE_STORE_SIZE*11
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2

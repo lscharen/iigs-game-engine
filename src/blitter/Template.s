@@ -124,6 +124,38 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    inx
                    dey
                    bne   :loop
+
+; Calculate the screen locations for each tile cornder
+
+                   lda   ScreenY0                   ; Calculate the address of the first byte
+                   asl                              ; of the right side of the playfield
+                   tax
+                   lda   ScreenAddr,x               ; This is the address for the left edge of the physical screen
+                   clc
+                   adc   ScreenX0
+
+                   ldx   #0
+                   ldy   #0
+:tsloop
+                   sta   TileStore+TS_SCREEN_ADDR,X
+
+                   clc
+                   adc   #4                         ; Go to the next tile
+
+                   iny
+                   cpy   #41                        ; If we've done 41 columns, move to the next line
+                   bcc   :nohop
+                   ldy   #0
+                   clc
+                   adc   #{8*160}-{4*41}
+:nohop
+
+                   inx
+                   inx
+                   cpx   #TILE_STORE_SIZE-2
+                   bcc   :tsloop
+
+; Return
                    rts
 
 ; Clear the SHR screen and then infill the defined field
@@ -725,7 +757,7 @@ snippets           lup   82
 
                    bcs   :byte                      ; if C = 0, just push the data and return
                    pha                              ; 1 byte 
-                   jmp   loop+3+{3*]index}-base     ; 3 bytes : use relative branch for convenience
+                   jmp   loop+3+{3*]index}-base     ; 3 bytes
 :byte              jmp   jmp_rtn-base               ; 3 bytes
 ]index             equ   ]index+1
                    --^
