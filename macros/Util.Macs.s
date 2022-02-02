@@ -339,6 +339,11 @@ Tool        MAC
             JSL       $E10000        ; go to dispatcher
             <<<
 
+UserTool    MAC
+            LDX       #]1            ; load tool call #
+            JSL       $E10008        ; go to dispatcher
+            <<<
+
 **************************************************
 * Auto-menu item macros                          *
 * This is one alternative for defining a menu    *

@@ -1,4 +1,4 @@
-; Functions for sprie handling.  Mostly maintains the sprite list and provides
+; Functions for sprite handling.  Mostly maintains the sprite list and provides
 ; utility functions to calculate sprite/tile intersections
 ;
 ; The sprite plane actually covers two banks so that more than 32K can be used as a virtual 
@@ -31,6 +31,8 @@ InitSprites
            dex
            bpl    :loop3
 
+; Precalculate some bank values
+           jsr    _CacheSpriteBanks
            rts
 
 ; Run through the list of tile store offsets that this sprite was last drawn into and mark
@@ -116,23 +118,27 @@ _ClearSpriteFromTileStore
 ; any sprite that needs to be re-drawn has been marked as dirty.
 ;
 ; In the first phase, we run through the list of dirty sprites and erase them from their
-; OLD_VBUFF_ADDR.  This clears the sprite plane buffers.  We also interate through the
+; OLD_VBUFF_ADDR.  This clears the sprite plane buffers.  We also iterate through the
 ; TILE_STORE_ADDR_X array and mark all of the tile store location that this sprite had occupied
 ; as dirty, as well as removing this sprite from the TS_SPRITE_FLAG bitfield.
 ;
-; A final aspect is that any of the sprites idicated in the TS_SPRITE_FLAG are marked to be
+; A final aspect is that any of the sprites indicated in the TS_SPRITE_FLAG are marked to be
 ; drawn in the next phase (since a portion of their content may have been erased if they overlap)
 ; 
 ; In the second phase, the sprite is re-drawn into the sprite plane buffers and the appropriate
-; Tile Store locations are marked as dirty 
-;
-; 
+; Tile Store locations are marked as dirty. It is important to recognize that the sprites themselves
+; can be marked dirty, and the underlying tiles in the tile store are independently marked dirty.
+
 forceSpriteFlag ds 2
 _RenderSprites
 
 ; First step is to look at the StartX and StartY values.  If the offsets have changed from the
-; last time that the frame was redered, then we need to mark all of the sprites as dirty so that
+; last time that the frame was rendered, then we need to mark all of the sprites as dirty so that
 ; the tiles on which they were located at the previous frame will be refreshed
+;
+; OPTIMIZATION NOTE: Shoud check that the sprite actually chanegs position.  If the screen scrolles
+;                    by +X, but the sprite moves by -X (so it's relative position is unchanged), then
+;                    it does NOT need to be marked as dirty.
 
             stz   forceSpriteFlag
             lda   StartX
@@ -169,7 +175,7 @@ _RenderSprites
 
 ; Second step is to scan the list of sprites.  A sprite is either clean or dirty.  If it's dirty,
 ; then its position had changed, so we need to add tiles to the dirty queue to make sure the
-; playfield gets update.  If it's clean, we can skip everything.
+; playfield gets updated.  If it's clean, we can skip everything.
 
             ldy   #0
 :loop       lda   _Sprites+SPRITE_STATUS,y       ; If the status is zero, that's the sentinel value
@@ -371,7 +377,7 @@ draw_8x16h
              adc   #{8*SPRITE_PLANE_SPAN}
              tax
              tya
-             adc   #{128*32}                      ; 32 tiles to the next verical one, each tile is 128 bytes
+             adc   #{128*32}                      ; 32 tiles to the next vertical one, each tile is 128 bytes
              tay
              jmp   _DrawTile8x8
 
@@ -586,8 +592,8 @@ _DrawTile8x8
 ]line       equ   0
             lup   8
             lda:  tiledata+32+{]line*4},y
-            andl  spritemask+{]line*256},x
-            stal  spritemask+{]line*256},x
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
             
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
             and:  tiledata+32+{]line*4},y
@@ -619,8 +625,8 @@ _DrawTile16x16
 ]line       equ   0
             lup   8
             lda:  tiledata+32+{]line*4},y
-            andl  spritemask+{]line*256},x
-            stal  spritemask+{]line*256},x
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
             
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
             and:  tiledata+32+{]line*4},y
@@ -663,8 +669,8 @@ SPRITE_ROW_STRIDE equ 8*SPRITE_PLANE_SPAN
 ]line       equ   0
             lup   8
             lda:  tiledata+TILE_ROW_STRIDE+32+{]line*4},y
-            andl  spritemask+SPRITE_ROW_STRIDE+{]line*256},x
-            stal  spritemask+SPRITE_ROW_STRIDE+{]line*256},x
+            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
+            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
             
             ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
             and:  tiledata+TILE_ROW_STRIDE+32+{]line*4},y
@@ -717,8 +723,8 @@ _DrawTile8x8V
 ]line       equ   0
             lup   8
             lda:  tiledata+32+{{7-]line}*4},y
-            andl  spritemask+{]line*256},x
-            stal  spritemask+{]line*256},x
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
             
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
             and:  tiledata+32+{{7-]line}*4},y
@@ -744,13 +750,20 @@ _DrawTile8x8V
 ; resgion to all $FFFF
 ; 
 ; X = address is sprite plane -- erases an 8x8 region
+_CacheSpriteBanks
+            lda    #>spritemask
+            and    #$FF00
+            ora    #^spritedata
+            sta    SpriteBanks
+            rts
+
 SPRITE_PLANE_SPAN equ 256
 
 _EraseTileSprite
             phb                                   ; Save the bank to switch to the sprite plane
 
-            pea    #^spritedata
-            plb
+            pei    SpriteBanks
+            plb                                   ; pop the data bank (low byte)
 
             lda    #0
             sta:   {0*SPRITE_PLANE_SPAN}+0,x
@@ -770,8 +783,7 @@ _EraseTileSprite
             sta:   {7*SPRITE_PLANE_SPAN}+0,x
             sta:   {7*SPRITE_PLANE_SPAN}+2,x
 
-            pea    #^spritemask
-            plb
+            plb                                  ; pop the mask bank (high byte)
 
             lda    #$FFFF
             sta:   {0*SPRITE_PLANE_SPAN}+0,x
@@ -791,7 +803,6 @@ _EraseTileSprite
             sta:   {7*SPRITE_PLANE_SPAN}+0,x
             sta:   {7*SPRITE_PLANE_SPAN}+2,x
 
-            pla
             plb
             rts
 

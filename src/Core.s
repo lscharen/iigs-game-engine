@@ -1,4 +1,5 @@
                   use       Util.Macs.s
+                  use       Load.Macs.s
                   use       Locator.Macs.s
                   use       Mem.Macs.s
                   use       Misc.Macs.s
@@ -39,6 +40,12 @@ EngineStartUp     ENT
                   plb
 
                   jsr       ToolStartUp         ; Start up the toolbox tools we rely on
+                  jsr       _CoreStartUp
+
+                  plb
+                  rtl
+
+_CoreStartUp
                   jsr       SoundStartUp        ; Start up any sound/music tools
                   jsr       IntStartUp          ; Enable certain iterrupts
 
@@ -51,21 +58,23 @@ EngineStartUp     ENT
                   jsr       InitTiles           ; Initialize the tile subsystem
 
                   jsr       InitTimers          ; Initialize the timer subsystem
-
-                  plb
-                  rtl
+                  rts
 
 EngineShutDown    ENT
                   phb
                   phk
                   plb
 
-                  jsr       IntShutDown
-                  jsr       SoundShutDown
+                  jsr       _CoreShutDown
                   jsr       ToolShutDown
 
                   plb
                   rtl
+
+_CoreShutDown
+                  jsr       IntShutDown
+                  jsr       SoundShutDown
+                  rts
 
 ToolStartUp
                   _TLStartUp                    ; normal tool initialization
@@ -274,9 +283,10 @@ EngineReset
 ;  6. Game Boy Advanced     : 30 x 20   240 x 160 (19,200 bytes ( 60.0%))
 ;  7. Ancient Land of Y's   : 36 x 16   288 x 128 (18,432 bytes ( 57.6%))
 ;  8. Game Boy Color        : 20 x 18   160 x 144 (11,520 bytes ( 36.0%))
-; 
+;  9. Agony (Amiga)         : 36 x 24   288 x 192 (27,648 bytes ( 86.4%))
+;
 ;  X = mode number OR width in pixels (must be multiple of 2)
-;  Y = hwight in pixels (if X > 8)
+;  Y = height in pixels (if X > 8)
 
 ScreenModeWidth   dw        320,272,256,256,280,256,240,288,160,320
 ScreenModeHeight  dw        200,192,200,176,160,160,160,128,144,1
@@ -285,7 +295,11 @@ SetScreenMode     ENT
                   phb
                   phk
                   plb
+                  jsr       _SetScreenMode
+                  plb
+                  rtl
 
+_SetScreenMode
                   cpx       #9
                   bcs       :direct             ; if x > 8, then assume X and Y are the dimensions
 
@@ -326,11 +340,10 @@ SetScreenMode     ENT
                   plx
 
                   jsr       SetScreenRect
-                  jsr       FillScreen
-
+                  jmp       FillScreen          ; tail return
 :exit
-                  plb
-                  rtl
+                  rts
+
 
 WaitForKey        sep       #$20
                   stal      KBD_STROBE_REG      ; clear the strobe
@@ -348,6 +361,10 @@ ClearKbdStrobe    sep       #$20
 ; Read the keyboard and paddle controls and return in a game-controller-like format
 LastKey           db        0
 ReadControl       ENT
+                  jsr       _ReadControl
+                  rtl
+
+_ReadControl      
                   pea       $0000               ; low byte = key code, high byte = %------AB 
 
                   sep       #$20
@@ -391,7 +408,7 @@ ReadControl       ENT
 :KbdDown
                   rep       #$20
                   pla
-                  rtl
+                  rts
 
                   put       Memory.s
                   put       Graphics.s

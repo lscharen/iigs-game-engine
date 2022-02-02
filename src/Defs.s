@@ -78,8 +78,9 @@ BG1TileMapWidth        equ   82
 BG1TileMapHeight       equ   84
 BG1TileMapPtr          equ   86
 
-SCBArrayPtr            equ   90          ; USed for palette binding
-Next                   equ   94
+SCBArrayPtr            equ   90          ; Used for palette binding
+SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
+Next                   equ   96
 
 BankLoad               equ   128
 

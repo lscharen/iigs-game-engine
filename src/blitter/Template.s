@@ -526,11 +526,11 @@ BuildBank
 ; to cover the full screen vertical scrolling.
 ;
 ; The 'base' location is always assumed to be on a 4kb ($1000) boundary.  We make sure that
-; the code is assembled on a page boundary to help will alignment
+; the code is assembled on a page boundary to help with alignment
                    ds    \,$00                      ; pad to the next page boundary
 base
-entry_1            ldx   #0000                      ; Used for LDA 00,x addressing
-entry_2            ldy   #0000                      ; Used for LDA (00),y addressing
+entry_1            ldx   #0000                      ; Used for LDA 00,x addressing (Dynamic Tiles)
+entry_2            ldy   #0000                      ; Used for LDA (00),y addressing (Second Layer; BG1)
 entry_3            lda   #0000                      ; Sets screen address (right edge)
                    tcs
 
@@ -691,22 +691,17 @@ epilogue_1         tsc
 ; Standard Two-level Mix (23 bytes)
 ;
 ;   Optimal     = 18 cycles (LDA/AND/ORA/PHA/JMP)
-;  16-bit write = 21 cycles 
-;   8-bit low   = 30 cycles
-;   8-bit high  = 29 cycles
+;  16-bit write = 20 cycles 
+;   8-bit low   = 28 cycles
+;   8-bit high  = 27 cycles
 ;
 ;  start     lda  (00),y        ; 6
 ;            and  #MASK         ; 3
 ;            ora  #DATA         ; 3 = 12 cycles to load the data
 ;            bcs  alt_exit      ; 2/3
 ;            pha                ; 4
-;  out       brl  next          ; 4 Fast-path completes in 5 additional cycles
-;
-;  alt_exit  bvs  r_edge        ; 2/3 
-;            clc                ; 2
-;            brl  l_jmp_rtn     ; 3
-;  r_edge    rep   #$41
-;            brl  r_jmp_rtn     ; 3
+;  out       jmp  next          ; 3 Fast-path completes in 5 additional cycles
+;  alt_exit  jmp  jmp_rtn       ; 3 
 ;
 ;
 ; For dynamic masked tiles, we re-write bytes 2 - 8 as this, which mostly
@@ -716,7 +711,6 @@ epilogue_1         tsc
 ;  start     lda  (00),y        ; 6
 ;            and  $80,x         ; 5
 ;            ora  $00,x         ; 5 = 16 cycles to load the data
-;            bcc  *+4           ; 
 ;            bcs  alt_exit      ; 2/3
 ;            pha
 ;            ...
