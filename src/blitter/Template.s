@@ -584,15 +584,18 @@ full_return        jml   blt_return                 ; Full exit
 
 
 ; The even/odd branch of this line's exception handler will return here.  This is mostly
-; a space-saving measure to allow for more code in the exeption handers themselved, but
-; also simplified the relocation process since we only have to update a single address
+; a space-saving measure to allow for more code in the exeption handers themselves, but
+; also simplifies the relocation process since we only have to update a single address
 ; in each exception handler, rather than two.
 ;
-; Oce working, this code should be able to be interleaved with the r_jmp_rtn code
+; Once working, this code should be able to be interleaved with the r_jmp_rtn code
 ; above to eliminate a couple of branches
 jmp_rtn
                    bvs   r_jmp_rtn
 jmp_rtn_1          jmp   l_jmp_rtn-base             ; Could inline the code and save 3 cycles / line
+                                                    ; If we switch even/odd exit points, could fall through
+                                                    ; to the even_exit JMP at the head of the PEA field to
+                                                    ; save 6 cycles.
 
 ; Re-enable interrupts and continue -- the even_exit JMP from the previous line will jump here every
 ; 8 or 16 lines in order to give the system time to handle interrupts.
@@ -653,7 +656,7 @@ long_4             stal  *+4-base
 l_jmp_rtn          xba
                    sep   #$20
                    pha
-                   rep   #$61                      ; Clear everything C, V and M
+                   rep   #$61                       ; Clear everything C, V and M
                    bra   even_exit
 
 l_is_jmp           sec                              ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte

@@ -365,7 +365,7 @@ _ApplyBG0XPos
 
                     ldx   :draw_count_x2
                     lda   :opcode
-                    ldy   :base_address
+                    ldy   :base_address          ; Y-register is preserved, this can be removed
                     jsr   SetCodeEntryOpcode
 
 ; If this is an odd entry, also set the odd_entry low byte and save the operand high byte
@@ -374,11 +374,11 @@ _ApplyBG0XPos
                     beq   :not_odd
 
                     ldx   :draw_count_x2
-                    ldy   :base_address
+                    ldy   :base_address         ; Y-register is preserved, this can be removed
                     jsr   SetOddCodeEntry
 
                     ldx   :draw_count_x2
-                    ldy   :base_address
+                    ldy   :base_address         ; Y-register is preserved, this can be removed
                     pei   :exit_address
                     jmp   :SaveHighOperand           ; Only used once, so "inline" it
 :save_high_op_rtn
