@@ -546,18 +546,11 @@ entry_jmp          jmp   $0100
                                                     ; an amortized 4-cycles per line to set the entry point break
 
 right_odd          bit   #$000B                     ; Check the bottom nibble to quickly identify a PEA instruction
-                   beq   r_is_pea                   ; This costs 6 cycles in the fast-path
+                   bne   r_is_not_pea               ; This costs 5 cycles in the fast-path
 
-                   bit   #$0040                     ; Check bit 6 to distinguish between JMP and all of the LDA variants
-                   bne   r_is_jmp
-
-long_1             stal  *+4-base                   ; Everything else is a two-byte LDA opcode + PHA
-                   dfb   $00,$00
-                   bra   r_jmp_rtn
-
-r_is_pea           xba                              ; fast code for PEA
+                   xba                              ; fast code for PEA
 r_jmp_rtn          sep   #$20                       ; shared return code path by all methods
-                   pha
+two_byte_rtn       pha
                    rep   #$61                       ; Clear Carry, Overflow and M bits #$20
 odd_entry          jmp   $0100                      ; unconditionally jump into the "next" instruction in the 
                                                     ; code field.  This is OK, even if the entry point was the
@@ -568,6 +561,14 @@ odd_entry          jmp   $0100                      ; unconditionally jump into 
                                                     ; As with the original entry point, because all of the
                                                     ; code field is page-aligned, only the low byte needs to
                                                     ; be updated when the scroll position changes
+
+r_is_not_pea       bit   #$0040                     ; Check bit 6 to distinguish between JMP and all of the LDA variants
+                   bne   r_is_jmp
+
+long_1             stal  *+6-base                   ; Everything else is a two-byte LDA opcode + PHA
+                   sep   #$20                       ; Lift 8-bit mode here to save a cycle in the LDA
+                   dfb   $00,$00
+                   bra   two_byte_rtn
 
 r_is_jmp           sep   #$41                       ; Set the C and V flags which tells a snippet to push only the low byte
 long_2             ldal  entry_jmp+1-base
