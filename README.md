@@ -183,6 +183,7 @@ GTE provides the following capabilities
 * [Super Merryo Trolls](http://garote.bdmonkeys.net/merryo_trolls/)
 * [Coding Secrets of Wolfenstein IIgs](https://www.kansasfest.org/wp-content/uploads/2004-sheppy-wolf3d.pdf)
 * [Apple IIgs Graphics and Sound College](https://www.kansasfest.org/wp-content/uploads/1992-heineman-gs.pdf)
+* [John Brooks' Fast GS graphics notes](https://groups.google.com/g/comp.sys.apple2/c/6HWlRPkuuDY/m/NNc1msmmCwAJ)
 * [Adaptive Tile Refresh](https://en.wikipedia.org/wiki/Adaptive_tile_refresh)
 * [A Guide to the Graphics of the Sega Mega Drive / Genesis](https://rasterscroll.com/mdgraphics/)
 * [Jon Burton / Traveller's Tales / Coding Secrets](https://ttjontt.wixsite.com/gamehut/coding-secrets)
