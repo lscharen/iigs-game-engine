@@ -91,7 +91,7 @@ _MarkDirtySprite
         dec
 :ok_y   sta   Bottom
 
-; At this point we know that we have to update the tile that overlap the sprite plane rectangle defined
+; At this point we know that we have to update the tiles that overlap the sprite plane rectangle defined
 ; by (Top, Left), (Bottom, Right).  The general process is to figure out the top-left coordinate in the
 ; sprite plane that matches up with the code field and then calculate the number of tiles in each direction
 ; that need to be dirtied to cover the sprite.
@@ -146,7 +146,7 @@ _MarkDirtySprite
         sta   ColLeft
 
 ; Sneak a pre-calculation here. Calculate the upper-left corder of the sprite in the sprite plane.
-; We can reuse this  in all of the routines below
+; We can reuse this in all of the routines below
 
         clc
         lda   TileTop
@@ -190,6 +190,15 @@ _MarkDirtySprite
         lda   #0
         sta   _Sprites+TILE_STORE_ADDR_2,y
         rts
+
+; NOTE: If we rework the _PushDirtyTile to use the Y register instead of the X register, we can
+;       optimize all of these :mark routines as
+;
+; :mark1x1
+;        jsr   :mark_0_0
+;        sty   _Sprites+TILE_STORE_ADDR_1,x
+;        stz   _Sprites+TILE_STORE_ADDR_2,y
+;        rts
 
 :mark1x2
         jsr   :mark_0_0

@@ -681,9 +681,8 @@ _PushDirtyTileX
                  lda  DirtyTileCount
                  sta  TileStore+TS_DIRTY,x
 
-                 pha                                ; Would be nice to have an "exchange a and x" instruction
                  txa
-                 plx
+                 ldx  DirtyTileCount
                  sta  DirtyTiles,x
 
                  inx
