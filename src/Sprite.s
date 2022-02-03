@@ -133,16 +133,9 @@ _ClearSpriteFromTileStore
 ; drawn in the next phase (since a portion of their content may have been erased if they overlap)
 ; 
 ; In the second phase, the sprite is re-drawn into the sprite plane buffers and the appropriate
-<<<<<<< HEAD
-; Tile Store locations are marked as dirty 
-;
-; IF a sprite is marked as FREE, it is transitioned to a free slot after being erased from the
-; the scene and its slot index is returned to the open list.
-=======
 ; Tile Store locations are marked as dirty. It is important to recognize that the sprites themselves
 ; can be marked dirty, and the underlying tiles in the tile store are independently marked dirty.
 
->>>>>>> toolbox-conversion
 forceSpriteFlag ds 2
 _RenderSprites
 
@@ -304,49 +297,20 @@ _EraseSpriteY
 :erase_sprite dw   erase_8x8,erase_8x16,erase_16x8,erase_16x16
 
 erase_8x8
-            ldx   _Sprites+OLD_VBUFF_ADDR,y
-            jmp   _EraseTileSprite                    ; erase from the old position
+             ldx   _Sprites+OLD_VBUFF_ADDR,y
+             jmp   _EraseTileSprite8x8                 ; erase from the old position
 
 erase_8x16
-            clc
-            ldx   _Sprites+OLD_VBUFF_ADDR,y
-            jsr   _EraseTileSprite
-
-            txa
-            adc   #{8*SPRITE_PLANE_SPAN}
-            tax
-            jmp   _EraseTileSprite
+             ldx   _Sprites+OLD_VBUFF_ADDR,y
+             jmp   _EraseTileSprite8x16
 
 erase_16x8
-            clc
-            ldx   _Sprites+OLD_VBUFF_ADDR,y
-            jsr   _EraseTileSprite
-
-            txa
-            adc   #4
-            tax
-            jmp   _EraseTileSprite
+             ldx   _Sprites+OLD_VBUFF_ADDR,y
+             jmp   _EraseTileSprite16x8
 
 erase_16x16
-            clc
-            ldx   _Sprites+OLD_VBUFF_ADDR,y
-            jmp   _EraseTileSprite16x16
-;            jsr   _EraseTileSprite
-
-            txa
-            adc   #4
-            tax
-            jsr   _EraseTileSprite
-
-            txa
-            adc   #{8*SPRITE_PLANE_SPAN}-4
-            tax
-            jsr   _EraseTileSprite
-
-            txa
-            adc   #4
-            tax
-            jmp   _EraseTileSprite
+             ldx   _Sprites+OLD_VBUFF_ADDR,y
+             jmp   _EraseTileSprite16x16
 
 ; X = _Sprites array offset
 _DrawSprite
@@ -770,49 +734,82 @@ _CacheSpriteBanks
 
 SPRITE_PLANE_SPAN equ 256
 
-_EraseTileSprite
+; X = bank address
+_EraseTileSprite8x8
             phb                                   ; Save the bank to switch to the sprite plane
 
             pei    SpriteBanks
             plb                                   ; pop the data bank (low byte)
 
-            lda    #0
-            sta:   {0*SPRITE_PLANE_SPAN}+0,x
-            sta:   {0*SPRITE_PLANE_SPAN}+2,x
-            sta:   {1*SPRITE_PLANE_SPAN}+0,x
-            sta:   {1*SPRITE_PLANE_SPAN}+2,x
-            sta:   {2*SPRITE_PLANE_SPAN}+0,x
-            sta:   {2*SPRITE_PLANE_SPAN}+2,x
-            sta:   {3*SPRITE_PLANE_SPAN}+0,x
-            sta:   {3*SPRITE_PLANE_SPAN}+2,x
-            sta:   {4*SPRITE_PLANE_SPAN}+0,x
-            sta:   {4*SPRITE_PLANE_SPAN}+2,x
-            sta:   {5*SPRITE_PLANE_SPAN}+0,x
-            sta:   {5*SPRITE_PLANE_SPAN}+2,x
-            sta:   {6*SPRITE_PLANE_SPAN}+0,x
-            sta:   {6*SPRITE_PLANE_SPAN}+2,x
-            sta:   {7*SPRITE_PLANE_SPAN}+0,x
-            sta:   {7*SPRITE_PLANE_SPAN}+2,x
+]line       equ    0
+            lup    8
+            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
+]line       equ   ]line+1
+            --^
 
             plb                                  ; pop the mask bank (high byte)
-
             lda    #$FFFF
-            sta:   {0*SPRITE_PLANE_SPAN}+0,x
-            sta:   {0*SPRITE_PLANE_SPAN}+2,x
-            sta:   {1*SPRITE_PLANE_SPAN}+0,x
-            sta:   {1*SPRITE_PLANE_SPAN}+2,x
-            sta:   {2*SPRITE_PLANE_SPAN}+0,x
-            sta:   {2*SPRITE_PLANE_SPAN}+2,x
-            sta:   {3*SPRITE_PLANE_SPAN}+0,x
-            sta:   {3*SPRITE_PLANE_SPAN}+2,x
-            sta:   {4*SPRITE_PLANE_SPAN}+0,x
-            sta:   {4*SPRITE_PLANE_SPAN}+2,x
-            sta:   {5*SPRITE_PLANE_SPAN}+0,x
-            sta:   {5*SPRITE_PLANE_SPAN}+2,x
-            sta:   {6*SPRITE_PLANE_SPAN}+0,x
-            sta:   {6*SPRITE_PLANE_SPAN}+2,x
-            sta:   {7*SPRITE_PLANE_SPAN}+0,x
-            sta:   {7*SPRITE_PLANE_SPAN}+2,x
+]line       equ    0
+            lup    8
+            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
+]line       equ   ]line+1
+            --^
+
+            plb
+            rts
+
+_EraseTileSprite8x16
+            phb                                   ; Save the bank to switch to the sprite plane
+
+            pei    SpriteBanks
+            plb                                   ; pop the data bank (low byte)
+
+]line       equ    0
+            lup    16
+            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
+]line       equ   ]line+1
+            --^
+
+            plb                                  ; pop the mask bank (high byte)
+            lda    #$FFFF
+]line       equ    0
+            lup    16
+            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
+]line       equ   ]line+1
+            --^
+
+            plb
+            rts
+
+_EraseTileSprite16x8
+            phb                                   ; Save the bank to switch to the sprite plane
+
+            pei    SpriteBanks
+            plb                                   ; pop the data bank (low byte)
+
+]line       equ    0
+            lup    8
+            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+4,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+6,x
+]line       equ   ]line+1
+            --^
+
+            plb                                  ; pop the mask bank (high byte)
+            lda    #$FFFF
+]line       equ    0
+            lup    8
+            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+4,x
+            sta:   {]line*SPRITE_PLANE_SPAN}+6,x
+]line       equ   ]line+1
+            --^
 
             plb
             rts
@@ -820,21 +817,19 @@ _EraseTileSprite
 _EraseTileSprite16x16
             phb                                   ; Save the bank to switch to the sprite plane
 
-            pea    #^spritedata
-            plb
+            pei    SpriteBanks
+            plb                                   ; pop the data bank (low byte)
 
-            lda    #0
 ]line       equ    0
             lup    16
-            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+4,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+6,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+4,x
+            stz:   {]line*SPRITE_PLANE_SPAN}+6,x
 ]line       equ   ]line+1
             --^
 
-            pea    #^spritemask
-            plb
+            plb                                  ; pop the mask bank (high byte)
 
             lda    #$FFFF
 ]line       equ    0
@@ -846,7 +841,6 @@ _EraseTileSprite16x16
 ]line       equ   ]line+1
             --^
 
-            pla
             plb
             rts
 
