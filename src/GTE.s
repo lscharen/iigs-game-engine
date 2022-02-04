@@ -75,20 +75,20 @@ ScreenAddr         EXT
 OneSecondCounter   EXT
 BlitBuff           EXT
 
-; Helper function to load the GTE User Toolset
-GTEInstall
-                   php
+;; Helper function to load the GTE User Toolset
+;GTEInstall
+;                   php
 ;                   ~InitialLoad userId;localToolPath;#0
 
-                   pea       $8000                ; User tool
-                   pea       $00A5                ; Tool 165
-                   PushLong  toolPtr
-                   _SetTSPtr
+;                   pea       $8000                ; User tool
+;                   pea       $00A5                ; Tool 165
+;                   PushLong  toolPtr
+;                   _SetTSPtr
                    
-                   plp
-                   rtl
+;                   plp
+;                   rtl
 
 ; Look for the tool set in the System Tools folder and then next to the application
-sysToolPath        strl       '*:System:Tools:ToolGTE'
-localToolPath      strl       '9:ToolGTE'
-toolPtr            adrl       0
+;sysToolPath        strl       '*:System:Tools:ToolGTE'
+;localToolPath      strl       '9:ToolGTE'
+;toolPtr            adrl       0

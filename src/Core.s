@@ -225,6 +225,7 @@ EngineReset
 
                   stz       EngineMode
                   stz       DirtyBits
+                  stz       LastRender
                   stz       LastPatchOffset
                   stz       BG1StartX
                   stz       BG1StartXMod164

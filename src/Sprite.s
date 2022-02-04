@@ -181,15 +181,16 @@ _RenderSprites
             bit   #SPRITE_STATUS_FREE
             beq   :next1
 
-            ldx   #SPRITE_STATUS_EMPTY            ; Mark as empty
-            stx   _Sprites+SPRITE_STATUS,y
+            lda   #SPRITE_STATUS_EMPTY            ; Mark as empty
+            sta   _Sprites+SPRITE_STATUS,y
 
             ldx   _OpenListHead
             dex
             dex
             stx   _OpenListHead
-            sty   _OpenList,x
-            sty   _NextOpenSlot 
+            tya
+            sta   _OpenList,x
+            sty   _NextOpenSlot
 
 :next1      iny
             iny
@@ -219,7 +220,7 @@ _RenderSprites
 :render
             sty   tmp0                                ; stash the Y register
 
-; Draw the sprite into the sprint plane buffer(s)
+; Draw the sprite into the sprite plane buffer(s)
 
             lda   _Sprites+SPRITE_ID,y
             bit   #SPRITE_HIDE
@@ -557,6 +558,39 @@ DrawTileSprite ENT
             jsr   _DrawTile8x8
             rtl
 
+; Hypothetical compiled tile routine
+;
+; Need 1MB of memory to have 1:1 space for 512 tiles
+; for 16 sprites we have 8 variants: Vert, Horz, Shift.  The shift sprites need an extra column
+;
+; 16x16 sprite = 4x16 words x 4 = 256, 5x16 words x 4 = 320 = 576 words * 21 bytes/word = 12K per sprite
+
+;            pei   SpriteBanks
+;            plb
+
+;            lda   spritedata+0,x                 ; skipped if mask = $ffff
+;            and   #tilemask
+;            ora   #tiledata
+;            sta   spritedata+0,x                 ; 12 bytes / word = 12 * 16 = 216 < 256 in the worst case
+
+;            lda   spritedata+2,x                 ; if mask != 0 and data = 0
+;            and   #tilemask
+;            sta   spritedata+0,x
+
+;            lda   #tiledata                      ; if mask = 0 and data != 0
+;            sta   spritedata+0,x
+
+;            stz   spritedata+0,x                 ; if mask = 0 and data = 0
+;            ...
+
+;            plb
+;            lda   #tilemask
+;            and   spritemask+0,x
+;            sta   spritemask+0,x                 ; 9 * 16 = 144 i the worst case
+;
+;           stz   spritemask+2,x                 ; if mask is zero (often the case)
+
+_DrawTileTemplate
 ; X = sprite vbuff address
 ; Y = tile data pointer
 _DrawTile8x8
@@ -926,7 +960,8 @@ _AddSprite
             lda   #SPRITE_STATUS_DIRTY
             sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn
 
-            sty   _Sprites+SPRITE_Y,x           ; Y coordinate
+            tya
+            sta   _Sprites+SPRITE_Y,x           ; Y coordinate
             pla                                 ; X coordinate
             sta   _Sprites+SPRITE_X,x
 
@@ -1029,12 +1064,16 @@ _MoveSpriteX
 :ok
 _MoveSpriteXnc
             sta   _Sprites+SPRITE_X,x           ; Update the X coordinate
-            sty   _Sprites+SPRITE_Y,x           ; Update the Y coordinate
+            pha
+            tya
+            sta   _Sprites+SPRITE_Y,x           ; Update the Y coordinate
+            pla
 
             jsr   _GetSpriteVBuffAddrTmp        ; A = x-coord, Y = y-coord
             ldy   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
-            sty   _Sprites+OLD_VBUFF_ADDR,x
             sta   _Sprites+VBUFF_ADDR,x         ; Overwrite with the new location
+            tya
+            sta   _Sprites+OLD_VBUFF_ADDR,x
 
             lda   #SPRITE_STATUS_DIRTY          ; Position is changing, mark as dirty
             sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn

@@ -239,7 +239,7 @@ TileStoreYTable   ENT
                   --^
 
 ; Create a table to look up the "next" column with modulo wraparound.  Basically a[i] = i
-; and the table is double-length.  Use contanct offsets to pick an amount to advance
+; and the table is double-length.  Use constant offsets to pick an amount to advance
 NextCol
 ]step             equ   0
                   lup   41

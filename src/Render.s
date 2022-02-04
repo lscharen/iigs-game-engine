@@ -139,6 +139,7 @@ _Render
             sta   OldBG1StartX
 
             stz   DirtyBits
+            stz   LastRender
             rts
 
 ; This is a specialized redner function that only updated the dirty tiles *and* draws them
@@ -157,8 +158,14 @@ RenderDirty ENT
 ; In this renderer, we assume that thwere is no scrolling, so no need to update any information about
 ; the BG0/BG1 positions
 _RenderDirty
+            lda   LastRender                    ; If the full renderer was last called, we assume that
+            bne   :norecalc                     ; the scroll positions have likely changed, so recalculate
+            jsr   _RecalcTileScreenAddrs        ; them to make sure sprites draw at the correct screen address
+:norecalc
             jsr   _RenderSprites
             jsr   _ApplyDirtyTiles
+            lda   #1
+            sta   LastRender
             rts
 
 _ApplyDirtyTiles

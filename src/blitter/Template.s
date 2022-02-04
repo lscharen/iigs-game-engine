@@ -125,7 +125,7 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    dey
                    bne   :loop
 
-; Calculate the screen locations for each tile cornder
+; Calculate the screen locations for each tile corner
 
                    lda   ScreenY0                   ; Calculate the address of the first byte
                    asl                              ; of the right side of the playfield
@@ -156,6 +156,75 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    bcc   :tsloop
 
 ; Return
+                   rts
+
+; Generalized routine that calculates the on-screen address of the tiles and takes the 
+; StartX and StartY values into consideration.  This routine really exists to support
+; the dirty tile rendering mode and the tiles *must* be aligned with the playfield.  
+; That is, StartX % 4 == 0 and StartY % 8 == 0.  If these conditions are not met, then
+; screen will not render correctly.
+_RecalcTileScreenAddrs
+NextColPtr         equ   tmp0
+RowAddrPtr         equ   tmp1
+OnScreenAddr       equ   tmp2
+Counter            equ   tmp3
+
+                   jsr   _OriginToTileStore          ; Get the (col,row) of the tile in the upper-left corner of the playfield
+
+; Manually add the offsets to the NextCol and TileStoreYTable array address and put in a direct page
+; location so we can free up the registers.
+
+                   clc
+                   txa
+                   adc   #NextCol
+                   sta   NextColPtr
+
+                   tya
+                   adc   #TileStoreYTable
+                   sta   RowAddrPtr
+
+; Calculate the on-screen address of the upper-left corner of the playfiled
+
+                   lda   ScreenY0                   ; Calculate the address of the first byte
+                   asl                              ; of the right side of the playfield
+                   tax
+                   lda   ScreenAddr,x               ; This is the address for the left edge of the physical screen
+                   clc
+                   adc   ScreenX0
+                   sta   OnScreenAddr
+
+; Now, loop through the tile store
+
+                   lda   #MAX_TILES
+                   sta   Counter
+                   ldy   #0
+:tsloop
+                   lda   (NextColPtr),y             ; Need to recalculate each time since the wrap-around could
+                   clc                              ; happen anywhere
+                   adc   (RowAddrPtr)
+                   tax
+
+                   lda   OnScreenAddr
+                   sta   TileStore+TS_SCREEN_ADDR,X
+
+                   clc
+                   adc   #4                         ; Go to the next tile
+
+                   iny
+                   iny
+                   cpy   #2*41                      ; If we've done 41 columns, move to the next line
+                   bcc   :nohop
+
+                   inc   RowAddrPtr                 ; Advance the row address (with wrap-around)
+                   inc   RowAddrPtr
+                   ldy   #0                         ; Reset the column counter
+                   clc
+                   adc   #{8*160}-{4*41}
+:nohop
+                   sta   OnScreenAddr               ; Save the updated on-screen address
+                   dec   Counter
+                   bne   :tsloop
+
                    rts
 
 ; Clear the SHR screen and then infill the defined field

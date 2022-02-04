@@ -80,7 +80,8 @@ BG1TileMapPtr          equ   86
 
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
-Next                   equ   96
+LastRender             equ   96          ; Record which reder function was last executed
+Next                   equ   98
 
 BankLoad               equ   128
 
