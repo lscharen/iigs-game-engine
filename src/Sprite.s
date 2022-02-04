@@ -122,7 +122,12 @@ _ClearSpriteFromTileStore
 
 ; This function looks at the sprite list and renders the sprite plane data into the appropriate
 ; tiles in the code field.  There are a few phases to this routine.  The assumption is that
-; any sprite that needs to be re-drawn has been marked as DIRTY.
+; any sprite that needs to be re-drawn has been marked as DIRTY or DAMAGED.
+;
+; A DIRTY sprite is one that has moved, so it needs to be erased/redrawn in the sprite
+; buffer AND the tiles it covers marked for refresh.  A DAMAGED sprite shared one or more
+; tiles with a DIRTY sprite, so it needs to be redraw in the sprite buffer (but not erased!)
+; and its tile do NOT need to be marked for refresh.
 ;
 ; In the first phase, we run through the list of dirty sprites and erase them from their
 ; OLD_VBUFF_ADDR.  This clears the sprite plane buffers.  We also iterate through the
@@ -135,7 +140,6 @@ _ClearSpriteFromTileStore
 ; In the second phase, the sprite is re-drawn into the sprite plane buffers and the appropriate
 ; Tile Store locations are marked as dirty. It is important to recognize that the sprites themselves
 ; can be marked dirty, and the underlying tiles in the tile store are independently marked dirty.
-
 forceSpriteFlag ds 2
 _RenderSprites
 
@@ -143,7 +147,7 @@ _RenderSprites
 ; last time that the frame was rendered, then we need to mark all of the sprites as dirty so that
 ; the tiles on which they were located at the previous frame will be refreshed
 ;
-; OPTIMIZATION NOTE: Shoud check that the sprite actually chanegs position.  If the screen scrolles
+; OPTIMIZATION NOTE: Should check that the sprite actually changes position.  If the screen scrolls
 ;                    by +X, but the sprite moves by -X (so it's relative position is unchanged), then
 ;                    it does NOT need to be marked as dirty.
 
@@ -161,6 +165,32 @@ _RenderSprites
             sta   forceSpriteFlag
 :no_chng_y
 
+; Alter first phase. _OpenListHead is, essentially, a count of how many sprites. We can use that as an early-out
+; test to stop scanning the SPRITE_STATUS values once all active sprites have been accounted for.
+;            lda   _OpenListHead
+;            beq   :exit1
+;            lsr
+;            sta   tmp0
+
+;            lda   _Sprites+SPRITE_STATUS
+;            beq   :exit1
+;            ldy   #0
+;            jsr   _ClearSprite
+;            dec   tmp0
+;            beq   :exit1
+
+;            lda   _Sprites+SPRITE_STATUS+2
+;            beq   :exit1
+;            ldy   #2
+;            jsr   _ClearSprite
+;            dec   tmp0
+;            beq   :exit1
+
+;            ...
+
+;:exit1
+
+            
 ; First phase, erase all dirty sprites
             ldy   #0
 :loop1      lda   _Sprites+SPRITE_STATUS,y       ; If the status is zero, that's the sentinel value
@@ -281,37 +311,16 @@ _GetTileAt
             clc
             rts
 
-; X = _Sprites array offset
-_EraseSprite
-             txy
+; Y = _Sprites array offset
 _EraseSpriteY
              lda   _Sprites+OLD_VBUFF_ADDR,y
              beq   :noerase
-             lda   _Sprites+SPRITE_ID,y
-             and   #$1800                        ; use bits 11 and 12 to dispatch (oly care about size)
-             lsr
-             lsr
-             xba
-             tax
-             jmp   (:erase_sprite,x)
+             ldx   _Sprites+SPRITE_DISP,y              ; get the dispatch index for this sprite
+             jmp   (:do_erase,x)
 :noerase     rts
-:erase_sprite dw   erase_8x8,erase_8x16,erase_16x8,erase_16x16
+:do_erase    dw    _EraseTileSprite8x8,_EraseTileSprite8x16
+             dw    _EraseTileSprite16x8,_EraseTileSprite16x16
 
-erase_8x8
-             ldx   _Sprites+OLD_VBUFF_ADDR,y
-             jmp   _EraseTileSprite8x8                 ; erase from the old position
-
-erase_8x16
-             ldx   _Sprites+OLD_VBUFF_ADDR,y
-             jmp   _EraseTileSprite8x16
-
-erase_16x8
-             ldx   _Sprites+OLD_VBUFF_ADDR,y
-             jmp   _EraseTileSprite16x8
-
-erase_16x16
-             ldx   _Sprites+OLD_VBUFF_ADDR,y
-             jmp   _EraseTileSprite16x16
 
 ; X = _Sprites array offset
 _DrawSprite
@@ -768,8 +777,9 @@ _CacheSpriteBanks
 
 SPRITE_PLANE_SPAN equ 256
 
-; X = bank address
+; A = bank address
 _EraseTileSprite8x8
+            tax
             phb                                   ; Save the bank to switch to the sprite plane
 
             pei    SpriteBanks
@@ -795,6 +805,7 @@ _EraseTileSprite8x8
             rts
 
 _EraseTileSprite8x16
+            tax
             phb                                   ; Save the bank to switch to the sprite plane
 
             pei    SpriteBanks
@@ -820,6 +831,7 @@ _EraseTileSprite8x16
             rts
 
 _EraseTileSprite16x8
+            tax
             phb                                   ; Save the bank to switch to the sprite plane
 
             pei    SpriteBanks
@@ -849,6 +861,7 @@ _EraseTileSprite16x8
             rts
 
 _EraseTileSprite16x16
+            tax
             phb                                   ; Save the bank to switch to the sprite plane
 
             pei    SpriteBanks
@@ -968,6 +981,8 @@ _AddSprite
             jsr   _GetSpriteVBuffAddrTmp        ; Preserves X-register
             sta   _Sprites+VBUFF_ADDR,x
 
+            jsr   _PrecalcAllSpriteInfo         ; Cache stuff
+
             txa                                 ; And return the sprite ID
             clc                                 ; Mark that the sprite was successfully added
 
@@ -981,6 +996,22 @@ _AddSprite
             ldy   _OpenList,x                   ; If this is the end, then the sentinel value will
             sty   _NextOpenSlot                 ; get stored into _NextOpenSlot
 
+            rts
+
+; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
+; specifically the draw/erase routines more efficient.
+;
+; There are variations of thi routine based on whether we are adding a new sprite, updating
+; it's tile information, or changing its position.
+;
+; X = sprite index
+_PrecalcAllSpriteInfo
+            lda   _Sprites+SPRITE_ID,x 
+            and   #$1800                        ; use bits 11 and 12 to dispatch (oly care about size)
+            lsr
+            lsr
+            xba
+            sta   _Sprites+SPRITE_DISP,x
             rts
 
 ; Remove a sprite from the list. Just mark its STATUS as FREE and it will be
@@ -1031,6 +1062,8 @@ _UpdateSpriteXnc
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
             sta   _Sprites+TILE_DATA_OFFSET,x
+
+            jsr   _PrecalcAllSpriteInfo         ; Cache stuff
 
             lda   #SPRITE_STATUS_DIRTY          ; Content is changing, mark as dirty
             sta   _Sprites+SPRITE_STATUS,x
@@ -1093,30 +1126,32 @@ _MoveSpriteXnc
 NUM_BUFF_LINES equ 24
 
 MAX_SPRITES  equ 16
-SPRITE_REC_SIZE equ 34
+SPRITE_REC_SIZE equ 36
 
-SPRITE_STATUS_EMPTY equ 0
-SPRITE_STATUS_CLEAN equ 1
-SPRITE_STATUS_DIRTY equ 2
-SPRITE_STATUS_FREE  equ 4
+SPRITE_STATUS_EMPTY   equ 0         ; slot is unitialized / free
+SPRITE_STATUS_CLEAN   equ 1         ; 
+SPRITE_STATUS_DIRTY   equ 2
+SPRITE_STATUS_FREE    equ 4
+SPRITE_STATUS_DAMAGED equ 8
 
-SPRITE_STATUS equ {MAX_SPRITES*0}
-TILE_DATA_OFFSET equ {MAX_SPRITES*2}
-VBUFF_ADDR equ {MAX_SPRITES*4}
-SPRITE_ID equ {MAX_SPRITES*6}
-SPRITE_X equ {MAX_SPRITES*8}
-SPRITE_Y equ {MAX_SPRITES*10}
-OLD_VBUFF_ADDR equ {MAX_SPRITES*12}
-TILE_STORE_ADDR_1 equ {MAX_SPRITES*14}
-TILE_STORE_ADDR_2 equ {MAX_SPRITES*16}
-TILE_STORE_ADDR_3 equ {MAX_SPRITES*18}
-TILE_STORE_ADDR_4 equ {MAX_SPRITES*20}
-TILE_STORE_ADDR_5 equ {MAX_SPRITES*22}
-TILE_STORE_ADDR_6 equ {MAX_SPRITES*24}
-TILE_STORE_ADDR_7 equ {MAX_SPRITES*26}
-TILE_STORE_ADDR_8 equ {MAX_SPRITES*28}
-TILE_STORE_ADDR_9 equ {MAX_SPRITES*30}
+SPRITE_STATUS      equ {MAX_SPRITES*0}
+TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
+VBUFF_ADDR         equ {MAX_SPRITES*4}
+SPRITE_ID          equ {MAX_SPRITES*6}
+SPRITE_X           equ {MAX_SPRITES*8}
+SPRITE_Y           equ {MAX_SPRITES*10}
+OLD_VBUFF_ADDR     equ {MAX_SPRITES*12}
+TILE_STORE_ADDR_1  equ {MAX_SPRITES*14}
+TILE_STORE_ADDR_2  equ {MAX_SPRITES*16}
+TILE_STORE_ADDR_3  equ {MAX_SPRITES*18}
+TILE_STORE_ADDR_4  equ {MAX_SPRITES*20}
+TILE_STORE_ADDR_5  equ {MAX_SPRITES*22}
+TILE_STORE_ADDR_6  equ {MAX_SPRITES*24}
+TILE_STORE_ADDR_7  equ {MAX_SPRITES*26}
+TILE_STORE_ADDR_8  equ {MAX_SPRITES*28}
+TILE_STORE_ADDR_9  equ {MAX_SPRITES*30}
 TILE_STORE_ADDR_10 equ {MAX_SPRITES*32}
+SPRITE_DISP        equ {MAX_SPRITES*34}  ; pre-calculated index for jmp (abs,x) based on sprite size
 
 ; Maintain the index of the next open sprite slot.  This allows us to have amortized
 ; constant sprite add performance.  A negative value means no slots are available.

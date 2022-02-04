@@ -84,21 +84,18 @@ mdsOut  rts
 _MarkDirtySprite
 
         stz   _Sprites+TILE_STORE_ADDR_1,x       ; Clear the this sprite's dirty tile list in case of an early exit
-        lda   _SpriteBits,x
+        lda   _SpriteBits,x                      ; Cache its bit flag to mark in the tile slots
         sta   SpriteBit
 
 ; Clip the sprite's extent to the screen so we can assume (mostly) position values from here on out.  Note that
 ; the sprite width and height are _only_ used in the clip and afterward all calculation use the clip rect
 ;
 ; OPTIMIZATION NODE: These values can be calculated in AddSprite/MoveSprite once and stored in the sprite
-;                    record since the screen size doesn't change.
+;                    record since the screen size doesn't change.  An off-screen flag can be set.
 
-        lda   _Sprites+SPRITE_ID,x               ; Get an index into the height/width tables based on the sprite bits
-        and   #$1800
-        xba
-        lsr
-        lsr
-        tay
+        ldy   _Sprites+SPRITE_DISP,x             ; Get an index into the height/width tables based on the sprite bits
+;        lda   _Sprites+IS_OFF_SCREEN,x           ; Check if the sprite is visible in the playfield
+;        bne   mdsOut
 
         lda   _Sprites+SPRITE_X,x
         bpl   :pos_x
@@ -189,7 +186,8 @@ _MarkDirtySprite
         sta   ColLeft
 
 ; Sneak a pre-calculation here. Calculate the upper-left corder of the sprite in the sprite plane.
-; We can reuse this in all of the routines below
+; We can reuse this in all of the routines below.  This is not the (x,y) of the sprite itself, but
+; the corner of the tile it overlaps with
 
         clc
         lda   TileTop
@@ -219,10 +217,10 @@ _MarkDirtySprite
 ; Dispatch to the calculated sizing
 
 ; Begin a list of subroutines to cover all of the valid sprite size compinations.  This is all unrolled code,
-; maily to be able to do an unrolled fill of the TILE_STORE_ADDR_X values.  Thus, it's important that the clipping
-; function does its job properly since it allows up to save a lot of time here.
+; mainly to be able to do an unrolled fill of the TILE_STORE_ADDR_X values.  Thus, it's important that the clipping
+; function does its job properly since it allows us to save a lot of time here.
 ;
-; These functional are a trade off of being composable versus fast.  Having to pay for multiple JSR/RTS invoations
+; These functions are a trade off of being composable versus fast.  Having to pay for multiple JSR/RTS invocations
 ; in the hot sprite path isn't great, but we're at a point of diminishing returns.
 ;
 ; There *might* be some speed gained by pushing a list of :mark_R_C addressed onto the stack in the clipping routing

@@ -184,7 +184,7 @@ EvtLoop
                     sec
                     sbc        ScreenY1
                     cmp        #8
-                    bcs        :vsyncloop
+                    bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
                     lda        #1
                     jsl        SetBorderColor
 :no_vsync

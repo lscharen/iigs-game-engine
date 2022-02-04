@@ -678,10 +678,10 @@ _PushDirtyTileX
                  lda  TileStore+TS_DIRTY,x
                  bpl  :occupied2
 
-                 lda  DirtyTileCount
-                 sta  TileStore+TS_DIRTY,x
+                 txa                                  ; any non-negative value will work, this saves work below
+                 sta  TileStore+TS_DIRTY,x            ; and is 1 cycle fater than loading a constanct value
 
-                 txa
+;                 txa
                  ldx  DirtyTileCount
                  sta  DirtyTiles,x
 
