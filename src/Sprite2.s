@@ -1,19 +1,20 @@
 ; Scratch space to lay out idealized _MakeDirtySprite
 ;  On input, X register = Sprite Array Index
-Left     equ   tmp1
-Right    equ   tmp2
-Top      equ   tmp3
-Bottom   equ   tmp4
+;Left     equ   tmp1
+;Right    equ   tmp2
+;Top      equ   tmp3
+;Bottom   equ   tmp4
 
-TileTop   equ   tmp5
-RowTop  equ   tmp6
-AreaIndex equ   tmp7
+Origin      equ   tmp4
+TileTop     equ   tmp5
+RowTop      equ   tmp6
+AreaIndex   equ   tmp7
 
-TileLeft   equ   tmp8
-ColLeft  equ   tmp9
+TileLeft    equ   tmp8
+ColLeft     equ   tmp9
 
-SpriteBit equ  tmp10     ; set the bit of the value that if the current sprite index
-VBuffOrigin equ tmp11
+SpriteBit   equ   tmp10     ; set the bit of the value that if the current sprite index
+VBuffOrigin equ   tmp11
 
 ; Helper function to take a local pixel coordinate [0, ScreenWidth-1],[0, ScreenHeight-1] and return the
 ; row and column in the tile store that is corresponds to.  This takes into consideration the StartX and
@@ -83,53 +84,13 @@ _LocalToTileStore
 mdsOut  rts
 _MarkDirtySprite
 
-        stz   _Sprites+TILE_STORE_ADDR_1,x       ; Clear the this sprite's dirty tile list in case of an early exit
-        lda   _SpriteBits,x                      ; Cache its bit flag to mark in the tile slots
+        lda   #0
+        sta   _Sprites+TILE_STORE_ADDR_1,y       ; Clear this sprite's dirty tile list in case of an early exit
+        lda   _SpriteBits,y                      ; Cache its bit flag to mark in the tile slots
         sta   SpriteBit
 
-; Clip the sprite's extent to the screen so we can assume (mostly) position values from here on out.  Note that
-; the sprite width and height are _only_ used in the clip and afterward all calculation use the clip rect
-;
-; OPTIMIZATION NODE: These values can be calculated in AddSprite/MoveSprite once and stored in the sprite
-;                    record since the screen size doesn't change.  An off-screen flag can be set.
-
-        ldy   _Sprites+SPRITE_DISP,x             ; Get an index into the height/width tables based on the sprite bits
-;        lda   _Sprites+IS_OFF_SCREEN,x           ; Check if the sprite is visible in the playfield
-;        bne   mdsOut
-
-        lda   _Sprites+SPRITE_X,x
-        bpl   :pos_x
-        lda   #0
-:pos_x  cmp   ScreenWidth
-        bcs   mdsOut                             ; sprite is off-screen, exit early
-        sta   Left
-
-        lda   _Sprites+SPRITE_Y,x
-        bpl   :pos_y
-        lda   #0
-:pos_y  cmp   ScreenHeight
-        bcs   mdsOut                             ; sprite is off-screen, exit early
-        sta   Top
-
-        lda   _Sprites+SPRITE_X,x
-        clc
-        adc   _SpriteWidthMinus1,y
-        bmi   mdsOut                             ; another off-screen test
-        cmp   ScreenWidth
-        bcc   :ok_x
-        lda   ScreenWidth
-        dec
-:ok_x   sta   Right
-
-        lda   _Sprites+SPRITE_Y,x
-        clc
-        adc   _SpriteHeightMinus1,y
-        bmi   mdsOut                             ; another off-screen test
-        cmp   ScreenHeight
-        bcc   :ok_y
-        lda   ScreenHeight
-        dec
-:ok_y   sta   Bottom
+        lda   _Sprites+IS_OFF_SCREEN,y           ; Check if the sprite is visible in the playfield
+        bne   mdsOut
 
 ; At this point we know that we have to update the tiles that overlap the sprite plane rectangle defined
 ; by (Top, Left), (Bottom, Right).  The general process is to figure out the top-left coordinate in the
@@ -137,17 +98,17 @@ _MarkDirtySprite
 ; that need to be dirtied to cover the sprite.
 
         clc
-        lda   Top
+        lda   _Sprites+SPRITE_CLIP_TOP,y
         adc   StartYMod208                       ; Adjust for the scroll offset (could be a negative number!)
-        tay                                      ; Save this value
+        tax                                      ; Save this value
         and   #$0007                             ; Get (StartY + SpriteY) mod 8
         eor   #$FFFF
         inc
         clc
-        adc   Top                                ; subtract from the Y position (possible to go negative here)
+        adc   _Sprites+SPRITE_CLIP_TOP,y         ; subtract from the Y position (possible to go negative here)
         sta   TileTop                            ; This position will line up with the tile that the sprite overlaps with
 
-        tya                                      ; Get back the position of the sprite top in the code field
+        txa                                      ; Get back the position of the sprite top in the code field
         cmp   #208                               ; check if we went too far positive
         bcc   *+5
         sbc   #208
@@ -157,7 +118,7 @@ _MarkDirtySprite
         and   #$FFFE                              ; Store the pre-multiplied by 2 for indexing in the :mark_R_C routines
         sta   RowTop
 
-        lda   Bottom                             ; Figure out how many tiles are needed to cover the sprite's area
+        lda   _Sprites+SPRITE_CLIP_BOTTOM,y      ; Figure out how many tiles are needed to cover the sprite's area
         sec
         sbc   TileTop
         and   #$0018                             ; Clear out the lower bits and stash in bits 4 and 5
@@ -166,17 +127,17 @@ _MarkDirtySprite
 ; Repeat to get the same information for the columns
 
         clc
-        lda   Left
+        lda   _Sprites+SPRITE_CLIP_LEFT,y
         adc   StartXMod164
-        tay
+        tax
         and   #$0003
         eor   #$FFFF
         inc
         clc
-        adc   Left
+        adc   _Sprites+SPRITE_CLIP_LEFT,y
         sta   TileLeft
 
-        tya
+        txa
         cmp   #164
         bcc   *+5
         sbc   #164
@@ -185,7 +146,15 @@ _MarkDirtySprite
         and   #$FFFE                             ; Same pre-multiply by 2 for later
         sta   ColLeft
 
-; Sneak a pre-calculation here. Calculate the upper-left corder of the sprite in the sprite plane.
+; Calculate the offset into the TileStore lookup array for the top-left tile
+
+;        ldx  RowTop
+;        lda  ColLeft
+;        clc
+;        adc  TileStore2DYTable,x                 ; Fixed offset to the next row
+;        sta  Origin                              ; This is the index into the TileStore2DLookup table
+
+; Sneak a pre-calculation here. Calculate the tile-aligned upper-left corner of the sprite in the sprite plane.
 ; We can reuse this in all of the routines below.  This is not the (x,y) of the sprite itself, but
 ; the corner of the tile it overlaps with
 
@@ -199,9 +168,7 @@ _MarkDirtySprite
 
 ; Calculate the number of columns and dispatch
 
-        txy                                   ; Swap the sprite index into the Y register
-
-        lda   Right
+        lda   _Sprites+SPRITE_CLIP_RIGHT,y
         sec
         sbc   TileLeft
         and   #$000C
@@ -352,18 +319,32 @@ _MarkDirtySprite
         rts
 
 ; Begin List of subroutines to mark each tile offset
+;
+; If we had a double-sized 2D array to be able to look up the tile store address without
+; adding rows and column, we could save ~6 cycles per tile
 
 :mark_0_0
         ldx  RowTop
         lda  ColLeft
         clc
         adc  TileStoreYTable,x                 ; Fixed offset to the next row
-        tax                                    ; This is the tile store offset
+        tax
 
-        lda   VBuffOrigin
-;        adc   #{0*4}+{0*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+;        ldx   Origin
+;        lda   TileStore2DLookup,x
+;        tax                                    ; This is the tile store offset
 
+        lda   VBuffOrigin                      ; This is an interesting case.  The mapping between the tile store
+;        adc   #{0*4}+{0*256}                  ; and the sprite buffers changes as the StartX, StartY values change
+        sta   TileStore+TS_SPRITE_ADDR,x       ; but don't depend on any sprite information.  However, by setting the
+                                               ; value only for the tiles that get added to the dirty tile list, we
+                                               ; can avoid recalculating over 1,000 values whenever the screen scrolls
+                                               ; (which is common) and just limit it to the number of tiles covered by
+                                               ; the sprites.  If the screen is not scrolling and the sprites are not
+                                               ; moving and they are being dirtied, then we may do more work, but the
+                                               ; odds are in our favor to just take care of it here.
+
+        lda   TileStore+TS_SPRITE_FLAG,x
         lda   SpriteBit
         ora   TileStore+TS_SPRITE_FLAG,x
         sta   TileStore+TS_SPRITE_FLAG,x

@@ -5,13 +5,45 @@
 ; screen buffer.  In order to be able to draw sprites offscreen, the virtual screen must be 
 ; wider and taller than the physical graphics screen.
 ;
-; Sprite State Machine
+; NOTE: It may be posible to remove the sprite plane banks in the future and render directly from
+;       some small per-sprite graphic buffers.  This would eliminate the need to erase/draw in
+;       the sprite planes and all drawing would go directly to the backing tiles.  Need to
+;       figure out an efficient way to fall back when sprites are overlapping, though.
 ;
-; EMPTY -> DIRTY <-> CLEAN 
-;   ^                  |
-;   |                  |
-;   +------ FREE <-----+
+; All of the erasing must happen in an initial phase, because erasing a sprite could cause
+; other sprites to be marked as "DAMAGED" which means they need to be drawn (similar to NEW state)
 
+; What really has to happen in the various cases:
+;
+;  When a sprite is added, it needs to
+;   * draw into the sprite buffer
+;   * add itself to the TS_SPRITE_FLAG bitfield on the tiles it occupies
+;   * mark the tiles it occupies as dirty
+;
+;  When a sprite is updated (Tile ID or H/V flip flags), it needs to
+;   * erase itself from the sprite buffer
+;   * draw into the sprite buffer
+;   * mark the tiles it occupies as dirty
+;   * mark other sprites it intersects as DAMAGED
+;
+; When a sprite is moved, it needs to
+;   * erase itself from the sprite buffer at the old locations
+;   * remove itself from the TS_SPRITE_FLAG bitfields on the tiles it occupied
+;   * mark sprites that intersect as DAMAGED
+;   * draw into the sprite buffer at the new location
+;   * add itself to the TS_SPRITE_FLAG bitfield on the tiles it now occupies
+;   * mark the tiles it occupied as dirty
+;   * mark other sprites it intersects as DAMAGED
+;
+; When a sprite is removed, it needs to
+;   * erase itself from the sprite buffer at the old locations
+;   * remove itself from the TS_SPRITE_FLAG bitfields on the tiles it occupied
+;   * mark other sprites it intersects as DAMAGED
+;
+; The reason that things are broken into phases is that we have to handle all of the erasing first,
+; set dirty tiles, identify DAMAGED sprites, and THEN perform the drawing.  It is not possible to
+; just do each sprite one at a time.
+;
 ; Initialize the sprite plane data and mask banks (all data = $0000, all masks = $FFFF)
 InitSprites
            ldx    #$FFFE
@@ -53,6 +85,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x       ; Clear the bit in the bit field.  This seems wasteful, but
             and   _SpriteBitsNot,y                 ; there is no indexed form of TSB/TRB and caching the value in
+            tsb   DamagedSprites                   ; Mark which other sprites are impacted by this one
             sta   TileStore+TS_SPRITE_FLAG,x       ; a direct page location, only saves 1 or 2 cycles per and costs 10.
             jsr   _PushDirtyTileX
 
@@ -61,6 +94,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
@@ -69,6 +103,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
@@ -77,6 +112,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
@@ -93,6 +129,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
@@ -101,6 +138,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
@@ -109,6 +147,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
@@ -117,6 +156,7 @@ _ClearSpriteFromTileStore
             rts
             lda   TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
+            tsb   DamagedSprites
             sta   TileStore+TS_SPRITE_FLAG,x
             jmp   _PushDirtyTileX
 
@@ -140,79 +180,97 @@ _ClearSpriteFromTileStore
 ; In the second phase, the sprite is re-drawn into the sprite plane buffers and the appropriate
 ; Tile Store locations are marked as dirty. It is important to recognize that the sprites themselves
 ; can be marked dirty, and the underlying tiles in the tile store are independently marked dirty.
-forceSpriteFlag ds 2
-_RenderSprites
 
-; First step is to look at the StartX and StartY values.  If the offsets have changed from the
-; last time that the frame was rendered, then we need to mark all of the sprites as dirty so that
-; the tiles on which they were located at the previous frame will be refreshed
-;
-; OPTIMIZATION NOTE: Should check that the sprite actually changes position.  If the screen scrolls
-;                    by +X, but the sprite moves by -X (so it's relative position is unchanged), then
-;                    it does NOT need to be marked as dirty.
+phase1      dw    :phase1_0
+            dw    :phase1_1,:phase1_2,:phase1_3,:phase1_4
+            dw    :phase1_5,:phase1_6,:phase1_7,:phase1_8
+            dw    :phase1_9,:phase1_10,:phase1_11,:phase1_12
+            dw    :phase1_13,:phase1_14,:phase1_15,:phase1_16
 
-            stz   forceSpriteFlag
-            lda   StartX
-            cmp   OldStartX
-            beq   :no_chng_x
-            lda   #SPRITE_STATUS_DIRTY
-            sta   forceSpriteFlag
-:no_chng_x 
-            lda   StartY
-            cmp   OldStartY
-            beq   :no_chng_y
-            lda   #SPRITE_STATUS_DIRTY
-            sta   forceSpriteFlag
-:no_chng_y
+:phase1_16
+            ldy   activeSpriteList+30
+            jsr   _DoPhase1
+:phase1_15
+            ldy   activeSpriteList+28
+            jsr   _DoPhase1
+:phase1_14
+            ldy   activeSpriteList+26
+            jsr   _DoPhase1
+:phase1_13
+            ldy   activeSpriteList+24
+            jsr   _DoPhase1
+:phase1_12
+            ldy   activeSpriteList+22
+            jsr   _DoPhase1
+:phase1_11
+            ldy   activeSpriteList+20
+            jsr   _DoPhase1
+:phase1_10
+            ldy   activeSpriteList+18
+            jsr   _DoPhase1
+:phase1_9
+            ldy   activeSpriteList+16
+            jsr   _DoPhase1
+:phase1_8
+            ldy   activeSpriteList+14
+            jsr   _DoPhase1
+:phase1_7
+            ldy   activeSpriteList+12
+            jsr   _DoPhase1
+:phase1_6
+            ldy   activeSpriteList+10
+            jsr   _DoPhase1
+:phase1_5
+            ldy   activeSpriteList+8
+            jsr   _DoPhase1
+:phase1_4
+            ldy   activeSpriteList+6
+            jsr   _DoPhase1
+:phase1_3
+            ldy   activeSpriteList+4
+            jsr   _DoPhase1
+:phase1_2
+            ldy   activeSpriteList+2
+            jsr   _DoPhase1
+:phase1_1
+            ldy   activeSpriteList
+            jsr   _DoPhase1
+:phase1_0
+            jmp   phase1_rtn
 
-; Alter first phase. _OpenListHead is, essentially, a count of how many sprites. We can use that as an early-out
-; test to stop scanning the SPRITE_STATUS values once all active sprites have been accounted for.
-;            lda   _OpenListHead
-;            beq   :exit1
-;            lsr
-;            sta   tmp0
+; If this sprite has been MOVED or REMOVED, then clear its bit from the TS_SPRITE_FLAG in
+; all of the tile store locations that it occupied on the previous frame and add those
+; tile store locations to the dirty tile list.
+_DoPhase1
 
-;            lda   _Sprites+SPRITE_STATUS
-;            beq   :exit1
-;            ldy   #0
-;            jsr   _ClearSprite
-;            dec   tmp0
-;            beq   :exit1
-
-;            lda   _Sprites+SPRITE_STATUS+2
-;            beq   :exit1
-;            ldy   #2
-;            jsr   _ClearSprite
-;            dec   tmp0
-;            beq   :exit1
-
-;            ...
-
-;:exit1
-
-            
-; First phase, erase all dirty sprites
-            ldy   #0
-:loop1      lda   _Sprites+SPRITE_STATUS,y       ; If the status is zero, that's the sentinel value
-            beq   :phase2
-            bit   #SPRITE_STATUS_DIRTY+SPRITE_STATUS_FREE
-            beq   :next1
-
-; Erase the sprite from the Sprite Plane buffers
-            jsr   _EraseSpriteY
-
-; Mark all of the tile store indices that this sprite was drawn at as dirty and clear
-; it's bit flag in the TS_SPRITE_FLAG
-            jsr   _ClearSpriteFromTileStore
-
-; Check to see if this was a FREE sprite.  If so, then it's index can be returned to the
-; open list
             lda   _Sprites+SPRITE_STATUS,y
-            bit   #SPRITE_STATUS_FREE
-            beq   :next1
+            ora   forceSpriteFlag
+            bit   #SPRITE_STATUS_MOVED+SPRITE_STATUS_REMOVED
+            beq   :no_clear
+            jsr   _ClearSpriteFromTileStore
+:no_clear
+
+; If this sprite has been MOVED, UPDATED or REMOVED, then it needs to be erased from the
+; sprite plane buffer
+
+            lda   _Sprites+SPRITE_STATUS,y
+            bit   #SPRITE_STATUS_MOVED+SPRITE_STATUS_UPDATED+SPRITE_STATUS_REMOVED
+            beq   :no_erase
+            jsr   _EraseSpriteY
+:no_erase
+
+; Check to see if sprite was REMOVED  If so, then this is where we return its Sprite ID to the
+; list of open slots
+
+            lda   _Sprites+SPRITE_STATUS,y
+            bit   #SPRITE_STATUS_REMOVED
+            beq   :out
 
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty
             sta   _Sprites+SPRITE_STATUS,y
+
+            lda   _SpriteBits,y                   ; Clear from the sprite bitmap
+            trb   SpriteMap
 
             ldx   _OpenListHead
             dex
@@ -221,52 +279,178 @@ _RenderSprites
             tya
             sta   _OpenList,x
             sty   _NextOpenSlot
+:out
+            rts
 
-:next1      iny
-            iny
-            cpy   #2*MAX_SPRITES
-            bcc   :loop1
-:phase2
+; Second phase takes care of drawing the sprites and marking the tiles that will need to be merged
+; with pixel data from the sprite plane
+phase2      dw    :phase2_0
+            dw    :phase2_1,:phase2_2,:phase2_3,:phase2_4
+            dw    :phase2_5,:phase2_6,:phase2_7,:phase2_8
+            dw    :phase2_9,:phase2_10,:phase2_11,:phase2_12
+            dw    :phase2_13,:phase2_14,:phase2_15,:phase2_16
 
-; Second step is to scan the list of sprites.  A sprite is either clean or dirty.  If it's dirty,
-; then its position had changed, so we need to add tiles to the dirty queue to make sure the
-; playfield gets updated.  If it's clean, we can skip everything.
+:phase2_16
+            ldy   activeSpriteList+30
+            jsr   _DoPhase2
+:phase2_15
+            ldy   activeSpriteList+28
+            jsr   _DoPhase2
+:phase2_14
+            ldy   activeSpriteList+26
+            jsr   _DoPhase2
+:phase2_13
+            ldy   activeSpriteList+24
+            jsr   _DoPhase2
+:phase2_12
+            ldy   activeSpriteList+22
+            jsr   _DoPhase2
+:phase2_11
+            ldy   activeSpriteList+20
+            jsr   _DoPhase2
+:phase2_10
+            ldy   activeSpriteList+18
+            jsr   _DoPhase2
+:phase2_9
+            ldy   activeSpriteList+16
+            jsr   _DoPhase2
+:phase2_8
+            ldy   activeSpriteList+14
+            jsr   _DoPhase2
+:phase2_7
+            ldy   activeSpriteList+12
+            jsr   _DoPhase2
+:phase2_6
+            ldy   activeSpriteList+10
+            jsr   _DoPhase2
+:phase2_5
+            ldy   activeSpriteList+8
+            jsr   _DoPhase2
+:phase2_4
+            ldy   activeSpriteList+6
+            jsr   _DoPhase2
+:phase2_3
+            ldy   activeSpriteList+4
+            jsr   _DoPhase2
+:phase2_2
+            ldy   activeSpriteList+2
+            jsr   _DoPhase2
+:phase2_1
+            ldy   activeSpriteList
+            jsr   _DoPhase2
+:phase2_0
+            jmp   phase2_rtn
 
-            ldy   #0
-:loop       lda   _Sprites+SPRITE_STATUS,y       ; If the status is zero, that's the sentinel value
-            beq   :out
+_DoPhase2
+            lda   _Sprites+SPRITE_STATUS,y
             ora   forceSpriteFlag
-            and   #SPRITE_STATUS_DIRTY           ; If the dirty flag is set, do the things....
-            bne   :render
-:next       
-            iny
-            iny
-            bra   :loop
-:out        rts
+            and   #SPRITE_STATUS_ADDED+SPRITE_STATUS_MOVED+SPRITE_STATUS_UPDATED
+            beq   :out
 
 ; This is the complicated part; we need to draw the sprite into the sprite plane, but then
 ; calculate the tiles that overlap with the sprite potentially and mark those as dirty _AND_
 ; store the appropriate sprite plane address from which those tiles need to copy.
-:render
-            sty   tmp0                                ; stash the Y register
-
-; Draw the sprite into the sprite plane buffer(s)
-
-            lda   _Sprites+SPRITE_ID,y
-            bit   #SPRITE_HIDE
-            bne   :next
-
-            jsr   _DrawSpriteYA                       ; Use variant that takes the Y-register arg
-
+;
 ; Mark the appropriate tiles as dirty and as occupied by a sprite so that the ApplyTiles
 ; subroutine will get the drawn data from the sprite plane into the code field where it 
 ; can be drawn to the screen
 
-            ldx   tmp0                                ; Restore the index into the sprite array
-            jsr   _MarkDirtySprite                    ; Mark the tiles that this sprite overlaps as dirty
+            jsr   _MarkDirtySprite
 
-            ldy   tmp0                                ; Restore the index again
-            bra   :next
+; Draw the sprite into the sprite plane buffer(s)
+
+            lda   _Sprites+SPRITE_DISP2,y       ; use bits 9, 10, 11, 12, and 13 to dispatch
+            jmp   (draw_sprite,x)
+:out
+            rts
+
+; Optimization: Could use 8-bit registers to save 
+RebuildSpriteArray
+            ldx   #0                            ; Number of non-empty sprite locations
+            lda   SpriteMap                     ; Get the bit field
+            tay                                 ; Cache to restore
+
+            bit   #$0001                        ; For each bit position, test and store a value
+            beq   :chk1
+            stz   activeSpriteList              ; Shortcut for the first one
+            ldx   #2
+
+; A super-optimization here would be to put the activeSpriteList on the direct page (32 bytes) and then
+; use PEA instructions to push the slot values.  Calculate the count at the end based on the final stack
+; address.  Only 160 cycles to build the list.
+:chk1
+]flag       equ   $0002
+]slot       equ   $0002
+            lup   15
+            bit   #]flag
+            beq   :chk2
+            lda   #]slot
+            sta   activeSpriteList,x
+            tya
+            inx
+            inx
+:chk2
+]flag       equ   ]flag*2
+]slot       equ   ]slot+2
+            --^
+
+            stx   activeSpriteCount
+            rts
+
+forceSpriteFlag ds 2
+_RenderSprites
+
+            stz   DamagedSprites                   ; clear the potential set of damaged sprites
+
+; Check to see if any sprites have been added or removed.  If so, then we regenerate the active
+; sprite list.  Since adding and removing sprites is rare, this is a worthwhile tradeoff, because
+; there are several places where we want to interative over the all of the sprites, and having a list
+; and not have to contantly load and test the SPRITE_STATUS just to skip unused slots can help streamline
+; the code.
+
+            lda   #DIRTY_BIT_SPRITE_ARRAY
+            trb   DirtyBits                        ; clears the flag, if it was set
+            beq   :no_rebuild
+            jsr   RebuildSpriteArray
+
+:no_rebuild
+
+; First step is to look at the StartX and StartY values.  If the screen has scrolled, then it has
+; the same effect as moving all of the sprites.
+;
+; OPTIMIZATION NOTE: Should check that the sprite actually changes position.  If the screen scrolls
+;                    by +X, but the sprite moves by -X (so it's relative position is unchanged), then
+;                    it does NOT need to be marked as dirty.
+
+            stz   forceSpriteFlag
+            lda   StartX
+            cmp   OldStartX
+            bne   :force_update
+
+            lda   StartY
+            cmp   OldStartY
+            beq   :no_change
+
+:force_update
+            lda   #SPRITE_STATUS_MOVED
+            sta   forceSpriteFlag
+:no_change
+
+; Dispatch to the first phase of rendering the sprites. By pre-building the list, we know exactly
+; how many sprite to process and they are in a contiguous array.  So we on't have to keep track
+; of an iterating variable
+
+            ldx   activeSpriteCount
+            jmp   (phase1,x)
+phase1_rtn
+
+; Dispatch to the second phase of rendering the sprites.
+            ldx   activeSpriteCount
+            jmp   (phase2,x)
+phase2_rtn
+
+; Speite rendering complete
+            rts
 
 ; _GetTileAt
 ;
@@ -323,19 +507,20 @@ _EraseSpriteY
 
 
 ; X = _Sprites array offset
-_DrawSprite
-             txy
-_DrawSpriteY
-             lda   _Sprites+SPRITE_ID,y
 _DrawSpriteYA
-             and   #$1E00                        ; use bits 9, 10, 11 and 12 to dispatch
-             xba
-             tax
-             jmp   (:draw_sprite,x)
-:draw_sprite dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
+             lda   _Sprites+SPRITE_DISP2,y       ; use bits 9, 10, 11 and 12,13 to dispatch
+             jmp   (draw_sprite,x)
+
+draw_sprite  dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
              dw    draw_8x16,draw_8x16h,draw_8x16v,draw_8x16hv
              dw    draw_16x8,draw_16x8h,draw_16x8v,draw_16x8hv
              dw    draw_16x16,draw_16x16h,draw_16x16v,draw_16x16hv
+
+             dw    :rtn,:rtn,:rtn,:rtn           ; hidden bit is set
+             dw    :rtn,:rtn,:rtn,:rtn
+             dw    :rtn,:rtn,:rtn,:rtn
+             dw    :rtn,:rtn,:rtn,:rtn
+:rtn         rts
 
 draw_8x8
 draw_8x8h
@@ -924,7 +1109,7 @@ _GetSpriteVBuffAddrTmp
 
 ; Add a new sprite to the rendering pipeline
 ;
-; The tile id ithe range 0 - 511.  The top 7 bits are used as sprite control bits
+; The tile id in the range 0 - 511.  The top 7 bits are used as sprite control bits
 ;
 ; Bit 9        : Horizontal flip.
 ; Bit 10       : Vertical flip.
@@ -957,7 +1142,6 @@ AddSprite   ENT
 
 _AddSprite
             phx                                  ; Save the horizontal position
-
             ldx   _NextOpenSlot                  ; Get the next free sprite slot index
             bpl   :open                          ; A negative number means we are full
 
@@ -965,13 +1149,13 @@ _AddSprite
             sec                                  ; Signal that no sprite slot was available
             rts
 
-:open
+:open            
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
             sta   _Sprites+TILE_DATA_OFFSET,x
 
-            lda   #SPRITE_STATUS_DIRTY
-            sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn
+            lda   #SPRITE_STATUS_OCCUPIED+SPRITE_STATUS_ADDED
+            sta   _Sprites+SPRITE_STATUS,x
 
             tya
             sta   _Sprites+SPRITE_Y,x           ; Y coordinate
@@ -982,6 +1166,15 @@ _AddSprite
             sta   _Sprites+VBUFF_ADDR,x
 
             jsr   _PrecalcAllSpriteInfo         ; Cache stuff
+
+; Mark the dirty bit to indicate that the active sprite list needs to be rebuild in the next
+; render call
+
+            lda   #DIRTY_BIT_SPRITE_ARRAY
+            tsb   DirtyBits
+
+            lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
+            tsb   SpriteMap                     ; Mark it in the sprite map bit field
 
             txa                                 ; And return the sprite ID
             clc                                 ; Mark that the sprite was successfully added
@@ -1007,11 +1200,60 @@ _AddSprite
 ; X = sprite index
 _PrecalcAllSpriteInfo
             lda   _Sprites+SPRITE_ID,x 
-            and   #$1800                        ; use bits 11 and 12 to dispatch (oly care about size)
+            and   #$2E00
+            xba
+            sta   _Sprites+SPRITE_DISP2,x        ; use bits 9 through 13 for full dispatch
+
+            lda   _Sprites+SPRITE_ID,x 
+            and   #$1800                        ; use bits 11 and 12 to dispatch (only care about size)
             lsr
             lsr
             xba
             sta   _Sprites+SPRITE_DISP,x
+
+; Clip the sprite's bounding box to the play field size and also set a flag if the sprite
+; is fully offs-screen or not
+            tay                                  ; use the index we just calculated
+            lda   _Sprites+SPRITE_X,x
+            bpl   :pos_x
+            lda   #0
+:pos_x      cmp   ScreenWidth
+            bcs   :offscreen                     ; sprite is off-screen, exit early
+            sta   _Sprites+SPRITE_CLIP_LEFT,x
+
+            lda   _Sprites+SPRITE_Y,x
+            bpl   :pos_y
+            lda   #0
+:pos_y      cmp   ScreenHeight
+            bcs   :offscreen                     ; sprite is off-screen, exit early
+            sta   _Sprites+SPRITE_CLIP_TOP,x
+
+            lda   _Sprites+SPRITE_X,x
+            clc
+            adc   _SpriteWidthMinus1,y
+            bmi   :offscreen
+            cmp   ScreenWidth
+            bcc   :ok_x
+            lda   ScreenWidth
+            dec
+:ok_x       sta   _Sprites+SPRITE_CLIP_RIGHT,x
+
+            lda   _Sprites+SPRITE_Y,x
+            clc
+            adc   _SpriteHeightMinus1,y
+            bmi   :offscreen
+            cmp   ScreenHeight
+            bcc   :ok_y
+            lda   ScreenHeight
+            dec
+:ok_y       sta   _Sprites+SPRITE_CLIP_BOTTOM,x
+
+            stz   _Sprites+IS_OFF_SCREEN,x       ; passed all of the off-screen test
+            rts
+
+:offscreen
+            lda   #1
+            sta   _Sprites+IS_OFF_SCREEN,x
             rts
 
 ; Remove a sprite from the list. Just mark its STATUS as FREE and it will be
@@ -1030,8 +1272,9 @@ _RemoveSprite
             tax
 
 _RemoveSpriteX
-            lda   #SPRITE_STATUS_FREE          ; This will tell the renderer to erase the sprite,
-            sta   _Sprites+SPRITE_STATUS,x     ; but then remove it from the list
+            lda   _Sprites+SPRITE_STATUS,x
+            ora   #SPRITE_STATUS_REMOVED
+            sta   _Sprites+SPRITE_STATUS,x
             rts
 
 ; Update the sprite's flags. We do not allow the size of a sprite to be changed.  That requires
@@ -1065,7 +1308,8 @@ _UpdateSpriteXnc
 
             jsr   _PrecalcAllSpriteInfo         ; Cache stuff
 
-            lda   #SPRITE_STATUS_DIRTY          ; Content is changing, mark as dirty
+            lda   _Sprites+SPRITE_STATUS,x
+            ora   #SPRITE_STATUS_UPDATED
             sta   _Sprites+SPRITE_STATUS,x
 
             rts
@@ -1108,8 +1352,9 @@ _MoveSpriteXnc
             tya
             sta   _Sprites+OLD_VBUFF_ADDR,x
 
-            lda   #SPRITE_STATUS_DIRTY          ; Position is changing, mark as dirty
-            sta   _Sprites+SPRITE_STATUS,x      ; Mark this sprite slot as occupied and that it needs to be drawn
+            lda   _Sprites+SPRITE_STATUS,x
+            ora   #SPRITE_STATUS_MOVED
+            sta   _Sprites+SPRITE_STATUS,x
 
             rts
 
@@ -1126,13 +1371,23 @@ _MoveSpriteXnc
 NUM_BUFF_LINES equ 24
 
 MAX_SPRITES  equ 16
-SPRITE_REC_SIZE equ 36
+SPRITE_REC_SIZE equ 48
 
-SPRITE_STATUS_EMPTY   equ 0         ; slot is unitialized / free
-SPRITE_STATUS_CLEAN   equ 1         ; 
-SPRITE_STATUS_DIRTY   equ 2
-SPRITE_STATUS_FREE    equ 4
-SPRITE_STATUS_DAMAGED equ 8
+; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
+; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
+; A REMOVED sprite if removed from the sprite list during the Render call, so it's ID is not
+; available to the AddSprite function until the next frame.
+
+SPRITE_STATUS_EMPTY    equ $0000         ; If the status value is zero, this sprite slot is available
+SPRITE_STATUS_OCCUPIED equ $8000         ; Set the MSB to flag it as occupied
+SPRITE_STATUS_ADDED    equ $0001         ; Sprite was just added (new sprite)
+SPRITE_STATUS_MOVED    equ $0002         ; Sprite's position was changed
+SPRITE_STATUS_UPDATED  equ $0004         ; Sprite's non-position attributes were changed
+SPRITE_STATUS_REMOVED  equ $0008         ; Sprite has been removed.
+
+; Each subroutine just sets the relevant bits, so it's possible to call AddSprite / UpdateSprite / MoveSprite
+; and RemoveSprite in a single frame.  These bits have priorities, so in this case, the sprite is immediately
+; removed and never displayed.
 
 SPRITE_STATUS      equ {MAX_SPRITES*0}
 TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
@@ -1152,6 +1407,12 @@ TILE_STORE_ADDR_8  equ {MAX_SPRITES*28}
 TILE_STORE_ADDR_9  equ {MAX_SPRITES*30}
 TILE_STORE_ADDR_10 equ {MAX_SPRITES*32}
 SPRITE_DISP        equ {MAX_SPRITES*34}  ; pre-calculated index for jmp (abs,x) based on sprite size
+SPRITE_CLIP_LEFT   equ {MAX_SPRITES*36}
+SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*38}
+SPRITE_CLIP_TOP    equ {MAX_SPRITES*40}
+SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*42}
+IS_OFF_SCREEN      equ {MAX_SPRITES*44}
+SPRITE_DISP2       equ {MAX_SPRITES*46}
 
 ; Maintain the index of the next open sprite slot.  This allows us to have amortized
 ; constant sprite add performance.  A negative value means no slots are available.
@@ -1160,3 +1421,8 @@ _OpenListHead  dw  0
 _OpenList      dw  0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,$FFFF  ; List with sentinel at the end
 
 _Sprites     ds  SPRITE_REC_SIZE*MAX_SPRITES
+
+; On-demand cached list of active sprite slots
+activeSpriteCount ds 2
+activeSpriteList  ds 2*MAX_SPRITES
+

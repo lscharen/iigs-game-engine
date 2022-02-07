@@ -533,6 +533,36 @@ InitTiles
                  cpy  #26*2
                  bcc  :yloop
 
+; Fill in the TileStore2DLookup array.  This is a full array lookup for the entire tile store space.  Eventually
+; we can remove TileStoreYTable and free up a bit of space.
+                 lda  #0
+                 tay
+                 tax
+:xyloop
+                 sta  TileStoreYTable,y
+                 sta  TileStoreYTable+{2*41},y
+                 sta  TileStoreYTable+{4*41*26},y
+                 sta  TileStoreYTable+{4*41*26}+{2*41},y
+
+                 inc                    ; Advance to the next offset value
+                 inc
+
+                 iny                    ; Advance to the next table location
+                 iny
+
+                 inx                    ; Increment the column counter
+                 cpx  #41               ; If we haven't filled an entire row, keep going
+                 bcc  :xyloop
+
+                 ldx  #0                ; reset the column counter
+                 tya
+                 clc
+                 adc  #2*26             ; skip over the repeated values in this row and to to the next row start
+                 tay
+
+                 cpy  #4*41*26          ; Did we finish the last row, if not go back for more
+                 bcc  :xyloop
+
 ; Next, initialize the Tile Store itself
 
                  ldx  #TILE_STORE_SIZE-2
@@ -682,12 +712,20 @@ _PushDirtyTileX
                  sta  TileStore+TS_DIRTY,x            ; and is 1 cycle fater than loading a constanct value
 
 ;                 txa
-                 ldx  DirtyTileCount
-                 sta  DirtyTiles,x
+                 ldx  DirtyTileCount ; 5
+                 sta  DirtyTiles,x   ; 5
 
                  inx
                  inx
                  stx  DirtyTileCount
+
+; Same speed, but preserved the Z register
+;                 sta  (DirtyTiles) ; 6
+;                 lda  DirtyTiles   ; 4
+;                 inc               ; 2
+;                 inc               ; 2
+;                 sta  DirtyTiles   ; 4
+
                  rts
 :occupied2
                  txa                                ; Make sure TileStore offset is returned in the accumulator

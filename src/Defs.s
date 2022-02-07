@@ -81,7 +81,9 @@ BG1TileMapPtr          equ   86
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
 LastRender             equ   96          ; Record which reder function was last executed
-Next                   equ   98
+DamagedSprites         equ   98
+SpriteMap              equ   100         ; Bitmap of open sprite slots.
+Next                   equ   102
 
 BankLoad               equ   128
 
@@ -114,6 +116,7 @@ DIRTY_BIT_BG1_X        equ   $0004
 DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
+DIRTY_BIT_SPRITE_ARRAY equ   $0040
 
 ; Script definition
 YIELD                  equ   $8000
@@ -140,7 +143,7 @@ TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
 
 ; Sprite constants
-SPRITE_HIDE            equ   $8000
+SPRITE_HIDE            equ   $2000
 SPRITE_16X16           equ   $1800
 SPRITE_16X8            equ   $1000
 SPRITE_8X16            equ   $0800

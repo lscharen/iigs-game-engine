@@ -201,8 +201,8 @@ Counter            equ   tmp3
 :tsloop
                    lda   (NextColPtr),y             ; Need to recalculate each time since the wrap-around could
                    clc                              ; happen anywhere
-                   adc   (RowAddrPtr)
-                   tax
+                   adc   (RowAddrPtr)               ;
+                   tax                              ; NOTE: Try to rework to use new TileStore2DLookup array
 
                    lda   OnScreenAddr
                    sta   TileStore+TS_SCREEN_ADDR,X

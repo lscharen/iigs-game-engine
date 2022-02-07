@@ -238,6 +238,18 @@ TileStoreYTable   ENT
 ]step             =     ]step+{41*2}
                   --^
 
+;TileStore2DYTable
+;]step             equ   0
+;                  lup   26
+;                  dw    ]step
+;]step             =     ]step+{41*2*2}
+;                  --^
+;]step             equ   0
+;                  lup   26
+;                  dw    ]step
+;]step             =     ]step+{41*2*2}
+;                  --^
+
 ; Create a table to look up the "next" column with modulo wraparound.  Basically a[i] = i
 ; and the table is double-length.  Use constant offsets to pick an amount to advance
 NextCol
@@ -251,6 +263,11 @@ NextCol
                   dw    ]step
 ]step             =     ]step+2
                   --^
+
+; A double-sized table of lookup values.  This is basically the cross-product of TileStoreYTable and
+; NextCol.  If is double-width and double-height so that, if we know a tile's address position
+; of (X + 41*Y), then any relative tile store address can be looked up by adding a constan value.
+;TileStore2DLookup ds    {26*41*2}*4
 
 ; This is a double-length table that holds the right-edge adresses of the playfield on the physical
 ; screen.  At most, it needs to hold 200 addresses for a full height playfield.  It is double-length
