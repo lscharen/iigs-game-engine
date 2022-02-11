@@ -8,6 +8,11 @@
 
 The Generic Tile Engine (GTE) project is a tile engine built to exploit the unique hardware capabilities of the Apple IIgs personal computer.  It supports the Apple IIgs super hires graphics mode (320x200, 16/256 colors) and provides two full-screen independent scrolling layers along with software sprites.  The API and core functionality of the library is inspired by the graphics hardware of the NES/SMS/SNES/Genesis console era.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/lscharen/iigs-game-engine/master/.github/images/armada.gif"/><br/>
+  Parallax scrolling of two full-screen static layers
+</p>
+
 # Getting Started
 
 ## Initialization
