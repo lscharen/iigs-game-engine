@@ -2,6 +2,10 @@
 ;
 ; X = sprite index
 _DrawSpriteSheet
+DISP_VFLIP   equ    $0004      ; hard code these because they are internal values
+DISP_HFLIP   equ    $0002
+DISP_MASK    equ    $00F9
+
              phx
 
              lda    _Sprites+VBUFF_ADDR,y
@@ -11,7 +15,7 @@ _DrawSpriteSheet
              sta    tmp2
 
              lda    _Sprites+SPRITE_DISP,y
-             and    #-{SPRITE_VFLIP+SPRITE_HFLIP} ; dispatch to all of the different orientations
+             and    #DISP_MASK                    ; dispatch to all of the different orientations
              sta    tmp3
 
 ; Set bank
@@ -25,7 +29,7 @@ _DrawSpriteSheet
              jsr    _DrawSprite
 
              lda    tmp3
-             ora    #SPRITE_VFLIP
+             ora    #DISP_VFLIP
              tax
              ldy    tmp2
              lda    tmp1
@@ -34,7 +38,7 @@ _DrawSpriteSheet
              jsr    _DrawSprite
 
              lda    tmp3
-             ora    #SPRITE_HFLIP
+             ora    #DISP_HFLIP
              tax
              ldy    tmp2
              lda    tmp1
@@ -43,7 +47,7 @@ _DrawSpriteSheet
              jsr    _DrawSprite
 
              lda    tmp3
-             ora    #SPRITE_VFLIP
+             ora    #DISP_HFLIP+DISP_VFLIP
              tax
              ldy    tmp2
              lda    tmp1
@@ -319,71 +323,3 @@ _CopyTile8x8V
 ]line       equ   ]line+1
             --^
             rts
-
-; X = sprite vbuff address
-; Y = tile data pointer
-;_DrawTile8x8
-;            phb
-;            pea   #^tiledata                     ; Set the bank to the tile data
-;            plb
-;
-;]line       equ   0
-;            lup   8
-;            lda:  tiledata+32+{]line*4},y
-;            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-;            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-;           
-;            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-;            and:  tiledata+32+{]line*4},y
-;            ora:  tiledata+{]line*4},y
-;            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-;
-;            lda:  tiledata+32+{]line*4}+2,y
-;            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-;            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-;            
-;           ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-;           and:  tiledata+32+{]line*4}+2,y
-;            ora:  tiledata+{]line*4}+2,y
-;            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-;]line       equ   ]line+1
-;            --^
-;
-;            plb                                  ; pop extra byte
-;            plb
-;            rts
-
-; X = sprite vbuff address
-; Y = tile data pointer
-;
-; Draws the tile vertically flipped
-;_DrawTile8x8V
-;            phb
-;            pea   #^tiledata                     ; Set the bank to the tile data
-;            plb
-
-;]line       equ   0
-;            lup   8
-;            lda:  tiledata+32+{{7-]line}*4},y
-;            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-;            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-;            
-;            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-;            and:  tiledata+32+{{7-]line}*4},y
-;            ora:  tiledata+{{7-]line}*4},y
-;            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-
-;            lda:  tiledata+32+{{7-]line}*4}+2,y
-;            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-;            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-;            
-;            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-;            and:  tiledata+32+{{7-]line}*4}+2,y
-;            ora:  tiledata+{{7-]line}*4}+2,y
-;            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-;]line       equ   ]line+1
-;            --^
-;
-;            plb                                  ; pop extra byte
-;            plb
-;            rts
