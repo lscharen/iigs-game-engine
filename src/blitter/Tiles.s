@@ -693,22 +693,24 @@ _GetTileStoreOffset0
 ; A = tile id
 ; X = tile column [0, 40] (41 columns)
 ; Y = tile row    [0, 25] (26 rows)
+;
+; Registers are not preserved
 _SetTile
                  pha
                  jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
-                 tay
+                 tax
                  pla
                  
-                 cmp  TileStore+TS_TILE_ID,y        ; Only set to dirty if the value changed
+                 cmpl TileStore+TS_TILE_ID,x        ; Only set to dirty if the value changed
                  beq  :nochange
 
-                 sta  TileStore+TS_TILE_ID,y        ; Value is different, store it.
+                 stal TileStore+TS_TILE_ID,x        ; Value is different, store it.
 
                  jsr  _GetTileAddr
-                 sta  TileStore+TS_TILE_ADDR,y      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
+                 stal TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
 
-                 tya                                ; Add this tile to the list of dirty tiles to refresh
-                 jmp  _PushDirtyTile                ; on the next call to _ApplyTiles
+;                 txa                                ; Add this tile to the list of dirty tiles to refresh
+                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
 
 :nochange        rts
            
@@ -735,11 +737,11 @@ _PushDirtyTile
 
 ; alternate entry point if the x-register is already set
 _PushDirtyTileX
-                 lda  TileStore+TS_DIRTY,x
+                 ldal TileStore+TS_DIRTY,x
                  bpl  :occupied2
 
                  txa                                  ; any non-negative value will work, this saves work below
-                 sta  TileStore+TS_DIRTY,x            ; and is 1 cycle fater than loading a constanct value
+                 stal TileStore+TS_DIRTY,x            ; and is 1 cycle fater than loading a constanct value
 
 ;                 txa
                  ldx  DirtyTileCount ; 5
@@ -775,18 +777,18 @@ PopDirtyTile     ENT
                  rtl
 
 _PopDirtyTile
-                 ldx  DirtyTileCount
+                 ldy  DirtyTileCount
                  bne  _PopDirtyTile2
                  rts
 
 _PopDirtyTile2                                       ; alternate entry point
-                 dex
-                 dex
-                 stx  DirtyTileCount                 ; remove last item from the list
+                 dey
+                 dey
+                 sty  DirtyTileCount                 ; remove last item from the list
 
-                 ldy  DirtyTiles,x                   ; load the offset into the Tile Store
+                 ldx  DirtyTiles,y                   ; load the offset into the Tile Store
                  lda  #$FFFF
-                 sta  TileStore+TS_DIRTY,y           ; clear the occupied backlink
+                 stal TileStore+TS_DIRTY,x           ; clear the occupied backlink
                  rts
 
 ; Run through the dirty tile list and render them into the code field
@@ -814,6 +816,6 @@ _ApplyTiles
 
 ; Loop again until the list of dirty tiles is empty
 
-:begin           ldx  DirtyTileCount
+:begin           ldy  DirtyTileCount
                  bne  :loop
                  rts

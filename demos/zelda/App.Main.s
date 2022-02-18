@@ -61,6 +61,7 @@ OKTOROK             equ        {SPRITE_16X16+79}
                     brl        Exit                    ; If we could not allocate a sprite, exit
 :sprite_ok
                     sta        PlayerID
+                    brl        Exit
 
 ; Add 4 octoroks
                     lda        #OKTOROK

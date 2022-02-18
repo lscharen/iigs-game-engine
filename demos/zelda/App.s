@@ -40,4 +40,4 @@
 
             ASM   TileStore.s
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
-            SNA   SPRMASK
+            SNA   TSTORE

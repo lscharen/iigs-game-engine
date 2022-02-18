@@ -320,16 +320,29 @@ EngineReset
                   stz       SCBArrayPtr
                   stz       SCBArrayPtr+2
 
+                  stz       SpriteBanks
+                  stz       SpriteMap
+                  stz       ActiveSpriteCount
+
                   stz       OneSecondCounter
 
-]step             equ       0
-                  lup       13
+                  lda       #13
+                  sta       tmp15
+                  stz       tmp14
+
+:loop
                   ldx       #BlitBuff
                   lda       #^BlitBuff
-                  ldy       #]step
+                  ldy       tmp14
                   jsr       BuildBank
-]step             equ       ]step+4
-                  --^
+
+                  lda       tmp14
+                  clc
+                  adc       #4
+                  sta       tmp14
+
+                  dec       tmp15
+                  bne       :loop
 
                   rts
 
@@ -474,6 +487,8 @@ _ReadControl
                   pla
                   rts
 
+                  put       blitter/Template.s
+
                   put       Memory.s
                   put       Graphics.s
                   put       Sprite.s
@@ -486,7 +501,6 @@ _ReadControl
                   put       blitter/Horz.s
                   put       blitter/PEISlammer.s
                   put       blitter/Tables.s
-                  put       blitter/Template.s
                   put       blitter/Tiles.s
                   put       blitter/Tiles00000.s      ; normal tiles
                   put       blitter/Tiles00001.s      ; dynamic tiles

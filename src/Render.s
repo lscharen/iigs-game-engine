@@ -184,7 +184,7 @@ _ApplyDirtyTiles
 
 ; Loop again until the list of dirty tiles is empty
 
-:begin      ldx  DirtyTileCount
+:begin      ldy  DirtyTileCount
             bne  :loop
             rts
 
