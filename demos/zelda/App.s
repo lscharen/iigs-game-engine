@@ -35,3 +35,9 @@
             ASM   SprMask.s
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             SNA   SPRMASK
+
+; Segment #6 -- 64KB Tile Store
+
+            ASM   TileStore.s
+            KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
+            SNA   SPRMASK
