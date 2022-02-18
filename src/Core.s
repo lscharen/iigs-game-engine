@@ -12,14 +12,76 @@
 NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
-; External data provided by the main program segment
+; External data space provided by the main program segment
 tiledata          EXT
+TileStore         EXT
 
 ; Sprite plane data and mask banks are provided as an exteral segment
+;
+; The sprite data holds a set of pre-rendered sprites that are optimized to support the rendering pipeline.  There
+; are four copies of each sprite, along with the cooresponding mask laid out into 4x4 tile regions where the
+; empty row and column is shared between adjacent blocks.
+;
+; Logically, the memory is laid out as 4 columns of sprites and 4 rows.
+;
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   |   |   |   |   |   |   |   |   |   |   |   | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   | 0 | 0 |   | 1 | 1 |   | 2 | 2 |   | 3 | 3 | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   | 0 | 0 |   | 1 | 1 |   | 2 | 2 |   | 3 | 3 | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   |   |   |   |   |   |   |   |   |   |   |   | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   | 4 | 4 |   | 5 | 5 |   | 6 | 6 |   | 7 | 7 | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   | 4 | 4 |   | 5 | 5 |   | 6 | 6 |   | 7 | 7 | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+; |   |   |   |   |   |   |   |   |   |   |   |   | ...
+; +---+---+---+---+---+---+---+---+---+---+---+---+-...
+;
+; For each sprite, when it needs to be copied into an on-screen tile, it could exist at any offset compared to its
+; natural alignment.  By having a buffer around the sprite data, an address pointer can be set to a different origin
+; and a simple 8x8 block copy can cut out the appropriate bit of the sprite.  For example, here is a zoomed-in look
+; at a sprite with an offset, O, at (-2,-3).  As shown, by selecting an appropriate origin, just the top corner
+; of the sprite data will be copied.
+;
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; |   |           ||           |   ||   |   |   |   ||   |   |   |   |
+; +---+-- O----------------+ --+---++---+---+---+---++---+---+---+---+..
+; |   |   |                |   |   ||   |   |   |   ||   |   |   |   |
+; +---+-- |                | --+---++---+---+---+---++---+---+---+---+..
+; |   |   |                |   |   ||   |   |   |   ||   |   |   |   |
+; +---+-- |                | --+---++---+---+---+---++---+---+---+---+..
+; |   |   |                |   |   ||   |   |   |   ||   |   |   |   |
+; +===+== |       ++===+== | ==+===++===+===+===+===++===+===+===+===+..
+; |   |   |       ||   | S | S | S || S | S | S |   ||   |   |   |   |
+; +---+-- +----------------+ --+---++---+---+---+---++---+---+---+---+..
+; |   |           || S | S   S | S || S | S | S | S ||   |   |   |   |
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; |   |   |   |   || S | S | S | S || S | S | S | S ||   |   |   |   |
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; |   |   |   |   || S | S | S | S || S | S | S | S ||   |   |   |   |
+; +===+===+===+===++===+===+===+===++===+===+===+===++===+===+===+===+..
+; |   |   |   |   || S | S | S | S || S | S | S | S ||   |   |   |   |
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; |   |   |   |   || S | S | S | S || S | S | S | S ||   |   |   |   |
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; |   |   |   |   || S | S | S | S || S | S | S | S ||   |   |   |   |
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; |   |   |   |   ||   | S | S | S || S | S | S |   ||   |   |   |   |
+; +---+---+---+---++---+---+---+---++---+---+---+---++---+---+---+---+..
+; .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .
+;
+; Each sprite will take up, effectively 9 tiles of storage space per 
+; instance (plus edges) and there are 4 instances for the H/V bits
+; and 4 more for the masks.  This results in a need for 43,264 bytes
+; for all 16 sprites.
+
 spritedata        EXT
 spritemask        EXT
 
-; IF there are overlays, they are provided as an external
+; If there are overlays, they are provided as an external
 Overlay           EXT
 
 ; Core engine functionality.  The idea is that that source file can be PUT into
@@ -285,12 +347,13 @@ EngineReset
 ;  7. Ancient Land of Y's   : 36 x 16   288 x 128 (18,432 bytes ( 57.6%))
 ;  8. Game Boy Color        : 20 x 18   160 x 144 (11,520 bytes ( 36.0%))
 ;  9. Agony (Amiga)         : 36 x 24   288 x 192 (27,648 bytes ( 86.4%))
+; 10. Atari Lynx            : 20 x 13   160 x 102 (8,160 bytes  ( 25.5%))
 ;
 ;  X = mode number OR width in pixels (must be multiple of 2)
 ;  Y = height in pixels (if X > 8)
 
-ScreenModeWidth   dw        320,272,256,256,280,256,240,288,160,320
-ScreenModeHeight  dw        200,192,200,176,160,160,160,128,144,1
+ScreenModeWidth   dw        320,272,256,256,280,256,240,288,160,288,160,320
+ScreenModeHeight  dw        200,192,200,176,160,160,160,128,144,192,102,1
 
 SetScreenMode     ENT
                   phb
@@ -301,8 +364,8 @@ SetScreenMode     ENT
                   rtl
 
 _SetScreenMode
-                  cpx       #9
-                  bcs       :direct             ; if x > 8, then assume X and Y are the dimensions
+                  cpx       #11
+                  bcs       :direct             ; if x > 10, then assume X and Y are the dimensions
 
                   txa
                   asl
@@ -415,6 +478,7 @@ _ReadControl
                   put       Graphics.s
                   put       Sprite.s
                   put       Sprite2.s
+                  put       SpriteRender.s
                   put       Render.s
                   put       Timer.s
                   put       Script.s

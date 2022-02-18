@@ -190,29 +190,37 @@ _ApplyDirtyTiles
 
 ; Only render solid tiles and sprites
 _RenderDirtyTile
+            pea   >TileStore                     ; Need that addressing flexibility here.  Callers responsible for restoring bank reg
+            plb
+            plb
+
+            lda   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
+            beq   :nosprite
+
+            jsr   BuildActiveSpriteArray          ; Build the sprite index list from the bit field
+
+;            ldx   TileStore+TS_SPRITE_ADDR,y
+;            stx   _SPR_X_REG
+
             lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
             and   #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
             xba
-
-            ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
-            beq   :nosprite
-
-            ldx   TileStore+TS_SPRITE_ADDR,y
-            stx   _SPR_X_REG
-
             tax
-            lda   DirtyTileSpriteProcs,x
+            ldal  DirtyTileSpriteProcs,x
             sta   :tiledisp+1
             bra   :sprite
 
 :nosprite
+            lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
+            and   #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
+            xba
             tax
-            lda   DirtyTileProcs,x                    ; load and patch in the appropriate subroutine
+            ldal  DirtyTileProcs,x               ; load and patch in the appropriate subroutine
             sta   :tiledisp+1
 
 :sprite
             ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
-            lda   TileStore+TS_SCREEN_ADDR,y    ; Get the on-screen address of this tile
+            lda   TileStore+TS_SCREEN_ADDR,y     ; Get the on-screen address of this tile
             pha
 
             lda   TileStore+TS_WORD_OFFSET,y
@@ -285,3 +293,124 @@ _TBApplyDirtySpriteData
 ]line            equ   ]line+1
                  --^
                  rts 
+
+; Input:  A = bit field, assumed non-zero
+; Output: A = number of bits set
+; Side Effect: Fill in the ActiveSprite list with sprite indices.
+;
+; We try very hard to be fast and clever here.  Early out, keeping everything in
+; registers when possible, and reducing overhead.
+
+spriteIdx equ tmp12
+BuildActiveSpriteArray
+
+; Push a sentinel value on the stack so we know where to end later.  We con't count during the
+; initial process, because the Z flag needs to be maintained and almost evey opcode affects it.
+
+;                 cmp   lastActiveValue        ; Assume that there is a decent chance of having the same
+;                 beq   early_out              ; sprite bitfield in consecutive dirty tiles. Saves a lot.
+
+                 tsx                           ; save the stack pointer
+                 pea   $FFFF                   ; sentinel value
+
+; This first loop scans the bits in the accumulator and pushed a sprite index onto the stack. We
+; could push any constanct, which gives us some flexibility.  This only works because the PEA
+; instruction does not affect any register.  We also check to see if the acumulator is zero as
+; an early-out test, but only do that every 4 bits in order to amortize the overhead a bit.
+
+]step            equ   0
+                 lup   4
+                 ror
+                 bcc   :skip_1
+                 pea   ]step
+:skip_1          ror
+                 bcc   :skip_2
+                 pea   ]step+2
+:skip_2          ror
+                 bcc   :skip_3
+                 pea   ]step+4
+:skip_3          ror
+                 bcc   :skip_4
+                 pea   ]step+6
+:skip_4          beq   :end_1
+]step            equ   ]step+8
+                 --^
+:end_1
+
+; This second loop pops values off of the stack and places them into a linear array.  We also
+; set the count on exit. As an optimization / restriction, we only allow up to four overlapping
+; sprites.  This is similar to the NES/C64 "8 sprites per line" restriction.
+
+                 pla                        ; Can always assume at least one bit was set...
+                 sta   spriteIdx
+
+                 pla
+                 bmi   :out_1
+                 sta   spriteIdx+2
+
+                 pla
+                 bmi   :out_2
+                 sta   spriteIdx+4
+
+                 pla
+                 bmi   :out_3
+                 sta   spriteIdx+6
+
+; Reset the stack point if we did not pop everything off yet
+                 txs
+
+; These are the exit points which know exactly how many items (x2) have been processed
+:out_4           lda   #8
+                 rts
+:out_0           lda   #0
+                 rts
+:out_1           lda   #2
+                 rts
+:out_2           lda   #4
+                 rts
+:out_3           lda   #6
+                 rts
+
+; Run through all of the active sprites and put then on-screen.  We have three different heuristics depending on
+; how many active sprites there are intersecting this tile.
+
+; Version 2. No sprite place, instead each sprite has a set of pre-rendered panels and we render from
+; those panels in tile-sized blocks.
+;
+; If there is only one sprite + tile background, then we can render directly to the screen
+;  
+;  ldal  tiledata+0,x
+;  and   sprite+MASK_OFFSET,y
+;  ora   sprite,y
+;  sta   00
+;  ...
+;  sta   02
+;  ...
+;  sta   A0
+;  ...
+;  sta   A2
+;  tdc
+;  adc   #320
+;  tcd
+;
+; Since this is a common case, it is reasonable to do so.  Otherwise, we must explode the TS_SPRITE_FLAG to
+; get a list of sprite origin addresses and then flatten against the tile
+;
+;  ldal  tiledata+0,x
+;  ldx   spriteCount
+;  jmp   (disp,x)
+;  ...
+;  ldy   list+2
+;  and   sprite+MASK_OFFSET,y
+;  ora   sprite,y
+;  ldy   list
+;  and   sprite+MASK_OFFSET,y
+;  ora   sprite,y
+;  sta   00
+
+;  sta   02
+;  sta   A0
+;  sta   A2
+;  tdc
+;  adc   #320
+;  tcd

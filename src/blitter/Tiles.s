@@ -112,13 +112,17 @@ RenderTile       ENT
                  rtl
 
 _RenderTile2
+                 pea   >TileStore                     ; Need that addressing flexibility here.  Callers responsible for restoring bank reg
+                 plb
+                 plb
+
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
                  beq   :nosprite
 
                  ora   #TILE_SPRITE_BIT
-                 ldx   TileStore+TS_SPRITE_ADDR,y
-                 stx   _SPR_X_REG
+;                 ldx   TileStore+TS_SPRITE_ADDR,y    ; TODO: collapse sprites
+;                 stx   _SPR_X_REG
 
 :nosprite
                  sta   _TILE_ID                       ; Some tile blitters need to get the tile descriptor
@@ -498,17 +502,34 @@ _CopyBG1Tile
 ;
 ; TileStore+TS_TILE_ID        : Tile descriptor
 ; TileStore+TS_DIRTY          : $FFFF is clean, otherwise stores a back-reference to the DirtyTiles array
-; TileStore+TS_SPRITE_FLAG    : Set to TILE_SPRITE_BIT if a sprite is present at this tile location
-; TileStore+TS_SPRITE_ADDR    ; Address of the tile in the sprite plane
 ; TileStore+TS_TILE_ADDR      : Address of the tile in the tile data buffer
 ; TileStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
 ; TileStore+TS_WORD_OFFSET    : Logical number of word for this location
 ; TileStore+TS_BASE_ADDR      : Copy of BTableAddrLow
-; TileStore+TS_SCREEN_ADDR    : Address ont he physical screen corresponding to this tile (for direct rendering)
+; TileStore+TS_SCREEN_ADDR    : Address on the physical screen corresponding to this tile (for direct rendering)
+; TileStore+TS_SPRITE_FLAG    : A bit field of all sprites that intersect this tile
+; TileStore+TS_SPRITE_ADDR_1  ; Address of the sprite data that aligns with this tile.  These
+; TileStore+TS_SPRITE_ADDR_2  ; values are 1:1 with the TS_SPRITE_FLAG bits and are not contiguous.
+; TileStore+TS_SPRITE_ADDR_3  ; If the bit position in TS_SPRITE_FLAG is not set, then the value in 
+; TileStore+TS_SPRITE_ADDR_4  ; the TS_SPRITE_ADDR_* field is undefined.
+; TileStore+TS_SPRITE_ADDR_5
+; TileStore+TS_SPRITE_ADDR_6
+; TileStore+TS_SPRITE_ADDR_7
+; TileStore+TS_SPRITE_ADDR_8
+; TileStore+TS_SPRITE_ADDR_9
+; TileStore+TS_SPRITE_ADDR_10
+; TileStore+TS_SPRITE_ADDR_11
+; TileStore+TS_SPRITE_ADDR_12
+; TileStore+TS_SPRITE_ADDR_13
+; TileStore+TS_SPRITE_ADDR_14
+; TileStore+TS_SPRITE_ADDR_15
+; TileStore+TS_SPRITE_ADDR_16
 
-TileStore        ENT
-                 ds   TILE_STORE_SIZE*11
+
+; TileStore+
+;TileStore        ENT
+;                 ds   TILE_STORE_SIZE*11
 
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2
@@ -519,7 +540,7 @@ DirtyTiles       ds   TILE_STORE_SIZE    ; At most this many tiles can possibly 
 InitTiles
 :col             equ  tmp0
 :row             equ  tmp1
-
+:vbuff           equ  tmp2
 ; Fill in the TileStoreYTable.  This is just a table of offsets into the Tile Store for each row.  There
 ; are 26 rows with a stride of 41
                  ldy  #0
@@ -570,18 +591,27 @@ InitTiles
                  sta  :row
                  lda  #40
                  sta  :col
+                 lda  #$8000
+                 sta  :vbuff
 
 :loop 
 
 ; The first set of values in the Tile Store are changed during each frame based on the actions
 ; that are happening
 
-                 stz  TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
-                 stz  TileStore+TS_TILE_ADDR,x
+                 lda  #0
+                 stal TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
+                 stal TileStore+TS_TILE_ADDR,x
 
-                 stz  TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
+                 stal TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
                  lda  #$FFFF                            ; none of the tiles are dirty
-                 sta  TileStore+TS_DIRTY,x
+                 stal TileStore+TS_DIRTY,x
+
+                 lda  :vbuff                            ; array of sprite vbuff addresses per tile
+                 stal TileStore+TS_VBUFF_ARRAY_ADDR,x
+                 clc
+                 adc  #32
+                 sta  :vbuff
 
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering
@@ -590,20 +620,20 @@ InitTiles
                  asl                                    ; exists in the code fields
                  tay
                  lda  BRowTableHigh,y
-                 sta  TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
+                 stal TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
                  lda  BRowTableLow,y
-                 sta  TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
+                 stal TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
 
                  lda  :col                              ; Set the offset values based on the column
                  asl                                    ; of this tile
                  asl
-                 sta  TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
+                 stal TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
                  
                  tay
                  lda  Col2CodeOffset+2,y
                  clc
-                 adc  TileStore+TS_BASE_ADDR,x
-                 sta  TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
+                 adcl TileStore+TS_BASE_ADDR,x
+                 stal TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
 
                  dec  :col
                  bpl  :hop
@@ -719,7 +749,7 @@ _PushDirtyTileX
                  inx
                  stx  DirtyTileCount
 
-; Same speed, but preserved the Z register
+; Same speed, but preserved the X register
 ;                 sta  (DirtyTiles) ; 6
 ;                 lda  DirtyTiles   ; 4
 ;                 inc               ; 2

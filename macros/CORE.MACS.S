@@ -177,15 +177,6 @@ _TileStoreOffsetX mac
                 adc  TileStoreYTable,x
                 <<<
 
-_; Macro variant to calculate inline from any source
-_SpriteVBuffAddr mac
-                lda   ]2
-                clc
-                adc   #NUM_BUFF_LINES
-                xba
-                adc   ]1
-                <<<
-
 ; Macro to define script steps
 ScriptStep      MAC
                 IF    #=]5

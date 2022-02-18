@@ -44,7 +44,7 @@
 ; set dirty tiles, identify DAMAGED sprites, and THEN perform the drawing.  It is not possible to
 ; just do each sprite one at a time.
 ;
-; Initialize the sprite plane data and mask banks (all data = $0000, all masks = $FFFF)
+; Initialize the sprite data and mask banks (all data = $0000, all masks = $FFFF)
 InitSprites
            ldx    #$FFFE
            lda    #0
@@ -70,6 +70,24 @@ InitSprites
            dex
            bpl    :loop3
 
+; Initialize the VBUFF address offsets in the data and mask banks for each sprite
+;
+; The internal grid 13 tiles wide where each sprite has a 2x2 interior square with a
+; tile-size buffer all around. We pre-render each sprite with all four vert/horz flips
+VBUFF_STRIDE_BYTES   equ 13*4
+VBUFF_TILE_ROW_BYTES equ 8*VBUFF_STRIDE_BYTES
+VBUFF_SPRITE_STEP    equ VBUFF_TILE_ROW_BYTES*3
+VBUFF_SPRITE_START   equ {8*VBUFF_TILE_ROW_BYTES}+4
+
+           ldx    #{MAX_SPRITES-1}*2
+           lda    #VBUFF_SPRITE_START
+           clc
+:loop4     sta    _Sprites+VBUFF_ADDR,x
+           adc    #VBUFF_SPRITE_STEP
+           dex
+           dex
+           bpl    :loop4
+
 ; Precalculate some bank values
            jsr    _CacheSpriteBanks
            rts
@@ -83,81 +101,73 @@ _ClearSpriteFromTileStore
             ldx   _Sprites+TILE_STORE_ADDR_1,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x       ; Clear the bit in the bit field.  This seems wasteful, but
+            ldal  TileStore+TS_SPRITE_FLAG,x       ; Clear the bit in the bit field.  This seems wasteful, but
             and   _SpriteBitsNot,y                 ; there is no indexed form of TSB/TRB and caching the value in
-            tsb   DamagedSprites                   ; Mark which other sprites are impacted by this one
-            sta   TileStore+TS_SPRITE_FLAG,x       ; a direct page location, only saves 1 or 2 cycles per and costs 10.
+            stal  TileStore+TS_SPRITE_FLAG,x       ; a direct page location, only saves 1 or 2 cycles per and costs 10.
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_2,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_3,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_4,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_5,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_6,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_7,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_8,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_9,y
             bne   *+3
             rts
-            lda   TileStore+TS_SPRITE_FLAG,x
+            ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
-            tsb   DamagedSprites
-            sta   TileStore+TS_SPRITE_FLAG,x
+            stal  TileStore+TS_SPRITE_FLAG,x
             jmp   _PushDirtyTileX
 
 ; This function looks at the sprite list and renders the sprite plane data into the appropriate
@@ -180,6 +190,8 @@ _ClearSpriteFromTileStore
 ; In the second phase, the sprite is re-drawn into the sprite plane buffers and the appropriate
 ; Tile Store locations are marked as dirty. It is important to recognize that the sprites themselves
 ; can be marked dirty, and the underlying tiles in the tile store are independently marked dirty.
+
+activeSpriteList equ blttmp
 
 phase1      dw    :phase1_0
             dw    :phase1_1,:phase1_2,:phase1_3,:phase1_4
@@ -242,22 +254,12 @@ phase1      dw    :phase1_0
 ; all of the tile store locations that it occupied on the previous frame and add those
 ; tile store locations to the dirty tile list.
 _DoPhase1
-
             lda   _Sprites+SPRITE_STATUS,y
             ora   forceSpriteFlag
             bit   #SPRITE_STATUS_MOVED+SPRITE_STATUS_REMOVED
             beq   :no_clear
             jsr   _ClearSpriteFromTileStore
 :no_clear
-
-; If this sprite has been MOVED, UPDATED or REMOVED, then it needs to be erased from the
-; sprite plane buffer
-
-            lda   _Sprites+SPRITE_STATUS,y
-            bit   #SPRITE_STATUS_MOVED+SPRITE_STATUS_UPDATED+SPRITE_STATUS_REMOVED
-            beq   :no_erase
-            jsr   _EraseSpriteY
-:no_erase
 
 ; Check to see if sprite was REMOVED  If so, then this is where we return its Sprite ID to the
 ; list of open slots
@@ -347,66 +349,65 @@ _DoPhase2
             and   #SPRITE_STATUS_ADDED+SPRITE_STATUS_MOVED+SPRITE_STATUS_UPDATED
             beq   :out
 
-; This is the complicated part; we need to draw the sprite into the sprite plane, but then
-; calculate the tiles that overlap with the sprite potentially and mark those as dirty _AND_
-; store the appropriate sprite plane address from which those tiles need to copy.
-;
 ; Mark the appropriate tiles as dirty and as occupied by a sprite so that the ApplyTiles
-; subroutine will get the drawn data from the sprite plane into the code field where it 
-; can be drawn to the screen
+; subroutine will combine the sprite data with the tile data into the code field where it 
+; can be drawn to the screen.  This routine is also responsible for setting the specific
+; VBUFF address for each sprite's tile sheet position
 
-            jsr   _MarkDirtySprite
-
-; Draw the sprite into the sprite plane buffer(s)
-
-            lda   _Sprites+SPRITE_DISP2,y       ; use bits 9, 10, 11, 12, and 13 to dispatch
-            jmp   (draw_sprite,x)
+            jmp   _MarkDirtySprite
 :out
             rts
 
-; Optimization: Could use 8-bit registers to save 
+; Use the blttmp space to build the active sprite list.  Since the sprite tiles are not drawn until later,
+; it's OK to use that scratch space here.  And it's just the right size, 32 bytes
 RebuildSpriteArray
-            ldx   #0                            ; Number of non-empty sprite locations
             lda   SpriteMap                     ; Get the bit field
-            tay                                 ; Cache to restore
 
-            bit   #$0001                        ; For each bit position, test and store a value
-            beq   :chk1
-            stz   activeSpriteList              ; Shortcut for the first one
-            ldx   #2
+; Unrolled loop to get the sprite index values that coorespond to the set bit positions
 
-; A super-optimization here would be to put the activeSpriteList on the direct page (32 bytes) and then
-; use PEA instructions to push the slot values.  Calculate the count at the end based on the final stack
-; address.  Only 160 cycles to build the list.
-:chk1
-]flag       equ   $0002
-]slot       equ   $0002
-            lup   15
-            bit   #]flag
-            beq   :chk2
-            lda   #]slot
-            sta   activeSpriteList,x
-            tya
-            inx
-            inx
-:chk2
-]flag       equ   ]flag*2
-]slot       equ   ]slot+2
+            pea   $FFFF                         ; end-of-list marker
+]step       equ   0
+            lup   4
+            ror
+            bcc   :skip_1
+            pea   ]step
+:skip_1     ror
+            bcc   :skip_2
+            pea   ]step+2
+:skip_2     ror
+            bcc   :skip_3
+            pea   ]step+4
+:skip_3     ror
+            bcc   :skip_4
+            pea   ]step+6
+:skip_4     beq   :end_1
+]step       equ   ]step+8
             --^
+:end_1
 
-            stx   activeSpriteCount
+; Now pop the values off of the stack until reaching the sentinel value.  This could be unrolled, but
+; it is only done once per frame.
+
+            ldx   #0
+:loop
+            pla
+            bmi   :out
+            sta   blttmp,x
+            inx
+            inx
+            bra   :loop
+:out
+            stx   ActiveSpriteCount
             rts
 
 forceSpriteFlag ds 2
 _RenderSprites
 
-            stz   DamagedSprites                   ; clear the potential set of damaged sprites
-
 ; Check to see if any sprites have been added or removed.  If so, then we regenerate the active
 ; sprite list.  Since adding and removing sprites is rare, this is a worthwhile tradeoff, because
-; there are several places where we want to interative over the all of the sprites, and having a list
-; and not have to contantly load and test the SPRITE_STATUS just to skip unused slots can help streamline
-; the code.
+; there are several places where we want to iterate over the all of the sprites, and having a list
+; and not have to constantly load and test the SPRITE_STATUS just to skip unused slots can help
+; streamline the code.
 
             lda   #DIRTY_BIT_SPRITE_ARRAY
             trb   DirtyBits                        ; clears the flag, if it was set
@@ -440,16 +441,16 @@ _RenderSprites
 ; how many sprite to process and they are in a contiguous array.  So we on't have to keep track
 ; of an iterating variable
 
-            ldx   activeSpriteCount
+            ldx   ActiveSpriteCount
             jmp   (phase1,x)
 phase1_rtn
 
 ; Dispatch to the second phase of rendering the sprites.
-            ldx   activeSpriteCount
+            ldx   ActiveSpriteCount
             jmp   (phase2,x)
 phase2_rtn
 
-; Speite rendering complete
+; Sprite rendering complete
             rts
 
 ; _GetTileAt
@@ -495,464 +496,7 @@ _GetTileAt
             clc
             rts
 
-; Y = _Sprites array offset
-_EraseSpriteY
-             lda   _Sprites+OLD_VBUFF_ADDR,y
-             beq   :noerase
-             ldx   _Sprites+SPRITE_DISP,y              ; get the dispatch index for this sprite
-             jmp   (:do_erase,x)
-:noerase     rts
-:do_erase    dw    _EraseTileSprite8x8,_EraseTileSprite8x16
-             dw    _EraseTileSprite16x8,_EraseTileSprite16x16
-
-
-; X = _Sprites array offset
-_DrawSpriteYA
-             lda   _Sprites+SPRITE_DISP2,y       ; use bits 9, 10, 11 and 12,13 to dispatch
-             jmp   (draw_sprite,x)
-
-draw_sprite  dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
-             dw    draw_8x16,draw_8x16h,draw_8x16v,draw_8x16hv
-             dw    draw_16x8,draw_16x8h,draw_16x8v,draw_16x8hv
-             dw    draw_16x16,draw_16x16h,draw_16x16v,draw_16x16hv
-
-             dw    :rtn,:rtn,:rtn,:rtn           ; hidden bit is set
-             dw    :rtn,:rtn,:rtn,:rtn
-             dw    :rtn,:rtn,:rtn,:rtn
-             dw    :rtn,:rtn,:rtn,:rtn
-:rtn         rts
-
-draw_8x8
-draw_8x8h
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jmp   _DrawTile8x8
-
-draw_8x8v
-draw_8x8hv
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jmp   _DrawTile8x8V
-
-draw_8x16
-draw_8x16h
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jsr   _DrawTile8x8
-             clc
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}
-             tax
-             tya
-             adc   #{128*32}                      ; 32 tiles to the next vertical one, each tile is 128 bytes
-             tay
-             jmp   _DrawTile8x8
-
-draw_8x16v
-draw_8x16hv
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jsr   _DrawTile8x8V
-             clc
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}
-             tax
-             tya
-             adc   #{128*32}
-             tay
-             jmp   _DrawTile8x8V
-
-draw_16x8
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jsr   _DrawTile8x8
-             clc
-             txa
-             adc   #4
-             tax
-             tya
-             adc   #128                           ; Next tile is 128 bytes away
-             tay
-             jmp   _DrawTile8x8
-
-draw_16x8h
-             clc
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             pha
-             adc   #128
-             tay
-             jsr   _DrawTile8x8
-             txa
-             adc   #4
-             tax
-             ply
-             jmp   _DrawTile8x8
-
-draw_16x8v
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jsr   _DrawTile8x8V
-             clc
-             txa
-             adc   #4
-             tax
-             tya
-             adc   #128
-             tay
-             jmp   _DrawTile8x8V
-
-draw_16x8hv
-             clc
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             pha
-             adc   #128
-             tay
-             jsr   _DrawTile8x8V
-             txa
-             adc   #4
-             tax
-             ply
-             jmp   _DrawTile8x8V
-
-draw_16x16
-             clc
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             tay
-             jmp   _DrawTile16x16
-
-;             jsr   _DrawTile8x8
-             txa
-             adc   #4
-             tax
-             tya
-             adc   #128
-             tay
-             jsr   _DrawTile8x8
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}-4
-             tax
-             tya
-             adc    #{128*{32-1}}
-             tay
-             jsr   _DrawTile8x8
-             txa
-             adc   #4
-             tax
-             tya
-             adc   #128
-             tay
-             jmp   _DrawTile8x8
-
-draw_16x16h
-             clc
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             pha
-             adc   #128
-             tay
-             jsr   _DrawTile8x8
-
-             txa
-             adc   #4
-             tax
-             ply
-             jsr   _DrawTile8x8
-
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}-4
-             tax
-             tya
-             adc    #{128*32}
-             pha
-             adc    #128
-             tay
-             jsr   _DrawTile8x8
-
-             txa
-             adc   #4
-             tax
-             ply
-             jmp   _DrawTile8x8
-
-draw_16x16v
-             clc
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             pha                                        ; store some copies
-             phx
-             pha
-             adc   #{128*32}
-             tay
-             jsr   _DrawTile8x8V
-
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}
-             tax
-             ply
-             jsr   _DrawTile8x8V
-
-             pla
-             adc   #4
-             tax
-             lda   1,s
-             adc   #{128*{32+1}}
-             tay
-             jsr   _DrawTile8x8V
-
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}
-             tax
-             pla
-             adc   #128
-             tay
-             jmp   _DrawTile8x8V
-
-; TODO
-draw_16x16hv
-             clc
-             ldx   _Sprites+VBUFF_ADDR,y
-             lda   _Sprites+TILE_DATA_OFFSET,y
-             pha
-             adc   #128+{128*32}                        ; Bottom-right source to top-left 
-             tay
-             jsr   _DrawTile8x8V
-
-             txa
-             adc   #4
-             tax
-             lda   1,s
-             adc   #{128*32}
-             tay
-             jsr   _DrawTile8x8V
-
-             txa
-             adc   #{8*SPRITE_PLANE_SPAN}-4
-             tax
-             lda    1,s
-             adc    #128
-             tay
-             jsr   _DrawTile8x8V
-
-             txa
-             adc   #4
-             tax
-             ply
-             jmp   _DrawTile8x8V
-
-DrawTileSprite ENT
-            jsr   _DrawTile8x8
-            rtl
-
-; Hypothetical compiled tile routine
-;
-; Need 1MB of memory to have 1:1 space for 512 tiles
-; for 16 sprites we have 8 variants: Vert, Horz, Shift.  The shift sprites need an extra column
-;
-; 16x16 sprite = 4x16 words x 4 = 256, 5x16 words x 4 = 320 = 576 words * 21 bytes/word = 12K per sprite
-
-;            pei   SpriteBanks
-;            plb
-
-;            lda   spritedata+0,x                 ; skipped if mask = $ffff
-;            and   #tilemask
-;            ora   #tiledata
-;            sta   spritedata+0,x                 ; 12 bytes / word = 12 * 16 = 216 < 256 in the worst case
-
-;            lda   spritedata+2,x                 ; if mask != 0 and data = 0
-;            and   #tilemask
-;            sta   spritedata+0,x
-
-;            lda   #tiledata                      ; if mask = 0 and data != 0
-;            sta   spritedata+0,x
-
-;            stz   spritedata+0,x                 ; if mask = 0 and data = 0
-;            ...
-
-;            plb
-;            lda   #tilemask
-;            and   spritemask+0,x
-;            sta   spritemask+0,x                 ; 9 * 16 = 144 i the worst case
-;
-;           stz   spritemask+2,x                 ; if mask is zero (often the case)
-
-_DrawTileTemplate
-; X = sprite vbuff address
-; Y = tile data pointer
-_DrawTile8x8
-            phb
-            pea   #^tiledata                     ; Set the bank to the tile data
-            plb
-
-]line       equ   0
-            lup   8
-            lda:  tiledata+32+{]line*4},y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            and:  tiledata+32+{]line*4},y
-            ora:  tiledata+{]line*4},y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-
-            lda:  tiledata+32+{]line*4}+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            and:  tiledata+32+{]line*4}+2,y
-            ora:  tiledata+{]line*4}+2,y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop extra byte
-            plb
-            rts
-
-; X = sprite vbuff address
-; Y = tile data pointer
-_DrawTile16x16
-            phb
-            pea   #^tiledata                     ; Set the bank to the tile data
-            plb
-
-]line       equ   0
-            lup   8
-            lda:  tiledata+32+{]line*4},y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            and:  tiledata+32+{]line*4},y
-            ora:  tiledata+{]line*4},y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-
-            lda:  tiledata+32+{]line*4}+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            and:  tiledata+32+{]line*4}+2,y
-            ora:  tiledata+{]line*4}+2,y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-
-            lda:  tiledata+32+128+{]line*4},y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+4,x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+4,x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+4,x
-            and:  tiledata+32+128+{]line*4},y
-            ora:  tiledata+128+{]line*4},y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+4,x
-
-            lda:  tiledata+32+128+{]line*4}+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+6,x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+6,x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+6,x
-            and:  tiledata+32+128+{]line*4}+2,y
-            ora:  tiledata+128+{]line*4}+2,y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+6,x
-
-]line       equ   ]line+1
-            --^
-
-TILE_ROW_STRIDE equ 32*128
-SPRITE_ROW_STRIDE equ 8*SPRITE_PLANE_SPAN
-
-]line       equ   0
-            lup   8
-            lda:  tiledata+TILE_ROW_STRIDE+32+{]line*4},y
-            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
-            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
-            
-            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
-            and:  tiledata+TILE_ROW_STRIDE+32+{]line*4},y
-            ora:  tiledata+TILE_ROW_STRIDE+{]line*4},y
-            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN},x
-
-            lda:  tiledata+TILE_ROW_STRIDE+32+{]line*4}+2,y
-            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
-            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
-            
-            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
-            and:  tiledata+TILE_ROW_STRIDE+32+{]line*4}+2,y
-            ora:  tiledata+TILE_ROW_STRIDE+{]line*4}+2,y
-            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+2,x
-
-            lda:  tiledata+TILE_ROW_STRIDE+32+128+{]line*4},y
-            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
-            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
-            
-            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
-            and:  tiledata+TILE_ROW_STRIDE+32+128+{]line*4},y
-            ora:  tiledata+TILE_ROW_STRIDE+128+{]line*4},y
-            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+4,x
-
-            lda:  tiledata+TILE_ROW_STRIDE+32+128+{]line*4}+2,y
-            andl  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
-            stal  spritemask+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
-            
-            ldal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
-            and:  tiledata+TILE_ROW_STRIDE+128+32+{]line*4}+2,y
-            ora:  tiledata+TILE_ROW_STRIDE+128+{]line*4}+2,y
-            stal  spritedata+SPRITE_ROW_STRIDE+{]line*SPRITE_PLANE_SPAN}+6,x
-
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop extra byte
-            plb
-            rts
-
-; X = sprite vbuff address
-; Y = tile data pointer
-;
-; Draws the tile vertically flipped
-_DrawTile8x8V
-            phb
-            pea   #^tiledata                     ; Set the bank to the tile data
-            plb
-
-]line       equ   0
-            lup   8
-            lda:  tiledata+32+{{7-]line}*4},y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            and:  tiledata+32+{{7-]line}*4},y
-            ora:  tiledata+{{7-]line}*4},y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-
-            lda:  tiledata+32+{{7-]line}*4}+2,y
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            stal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            and:  tiledata+32+{{7-]line}*4}+2,y
-            ora:  tiledata+{{7-]line}*4}+2,y
-            stal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop extra byte
-            plb
-            rts
-
-; Erase is easy -- set an 8x8 area of the data region to all $0000 and the corresponding mask
-; resgion to all $FFFF
-; 
-; X = address is sprite plane -- erases an 8x8 region
+; Small initialization routine to cache the banks for the sprite data and mask
 _CacheSpriteBanks
             lda    #>spritemask
             and    #$FF00
@@ -960,152 +504,39 @@ _CacheSpriteBanks
             sta    SpriteBanks
             rts
 
-SPRITE_PLANE_SPAN equ 256
-
-; A = bank address
-_EraseTileSprite8x8
-            tax
-            phb                                   ; Save the bank to switch to the sprite plane
-
-            pei    SpriteBanks
-            plb                                   ; pop the data bank (low byte)
-
-]line       equ    0
-            lup    8
-            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop the mask bank (high byte)
-            lda    #$FFFF
-]line       equ    0
-            lup    8
-            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
-]line       equ   ]line+1
-            --^
-
-            plb
-            rts
-
-_EraseTileSprite8x16
-            tax
-            phb                                   ; Save the bank to switch to the sprite plane
-
-            pei    SpriteBanks
-            plb                                   ; pop the data bank (low byte)
-
-]line       equ    0
-            lup    16
-            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop the mask bank (high byte)
-            lda    #$FFFF
-]line       equ    0
-            lup    16
-            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
-]line       equ   ]line+1
-            --^
-
-            plb
-            rts
-
-_EraseTileSprite16x8
-            tax
-            phb                                   ; Save the bank to switch to the sprite plane
-
-            pei    SpriteBanks
-            plb                                   ; pop the data bank (low byte)
-
-]line       equ    0
-            lup    8
-            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+4,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+6,x
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop the mask bank (high byte)
-            lda    #$FFFF
-]line       equ    0
-            lup    8
-            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+4,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+6,x
-]line       equ   ]line+1
-            --^
-
-            plb
-            rts
-
-_EraseTileSprite16x16
-            tax
-            phb                                   ; Save the bank to switch to the sprite plane
-
-            pei    SpriteBanks
-            plb                                   ; pop the data bank (low byte)
-
-]line       equ    0
-            lup    16
-            stz:   {]line*SPRITE_PLANE_SPAN}+0,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+2,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+4,x
-            stz:   {]line*SPRITE_PLANE_SPAN}+6,x
-]line       equ   ]line+1
-            --^
-
-            plb                                  ; pop the mask bank (high byte)
-
-            lda    #$FFFF
-]line       equ    0
-            lup    16
-            sta:   {]line*SPRITE_PLANE_SPAN}+0,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+2,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+4,x
-            sta:   {]line*SPRITE_PLANE_SPAN}+6,x
-]line       equ   ]line+1
-            --^
-
-            plb
-            rts
+; This is 13 blocks wide
+SPRITE_PLANE_SPAN equ 52        ; 256
 
 ; A = x coordinate
 ; Y = y coordinate
-GetSpriteVBuffAddr ENT
-            jsr   _GetSpriteVBuffAddr
-            rtl
+;GetSpriteVBuffAddr ENT
+;            jsr   _GetSpriteVBuffAddr
+;            rtl
 
 ; A = x coordinate
 ; Y = y coordinate
-_GetSpriteVBuffAddr
-            pha
-            tya
-            clc
-            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
-            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
-            clc
-            adc   1,s
-            sta   1,s
-            pla
-            rts
+;_GetSpriteVBuffAddr
+;            pha
+;            tya
+;            clc
+;            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
+;            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
+;            clc
+;            adc   1,s
+;            sta   1,s
+;            pla
+;            rts
 
 ; Version that uses temporary space (tmp15)
-_GetSpriteVBuffAddrTmp
-            sta   tmp15
-            tya
-            clc
-            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
-            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
-            clc
-            adc   tmp15
-            rts
+;_GetSpriteVBuffAddrTmp
+;            sta   tmp15
+;            tya
+;            clc
+;            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
+;            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
+;            clc
+;            adc   tmp15
+;            rts
 
 ; Add a new sprite to the rendering pipeline
 ;
@@ -1149,7 +580,7 @@ _AddSprite
             sec                                  ; Signal that no sprite slot was available
             rts
 
-:open            
+:open
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
             sta   _Sprites+TILE_DATA_OFFSET,x
@@ -1162,12 +593,13 @@ _AddSprite
             pla                                 ; X coordinate
             sta   _Sprites+SPRITE_X,x
 
-            jsr   _GetSpriteVBuffAddrTmp        ; Preserves X-register
-            sta   _Sprites+VBUFF_ADDR,x
+;            jsr   _GetSpriteVBuffAddrTmp      
+;            sta   _Sprites+VBUFF_ADDR,x        ; This is now pre-calculated since each sprite slot gets a fixed location
 
-            jsr   _PrecalcAllSpriteInfo         ; Cache stuff
+            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
+            jsr   _DrawSpriteSheet              ; Render the sprite into internal space
 
-; Mark the dirty bit to indicate that the active sprite list needs to be rebuild in the next
+; Mark the dirty bit to indicate that the active sprite list needs to be rebuilt in the next
 ; render call
 
             lda   #DIRTY_BIT_SPRITE_ARRAY
@@ -1194,7 +626,7 @@ _AddSprite
 ; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
 ; specifically the draw/erase routines more efficient.
 ;
-; There are variations of thi routine based on whether we are adding a new sprite, updating
+; There are variations of this routine based on whether we are adding a new sprite, updating
 ; it's tile information, or changing its position.
 ;
 ; X = sprite index
@@ -1202,14 +634,7 @@ _PrecalcAllSpriteInfo
             lda   _Sprites+SPRITE_ID,x 
             and   #$2E00
             xba
-            sta   _Sprites+SPRITE_DISP2,x        ; use bits 9 through 13 for full dispatch
-
-            lda   _Sprites+SPRITE_ID,x 
-            and   #$1800                        ; use bits 11 and 12 to dispatch (only care about size)
-            lsr
-            lsr
-            xba
-            sta   _Sprites+SPRITE_DISP,x
+            sta   _Sprites+SPRITE_DISP,x        ; use bits 9 through 13 for full dispatch
 
 ; Clip the sprite's bounding box to the play field size and also set a flag if the sprite
 ; is fully offs-screen or not
@@ -1344,13 +769,15 @@ _MoveSpriteXnc
             pha
             tya
             sta   _Sprites+SPRITE_Y,x           ; Update the Y coordinate
-            pla
 
-            jsr   _GetSpriteVBuffAddrTmp        ; A = x-coord, Y = y-coord
-            ldy   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
-            sta   _Sprites+VBUFF_ADDR,x         ; Overwrite with the new location
-            tya
-            sta   _Sprites+OLD_VBUFF_ADDR,x
+;            pla
+;            jsr   _GetSpriteVBuffAddrTmp        ; A = x-coord, Y = y-coord
+;            ldy   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
+;            sta   _Sprites+VBUFF_ADDR,x         ; Overwrite with the new location
+;            tya
+;            sta   _Sprites+OLD_VBUFF_ADDR,x
+
+            jsr   _PrecalcAllSpriteInfo          ; Can be specialized to only update (x,y) values
 
             lda   _Sprites+SPRITE_STATUS,x
             ora   #SPRITE_STATUS_MOVED
@@ -1361,17 +788,12 @@ _MoveSpriteXnc
 ; Sprite data structures.  We cache quite a few pieces of information about the sprite
 ; to make calculations faster, so this is hidden from the caller.
 ;
-; Each sprite record contains the following properties:
 ;
-; +0: Sprite status word (0 = unoccupied)
-; +2: Tile data address
-; +4: Screen offset address (used for data and masks)
-
 ; Number of "off-screen" lines above logical (0,0)
-NUM_BUFF_LINES equ 24
+; NUM_BUFF_LINES  equ 24
 
-MAX_SPRITES  equ 16
-SPRITE_REC_SIZE equ 48
+MAX_SPRITES     equ 16
+SPRITE_REC_SIZE equ 46
 
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
@@ -1385,17 +807,13 @@ SPRITE_STATUS_MOVED    equ $0002         ; Sprite's position was changed
 SPRITE_STATUS_UPDATED  equ $0004         ; Sprite's non-position attributes were changed
 SPRITE_STATUS_REMOVED  equ $0008         ; Sprite has been removed.
 
-; Each subroutine just sets the relevant bits, so it's possible to call AddSprite / UpdateSprite / MoveSprite
-; and RemoveSprite in a single frame.  These bits have priorities, so in this case, the sprite is immediately
-; removed and never displayed.
-
 SPRITE_STATUS      equ {MAX_SPRITES*0}
 TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
-VBUFF_ADDR         equ {MAX_SPRITES*4}
+VBUFF_ADDR         equ {MAX_SPRITES*4}  ; Fixed address in sprite/mask banks
 SPRITE_ID          equ {MAX_SPRITES*6}
 SPRITE_X           equ {MAX_SPRITES*8}
 SPRITE_Y           equ {MAX_SPRITES*10}
-OLD_VBUFF_ADDR     equ {MAX_SPRITES*12}
+; OLD_VBUFF_ADDR     equ {MAX_SPRITES*12}
 TILE_STORE_ADDR_1  equ {MAX_SPRITES*14}
 TILE_STORE_ADDR_2  equ {MAX_SPRITES*16}
 TILE_STORE_ADDR_3  equ {MAX_SPRITES*18}
@@ -1412,7 +830,6 @@ SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*38}
 SPRITE_CLIP_TOP    equ {MAX_SPRITES*40}
 SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*42}
 IS_OFF_SCREEN      equ {MAX_SPRITES*44}
-SPRITE_DISP2       equ {MAX_SPRITES*46}
 
 ; Maintain the index of the next open sprite slot.  This allows us to have amortized
 ; constant sprite add performance.  A negative value means no slots are available.
@@ -1420,9 +837,4 @@ _NextOpenSlot  dw  0
 _OpenListHead  dw  0
 _OpenList      dw  0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,$FFFF  ; List with sentinel at the end
 
-_Sprites     ds  SPRITE_REC_SIZE*MAX_SPRITES
-
-; On-demand cached list of active sprite slots
-activeSpriteCount ds 2
-activeSpriteList  ds 2*MAX_SPRITES
-
+_Sprites       ds  SPRITE_REC_SIZE*MAX_SPRITES

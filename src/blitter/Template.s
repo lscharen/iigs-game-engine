@@ -137,7 +137,7 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    ldx   #0
                    ldy   #0
 :tsloop
-                   sta   TileStore+TS_SCREEN_ADDR,X
+                   sta   TileStore+TS_SCREEN_ADDR,x
 
                    clc
                    adc   #4                         ; Go to the next tile
@@ -205,7 +205,7 @@ Counter            equ   tmp3
                    tax                              ; NOTE: Try to rework to use new TileStore2DLookup array
 
                    lda   OnScreenAddr
-                   sta   TileStore+TS_SCREEN_ADDR,X
+                   sta   TileStore+TS_SCREEN_ADDR,x
 
                    clc
                    adc   #4                         ; Go to the next tile

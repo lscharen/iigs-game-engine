@@ -63,7 +63,7 @@ TileStore          EXT    ; Tile store internal data structure
 
 RenderDirty        EXT    ; Render only dirty tiles + sprites directly to the SHR screen
 
-GetSpriteVBuffAddr EXT    ; X = x-coordinate (0 - 159), Y = y-coordinate (0 - 199). Return in Acc.
+; GetSpriteVBuffAddr EXT    ; X = x-coordinate (0 - 159), Y = y-coordinate (0 - 199). Return in Acc.
 
 ; Allocate a full 64K bank
 AllocBank          EXT

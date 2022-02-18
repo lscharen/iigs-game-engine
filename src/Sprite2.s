@@ -64,7 +64,7 @@ _LocalToTileStore
 ; code field offsets and then cache variations of this value needed in the rest of the subroutine
 ;
 ; The SpriteX is always the MAXIMUM value of the corner coordinates.  We subtract (SpriteX + StartX) mod 4
-; to find the coordinate in the sprite plane that matches up with the tile in the play field and 
+; to find the coordinate in the sprite cache that matches up with the tile in the play field and 
 ; then use that to calculate the VBUFF address from which to copy sprite data.
 ;
 ; StartX   SpriteX   z = * mod 4   (SpriteX - z)
@@ -92,21 +92,21 @@ _MarkDirtySprite
         lda   _Sprites+IS_OFF_SCREEN,y           ; Check if the sprite is visible in the playfield
         bne   mdsOut
 
-; At this point we know that we have to update the tiles that overlap the sprite plane rectangle defined
-; by (Top, Left), (Bottom, Right).  The general process is to figure out the top-left coordinate in the
-; sprite plane that matches up with the code field and then calculate the number of tiles in each direction
-; that need to be dirtied to cover the sprite.
+; At this point we know that we have to update the tiles that overlap the sprite's rectangle defined
+; by (Top, Left), (Bottom, Right).  
 
         clc
         lda   _Sprites+SPRITE_CLIP_TOP,y
         adc   StartYMod208                       ; Adjust for the scroll offset (could be a negative number!)
         tax                                      ; Save this value
         and   #$0007                             ; Get (StartY + SpriteY) mod 8
-        eor   #$FFFF
-        inc
-        clc
-        adc   _Sprites+SPRITE_CLIP_TOP,y         ; subtract from the Y position (possible to go negative here)
-        sta   TileTop                            ; This position will line up with the tile that the sprite overlaps with
+        sta   TileTop                            ; This is the relative offset to the sprite stamp
+
+;        eor   #$FFFF
+;        inc
+;        clc
+;        adc   _Sprites+SPRITE_CLIP_TOP,y         ; subtract from the Y position (possible to go negative here)
+;        sta   TileTop                            ; This position will line up with the tile that the sprite overlaps with
 
         txa                                      ; Get back the position of the sprite top in the code field
         cmp   #208                               ; check if we went too far positive
@@ -120,7 +120,10 @@ _MarkDirtySprite
 
         lda   _Sprites+SPRITE_CLIP_BOTTOM,y      ; Figure out how many tiles are needed to cover the sprite's area
         sec
-        sbc   TileTop
+        sbc   _Sprites+SPRITE_CLIP_TOP,y
+        clc
+        adc   TileTop
+
         and   #$0018                             ; Clear out the lower bits and stash in bits 4 and 5
         sta   AreaIndex
 
@@ -131,11 +134,13 @@ _MarkDirtySprite
         adc   StartXMod164
         tax
         and   #$0003
-        eor   #$FFFF
-        inc
-        clc
-        adc   _Sprites+SPRITE_CLIP_LEFT,y
         sta   TileLeft
+
+;        eor   #$FFFF
+;        inc
+;        clc
+;        adc   _Sprites+SPRITE_CLIP_LEFT,y
+;        sta   TileLeft
 
         txa
         cmp   #164
@@ -146,21 +151,13 @@ _MarkDirtySprite
         and   #$FFFE                             ; Same pre-multiply by 2 for later
         sta   ColLeft
 
-; Calculate the offset into the TileStore lookup array for the top-left tile
-
-;        ldx  RowTop
-;        lda  ColLeft
-;        clc
-;        adc  TileStore2DYTable,x                 ; Fixed offset to the next row
-;        sta  Origin                              ; This is the index into the TileStore2DLookup table
-
 ; Sneak a pre-calculation here. Calculate the tile-aligned upper-left corner of the sprite in the sprite plane.
 ; We can reuse this in all of the routines below.  This is not the (x,y) of the sprite itself, but
-; the corner of the tile it overlaps with
+; the corner of the tile it overlaps with, relative to the sprite's VBUFF_ADDR.
 
         clc
         lda   TileTop
-        adc   #NUM_BUFF_LINES
+;        adc   #NUM_BUFF_LINES
         xba
         clc
         adc   TileLeft
@@ -170,7 +167,9 @@ _MarkDirtySprite
 
         lda   _Sprites+SPRITE_CLIP_RIGHT,y
         sec
-        sbc   TileLeft
+        sbc   _Sprites+SPRITE_CLIP_LEFT,y
+        clc
+        adc   TileLeft
         and   #$000C
         lsr                                   ; bit 0 is always zero and width stored in bits 1 and 2
         ora   AreaIndex
@@ -323,20 +322,33 @@ _MarkDirtySprite
 ; If we had a double-sized 2D array to be able to look up the tile store address without
 ; adding rows and column, we could save ~6 cycles per tile
 
+; If all that is needed is to record the Tile Store offset for the sprite and delay any
+; actual calculations, then we just need to do
+;
+;        lda  TileStore2DArray,x
+;        sta  _Sprites+TILE_STORE_ADDR_0,y
+;        lda  TileStore2DArray+2,x
+;        sta  _Sprites+TILE_STORE_ADDR_1,y
+;        lda  TileStore2DArray+41,x
+;        sta  _Sprites+TILE_STORE_ADDR_2,y
+;        ...
+
 :mark_0_0
-        ldx  RowTop
-        lda  ColLeft
+        ldx   RowTop
+        lda   ColLeft
         clc
-        adc  TileStoreYTable,x                 ; Fixed offset to the next row
+        adc   TileStoreYTable,x                 ; Fixed offset to the next row
         tax
 
-;        ldx   Origin
-;        lda   TileStore2DLookup,x
-;        tax                                    ; This is the tile store offset
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
 
-        lda   VBuffOrigin                      ; This is an interesting case.  The mapping between the tile store
+        lda   VBuffOrigin
+        sta   (tmp0),y
+
+;        lda   VBuffOrigin                      ; This is an interesting case.  The mapping between the tile store
 ;        adc   #{0*4}+{0*256}                  ; and the sprite buffers changes as the StartX, StartY values change
-        sta   TileStore+TS_SPRITE_ADDR,x       ; but don't depend on any sprite information.  However, by setting the
+;        stal  TileStore+TS_SPRITE_ADDR,x       ; but don't depend on any sprite information.  However, by setting the
                                                ; value only for the tiles that get added to the dirty tile list, we
                                                ; can avoid recalculating over 1,000 values whenever the screen scrolls
                                                ; (which is common) and just limit it to the number of tiles covered by
@@ -344,10 +356,10 @@ _MarkDirtySprite
                                                ; moving and they are being dirtied, then we may do more work, but the
                                                ; odds are in our favor to just take care of it here.
 
-        lda   TileStore+TS_SPRITE_FLAG,x
+        ; lda   TileStore+TS_SPRITE_FLAG,x
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX                   ; Needs X = tile store offset; destroys A,X.  Returns X in A
 
@@ -358,13 +370,16 @@ _MarkDirtySprite
         adc  TileStoreYTable+2,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{0*4}+{1*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{0*4}+{1*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -375,13 +390,16 @@ _MarkDirtySprite
         adc  TileStoreYTable+4,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{0*4}+{2*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{0*4}+{2*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -393,13 +411,16 @@ _MarkDirtySprite
         adc  TileStoreYTable,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{1*4}+{0*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{1*4}+{0*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -411,13 +432,16 @@ _MarkDirtySprite
         adc  TileStoreYTable+2,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{1*4}+{1*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{1*4}+{1*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -429,13 +453,16 @@ _MarkDirtySprite
         adc  TileStoreYTable+4,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{1*4}+{2*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{1*4}+{2*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -447,13 +474,16 @@ _MarkDirtySprite
         adc  TileStoreYTable,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{2*4}+{0*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{2*4}+{0*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -465,13 +495,16 @@ _MarkDirtySprite
         adc  TileStoreYTable+2,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{2*4}+{1*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{2*4}+{1*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
@@ -483,13 +516,16 @@ _MarkDirtySprite
         adc  TileStoreYTable+4,x
         tax
 
+        ldal  TileStore+TS_VBUFF_ARRAY_ADDR,x
+        sta   tmp0
+
         lda   VBuffOrigin
-        adc   #{2*4}+{2*8*256}
-        sta   TileStore+TS_SPRITE_ADDR,x
+        adc   #{2*4}+{2*8*SPRITE_PLANE_SPAN}
+        sta   (tmp0),y
 
         lda   SpriteBit
-        ora   TileStore+TS_SPRITE_FLAG,x
-        sta   TileStore+TS_SPRITE_FLAG,x
+        oral  TileStore+TS_SPRITE_FLAG,x
+        stal  TileStore+TS_SPRITE_FLAG,x
 
         jmp   _PushDirtyTileX
 
