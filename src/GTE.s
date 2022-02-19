@@ -57,7 +57,6 @@ GetTileAddr        EXT
 PushDirtyTile      EXT    ; A = address from GetTileStoreOffset, marks as dirty (will not mark the same tile more than once)
 PopDirtyTile       EXT    ; No args, returns Y with tile store offset of the dirty tile
 ApplyTiles         EXT    ; Drain the dirty tile queue and call RenderTile on each
-RenderTile         EXT    ; Y = address from GetTileStoreOffset
 GetTileStoreOffset EXT    ; X = column, Y = row
 TileStore          EXT    ; Tile store internal data structure
 

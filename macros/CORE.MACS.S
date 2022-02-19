@@ -158,25 +158,6 @@ asr8            mac
                 ror
                 <<<
 
-; Inline macros for fast calculation of some internal values
-_TileStoreOffset mac
-                lda   ]2
-                asl
-                tay
-                lda   ]1
-                asl                            ; Assume in range, so asl puts a 0 bit into the carry
-                adc  TileStoreYTable,y
-                <<<
-
-_TileStoreOffsetX mac
-                lda   ]2
-                asl
-                tax
-                lda   ]1
-                asl                            ; Assume in range, so asl puts a 0 bit into the carry
-                adc  TileStoreYTable,x
-                <<<
-
 ; Macro to define script steps
 ScriptStep      MAC
                 IF    #=]5

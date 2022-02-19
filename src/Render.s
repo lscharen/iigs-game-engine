@@ -90,7 +90,7 @@ _Render
 
 ; The code fields are locked in now and ready to be rendered
 
-            jsr   _ShadowOff
+;            jsr   _ShadowOff
 
 ; Shadowing is turned off. Render all of the scan lines that need a second pass. One
 ; optimization that can be done here is that the lines can be rendered in any order
@@ -102,27 +102,27 @@ _Render
 
 ; Turn shadowing back on
 
-            jsr   _ShadowOn
+;            jsr   _ShadowOn
 
 ; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
 
-            lda   ScreenY0             ; pass the address of the first line of the overlay
-            clc
-            adc   #0
-            asl
-            tax
-            lda   ScreenAddr,x
-            clc
-            adc   ScreenX0
+;            lda   ScreenY0             ; pass the address of the first line of the overlay
+;            clc
+;            adc   #0
+;            asl
+;            tax
+;            lda   ScreenAddr,x
+;            clc
+;            adc   ScreenX0
 ;            jsl   Overlay
 
             ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
 
-;            ldx   #0
-;            ldy   ScreenHeight
-;            jsr   _BltSCB
+            ldx   #0
+            ldy   ScreenHeight
+            jsr   _BltSCB
 
             lda   StartY              ; Restore the fields back to their original state
             ldx   ScreenHeight
@@ -139,10 +139,10 @@ _Render
             sta   OldBG1StartX
 
             stz   DirtyBits
-            stz   LastRender
+            stz   LastRender                    ; Mark that a full render was just performed
             rts
 
-; This is a specialized redner function that only updated the dirty tiles *and* draws them
+; This is a specialized render function that only updates the dirty tiles *and* draws them
 ; directly onto the SHR graphics buffer.  The playfield is not used at all.  In some way, this
 ; ignores almost all of the capabilities of GTE, but it does provide a convenient way to use
 ; the sprite subsystem + tile attributes for single-screen games which should be able to run
@@ -207,7 +207,7 @@ _RenderDirtyTile
             xba
             tax
             ldal  DirtyTileSpriteProcs,x
-            sta   :tiledisp+1
+            stal  :tiledisp+1
             bra   :sprite
 
 :nosprite
@@ -216,7 +216,7 @@ _RenderDirtyTile
             xba
             tax
             ldal  DirtyTileProcs,x               ; load and patch in the appropriate subroutine
-            sta   :tiledisp+1
+            stal  :tiledisp+1
 
 :sprite
             ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)

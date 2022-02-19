@@ -53,42 +53,42 @@ DOWN_ARROW          equ        $0A
 SPRITE_ID           equ        {SPRITE_16X16+1}
 OKTOROK             equ        {SPRITE_16X16+79}
 
-                    lda        #SPRITE_ID              ; 16x16 sprite
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        AddSprite
-                    bcc        :sprite_ok
-                    brl        Exit                    ; If we could not allocate a sprite, exit
-:sprite_ok
-                    sta        PlayerID
-                    brl        Exit
+;                    lda        #SPRITE_ID              ; 16x16 sprite
+;                    ldx        PlayerX
+;                    ldy        PlayerY
+;                    jsl        AddSprite
+;                    bcc        :sprite_ok
+;                    brl        Exit                    ; If we could not allocate a sprite, exit
+;:sprite_ok
+;                    sta        PlayerID
 
 ; Add 4 octoroks
-                    lda        #OKTOROK
-                    ldx        #32
-                    ldy        #48
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #32
+;                    ldy        #48
+;                    jsl        AddSprite
 
-                    lda        #OKTOROK
-                    ldx        #96
-                    ldy        #32
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #96
+;                    ldy        #32
+;                    jsl        AddSprite
 
-                    lda        #OKTOROK
-                    ldx        #56
-                    ldy        #96
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #56
+;                    ldy        #96
+;                    jsl        AddSprite
 
-                    lda        #OKTOROK
-                    ldx        #72
-                    ldy        #96
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #72
+;                    ldy        #96
+;                    jsl        AddSprite
 
 ; Draw the initial screen
 
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     tsb        DirtyBits
                     jsl        Render
+
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
@@ -122,7 +122,8 @@ EvtLoop
                     bne        :not_q
                     brl        Exit
 :not_q
-
+                    brl        EvtLoop
+                    
                     cmp        #'d'
                     bne        :not_d
                     inc        PlayerX

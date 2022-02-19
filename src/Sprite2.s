@@ -318,21 +318,6 @@ _MarkDirtySprite
         rts
 
 ; Begin List of subroutines to mark each tile offset
-;
-; If we had a double-sized 2D array to be able to look up the tile store address without
-; adding rows and column, we could save ~6 cycles per tile
-
-; If all that is needed is to record the Tile Store offset for the sprite and delay any
-; actual calculations, then we just need to do
-;
-;        lda  TileStore2DArray,x
-;        sta  _Sprites+TILE_STORE_ADDR_0,y
-;        lda  TileStore2DArray+2,x
-;        sta  _Sprites+TILE_STORE_ADDR_1,y
-;        lda  TileStore2DArray+41,x
-;        sta  _Sprites+TILE_STORE_ADDR_2,y
-;        ...
-
 :mark_0_0
         ldx   RowTop
         lda   ColLeft

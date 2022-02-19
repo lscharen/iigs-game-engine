@@ -1,49 +1,6 @@
 ; Functions for sprite handling.  Mostly maintains the sprite list and provides
 ; utility functions to calculate sprite/tile intersections
 ;
-; The sprite plane actually covers two banks so that more than 32K can be used as a virtual 
-; screen buffer.  In order to be able to draw sprites offscreen, the virtual screen must be 
-; wider and taller than the physical graphics screen.
-;
-; NOTE: It may be posible to remove the sprite plane banks in the future and render directly from
-;       some small per-sprite graphic buffers.  This would eliminate the need to erase/draw in
-;       the sprite planes and all drawing would go directly to the backing tiles.  Need to
-;       figure out an efficient way to fall back when sprites are overlapping, though.
-;
-; All of the erasing must happen in an initial phase, because erasing a sprite could cause
-; other sprites to be marked as "DAMAGED" which means they need to be drawn (similar to NEW state)
-
-; What really has to happen in the various cases:
-;
-;  When a sprite is added, it needs to
-;   * draw into the sprite buffer
-;   * add itself to the TS_SPRITE_FLAG bitfield on the tiles it occupies
-;   * mark the tiles it occupies as dirty
-;
-;  When a sprite is updated (Tile ID or H/V flip flags), it needs to
-;   * erase itself from the sprite buffer
-;   * draw into the sprite buffer
-;   * mark the tiles it occupies as dirty
-;   * mark other sprites it intersects as DAMAGED
-;
-; When a sprite is moved, it needs to
-;   * erase itself from the sprite buffer at the old locations
-;   * remove itself from the TS_SPRITE_FLAG bitfields on the tiles it occupied
-;   * mark sprites that intersect as DAMAGED
-;   * draw into the sprite buffer at the new location
-;   * add itself to the TS_SPRITE_FLAG bitfield on the tiles it now occupies
-;   * mark the tiles it occupied as dirty
-;   * mark other sprites it intersects as DAMAGED
-;
-; When a sprite is removed, it needs to
-;   * erase itself from the sprite buffer at the old locations
-;   * remove itself from the TS_SPRITE_FLAG bitfields on the tiles it occupied
-;   * mark other sprites it intersects as DAMAGED
-;
-; The reason that things are broken into phases is that we have to handle all of the erasing first,
-; set dirty tiles, identify DAMAGED sprites, and THEN perform the drawing.  It is not possible to
-; just do each sprite one at a time.
-;
 ; Initialize the sprite data and mask banks (all data = $0000, all masks = $FFFF)
 InitSprites
            ldx    #$FFFE
@@ -91,6 +48,89 @@ VBUFF_SPRITE_START   equ {8*VBUFF_TILE_ROW_BYTES}+4
 ; Precalculate some bank values
            jsr    _CacheSpriteBanks
            rts
+
+
+; Add a new sprite to the rendering pipeline
+;
+; The tile id in the range 0 - 511.  The top 7 bits are used as sprite control bits
+;
+; Bit 9        : Horizontal flip.
+; Bit 10       : Vertical flip.
+; Bits 11 - 12 : Sprite Size Selector
+;   00 - 8x8  (1x1 tile)
+;   01 - 8x16 (1x2 tiles)
+;   10 - 16x8 (2x1 tiles)
+;   11 - 16x16 (2x2 tiles)
+; Bit 13       : Reserved. Must be zero.
+; Bit 14       : Reserved. Must be zero.
+; Bit 15       : Low Sprite priority. Draws behind high priority tiles.
+;
+; When a sprite has a size > 8x8, the horizontal tiles are taken from the next tile index and
+; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
+; with a width of 256 pixels.
+;
+; Single sprite are limited to 24 lines high because there are 28 lines of padding above and below the
+; sprite plane buffers, so a sprite that is 32 lines high could overflow the drawing area.
+;
+; A = tileId + flags
+; X = x position
+; Y = y position
+AddSprite   ENT
+            phb
+            phk
+            plb
+            jsr    _AddSprite
+            plb
+            rtl
+
+_AddSprite
+            phx                                  ; Save the horizontal position
+            ldx   _NextOpenSlot                  ; Get the next free sprite slot index
+            bpl   :open                          ; A negative number means we are full
+
+            plx                                  ; Early out
+            sec                                  ; Signal that no sprite slot was available
+            rts
+
+:open
+            sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
+            jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
+            sta   _Sprites+TILE_DATA_OFFSET,x
+
+            lda   #SPRITE_STATUS_OCCUPIED+SPRITE_STATUS_ADDED
+            sta   _Sprites+SPRITE_STATUS,x
+
+            tya
+            sta   _Sprites+SPRITE_Y,x           ; Y coordinate
+            pla                                 ; X coordinate
+            sta   _Sprites+SPRITE_X,x
+
+            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
+            jsr   _DrawSpriteSheet              ; Render the sprite into internal space
+
+; Mark the dirty bit to indicate that the active sprite list needs to be rebuilt in the next
+; render call
+
+            lda   #DIRTY_BIT_SPRITE_ARRAY
+            tsb   DirtyBits
+
+            lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
+            tsb   SpriteMap                     ; Mark it in the sprite map bit field
+
+            txa                                 ; And return the sprite ID
+            clc                                 ; Mark that the sprite was successfully added
+
+; We can only get to this point if there was an open slot, so we know we're not at the
+; end of the list yet.
+
+            ldx   _OpenListHead
+            inx
+            inx
+            stx   _OpenListHead
+            ldy   _OpenList,x                   ; If this is the end, then the sentinel value will
+            sty   _NextOpenSlot                 ; get stored into _NextOpenSlot
+
+            rts
 
 ; Run through the list of tile store offsets that this sprite was last drawn into and mark
 ; those tiles as dirty.  The largest number of tiles that a sprite could possibly cover is 20
@@ -537,91 +577,6 @@ SPRITE_PLANE_SPAN equ 52        ; 256
 ;            clc
 ;            adc   tmp15
 ;            rts
-
-; Add a new sprite to the rendering pipeline
-;
-; The tile id in the range 0 - 511.  The top 7 bits are used as sprite control bits
-;
-; Bit 9        : Horizontal flip.
-; Bit 10       : Vertical flip.
-; Bits 11 - 12 : Sprite Size Selector
-;   00 - 8x8  (1x1 tile)
-;   01 - 8x16 (1x2 tiles)
-;   10 - 16x8 (2x1 tiles)
-;   11 - 16x16 (2x2 tiles)
-; Bit 13       : Reserved. Must be zero.
-; Bit 14       : Reserved. Must be zero.
-; Bit 15       : Low Sprite priority. Draws behind high priority tiles.
-;
-; When a sprite has a size > 8x8, the horizontal tiles are taken from the next tile index and
-; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
-; with a width of 256 pixels.
-;
-; Single sprite are limited to 24 lines high because there are 28 lines of padding above and below the
-; sprite plane buffers, so a sprite that is 32 lines high could overflow the drawing area.
-;
-; A = tileId + flags
-; X = x position
-; Y = y position
-AddSprite   ENT
-            phb
-            phk
-            plb
-            jsr    _AddSprite
-            plb
-            rtl
-
-_AddSprite
-            phx                                  ; Save the horizontal position
-            ldx   _NextOpenSlot                  ; Get the next free sprite slot index
-            bpl   :open                          ; A negative number means we are full
-
-            plx                                  ; Early out
-            sec                                  ; Signal that no sprite slot was available
-            rts
-
-:open
-            sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
-            jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
-            sta   _Sprites+TILE_DATA_OFFSET,x
-
-            lda   #SPRITE_STATUS_OCCUPIED+SPRITE_STATUS_ADDED
-            sta   _Sprites+SPRITE_STATUS,x
-
-            tya
-            sta   _Sprites+SPRITE_Y,x           ; Y coordinate
-            pla                                 ; X coordinate
-            sta   _Sprites+SPRITE_X,x
-
-;            jsr   _GetSpriteVBuffAddrTmp      
-;            sta   _Sprites+VBUFF_ADDR,x        ; This is now pre-calculated since each sprite slot gets a fixed location
-
-            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
-            jsr   _DrawSpriteSheet              ; Render the sprite into internal space
-
-; Mark the dirty bit to indicate that the active sprite list needs to be rebuilt in the next
-; render call
-
-            lda   #DIRTY_BIT_SPRITE_ARRAY
-            tsb   DirtyBits
-
-            lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
-            tsb   SpriteMap                     ; Mark it in the sprite map bit field
-
-            txa                                 ; And return the sprite ID
-            clc                                 ; Mark that the sprite was successfully added
-
-; We can only get to this point if there was an open slot, so we know we're not at the
-; end of the list yet.
-
-            ldx   _OpenListHead
-            inx
-            inx
-            stx   _OpenListHead
-            ldy   _OpenList,x                   ; If this is the end, then the sentinel value will
-            sty   _NextOpenSlot                 ; get stored into _NextOpenSlot
-
-            rts
 
 ; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
 ; specifically the draw/erase routines more efficient.

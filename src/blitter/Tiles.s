@@ -103,14 +103,6 @@ _RenderTileBG1
 ; Store record contains all of the low-level information that's needed to call the renderer.
 ;
 ; Y = address of tile
-RenderTile       ENT
-                 phb
-                 phk
-                 plb
-                 jsr   _RenderTile2
-                 plb
-                 rtl
-
 _RenderTile2
                  pea   >TileStore                     ; Need that addressing flexibility here.  Callers responsible for restoring bank reg
                  plb
@@ -118,9 +110,9 @@ _RenderTile2
 
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
-                 beq   :nosprite
+;                 beq   :nosprite
 
-                 ora   #TILE_SPRITE_BIT
+;                 ora   #TILE_SPRITE_BIT
 ;                 ldx   TileStore+TS_SPRITE_ADDR,y    ; TODO: collapse sprites
 ;                 stx   _SPR_X_REG
 
@@ -129,8 +121,8 @@ _RenderTile2
                  and   #TILE_CTRL_MASK
                  xba
                  tax
-                 lda   TileProcs,x                    ; load and patch in the appropriate subroutine
-                 sta   :tiledisp+1
+                 ldal  TileProcs,x                    ; load and patch in the appropriate subroutine
+                 stal  :tiledisp+1
 
                  ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
 
@@ -541,6 +533,7 @@ InitTiles
 :col             equ  tmp0
 :row             equ  tmp1
 :vbuff           equ  tmp2
+
 ; Fill in the TileStoreYTable.  This is just a table of offsets into the Tile Store for each row.  There
 ; are 26 rows with a stride of 41
                  ldy  #0
@@ -553,36 +546,6 @@ InitTiles
                  iny
                  cpy  #26*2
                  bcc  :yloop
-
-; Fill in the TileStore2DLookup array.  This is a full array lookup for the entire tile store space.  Eventually
-; we can remove TileStoreYTable and free up a bit of space.
-                 lda  #0
-                 tay
-                 tax
-:xyloop
-                 sta  TileStoreYTable,y
-                 sta  TileStoreYTable+{2*41},y
-                 sta  TileStoreYTable+{4*41*26},y
-                 sta  TileStoreYTable+{4*41*26}+{2*41},y
-
-                 inc                    ; Advance to the next offset value
-                 inc
-
-                 iny                    ; Advance to the next table location
-                 iny
-
-                 inx                    ; Increment the column counter
-                 cpx  #41               ; If we haven't filled an entire row, keep going
-                 bcc  :xyloop
-
-                 ldx  #0                ; reset the column counter
-                 tya
-                 clc
-                 adc  #2*26             ; skip over the repeated values in this row and to to the next row start
-                 tay
-
-                 cpy  #4*41*26          ; Did we finish the last row, if not go back for more
-                 bcc  :xyloop
 
 ; Next, initialize the Tile Store itself
 
@@ -741,23 +704,13 @@ _PushDirtyTileX
                  bpl  :occupied2
 
                  txa                                  ; any non-negative value will work, this saves work below
-                 stal TileStore+TS_DIRTY,x            ; and is 1 cycle fater than loading a constanct value
+                 stal TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
 
-;                 txa
                  ldx  DirtyTileCount ; 5
                  sta  DirtyTiles,x   ; 5
-
                  inx
                  inx
                  stx  DirtyTileCount
-
-; Same speed, but preserved the X register
-;                 sta  (DirtyTiles) ; 6
-;                 lda  DirtyTiles   ; 4
-;                 inc               ; 2
-;                 inc               ; 2
-;                 sta  DirtyTiles   ; 4
-
                  rts
 :occupied2
                  txa                                ; Make sure TileStore offset is returned in the accumulator
