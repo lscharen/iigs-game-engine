@@ -36,7 +36,7 @@ DOWN_ARROW          equ        $0A
                     ldy        #0
                     jsl        SetPalette
 
-                    ldx        #256
+                    ldx        #256                      ; 32 x 22 playfield (704 tiles, $580 tiles)
                     ldy        #176
                     jsl        SetScreenMode
 
@@ -44,12 +44,13 @@ DOWN_ARROW          equ        $0A
                     jsr        BG0SetUp
 
 ; Initialize the sprite's global position (this is tracked outside of the tile engine)
-                    stz        PlayerX
-                    stz        PlayerY
+                    lda        #64
+                    sta        PlayerX
+                    sta        PlayerY
                     stz        MapScreenX
                     stz        MapScreenY
 
-; Add a sprite to the engine and save it's sprite ID
+; Add a sprite to the engine and save its sprite
 SPRITE_ID           equ        {SPRITE_16X16+1}
 OKTOROK             equ        {SPRITE_16X16+79}
 
@@ -63,31 +64,32 @@ OKTOROK             equ        {SPRITE_16X16+79}
                     sta        PlayerID
 
 ; Add 4 octoroks
-                    lda        #OKTOROK
-                    ldx        #32
-                    ldy        #48
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #32
+;                    ldy        #48
+;                    jsl        AddSprite
 
-                    lda        #OKTOROK
-                    ldx        #96
-                    ldy        #32
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #96
+;                    ldy        #32
+;                    jsl        AddSprite
 
-                    lda        #OKTOROK
-                    ldx        #56
-                    ldy        #96
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #56
+;                    ldy        #96
+;                    jsl        AddSprite
 
-                    lda        #OKTOROK
-                    ldx        #72
-                    ldy        #96
-                    jsl        AddSprite
+;                    lda        #OKTOROK
+;                    ldx        #72
+;                    ldy        #96
+;                    jsl        AddSprite
 
 ; Draw the initial screen
 
                     lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
                     tsb        DirtyBits
                     jsl        Render
+
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
@@ -179,10 +181,10 @@ EvtLoop
                     lda        vsync
                     beq        :no_vsync
 :vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
-                    cmp        ScreenY1
+                    cmp        ScreenY0
                     bcc        :vsyncloop
                     sec
-                    sbc        ScreenY1
+                    sbc        ScreenY0
                     cmp        #8
                     bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
                     lda        #1

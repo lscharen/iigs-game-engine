@@ -17,7 +17,7 @@
 ; The table values are pre-reversed so that loop can go in logical order 0, 2, 4, ...
 ; and the resulting offsets will map to the code instructions in right-to-left order.
 ;
-; Remember, because the data is pushed on to the stask, the last instruction, which is
+; Remember, because the data is pushed on to the stack, the last instruction, which is
 ; in the highest memory location, pushed data that apepars on the left edge of the screen.
 PER_TILE_SIZE     equ   3
 ]step             equ   0
@@ -237,18 +237,6 @@ TileStoreYTable   ENT
                   dw    ]step
 ]step             =     ]step+{41*2}
                   --^
-
-;TileStore2DYTable
-;]step             equ   0
-;                  lup   26
-;                  dw    ]step
-;]step             =     ]step+{41*2*2}
-;                  --^
-;]step             equ   0
-;                  lup   26
-;                  dw    ]step
-;]step             =     ]step+{41*2*2}
-;                  --^
 
 ; Create a table to look up the "next" column with modulo wraparound.  Basically a[i] = i
 ; and the table is double-length.  Use constant offsets to pick an amount to advance
