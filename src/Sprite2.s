@@ -151,17 +151,19 @@ _MarkDirtySprite
         and   #$FFFE                             ; Same pre-multiply by 2 for later
         sta   ColLeft
 
-; Sneak a pre-calculation here. Calculate the tile-aligned upper-left corner of the sprite in the sprite plane.
-; We can reuse this in all of the routines below.  This is not the (x,y) of the sprite itself, but
-; the corner of the tile it overlaps with, relative to the sprite's VBUFF_ADDR.
+; Calculate the modified origin address for the sprite.  We need to look at the sprite flip bits
+; to determine which of the four sprite stamps is the correct one to use.  Then, offset that origin
+; based on the (x, y) and (startx, starty) positions.
 
+        lda   _Sprites+SPRITE_DISP,y             ; Each stamp is 12 bytes
+        and   #$0006
+        tax
+        lda   :stamp_step,x
         clc
-        lda   TileTop
-;        adc   #NUM_BUFF_LINES
-        xba
-        clc
-        adc   TileLeft
-        sta   VBuffOrigin                     ; Save once to use later (constant offsets)
+        adc   _Sprites+VBUFF_ADDR,y
+        sta   VBuffOrigin
+        lda   #^TileStore
+        sta   tmp1
 
 ; Calculate the number of columns and dispatch
 
@@ -180,6 +182,7 @@ _MarkDirtySprite
         dw    :mark3x1,:mark3x2,:mark3x3,mdsOut
         dw    mdsOut,mdsOut,mdsOut,mdsOut
 
+:stamp_step dw  0,12,24,36
 ; Dispatch to the calculated sizing
 
 ; Begin a list of subroutines to cover all of the valid sprite size compinations.  This is all unrolled code,
@@ -329,7 +332,7 @@ _MarkDirtySprite
         sta   tmp0
 
         lda   VBuffOrigin
-        sta   (tmp0),y
+        sta   [tmp0],y
 
 ;        lda   VBuffOrigin                      ; This is an interesting case.  The mapping between the tile store
 ;        adc   #{0*4}+{0*256}                  ; and the sprite buffers changes as the StartX, StartY values change
@@ -360,7 +363,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{0*4}+{1*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -380,7 +383,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{0*4}+{2*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -401,7 +404,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{1*4}+{0*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -422,7 +425,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{1*4}+{1*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -443,7 +446,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{1*4}+{2*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -464,7 +467,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{2*4}+{0*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -485,7 +488,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{2*4}+{1*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -506,7 +509,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         adc   #{2*4}+{2*8*SPRITE_PLANE_SPAN}
-        sta   (tmp0),y
+        sta   [tmp0],y
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x

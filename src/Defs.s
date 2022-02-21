@@ -84,12 +84,11 @@ LastRender             equ   96          ; Record which reder function was last 
 ; DamagedSprites         equ   98
 SpriteMap              equ   100         ; Bitmap of open sprite slots.
 ActiveSpriteCount      equ   102
-Next                   equ   104
+BankLoad               equ   104
+Next                   equ   106
 
-BankLoad               equ   128
-
+activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 AppSpace               equ   160         ; 16 bytes of space reserved for application use
-
 tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 

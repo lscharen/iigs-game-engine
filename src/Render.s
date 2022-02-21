@@ -46,7 +46,7 @@
 ; edges of the rendered play field.
 
 
-; The render function is the point of committment -- most of the APIs that set sprintes and 
+; The render function is the point of committment -- most of the APIs that set sprites and 
 ; update coordinates are lazy; they simply save the value and set a dirty flag in the
 ; DirtyBits word.
 ;
@@ -78,11 +78,13 @@ _Render
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
+            nop
             jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
             jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
+            nop
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
@@ -199,6 +201,14 @@ _RenderDirtyTile
 
             jsr   BuildActiveSpriteArray          ; Build the sprite index list from the bit field
 
+            lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
+            sta   _SPR_X_REG
+            phy
+            ldy   spriteIdx
+            lda   (_SPR_X_REG),y
+            sta   _SPR_X_REG
+            ply
+
 ;            ldx   TileStore+TS_SPRITE_ADDR,y
 ;            stx   _SPR_X_REG
 
@@ -276,7 +286,11 @@ _TBDirtySpriteTile_VH
                  jsr             _TBCopyTileDataToCBuffV
                  jmp             _TBApplyDirtySpriteData
 
+
+; Just copy in the data from the first sprite
 _TBApplyDirtySpriteData
+
+_TBApplyDirtySpriteData0
                  ldx   _SPR_X_REG                               ; set to the unaligned tile block address in the sprite plane
 
 ]line            equ   0
@@ -320,16 +334,16 @@ BuildActiveSpriteArray
 
 ]step            equ   0
                  lup   4
-                 ror
+                 lsr
                  bcc   :skip_1
                  pea   ]step
-:skip_1          ror
+:skip_1          lsr
                  bcc   :skip_2
                  pea   ]step+2
-:skip_2          ror
+:skip_2          lsr
                  bcc   :skip_3
                  pea   ]step+4
-:skip_3          ror
+:skip_3          lsr
                  bcc   :skip_4
                  pea   ]step+6
 :skip_4          beq   :end_1

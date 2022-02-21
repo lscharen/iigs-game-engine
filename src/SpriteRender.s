@@ -8,13 +8,13 @@ DISP_MASK    equ    $00F9
 
              phx
 
-             lda    _Sprites+VBUFF_ADDR,y
+             lda    _Sprites+VBUFF_ADDR,x
              sta    tmp1
 
-             lda    _Sprites+TILE_DATA_OFFSET,y
+             lda    _Sprites+TILE_DATA_OFFSET,x
              sta    tmp2
 
-             lda    _Sprites+SPRITE_DISP,y
+             lda    _Sprites+SPRITE_DISP,x
              and    #DISP_MASK                    ; dispatch to all of the different orientations
              sta    tmp3
 

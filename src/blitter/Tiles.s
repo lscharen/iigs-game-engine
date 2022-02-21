@@ -104,16 +104,30 @@ _RenderTileBG1
 ;
 ; Y = address of tile
 _RenderTile2
-                 pea   >TileStore                     ; Need that addressing flexibility here.  Callers responsible for restoring bank reg
+                 pea   >TileStore                     ; Need that addressing flexibility here.  Caller is responsible for restoring bank reg
                  plb
                  plb
+                 txy                                  ; We can be better than this....
 
                  lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
                  ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
-;                 beq   :nosprite
+                 beq   :nosprite
 
-;                 ora   #TILE_SPRITE_BIT
-;                 ldx   TileStore+TS_SPRITE_ADDR,y    ; TODO: collapse sprites
+                 txa
+                 jsr   BuildActiveSpriteArray         ; Build the max 4 array of active sprites for this tile
+                 sta   ActiveSpriteCount
+
+                 lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
+                 sta   _SPR_X_REG
+                 phy
+                 ldy   spriteIdx
+                 lda   (_SPR_X_REG),y
+                 sta   _SPR_X_REG
+                 ply
+
+                 lda   TileStore+TS_TILE_ID,y
+                 ora   #TILE_SPRITE_BIT
+;                 ldx   TileStore+TS_VBUFF_ARRAY_ADDR,y
 ;                 stx   _SPR_X_REG
 
 :nosprite
@@ -757,11 +771,11 @@ _ApplyTiles
                  bra  :begin
 
 :loop
-; Retrieve the offset of the next dirty Tile Store items in the Y-register
+; Retrieve the offset of the next dirty Tile Store items in the X-register
 
                  jsr  _PopDirtyTile2
 
-; Call the generic dispatch with the Tile Store record pointer at by the Y-register.  
+; Call the generic dispatch with the Tile Store record pointer at by the X-register.
 
                  phb
                  jsr  _RenderTile2

@@ -36,14 +36,15 @@ VBUFF_TILE_ROW_BYTES equ 8*VBUFF_STRIDE_BYTES
 VBUFF_SPRITE_STEP    equ VBUFF_TILE_ROW_BYTES*3
 VBUFF_SPRITE_START   equ {8*VBUFF_TILE_ROW_BYTES}+4
 
-           ldx    #{MAX_SPRITES-1}*2
+           ldx    #0
            lda    #VBUFF_SPRITE_START
            clc
 :loop4     sta    _Sprites+VBUFF_ADDR,x
            adc    #VBUFF_SPRITE_STEP
-           dex
-           dex
-           bpl    :loop4
+           inx
+           inx
+           cpx    #MAX_SPRITES*2
+           bcc    :loop4
 
 ; Precalculate some bank values
            jsr    _CacheSpriteBanks
@@ -231,8 +232,6 @@ _ClearSpriteFromTileStore
 ; Tile Store locations are marked as dirty. It is important to recognize that the sprites themselves
 ; can be marked dirty, and the underlying tiles in the tile store are independently marked dirty.
 
-activeSpriteList equ blttmp
-
 phase1      dw    :phase1_0
             dw    :phase1_1,:phase1_2,:phase1_3,:phase1_4
             dw    :phase1_5,:phase1_6,:phase1_7,:phase1_8
@@ -408,16 +407,16 @@ RebuildSpriteArray
             pea   $FFFF                         ; end-of-list marker
 ]step       equ   0
             lup   4
-            ror
+            lsr
             bcc   :skip_1
             pea   ]step
-:skip_1     ror
+:skip_1     lsr
             bcc   :skip_2
             pea   ]step+2
-:skip_2     ror
+:skip_2     lsr
             bcc   :skip_3
             pea   ]step+4
-:skip_3     ror
+:skip_3     lsr
             bcc   :skip_4
             pea   ]step+6
 :skip_4     beq   :end_1
@@ -432,7 +431,7 @@ RebuildSpriteArray
 :loop
             pla
             bmi   :out
-            sta   blttmp,x
+            sta   activeSpriteList,x
             inx
             inx
             bra   :loop
@@ -545,7 +544,7 @@ _CacheSpriteBanks
             rts
 
 ; This is 13 blocks wide
-SPRITE_PLANE_SPAN equ 52        ; 256
+SPRITE_PLANE_SPAN equ VBUFF_STRIDE_BYTES        ; 52
 
 ; A = x coordinate
 ; Y = y coordinate
