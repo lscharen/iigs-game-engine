@@ -36,7 +36,7 @@ DOWN_ARROW          equ        $0A
                     ldy        #0
                     jsl        SetPalette
 
-                    ldx        #256
+                    ldx        #256                      ; 32 x 22 playfield (704 tiles, $580 tiles)
                     ldy        #176
                     jsl        SetScreenMode
 
@@ -44,23 +44,24 @@ DOWN_ARROW          equ        $0A
                     jsr        BG0SetUp
 
 ; Initialize the sprite's global position (this is tracked outside of the tile engine)
-                    stz        PlayerX
-                    stz        PlayerY
+                    lda        #64
+                    sta        PlayerX
+                    sta        PlayerY
                     stz        MapScreenX
                     stz        MapScreenY
 
-; Add a sprite to the engine and save it's sprite ID
+; Add a sprite to the engine and save its sprite
 SPRITE_ID           equ        {SPRITE_16X16+1}
 OKTOROK             equ        {SPRITE_16X16+79}
 
-;                    lda        #SPRITE_ID              ; 16x16 sprite
-;                    ldx        PlayerX
-;                    ldy        PlayerY
-;                    jsl        AddSprite
-;                    bcc        :sprite_ok
-;                    brl        Exit                    ; If we could not allocate a sprite, exit
-;:sprite_ok
-;                    sta        PlayerID
+                    lda        #SPRITE_ID              ; 16x16 sprite
+                    ldx        PlayerX
+                    ldy        PlayerY
+                    jsl        AddSprite
+                    bcc        :sprite_ok
+                    brl        Exit                    ; If we could not allocate a sprite, exit
+:sprite_ok
+                    sta        PlayerID
 
 ; Add 4 octoroks
 ;                    lda        #OKTOROK
@@ -123,7 +124,7 @@ EvtLoop
                     brl        Exit
 :not_q
                     brl        EvtLoop
-                    
+
                     cmp        #'d'
                     bne        :not_d
                     inc        PlayerX
