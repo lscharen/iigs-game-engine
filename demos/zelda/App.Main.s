@@ -123,7 +123,6 @@ EvtLoop
                     bne        :not_q
                     brl        Exit
 :not_q
-                    brl        EvtLoop
 
                     cmp        #'d'
                     bne        :not_d
@@ -182,10 +181,10 @@ EvtLoop
                     lda        vsync
                     beq        :no_vsync
 :vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
-                    cmp        ScreenY1
+                    cmp        ScreenY0
                     bcc        :vsyncloop
                     sec
-                    sbc        ScreenY1
+                    sbc        ScreenY0
                     cmp        #8
                     bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
                     lda        #1

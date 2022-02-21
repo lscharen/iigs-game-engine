@@ -114,12 +114,12 @@ _MarkDirtySprite
 
         txa
         and   #$0007
-        pha
+        sta   tmp0                                ; save to adjust sprite origin
 
         lda   _Sprites+SPRITE_CLIP_HEIGHT,y       ; Nominal value between 0 and 16+7 = 23 = 10111
         dec
         clc
-        adc   1,s
+        adc   tmp0
         and   #$0018
         sta   AreaIndex
 
@@ -138,12 +138,12 @@ _MarkDirtySprite
 
         txa
         and   #$0003
-        sta   1,s
+        sta   tmp1                               ; save to adjust sprite origin
 
         lda   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
         dec
         clc
-        adc   1,s
+        adc   tmp1
         lsr                                      ; max value = 4 = 0x04
         and   #$0006
         ora   AreaIndex
@@ -160,6 +160,12 @@ _MarkDirtySprite
         lda   :stamp_step,x
         clc
         adc   _Sprites+VBUFF_ADDR,y
+        sec
+        sbc   tmp1                               ; Subtract the horizontal within-tile displacement
+        asl   tmp0
+        ldx   tmp0
+        sec
+        sbc   :vbuff_mul,x
         sta   VBuffOrigin
         lda   #^TileStore
         sta   tmp1
@@ -174,6 +180,7 @@ _MarkDirtySprite
         dw    mdsOut,mdsOut,mdsOut,mdsOut
 
 :stamp_step dw  0,12,24,36
+:vbuff_mul  dw  0,52,104,156,208,260,312,364
 ; Dispatch to the calculated sizing
 
 ; Begin a list of subroutines to cover all of the valid sprite size combinations.  This is all unrolled code,
