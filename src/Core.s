@@ -492,6 +492,7 @@ _ReadControl
                   put       Memory.s
                   put       Graphics.s
                   put       Sprite.s
+                  put       blitter/Tiles.s
                   put       Sprite2.s
                   put       SpriteRender.s
                   put       Render.s
@@ -501,7 +502,6 @@ _ReadControl
                   put       blitter/Horz.s
                   put       blitter/PEISlammer.s
                   put       blitter/Tables.s
-                  put       blitter/Tiles.s
                   put       blitter/Tiles00000.s      ; normal tiles
                   put       blitter/Tiles00001.s      ; dynamic tiles
                   put       blitter/Tiles00010.s      ; normal masked tiles

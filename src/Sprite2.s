@@ -93,38 +93,31 @@ _MarkDirtySprite
         bne   mdsOut
 
 ; At this point we know that we have to update the tiles that overlap the sprite's rectangle defined
-; by (Top, Left), (Bottom, Right).  
+; by (Top, Left), (Bottom, Right).  First, calculate the row and column in the TileStore that 
+; encloses the top-left on-screen corner of the sprite
 
         clc
         lda   _Sprites+SPRITE_CLIP_TOP,y
-        adc   StartYMod208                       ; Adjust for the scroll offset (could be a negative number!)
-        tax                                      ; Save this value
-        and   #$0007                             ; Get (StartY + SpriteY) mod 8
-        sta   TileTop                            ; This is the relative offset to the sprite stamp
-
-;        eor   #$FFFF
-;        inc
-;        clc
-;        adc   _Sprites+SPRITE_CLIP_TOP,y         ; subtract from the Y position (possible to go negative here)
-;        sta   TileTop                            ; This position will line up with the tile that the sprite overlaps with
-
-        txa                                      ; Get back the position of the sprite top in the code field
+        adc   StartYMod208                       ; Adjust for the scroll offset
+        tax                                      ; cache
         cmp   #208                               ; check if we went too far positive
         bcc   *+5
         sbc   #208
         lsr
-        lsr
-;        lsr                                      ; This is the row in the Tile Store for top-left corner of the sprite
-        and   #$FFFE                              ; Store the pre-multiplied by 2 for indexing in the :mark_R_C routines
+        lsr                                       ; This is the row in the Tile Store for top-left corner of the sprite
+        and   #$FFFE                              ; Store the value pre-multiplied by 2 for indexing in the :mark_R_C routines
         sta   RowTop
 
-        lda   _Sprites+SPRITE_CLIP_BOTTOM,y      ; Figure out how many tiles are needed to cover the sprite's area
-        sec
-        sbc   _Sprites+SPRITE_CLIP_TOP,y
-        clc
-        adc   TileTop
+; Next, calculate how many tiles are covered by the sprite.  This uses the table at the top of this function, but
+; the idea is that for every increment of StartX or StartY, that can shift the sprite into the next tile, up to
+; a maximum of mod 4 / mod 8.  So the effective width of a sprite is (((StartX + Clip_Left) mod 4) + Clip_Width) / 4
 
-        and   #$0018                             ; Clear out the lower bits and stash in bits 4 and 5
+        txa
+        and   #$0007
+        clc
+        adc   _Sprites+SPRITE_CLIP_HEIGHT,y
+        dec
+        and   #$0018
         sta   AreaIndex
 
 ; Repeat to get the same information for the columns
@@ -133,23 +126,22 @@ _MarkDirtySprite
         lda   _Sprites+SPRITE_CLIP_LEFT,y
         adc   StartXMod164
         tax
-        and   #$0003
-        sta   TileLeft
-
-;        eor   #$FFFF
-;        inc
-;        clc
-;        adc   _Sprites+SPRITE_CLIP_LEFT,y
-;        sta   TileLeft
-
-        txa
         cmp   #164
         bcc   *+5
         sbc   #164
         lsr
-;        lsr
         and   #$FFFE                             ; Same pre-multiply by 2 for later
         sta   ColLeft
+
+        txa
+        and   #$0003
+        clc
+        adc   _Sprites+SPRITE_CLIP_WIDTH,y
+        dec
+        and   #$000C
+        lsr
+        ora   AreaIndex
+        sta   AreaIndex
 
 ; Calculate the modified origin address for the sprite.  We need to look at the sprite flip bits
 ; to determine which of the four sprite stamps is the correct one to use.  Then, offset that origin
@@ -165,17 +157,9 @@ _MarkDirtySprite
         lda   #^TileStore
         sta   tmp1
 
-; Calculate the number of columns and dispatch
+; Dispatch to cover the tiles
 
-        lda   _Sprites+SPRITE_CLIP_RIGHT,y
-        sec
-        sbc   _Sprites+SPRITE_CLIP_LEFT,y
-        clc
-        adc   TileLeft
-        and   #$000C
-        lsr                                   ; bit 0 is always zero and width stored in bits 1 and 2
-        ora   AreaIndex
-        tax
+        ldx   AreaIndex
         jmp   (:mark,x)
 :mark   dw    :mark1x1,:mark1x2,:mark1x3,mdsOut
         dw    :mark2x1,:mark2x2,:mark2x3,mdsOut
@@ -185,7 +169,7 @@ _MarkDirtySprite
 :stamp_step dw  0,12,24,36
 ; Dispatch to the calculated sizing
 
-; Begin a list of subroutines to cover all of the valid sprite size compinations.  This is all unrolled code,
+; Begin a list of subroutines to cover all of the valid sprite size combinations.  This is all unrolled code,
 ; mainly to be able to do an unrolled fill of the TILE_STORE_ADDR_X values.  Thus, it's important that the clipping
 ; function does its job properly since it allows us to save a lot of time here.
 ;
@@ -524,12 +508,12 @@ _MarkDirtySprite
 ; a value of zero means that all of the sprite's rows are off-screen.
 ;
 ; This subroutine takes are of calculating the extra tile for unaligned accesses, too.
-_SpriteHeight       dw 8,8,16,16
-_SpriteHeightMinus1 dw 7,7,15,15
-_SpriteRows         dw 1,1,2,2
-_SpriteWidth        dw 4,8,4,8
-_SpriteWidthMinus1  dw 3,7,3,7
-_SpriteCols         dw 1,2,1,2
+;_SpriteHeight       dw 8,8,16,16
+;_SpriteHeightMinus1 dw 7,7,15,15
+;_SpriteRows         dw 1,1,2,2
+;_SpriteWidth        dw 4,8,4,8
+;_SpriteWidthMinus1  dw 3,7,3,7
+;_SpriteCols         dw 1,2,1,2
 
 ; Convert sprite index to a bit position
 _SpriteBits         dw $0001,$0002,$0004,$0008,$0010,$0020,$0040,$0080,$0100,$0200,$0400,$0800,$1000,$2000,$4000,$8000

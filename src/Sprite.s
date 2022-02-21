@@ -590,9 +590,29 @@ _PrecalcAllSpriteInfo
             xba
             sta   _Sprites+SPRITE_DISP,x        ; use bits 9 through 13 for full dispatch
 
+; Set the sprite's width and height
+            lda   #4
+            sta   _Sprites+SPRITE_WIDTH,x
+            lda   #8
+            sta   _Sprites+SPRITE_HEIGHT,x
+
+            lda   _Sprites+SPRITE_ID,x
+            bit   #$1000                        ; width select
+            beq   :width_4
+            lda   #8
+            sta   _Sprites+SPRITE_WIDTH,x
+:width_4
+
+            lda   _Sprites+SPRITE_ID,x
+            bit   #$0800                        ; width select
+            beq   :height_8
+            lda   #16
+            sta   _Sprites+SPRITE_HEIGHT,x
+:height_8
+
 ; Clip the sprite's bounding box to the play field size and also set a flag if the sprite
-; is fully offs-screen or not
-            tay                                  ; use the index we just calculated
+; is fully off-screen or not
+
             lda   _Sprites+SPRITE_X,x
             bpl   :pos_x
             lda   #0
@@ -609,7 +629,8 @@ _PrecalcAllSpriteInfo
 
             lda   _Sprites+SPRITE_X,x
             clc
-            adc   _SpriteWidthMinus1,y
+            adc   _Sprites+SPRITE_WIDTH,x
+            dec
             bmi   :offscreen
             cmp   ScreenWidth
             bcc   :ok_x
@@ -619,7 +640,8 @@ _PrecalcAllSpriteInfo
 
             lda   _Sprites+SPRITE_Y,x
             clc
-            adc   _SpriteHeightMinus1,y
+            adc   _Sprites+SPRITE_HEIGHT,x
+            dec
             bmi   :offscreen
             cmp   ScreenHeight
             bcc   :ok_y
@@ -627,7 +649,20 @@ _PrecalcAllSpriteInfo
             dec
 :ok_y       sta   _Sprites+SPRITE_CLIP_BOTTOM,x
 
-            stz   _Sprites+IS_OFF_SCREEN,x       ; passed all of the off-screen test
+            stz   _Sprites+IS_OFF_SCREEN,x       ; passed all of the off-screen tests
+
+; Calculate the clipped width and height
+            lda   _Sprites+SPRITE_CLIP_RIGHT,x
+            sec
+            sbc   _Sprites+SPRITE_CLIP_LEFT,x
+            inc
+            sta   _Sprites+SPRITE_CLIP_WIDTH,x
+
+            lda   _Sprites+SPRITE_CLIP_BOTTOM,x
+            sec
+            sbc   _Sprites+SPRITE_CLIP_TOP,x
+            inc
+            sta   _Sprites+SPRITE_CLIP_HEIGHT,x
             rts
 
 :offscreen
@@ -747,7 +782,7 @@ _MoveSpriteXnc
 ; NUM_BUFF_LINES  equ 24
 
 MAX_SPRITES     equ 16
-SPRITE_REC_SIZE equ 46
+SPRITE_REC_SIZE equ 54
 
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
@@ -784,6 +819,10 @@ SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*38}
 SPRITE_CLIP_TOP    equ {MAX_SPRITES*40}
 SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*42}
 IS_OFF_SCREEN      equ {MAX_SPRITES*44}
+SPRITE_WIDTH       equ {MAX_SPRITES*46}
+SPRITE_HEIGHT      equ {MAX_SPRITES*48}
+SPRITE_CLIP_WIDTH  equ {MAX_SPRITES*50}
+SPRITE_CLIP_HEIGHT equ {MAX_SPRITES*52}
 
 ; Maintain the index of the next open sprite slot.  This allows us to have amortized
 ; constant sprite add performance.  A negative value means no slots are available.
