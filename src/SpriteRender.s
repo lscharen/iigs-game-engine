@@ -4,7 +4,7 @@
 _DrawSpriteSheet
 DISP_VFLIP   equ    $0004      ; hard code these because they are internal values
 DISP_HFLIP   equ    $0002
-DISP_MASK    equ    $00F9
+DISP_MASK    equ    $0018      ; Isolate the size bits
 
              phx
 

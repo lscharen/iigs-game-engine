@@ -114,9 +114,12 @@ _MarkDirtySprite
 
         txa
         and   #$0007
-        clc
-        adc   _Sprites+SPRITE_CLIP_HEIGHT,y
+        pha
+
+        lda   _Sprites+SPRITE_CLIP_HEIGHT,y       ; Nominal value between 0 and 16+7 = 23 = 10111
         dec
+        clc
+        adc   1,s
         and   #$0018
         sta   AreaIndex
 
@@ -135,13 +138,17 @@ _MarkDirtySprite
 
         txa
         and   #$0003
-        clc
-        adc   _Sprites+SPRITE_CLIP_WIDTH,y
+        sta   1,s
+
+        lda   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
         dec
-        and   #$000C
-        lsr
+        clc
+        adc   1,s
+        lsr                                      ; max value = 4 = 0x04
+        and   #$0006
         ora   AreaIndex
         sta   AreaIndex
+        pla
 
 ; Calculate the modified origin address for the sprite.  We need to look at the sprite flip bits
 ; to determine which of the four sprite stamps is the correct one to use.  Then, offset that origin

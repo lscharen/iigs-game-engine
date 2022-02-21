@@ -586,7 +586,7 @@ SPRITE_PLANE_SPAN equ VBUFF_STRIDE_BYTES        ; 52
 ; X = sprite index
 _PrecalcAllSpriteInfo
             lda   _Sprites+SPRITE_ID,x 
-            and   #$2E00
+            and   #$3E00
             xba
             sta   _Sprites+SPRITE_DISP,x        ; use bits 9 through 13 for full dispatch
 
