@@ -29,7 +29,7 @@ DISP_MASK    equ    $0018      ; Isolate the size bits
              jsr    _DrawSprite
 
              lda    tmp3
-             ora    #DISP_VFLIP
+             ora    #DISP_HFLIP
              tax
              ldy    tmp2
              lda    tmp1
@@ -38,7 +38,7 @@ DISP_MASK    equ    $0018      ; Isolate the size bits
              jsr    _DrawSprite
 
              lda    tmp3
-             ora    #DISP_HFLIP
+             ora    #DISP_VFLIP
              tax
              ldy    tmp2
              lda    tmp1
@@ -196,6 +196,7 @@ draw_16x16h
              clc
              tax
              tya
+             adc   #64
              pha
              adc   #128
              tay

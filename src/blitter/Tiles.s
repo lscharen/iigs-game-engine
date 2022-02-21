@@ -75,6 +75,17 @@ _GetTileAddr
                  asl                                               ; x128
                  rts
 
+; Ignore the horizontal flip bit
+_GetBaseTileAddr
+                 asl                                               ; Multiply by 2
+                 asl                                               ; x4
+                 asl                                               ; x8
+                 asl                                               ; x16
+                 asl                                               ; x32
+                 asl                                               ; x64
+                 asl                                               ; x128
+                 rts
+
 ; On entry
 ;
 ; B is set to the correct BG1 data bank
@@ -115,7 +126,7 @@ _RenderTile2
 
                  txa
                  jsr   BuildActiveSpriteArray         ; Build the max 4 array of active sprites for this tile
-                 sta   ActiveSpriteCount
+;                 sta   ActiveSpriteCount
 
                  lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
                  sta   _SPR_X_REG

@@ -195,11 +195,13 @@ _RenderDirtyTile
             pea   >TileStore                     ; Need that addressing flexibility here.  Callers responsible for restoring bank reg
             plb
             plb
+            txy
 
             lda   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
             beq   :nosprite
 
             jsr   BuildActiveSpriteArray          ; Build the sprite index list from the bit field
+            sta   ActiveSpriteCount
 
             lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
             sta   _SPR_X_REG
@@ -208,9 +210,6 @@ _RenderDirtyTile
             lda   (_SPR_X_REG),y
             sta   _SPR_X_REG
             ply
-
-;            ldx   TileStore+TS_SPRITE_ADDR,y
-;            stx   _SPR_X_REG
 
             lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
             and   #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value

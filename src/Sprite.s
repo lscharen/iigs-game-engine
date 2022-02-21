@@ -95,7 +95,7 @@ _AddSprite
 
 :open
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
-            jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
+            jsr   _GetBaseTileAddr              ; This applies the TILE_ID_MASK
             sta   _Sprites+TILE_DATA_OFFSET,x
 
             lda   #SPRITE_STATUS_OCCUPIED+SPRITE_STATUS_ADDED
@@ -717,11 +717,15 @@ _UpdateSpriteX
 :ok
 _UpdateSpriteXnc
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
-            jsr   _GetTileAddr                  ; This applies the TILE_ID_MASK
+            jsr   _GetBaseTileAddr              ; This applies the TILE_ID_MASK
+            cmp   _Sprites+TILE_DATA_OFFSET,x
+            beq   :no_tile_change
             sta   _Sprites+TILE_DATA_OFFSET,x
 
             jsr   _PrecalcAllSpriteInfo         ; Cache stuff
+            jsr   _DrawSpriteSheet              ; Render the sprite into internal space if the tile id has changed
 
+:no_tile_change
             lda   _Sprites+SPRITE_STATUS,x
             ora   #SPRITE_STATUS_UPDATED
             sta   _Sprites+SPRITE_STATUS,x
@@ -754,16 +758,19 @@ _MoveSpriteX
 
 :ok
 _MoveSpriteXnc
+            cmp   _Sprites+SPRITE_X,x
+            bne   :changed1
             sta   _Sprites+SPRITE_X,x           ; Update the X coordinate
             tya
-            sta   _Sprites+SPRITE_Y,x           ; Update the Y coordinate
+            cmp   _Sprites+SPRITE_Y,x
+            bne   :changed2
+            rts
 
-;            pla
-;            jsr   _GetSpriteVBuffAddrTmp        ; A = x-coord, Y = y-coord
-;            ldy   _Sprites+VBUFF_ADDR,x         ; Save the previous draw location for erasing
-;            sta   _Sprites+VBUFF_ADDR,x         ; Overwrite with the new location
-;            tya
-;            sta   _Sprites+OLD_VBUFF_ADDR,x
+:changed1
+            sta   _Sprites+SPRITE_X,x           ; Update the X coordinate
+            tya
+:changed2
+            sta   _Sprites+SPRITE_Y,x           ; Update the Y coordinate
 
             jsr   _PrecalcAllSpriteInfo          ; Can be specialized to only update (x,y) values
 
@@ -781,7 +788,7 @@ _MoveSpriteXnc
 ; NUM_BUFF_LINES  equ 24
 
 MAX_SPRITES     equ 16
-SPRITE_REC_SIZE equ 54
+SPRITE_REC_SIZE equ 52
 
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
@@ -801,27 +808,26 @@ VBUFF_ADDR         equ {MAX_SPRITES*4}  ; Fixed address in sprite/mask banks
 SPRITE_ID          equ {MAX_SPRITES*6}
 SPRITE_X           equ {MAX_SPRITES*8}
 SPRITE_Y           equ {MAX_SPRITES*10}
-; OLD_VBUFF_ADDR     equ {MAX_SPRITES*12}
-TILE_STORE_ADDR_1  equ {MAX_SPRITES*14}
-TILE_STORE_ADDR_2  equ {MAX_SPRITES*16}
-TILE_STORE_ADDR_3  equ {MAX_SPRITES*18}
-TILE_STORE_ADDR_4  equ {MAX_SPRITES*20}
-TILE_STORE_ADDR_5  equ {MAX_SPRITES*22}
-TILE_STORE_ADDR_6  equ {MAX_SPRITES*24}
-TILE_STORE_ADDR_7  equ {MAX_SPRITES*26}
-TILE_STORE_ADDR_8  equ {MAX_SPRITES*28}
-TILE_STORE_ADDR_9  equ {MAX_SPRITES*30}
-TILE_STORE_ADDR_10 equ {MAX_SPRITES*32}
-SPRITE_DISP        equ {MAX_SPRITES*34}  ; pre-calculated index for jmp (abs,x) based on sprite size
-SPRITE_CLIP_LEFT   equ {MAX_SPRITES*36}
-SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*38}
-SPRITE_CLIP_TOP    equ {MAX_SPRITES*40}
-SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*42}
-IS_OFF_SCREEN      equ {MAX_SPRITES*44}
-SPRITE_WIDTH       equ {MAX_SPRITES*46}
-SPRITE_HEIGHT      equ {MAX_SPRITES*48}
-SPRITE_CLIP_WIDTH  equ {MAX_SPRITES*50}
-SPRITE_CLIP_HEIGHT equ {MAX_SPRITES*52}
+TILE_STORE_ADDR_1  equ {MAX_SPRITES*12}
+TILE_STORE_ADDR_2  equ {MAX_SPRITES*14}
+TILE_STORE_ADDR_3  equ {MAX_SPRITES*16}
+TILE_STORE_ADDR_4  equ {MAX_SPRITES*18}
+TILE_STORE_ADDR_5  equ {MAX_SPRITES*20}
+TILE_STORE_ADDR_6  equ {MAX_SPRITES*22}
+TILE_STORE_ADDR_7  equ {MAX_SPRITES*24}
+TILE_STORE_ADDR_8  equ {MAX_SPRITES*26}
+TILE_STORE_ADDR_9  equ {MAX_SPRITES*28}
+TILE_STORE_ADDR_10 equ {MAX_SPRITES*30}
+SPRITE_DISP        equ {MAX_SPRITES*32}  ; pre-calculated index for jmp (abs,x) based on sprite size
+SPRITE_CLIP_LEFT   equ {MAX_SPRITES*34}
+SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*36}
+SPRITE_CLIP_TOP    equ {MAX_SPRITES*38}
+SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*40}
+IS_OFF_SCREEN      equ {MAX_SPRITES*42}
+SPRITE_WIDTH       equ {MAX_SPRITES*44}
+SPRITE_HEIGHT      equ {MAX_SPRITES*46}
+SPRITE_CLIP_WIDTH  equ {MAX_SPRITES*48}
+SPRITE_CLIP_HEIGHT equ {MAX_SPRITES*50}
 
 ; Maintain the index of the next open sprite slot.  This allows us to have amortized
 ; constant sprite add performance.  A negative value means no slots are available.
