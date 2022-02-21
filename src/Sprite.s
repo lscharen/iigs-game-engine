@@ -755,7 +755,6 @@ _MoveSpriteX
 :ok
 _MoveSpriteXnc
             sta   _Sprites+SPRITE_X,x           ; Update the X coordinate
-            pha
             tya
             sta   _Sprites+SPRITE_Y,x           ; Update the Y coordinate
 
