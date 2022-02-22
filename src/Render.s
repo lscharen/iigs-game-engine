@@ -162,9 +162,16 @@ RenderDirty ENT
 _RenderDirty
             lda   LastRender                    ; If the full renderer was last called, we assume that
             bne   :norecalc                     ; the scroll positions have likely changed, so recalculate
+            lda   #2                            ; blue
+            jsr   _SetBorderColor
             jsr   _RecalcTileScreenAddrs        ; them to make sure sprites draw at the correct screen address
 :norecalc
+            lda   #3                            ; purple
+            jsr   _SetBorderColor
             jsr   _RenderSprites
+
+            lda   #4                            ; dk. green
+            jsr   _SetBorderColor
             jsr   _ApplyDirtyTiles
             lda   #1
             sta   LastRender
@@ -192,50 +199,32 @@ _ApplyDirtyTiles
 
 ; Only render solid tiles and sprites
 _RenderDirtyTile
-            pea   >TileStore                     ; Need that addressing flexibility here.  Callers responsible for restoring bank reg
-            plb
+            ldal  TileStore+TS_SPRITE_FLAG,x     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
+            bne   dirty_sprite
+
+; The rest of this function handles that non-sprite blit, which is super fast since it blits directly from the
+; tile data store to the graphics screen with no masking. The only extra work is selecting a blit function
+; based on the tile flip flags.
+
+            pei   TileStoreBankAndBank01         ; Special value that has the TileStore bank in LSB and $01 in MSB
             plb
             txy
 
-            lda   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
-            beq   :nosprite
-
-            jsr   BuildActiveSpriteArray          ; Build the sprite index list from the bit field
-            sta   ActiveSpriteCount
-
-            lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
-            sta   _SPR_X_REG
-            phy
-            ldy   spriteIdx
-            lda   (_SPR_X_REG),y
-            sta   _SPR_X_REG
-            ply
-
-            lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
-            and   #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
-            xba
-            tax
-            ldal  DirtyTileSpriteProcs,x
-            stal  :tiledisp+1
-            bra   :sprite
-
-:nosprite
-            lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
-            and   #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
-            xba
-            tax
+            ldx   TileStore+TS_TILE_DISP,y       ; get the finalized tile descriptor
             ldal  DirtyTileProcs,x               ; load and patch in the appropriate subroutine
             stal  :tiledisp+1
 
-:sprite
             ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
             lda   TileStore+TS_SCREEN_ADDR,y     ; Get the on-screen address of this tile
-            pha
+            tay
 
-            lda   TileStore+TS_WORD_OFFSET,y
-            ply
-            pea   $0101
-            plb
+;            pha
+;            lda   TileStore+TS_WORD_OFFSET,y    ; We don't support this in dirty rendering mode
+;            ply
+
+;            pea   $0101
+;            plb
+
             plb                                  ; set the bank
 
 ; B is set to Bank 01
@@ -244,6 +233,39 @@ _RenderDirtyTile
 ; X is set to the address of the tile data
 
 :tiledisp   jmp   $0000                          ; render the tile
+
+; Handler for the sprite path
+dirty_sprite
+                 pei   TileStoreBankAndTileDataBank   ; Special value that has the TileStore bank in LSB and TileData bank in MSB
+                 plb
+
+; Now do all of the deferred work of actually drawing the sprites.  We put considerable effort into
+; figuring out if there is only one sprite or more than one since we optimize the former case as it
+; is very common and can be done significantly faster.
+;
+; We use the logic operation of A & (A - 1) which removes the least-significant set bit position.  If
+; this results in a zero value, then we know that there is only a single sprite and can move to an
+; optimized routine.
+
+                 dec
+                 and   TileStore+TS_SPRITE_FLAG,x
+                 bne   multi_sprite
+
+; Now we are on the fast path. There is only one sprite at this tile, so load the cached VBUFF address
+; from the TileStore data structure. This is only guaranteed to be a VBUFF address from one of the
+; sprites at the tile, but if there is only one, it's the value we want.
+
+                 lda   TileStore+TS_LAST_VBUFF,x
+                 pha
+                 ldy   TileStore+TS_TILE_ADDR,x       ; load the address of this tile's data
+                 lda   TileStore+TS_SCREEN_ADDR,x     ; Get the on-screen address of this tile
+                 plx                                  ; Set the vbuff address
+                 plb
+                 jmp   FastBlit
+
+; This is the code path to handle tile with multiple, overlapping sprites.
+multi_sprite
+                 rts                                  ; TBD
 
 DirtyTileProcs       dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
 DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
@@ -383,6 +405,118 @@ BuildActiveSpriteArray
                  rts
 :out_3           lda   #6
                  rts
+
+; Fast blit that directly combines a tile with a single sprite and renders directly to the screen
+;
+; A = screen address
+; X = sprite VBUFF address
+; Y = tile data address
+FastBlit
+TILE_DATA_SPAN equ 4
+
+                 phd
+                 sei
+                 clc
+                 tcd
+
+                 _R0W1
+
+                 lda   tiledata+{0*TILE_DATA_SPAN},y
+                 andl  spritemask+{0*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{0*SPRITE_PLANE_SPAN},x
+                 sta   $00
+
+                 lda   tiledata+{0*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{0*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{0*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02
+
+                 lda   tiledata+{1*TILE_DATA_SPAN},y
+                 andl  spritemask+{1*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{1*SPRITE_PLANE_SPAN},x
+                 sta   $A0
+
+                 lda   tiledata+{1*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{1*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{1*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2
+
+                 tdc
+                 adc   #320
+                 tcd
+
+                 lda   tiledata+{2*TILE_DATA_SPAN},y
+                 andl  spritemask+{2*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{2*SPRITE_PLANE_SPAN},x
+                 sta   $00
+
+                 lda   tiledata+{2*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{2*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{2*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02
+
+                 lda   tiledata+{3*TILE_DATA_SPAN},y
+                 andl  spritemask+{3*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{3*SPRITE_PLANE_SPAN},x
+                 sta   $A0
+
+                 lda   tiledata+{3*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{3*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{3*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2
+
+                 tdc
+                 adc   #320
+                 tcd
+
+                 lda   tiledata+{4*TILE_DATA_SPAN},y
+                 andl  spritemask+{4*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{4*SPRITE_PLANE_SPAN},x
+                 sta   $00
+
+                 lda   tiledata+{4*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{4*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{4*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02
+
+                 lda   tiledata+{5*TILE_DATA_SPAN},y
+                 andl  spritemask+{5*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{5*SPRITE_PLANE_SPAN},x
+                 sta   $A0
+
+                 lda   tiledata+{5*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{5*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{5*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2
+
+                 tdc
+                 adc   #320
+                 tcd
+
+                 lda   tiledata+{6*TILE_DATA_SPAN},y
+                 andl  spritemask+{6*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{6*SPRITE_PLANE_SPAN},x
+                 sta   $00
+
+                 lda   tiledata+{6*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{6*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{6*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02
+
+                 lda   tiledata+{7*TILE_DATA_SPAN},y
+                 andl  spritemask+{7*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{7*SPRITE_PLANE_SPAN},x
+                 sta   $A0
+
+                 lda   tiledata+{7*TILE_DATA_SPAN}+2,y
+                 andl  spritemask+{7*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{7*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2
+
+                 _R0W0
+                 cli
+                 pld
+                 rts 
 
 ; Run through all of the active sprites and put then on-screen.  We have three different heuristics depending on
 ; how many active sprites there are intersecting this tile.

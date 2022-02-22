@@ -590,6 +590,8 @@ InitTiles
                  lda  #0
                  stal TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
                  stal TileStore+TS_TILE_ADDR,x
+                 stal TileStore+TS_TILE_DISP,x
+                 stal TileStore+TS_LAST_VBUFF,x
 
                  stal TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
                  lda  #$FFFF                            ; none of the tiles are dirty
@@ -693,11 +695,15 @@ _SetTile
                  beq  :nochange
 
                  stal TileStore+TS_TILE_ID,x        ; Value is different, store it.
-
                  jsr  _GetTileAddr
                  stal TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
 
-;                 txa                                ; Add this tile to the list of dirty tiles to refresh
+                 ldal TileStore+TS_TILE_ID,x
+                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
+                 xba
+                 stal TileStore+TS_TILE_DISP,x
+
+;                txa                                ; Add this tile to the list of dirty tiles to refresh
                  jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
 
 :nochange        rts

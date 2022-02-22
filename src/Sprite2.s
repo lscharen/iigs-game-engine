@@ -331,6 +331,7 @@ _MarkDirtySprite
 
         lda   VBuffOrigin
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
 ;        lda   VBuffOrigin                      ; This is an interesting case.  The mapping between the tile store
 ;        adc   #{0*4}+{0*256}                  ; and the sprite buffers changes as the StartX, StartY values change
@@ -362,6 +363,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{0*4}+{1*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -382,6 +384,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{0*4}+{2*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -403,6 +406,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{1*4}+{0*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -424,6 +428,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{1*4}+{1*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -445,6 +450,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{1*4}+{2*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -466,6 +472,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{2*4}+{0*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -487,6 +494,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{2*4}+{1*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x
@@ -508,6 +516,7 @@ _MarkDirtySprite
         lda   VBuffOrigin
         adc   #{2*4}+{2*8*SPRITE_PLANE_SPAN}
         sta   [tmp0],y
+        stal  TileStore+TS_LAST_VBUFF,x
 
         lda   SpriteBit
         oral  TileStore+TS_SPRITE_FLAG,x

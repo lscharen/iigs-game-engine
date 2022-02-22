@@ -81,11 +81,13 @@ BG1TileMapPtr          equ   86
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
 LastRender             equ   96          ; Record which reder function was last executed
-; DamagedSprites         equ   98
+; gap
 SpriteMap              equ   100         ; Bitmap of open sprite slots.
 ActiveSpriteCount      equ   102
 BankLoad               equ   104
-Next                   equ   106
+TileStoreBankAndBank01 equ   106
+TileStoreBankAndTileDataBank equ 108
+Next                   equ   110
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 AppSpace               equ   160         ; 16 bytes of space reserved for application use
@@ -155,7 +157,7 @@ MAX_TILES             equ  {26*41}            ; Number of tiles in the code fiel
 TILE_STORE_SIZE       equ  {MAX_TILES*2}      ; The tile store contains a tile descriptor in each slot
 
 TS_TILE_ID            equ  TILE_STORE_SIZE*0      ; tile descriptor for this location
-TS_DIRTY              equ  TILE_STORE_SIZE*1      ; Flag. Used to prevent a tile from being queues multiple times per frame
+TS_DIRTY              equ  TILE_STORE_SIZE*1      ; Flag. Used to prevent a tile from being queued multiple times per frame
 TS_SPRITE_FLAG        equ  TILE_STORE_SIZE*2      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
 TS_TILE_ADDR          equ  TILE_STORE_SIZE*3      ; cached value, the address of the tiledata for this tile
 TS_CODE_ADDR_LOW      equ  TILE_STORE_SIZE*4      ; const value, address of this tile in the code fields
@@ -164,3 +166,5 @@ TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset val
 TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
 TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
 TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
+TS_TILE_DISP          equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize tile dispatch in the Render function
+TS_LAST_VBUFF         equ  TILE_STORE_SIZE*11     ; a cached copy of one of the valid VBUFF values in the array

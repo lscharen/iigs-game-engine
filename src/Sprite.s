@@ -535,12 +535,22 @@ _GetTileAt
             clc
             rts
 
-; Small initialization routine to cache the banks for the sprite data and mask
+; Small initialization routine to cache the banks for the sprite data and mask and tile/sprite stuff
 _CacheSpriteBanks
             lda    #>spritemask
             and    #$FF00
             ora    #^spritedata
             sta    SpriteBanks
+
+            lda    #$0100
+            ora    #^TileStore
+            sta    TileStoreBankAndBank01
+
+            lda    #>tiledata
+            and    #$FF00
+            ora    #^TileStore
+            sta    TileStoreBankAndTileDataBank
+
             rts
 
 ; This is 13 blocks wide
