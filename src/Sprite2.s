@@ -148,7 +148,6 @@ _MarkDirtySprite
         and   #$0006
         ora   AreaIndex
         sta   AreaIndex
-        pla
 
 ; Calculate the modified origin address for the sprite.  We need to look at the sprite flip bits
 ; to determine which of the four sprite stamps is the correct one to use.  Then, offset that origin
