@@ -307,7 +307,7 @@ _DoPhase1
             bit   #SPRITE_STATUS_REMOVED
             beq   :out
 
-            lda   #SPRITE_STATUS_EMPTY            ; Mark as empty
+            lda   #SPRITE_STATUS_EMPTY            ; Mark as empty (zero value)
             sta   _Sprites+SPRITE_STATUS,y
 
             lda   _SpriteBits,y                   ; Clear from the sprite bitmap
@@ -384,9 +384,14 @@ phase2      dw    :phase2_0
 
 _DoPhase2
             lda   _Sprites+SPRITE_STATUS,y
+            beq   :out                          ; If phase 1 marked us as empty, do nothing
             ora   forceSpriteFlag
             and   #SPRITE_STATUS_ADDED+SPRITE_STATUS_MOVED+SPRITE_STATUS_UPDATED
             beq   :out
+
+; Last thing to do, so go ahead and clear the flags
+            lda   #SPRITE_STATUS_OCCUPIED
+            sta   _Sprites+SPRITE_STATUS,y
 
 ; Mark the appropriate tiles as dirty and as occupied by a sprite so that the ApplyTiles
 ; subroutine will combine the sprite data with the tile data into the code field where it 
@@ -489,7 +494,8 @@ phase1_rtn
             jmp   (phase2,x)
 phase2_rtn
 
-; Sprite rendering complete
+; Sprite rendering complete, clear the dirty bits
+
             rts
 
 ; _GetTileAt
@@ -726,6 +732,9 @@ _UpdateSpriteX
 
 :ok
 _UpdateSpriteXnc
+            cmp   _Sprites+SPRITE_ID,x          ; Don't do anything if there is no change
+            beq   :no_sprite_change
+
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             jsr   _GetBaseTileAddr              ; This applies the TILE_ID_MASK
             cmp   _Sprites+TILE_DATA_OFFSET,x
@@ -740,6 +749,7 @@ _UpdateSpriteXnc
             ora   #SPRITE_STATUS_UPDATED
             sta   _Sprites+SPRITE_STATUS,x
 
+:no_sprite_change
             rts
 
 ; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
