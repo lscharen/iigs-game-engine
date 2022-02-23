@@ -265,6 +265,7 @@ dirty_sprite
 
 ; This is the code path to handle tile with multiple, overlapping sprites.
 multi_sprite
+                 plb
                  rts                                  ; TBD
 
 DirtyTileProcs       dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
