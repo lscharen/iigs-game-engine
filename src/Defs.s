@@ -167,4 +167,3 @@ TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there a
 TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
 TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
 TS_TILE_DISP          equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize tile dispatch in the Render function
-TS_LAST_VBUFF         equ  TILE_STORE_SIZE*11     ; a cached copy of one of the valid VBUFF values in the array
