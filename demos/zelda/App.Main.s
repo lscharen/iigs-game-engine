@@ -54,35 +54,35 @@ DOWN_ARROW          equ        $0A
 SPRITE_ID           equ        {SPRITE_16X16+1}
 OKTOROK             equ        {SPRITE_16X16+79}
 
+                    lda        PlayerX
+                    xba
+                    ora        PlayerY
+                    tay                                ; (x, y) position
+                    ldx        #0
                     lda        #SPRITE_ID              ; 16x16 sprite
-                    ldx        PlayerX
-                    ldy        PlayerY
                     jsl        AddSprite
-                    bcc        :sprite_ok
-                    brl        Exit                    ; If we could not allocate a sprite, exit
-:sprite_ok
                     sta        PlayerID
 
-; Add 4 octoroks
-;                    lda        #OKTOROK
-;                    ldx        #32
-;                    ldy        #48
-;                    jsl        AddSprite
+; Add 4 octoroks 
+                    lda        #OKTOROK
+                    ldx        #1
+                    ldy        #{32*256}+48
+                    jsl        AddSprite
 
-;                    lda        #OKTOROK
-;                    ldx        #96
-;                    ldy        #32
-;                    jsl        AddSprite
+                    lda        #OKTOROK
+                    ldx        #2
+                    ldy        #{32*256}+96
+                    jsl        AddSprite
 
-;                    lda        #OKTOROK
-;                    ldx        #56
-;                    ldy        #96
-;                    jsl        AddSprite
+                    lda        #OKTOROK
+                    ldx        #3
+                    ldy        #{96*256}+56
+                    jsl        AddSprite
 
-;                    lda        #OKTOROK
-;                    ldx        #72
-;                    ldy        #96
-;                    jsl        AddSprite
+                    lda        #OKTOROK
+                    ldx        #4
+                    ldy        #{96*256}+72
+                    jsl        AddSprite
 
 ; Draw the initial screen
 
@@ -176,6 +176,32 @@ EvtLoop
                     ldy        PlayerY
                     jsl        MoveSprite             ; Move the sprite to the current position
 
+; Based on the frame count, move an oktorok
+                    jsl        GetVBLTicks
+                    pha
+                    and        #$0003
+                    asl
+                    tax
+
+                    pla
+                    and        #$007C
+                    lsr
+                    tay
+
+                    lda        OktorokX,x
+                    clc
+                    adc        OktorokDelta,y
+
+                    phx
+
+                    ldy        OktorokY,x
+                    tax
+                    pla
+                    inc
+                    inc
+                    jsl        MoveSprite
+
+
 ; Let's see what it looks like!
 
                     lda        vsync
@@ -185,7 +211,7 @@ EvtLoop
                     bcc        :vsyncloop
                     sec
                     sbc        ScreenY0
-                    cmp        #8
+                    cmp        #4
                     bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
                     lda        #1
                     jsl        SetBorderColor
@@ -297,6 +323,9 @@ PlayerID            ds         2
 PlayerX             ds         2
 PlayerY             ds         2
 
+OktorokX            dw         32,32,96,96
+OktorokY            dw         48,96,56,72
+OktorokDelta        dw         0,1,2,3,4,5,6,7,6,5,4,3,2,1,0,-1,-2,-3,-4,-5,-6,-7,-8,-7,-6,-5,-4,-3,-2,-1,0,0,0
 TransitionX         ds         2
 TransitionY         ds         2
 

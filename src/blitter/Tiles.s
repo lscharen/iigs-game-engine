@@ -124,8 +124,8 @@ _RenderTile2
                  ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
                  beq   :nosprite
 
-                 txa
-                 jsr   BuildActiveSpriteArray         ; Build the max 4 array of active sprites for this tile
+;                 txa
+;                 jsr   BuildActiveSpriteArray         ; Build the max 4 array of active sprites for this tile
 ;                 sta   ActiveSpriteCount
 
                  lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
@@ -591,7 +591,6 @@ InitTiles
                  stal TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
                  stal TileStore+TS_TILE_ADDR,x
                  stal TileStore+TS_TILE_DISP,x
-                 stal TileStore+TS_LAST_VBUFF,x
 
                  stal TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
                  lda  #$FFFF                            ; none of the tiles are dirty
@@ -737,11 +736,11 @@ _PushDirtyTileX
                  txa                                  ; any non-negative value will work, this saves work below
                  stal TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
 
-                 ldx  DirtyTileCount ; 5
-                 sta  DirtyTiles,x   ; 5
-                 inx
-                 inx
-                 stx  DirtyTileCount
+                 ldx  DirtyTileCount ; 4
+                 sta  DirtyTiles,x   ; 6
+                 inx                 ; 2
+                 inx                 ; 2
+                 stx  DirtyTileCount ; 4 = 18
                  rts
 :occupied2
                  txa                                ; Make sure TileStore offset is returned in the accumulator

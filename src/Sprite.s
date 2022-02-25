@@ -70,12 +70,9 @@ VBUFF_SPRITE_START   equ {8*VBUFF_TILE_ROW_BYTES}+4
 ; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
 ; with a width of 256 pixels.
 ;
-; Single sprite are limited to 24 lines high because there are 28 lines of padding above and below the
-; sprite plane buffers, so a sprite that is 32 lines high could overflow the drawing area.
-;
 ; A = tileId + flags
-; X = x position
-; Y = y position
+; Y = High Byte = x-pos, Low Byte = y-pos
+; X = Sprite Slot (0 - 15)
 AddSprite   ENT
             phb
             phk
@@ -85,15 +82,13 @@ AddSprite   ENT
             rtl
 
 _AddSprite
-            phx                                  ; Save the horizontal position
-            ldx   _NextOpenSlot                  ; Get the next free sprite slot index
-            bpl   :open                          ; A negative number means we are full
+            pha
+            txa
+            and   #$000F
+            asl
+            tax
+            pla
 
-            plx                                  ; Early out
-            sec                                  ; Signal that no sprite slot was available
-            rts
-
-:open
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             jsr   _GetBaseTileAddr              ; This applies the TILE_ID_MASK
             sta   _Sprites+TILE_DATA_OFFSET,x
@@ -101,10 +96,14 @@ _AddSprite
             lda   #SPRITE_STATUS_OCCUPIED+SPRITE_STATUS_ADDED
             sta   _Sprites+SPRITE_STATUS,x
 
+            phy
             tya
+            and   #$00FF
             sta   _Sprites+SPRITE_Y,x           ; Y coordinate
-            pla                                 ; X coordinate
-            sta   _Sprites+SPRITE_X,x
+            pla
+            xba
+            and   #$00FF
+            sta   _Sprites+SPRITE_X,x           ; X coordinate
 
             jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
             jsr   _DrawSpriteSheet              ; Render the sprite into internal space
@@ -121,16 +120,6 @@ _AddSprite
             txa                                 ; And return the sprite ID
             clc                                 ; Mark that the sprite was successfully added
 
-; We can only get to this point if there was an open slot, so we know we're not at the
-; end of the list yet.
-
-            ldx   _OpenListHead
-            inx
-            inx
-            stx   _OpenListHead
-            ldy   _OpenList,x                   ; If this is the end, then the sentinel value will
-            sty   _NextOpenSlot                 ; get stored into _NextOpenSlot
-
             rts
 
 ; Run through the list of tile store offsets that this sprite was last drawn into and mark
@@ -138,78 +127,72 @@ _AddSprite
 ; (an unaligned 4x3 sprite), covering a 5x4 area of play field tiles.
 ;
 ; Y register = sprite record index
+_CSFTS_Out  rts
 _ClearSpriteFromTileStore
             ldx   _Sprites+TILE_STORE_ADDR_1,y
-            bne   *+3
-            rts
+            beq   _CSFTS_Out
             ldal  TileStore+TS_SPRITE_FLAG,x       ; Clear the bit in the bit field.  This seems wasteful, but
             and   _SpriteBitsNot,y                 ; there is no indexed form of TSB/TRB and caching the value in
             stal  TileStore+TS_SPRITE_FLAG,x       ; a direct page location, only saves 1 or 2 cycles per and costs 10.
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_2,y
-            bne   *+3
-            rts
+            beq   _CSFTS_Out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_3,y
-            bne   *+3
-            rts
+            beq   _CSFTS_Out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_4,y
-            bne   *+3
-            rts
+            beq   _CSFTS_Out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_5,y
-            bne   *+3
-            rts
+            beq   :out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_6,y
-            bne   *+3
-            rts
+            beq   :out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_7,y
-            bne   *+3
-            rts
+            beq   :out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_8,y
-            bne   *+3
-            rts
+            beq   :out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jsr   _PushDirtyTileX
 
             ldx   _Sprites+TILE_STORE_ADDR_9,y
-            bne   *+3
-            rts
+            beq   :out
             ldal  TileStore+TS_SPRITE_FLAG,x
             and   _SpriteBitsNot,y
             stal  TileStore+TS_SPRITE_FLAG,x
             jmp   _PushDirtyTileX
+
+:out        rts
 
 ; This function looks at the sprite list and renders the sprite plane data into the appropriate
 ; tiles in the code field.  There are a few phases to this routine.  The assumption is that
@@ -300,8 +283,7 @@ _DoPhase1
             jsr   _ClearSpriteFromTileStore
 :no_clear
 
-; Check to see if sprite was REMOVED  If so, then this is where we return its Sprite ID to the
-; list of open slots
+; Check to see if sprite was REMOVED  If so, clear the sprite slot status
 
             lda   _Sprites+SPRITE_STATUS,y
             bit   #SPRITE_STATUS_REMOVED
@@ -313,13 +295,6 @@ _DoPhase1
             lda   _SpriteBits,y                   ; Clear from the sprite bitmap
             trb   SpriteMap
 
-            ldx   _OpenListHead
-            dex
-            dex
-            stx   _OpenListHead
-            tya
-            sta   _OpenList,x
-            sty   _NextOpenSlot
 :out
             rts
 
@@ -390,6 +365,7 @@ _DoPhase2
             beq   :out
 
 ; Last thing to do, so go ahead and clear the flags
+
             lda   #SPRITE_STATUS_OCCUPIED
             sta   _Sprites+SPRITE_STATUS,y
 
@@ -493,8 +469,6 @@ phase1_rtn
             ldx   ActiveSpriteCount
             jmp   (phase2,x)
 phase2_rtn
-
-; Sprite rendering complete, clear the dirty bits
 
             rts
 
@@ -848,11 +822,5 @@ SPRITE_WIDTH       equ {MAX_SPRITES*44}
 SPRITE_HEIGHT      equ {MAX_SPRITES*46}
 SPRITE_CLIP_WIDTH  equ {MAX_SPRITES*48}
 SPRITE_CLIP_HEIGHT equ {MAX_SPRITES*50}
-
-; Maintain the index of the next open sprite slot.  This allows us to have amortized
-; constant sprite add performance.  A negative value means no slots are available.
-_NextOpenSlot  dw  0
-_OpenListHead  dw  0
-_OpenList      dw  0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,$FFFF  ; List with sentinel at the end
 
 _Sprites       ds  SPRITE_REC_SIZE*MAX_SPRITES

@@ -1,58 +1,16 @@
 ; Renders a frame of animation
 ;
-; The rendering engine is built around the idea of compositing all of the moving components
-; on to the Bank 01 graphics buffer and then revealing everything in a single, vertical pass.
-;
-; If there was just a scrolling screen with no sprites, the screen would just get rendered
-; in a single pass, but it gets more complicated with sprites and various effects.
-;
-; Here is the high-level pipeline:
-;
-; 1. Identify row ranges with effects.  These effects can be sprites or user-defined overlays
-; 2. Turn shadowing off
-; 3. Render the background for each effect row range (in any order)
-; 4. Render the sprites (in any order)
-; 5. Turn shadowing on
-; 6. Render the background for each non-effect row, a pei slam for sprite rows, and
-;    the user-defined overlays (in sorted order)
-; 
-; As a concrete example, consider:
-;
-;  Rows 0 - 9  have a user-defined floating overlay for a score board
-;  Rows 10 - 100 are background only
-;  Rows 101 - 120 have one or more sprites
-;  Rows 121 - 140 are background only
-;  Rows 141 - 159 have a user-defined solid overlay for an animated platform
-;
-; A floating overlay means that some background data bay show through.  A solid overlay means that
-; the user-defined data covers the entire scan line.
-;
-; The renderer would proceed as:
-;
-; - shadow off
-; - render_background(0, 10)
-; - render_background(101, 121)
-; - render_sprites()
-; - shadow_on
-; - render_user_overlay_1()
-; - render_background(10, 101)
-; - pei_slam(101, 121)
-; - render_background(121, 141)
-; - render_user_overlay_2()
-;
-; Generally speaking, a PEI Slam is faster that trying to do any sort of dirty-rectangle update by
-; tracking sprinte bounding boxes.  But, if an application would benefit from skipping some background
-; drawing on sprite rows, that can be handled by using the low level routines to control the left/right
-; edges of the rendered play field.
-
-
 ; The render function is the point of committment -- most of the APIs that set sprites and 
-; update coordinates are lazy; they simply save the value and set a dirty flag in the
+; update coordinates are lazy; they simply save their values and set a dirty flag in the
 ; DirtyBits word.
 ;
 ; This function examines the dirty bits and actually performs the work to update the code field
 ; and internal data structure to properly render the play field.  Then the update pipeline is
 ; executed.
+;
+; Everything is composited into the tiles in the playfield and then the screen is rendered in
+; a single pass.
+
 Render      ENT
             phb
             phk
@@ -122,9 +80,9 @@ _Render
             ldy   ScreenHeight
             jsr   _BltRange
 
-            ldx   #0
-            ldy   ScreenHeight
-            jsr   _BltSCB
+;            ldx   #0
+;            ldy   ScreenHeight
+;            jsr   _BltSCB
 
             lda   StartY              ; Restore the fields back to their original state
             ldx   ScreenHeight
@@ -149,6 +107,35 @@ _Render
 ; ignores almost all of the capabilities of GTE, but it does provide a convenient way to use
 ; the sprite subsystem + tile attributes for single-screen games which should be able to run
 ; close to 60 fps.
+;
+; Because we are register starved, there is a lot of inline code to quickly fetch the information
+; needed to render sprites appropriately.  If there was a way to efficiently maintain an ordered
+; and compact array of per-tile VBUFF addresses, rather than the current sparse array, then
+; the sprite handling code could be significantly streamlined.  A note for anyone attempting
+; this optimization:
+;
+; The _MarkDirtyTiles simply stores a sprite's per-tile VBUFF address and marks the tile 
+; as being occupied by the sprite with just 4 instructions
+;
+;    sta (vbuff_array_ptr),y
+;    lda TileStore+TS_SPRITE_FLAG,x
+;    ora SpriteBit,y
+;    sta TileStore+TS_SPRITE_FLAG,x
+;
+; Then, we have an unrolled loop that does repeated tests of
+;
+;    lsr
+;    bcc *+
+;    lda vbuff_array_ptr,y
+;    sta spriteVBuffArr
+;
+; The only gain to be had is if the sprites that are marked are in the high bits and there are no low-index
+; sprites.  Skipping over N bits of the SPRITE_FLAG takes only 5*N cycles.  So, on average, we might waste 
+; 40 cycles looking for the proper bit.
+;
+; Any improvement to the existing code would need to be able to maintain a data structure and get the final
+; values into the spriteVBuffArr for a total cost of under 75 cycles per tile.
+
 RenderDirty ENT
             phb
             phk
@@ -157,7 +144,7 @@ RenderDirty ENT
             plb
             rtl
 
-; In this renderer, we assume that thwere is no scrolling, so no need to update any information about
+; In this renderer, we assume that there is no scrolling, so no need to update any information about
 ; the BG0/BG1 positions
 _RenderDirty
             lda   LastRender                    ; If the full renderer was last called, we assume that
@@ -218,13 +205,6 @@ _RenderDirtyTile
             lda   TileStore+TS_SCREEN_ADDR,y     ; Get the on-screen address of this tile
             tay
 
-;            pha
-;            lda   TileStore+TS_WORD_OFFSET,y    ; We don't support this in dirty rendering mode
-;            ply
-
-;            pea   $0101
-;            plb
-
             plb                                  ; set the bank
 
 ; B is set to Bank 01
@@ -234,42 +214,465 @@ _RenderDirtyTile
 
 :tiledisp   jmp   $0000                          ; render the tile
 
+; Use some temporary space for the spriteIdx array (maximum of 4 entries)
+
+stkSave     equ tmp9
+screenAddr  equ tmp10
+tileAddr    equ tmp11
+spriteIdx   equ tmp12
+
 ; Handler for the sprite path
 dirty_sprite
                  pei   TileStoreBankAndTileDataBank   ; Special value that has the TileStore bank in LSB and TileData bank in MSB
                  plb
 
+; Cache a couple of values into the direct page, but preserve the Accumulator
+
+                 ldy   TileStore+TS_TILE_ADDR,x       ; load the address of this tile's data (pre-calculated)
+                 sty   tileAddr
+                 ldy   TileStore+TS_SCREEN_ADDR,x     ; Get the on-screen address of this tile
+                 sty   screenAddr
+
 ; Now do all of the deferred work of actually drawing the sprites.  We put considerable effort into
 ; figuring out if there is only one sprite or more than one since we optimize the former case as it
 ; is very common and can be done significantly faster.
 ;
-; We use the logic operation of A & (A - 1) which removes the least-significant set bit position.  If
-; this results in a zero value, then we know that there is only a single sprite and can move to an
-; optimized routine.
+; This is a big, unrolled chunk of code that packs the VBUFF addresses for the sprite positions marked
+; in the bitfield into the spriteIdx array and then jumps to an optimized rendering function based on
+; the number of sprites on the tile.
+;
+; After each set bit is identified, we check to see if that was the last one and immediately exit.  Since
+; a maximum of 4 sprites are processed per tile, this only results in (at most) 4 extra branch instructions.
 
-                 dec
-                 and   TileStore+TS_SPRITE_FLAG,x
-                 bne   multi_sprite
+                 ldy   TileStore+TS_VBUFF_ARRAY_ADDR,x     ; base address of the VBUFF sprite address array for this tile
 
-; Now we are on the fast path. There is only one sprite at this tile, so load the cached VBUFF address
-; from the TileStore data structure. This is only guaranteed to be a VBUFF address from one of the
-; sprites at the tile, but if there is only one, it's the value we want.
+                 lsr
+                 bcc   :loop_0_bit_1
+                 ldx:  $0000,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_1
+                 jmp   BlitOneSprite
 
-                 lda   TileStore+TS_LAST_VBUFF,x
-                 pha
-                 ldy   TileStore+TS_TILE_ADDR,x       ; load the address of this tile's data
-                 lda   TileStore+TS_SCREEN_ADDR,x     ; Get the on-screen address of this tile
-                 plx                                  ; Set the vbuff address
-                 plb
-                 jmp   FastBlit
+:loop_0_bit_1    lsr
+                 bcc   :loop_0_bit_2
+                 ldx:  $0002,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_2
+                 jmp   BlitOneSprite
 
-; This is the code path to handle tile with multiple, overlapping sprites.
-multi_sprite
-                 plb
-                 rts                                  ; TBD
+:loop_0_bit_2    lsr
+                 bcc   :loop_0_bit_3
+                 ldx:  $0004,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_3
+                 jmp   BlitOneSprite
+
+:loop_0_bit_3    lsr
+                 bcc   :loop_0_bit_4
+                 ldx:  $0006,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_4
+                 jmp   BlitOneSprite
+
+:loop_0_bit_4    lsr
+                 bcc   :loop_0_bit_5
+                 ldx:  $0008,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_5
+                 jmp   BlitOneSprite
+
+:loop_0_bit_5    lsr
+                 bcc   :loop_0_bit_6
+                 ldx:  $000A,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_6
+                 jmp   BlitOneSprite
+
+:loop_0_bit_6    lsr
+                 bcc   :loop_0_bit_7
+                 ldx:  $000C,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_7
+                 jmp   BlitOneSprite
+
+:loop_0_bit_7    lsr
+                 bcc   :loop_0_bit_8
+                 ldx:  $000E,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_8
+                 jmp   BlitOneSprite
+
+:loop_0_bit_8    lsr
+                 bcc   :loop_0_bit_9
+                 ldx:  $0010,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_9
+                 jmp   BlitOneSprite
+
+:loop_0_bit_9    lsr
+                 bcc   :loop_0_bit_10
+                 ldx:  $0012,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_10
+                 jmp   BlitOneSprite
+
+:loop_0_bit_10   lsr
+                 bcc   :loop_0_bit_11
+                 ldx:  $0014,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_11
+                 jmp   BlitOneSprite
+
+:loop_0_bit_11   lsr
+                 bcc   :loop_0_bit_12
+                 ldx:  $0016,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_12
+                 jmp   BlitOneSprite
+
+:loop_0_bit_12   lsr
+                 bcc   :loop_0_bit_13
+                 ldx:  $0018,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_13
+                 jmp   BlitOneSprite
+
+:loop_0_bit_13   lsr
+                 bcc   :loop_0_bit_14
+                 ldx:  $001A,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_14
+                 jmp   BlitOneSprite
+
+:loop_0_bit_14   lsr
+                 bcc   :loop_0_bit_15
+                 ldx:  $001C,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_15
+                 jmp   BlitOneSprite
+
+; If we get to bit 15, then it *must* be a bit that is set
+:loop_0_bit_15   ldx:  $001E,y
+                 stx   spriteIdx
+                 jmp   BlitOneSprite
+
+:loop_1_bit_1    lsr
+                 bcc   :loop_1_bit_2
+                 ldx:  $0002,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_2
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_2    lsr
+                 bcc   :loop_1_bit_3
+                 ldx:  $0004,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_3
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_3    lsr
+                 bcc   :loop_1_bit_4
+                 ldx:  $0006,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_4
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_4    lsr
+                 bcc   :loop_1_bit_5
+                 ldx:  $0008,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_5
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_5    lsr
+                 bcc   :loop_1_bit_6
+                 ldx:  $000A,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_6
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_6    lsr
+                 bcc   :loop_1_bit_7
+                 ldx:  $000C,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_7
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_7    lsr
+                 bcc   :loop_1_bit_8
+                 ldx:  $000E,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_8
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_8    lsr
+                 bcc   :loop_1_bit_9
+                 ldx:  $0010,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_9
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_9    lsr
+                 bcc   :loop_1_bit_10
+                 ldx:  $0012,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_10
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_10   lsr
+                 bcc   :loop_1_bit_11
+                 ldx:  $0014,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_11
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_11   lsr
+                 bcc   :loop_1_bit_12
+                 ldx:  $0016,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_12
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_12   lsr
+                 bcc   :loop_1_bit_13
+                 ldx:  $0018,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_13
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_13   lsr
+                 bcc   :loop_1_bit_14
+                 ldx:  $001A,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_14
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_14   lsr
+                 bcc   :loop_1_bit_15
+                 ldx:  $001C,y
+                 stx   spriteIdx+2
+                 cmp   #0
+                 jne   :loop_2_bit_15
+                 jmp   BlitTwoSprites
+
+:loop_1_bit_15   ldx:  $001E,y
+                 stx   spriteIdx+2
+                 jmp   BlitTwoSprites
+
+:loop_2_bit_2    lsr
+                 bcc   :loop_2_bit_3
+                 ldx:  $0004,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_3
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_3    lsr
+                 bcc   :loop_2_bit_4
+                 ldx:  $0006,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_4
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_4    lsr
+                 bcc   :loop_2_bit_5
+                 ldx:  $0008,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_5
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_5    lsr
+                 bcc   :loop_2_bit_6
+                 ldx:  $000A,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_6
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_6    lsr
+                 bcc   :loop_2_bit_7
+                 ldx:  $000C,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_7
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_7    lsr
+                 bcc   :loop_2_bit_8
+                 ldx:  $000E,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_8
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_8    lsr
+                 bcc   :loop_2_bit_9
+                 ldx:  $0010,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_9
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_9    lsr
+                 bcc   :loop_2_bit_10
+                 ldx:  $0012,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_10
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_10   lsr
+                 bcc   :loop_2_bit_11
+                 ldx:  $0014,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_11
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_11   lsr
+                 bcc   :loop_2_bit_12
+                 ldx:  $0016,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_12
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_12   lsr
+                 bcc   :loop_2_bit_13
+                 ldx:  $0018,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_13
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_13   lsr
+                 bcc   :loop_2_bit_14
+                 ldx:  $001A,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_14
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_14   lsr
+                 bcc   :loop_2_bit_15
+                 ldx:  $001C,y
+                 stx   spriteIdx+4
+                 cmp   #0
+                 jne   :loop_3_bit_15
+                 jmp   BlitThreeSprites
+
+:loop_2_bit_15   ldx:  $001E,y
+                 stx   spriteIdx+4
+                 jmp   BlitThreeSprites
+
+:loop_3_bit_3    lsr
+                 bcc   :loop_3_bit_4
+                 ldx   $0006,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_4    lsr
+                 bcc   :loop_3_bit_5
+                 ldx   $0008,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_5    lsr
+                 bcc   :loop_3_bit_6
+                 ldx   $000A,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_6    lsr
+                 bcc   :loop_3_bit_7
+                 ldx   $000C,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_7    lsr
+                 bcc   :loop_3_bit_8
+                 ldx   $000E,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_8    lsr
+                 bcc   :loop_3_bit_9
+                 ldx   $0010,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_9    lsr
+                 bcc   :loop_3_bit_10
+                 ldx   $0012,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_10   lsr
+                 bcc   :loop_3_bit_11
+                 ldx   $0014,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_11   lsr
+                 bcc   :loop_3_bit_12
+                 ldx   $0016,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_12   lsr
+                 bcc   :loop_3_bit_13
+                 ldx   $0018,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_13   lsr
+                 bcc   :loop_3_bit_14
+                 ldx   $001A,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_14   lsr
+                 bcc   :loop_3_bit_15
+                 ldx   $001C,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
+
+:loop_3_bit_15   ldx   $001E,y
+                 stx   spriteIdx+6
+                 jmp   BlitFourSprites
 
 DirtyTileProcs       dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
-DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
+;DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
 
 ; Blit tiles directly to the screen.
 _TBDirtyTile_00
@@ -298,122 +701,200 @@ _TBDirtyTile_VH
                  --^
                  rts
 
-_TBDirtySpriteTile_00
-_TBDirtySpriteTile_0H
-                 jsr             _TBCopyTileDataToCBuff     ; Copy the tile into the compositing buffer (using correct x-register)
-                 jmp             _TBApplyDirtySpriteData    ; Overlay the data from the sprite plane (and copy into the code field)
-
-_TBDirtySpriteTile_V0
-_TBDirtySpriteTile_VH
-                 jsr             _TBCopyTileDataToCBuffV
-                 jmp             _TBApplyDirtySpriteData
-
-
-; Just copy in the data from the first sprite
-_TBApplyDirtySpriteData
-
-_TBApplyDirtySpriteData0
-                 ldx   _SPR_X_REG                               ; set to the unaligned tile block address in the sprite plane
-
-]line            equ   0
-                 lup   8
-                 lda   blttmp+{]line*4}
-                 andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-                 oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
-                 sta:  $0000+{]line*160},y
-
-                 lda   blttmp+{]line*4}+2
-                 andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-                 oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-                 sta:  $0002+{]line*160},y
-]line            equ   ]line+1
-                 --^
-                 rts 
-
-; Input:  A = bit field, assumed non-zero
-; Output: A = number of bits set
-; Side Effect: Fill in the ActiveSprite list with sprite indices.
-;
-; We try very hard to be fast and clever here.  Early out, keeping everything in
-; registers when possible, and reducing overhead.
-
-spriteIdx equ tmp12
-BuildActiveSpriteArray
-
-; Push a sentinel value on the stack so we know where to end later.  We con't count during the
-; initial process, because the Z flag needs to be maintained and almost evey opcode affects it.
-
-;                 cmp   lastActiveValue        ; Assume that there is a decent chance of having the same
-;                 beq   early_out              ; sprite bitfield in consecutive dirty tiles. Saves a lot.
-
-                 tsx                           ; save the stack pointer
-                 pea   $FFFF                   ; sentinel value
-
-; This first loop scans the bits in the accumulator and pushed a sprite index onto the stack. We
-; could push any constanct, which gives us some flexibility.  This only works because the PEA
-; instruction does not affect any register.  We also check to see if the acumulator is zero as
-; an early-out test, but only do that every 4 bits in order to amortize the overhead a bit.
-
-]step            equ   0
-                 lup   4
-                 lsr
-                 bcc   :skip_1
-                 pea   ]step
-:skip_1          lsr
-                 bcc   :skip_2
-                 pea   ]step+2
-:skip_2          lsr
-                 bcc   :skip_3
-                 pea   ]step+4
-:skip_3          lsr
-                 bcc   :skip_4
-                 pea   ]step+6
-:skip_4          beq   :end_1
-]step            equ   ]step+8
-                 --^
-:end_1
-
-; This second loop pops values off of the stack and places them into a linear array.  We also
-; set the count on exit. As an optimization / restriction, we only allow up to four overlapping
-; sprites.  This is similar to the NES/C64 "8 sprites per line" restriction.
-
-                 pla                        ; Can always assume at least one bit was set...
-                 sta   spriteIdx
-
-                 pla
-                 bmi   :out_1
-                 sta   spriteIdx+2
-
-                 pla
-                 bmi   :out_2
-                 sta   spriteIdx+4
-
-                 pla
-                 bmi   :out_3
-                 sta   spriteIdx+6
-
-; Reset the stack point if we did not pop everything off yet
-                 txs
-
-; These are the exit points which know exactly how many items (x2) have been processed
-:out_4           lda   #8
-                 rts
-:out_0           lda   #0
-                 rts
-:out_1           lda   #2
-                 rts
-:out_2           lda   #4
-                 rts
-:out_3           lda   #6
-                 rts
-
-; Fast blit that directly combines a tile with a single sprite and renders directly to the screen
-;
-; A = screen address
-; X = sprite VBUFF address
-; Y = tile data address
-FastBlit
 TILE_DATA_SPAN equ 4
+
+; If there are two or more sprites at a tile, we can still be fast, but need to do extra work because
+; the VBUFF values need to be read from the direct page.  Thus, the direct page cannot be mapped onto
+; the graphics screen.  We use the stack instead, but have to do extra work to save and restore the
+; stack value.
+BlitFourSprites
+BlitThreeSprites
+BlitTwoSprites
+                 plb
+                 tsc
+                 sta   stkSave                          ; Save the stack on the direct page
+                 
+                 sei
+                 clc
+
+                 ldy   tileAddr
+                 lda   screenAddr                     ; Saved in direct page locations
+                 tcs
+
+                 _R0W1
+
+                 lda   tiledata+{0*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{0*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{0*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{0*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{0*SPRITE_PLANE_SPAN},x
+                 sta   $00,s
+
+                 lda   tiledata+{0*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{0*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{0*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{0*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{0*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02,s
+
+                 lda   tiledata+{1*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{1*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{1*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{1*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{1*SPRITE_PLANE_SPAN},x
+                 sta   $A0,s
+
+                 lda   tiledata+{1*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{1*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{1*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{1*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{1*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2,s
+
+                 tsc
+                 adc   #320
+                 tcs
+
+                 lda   tiledata+{2*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{2*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{2*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{2*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{2*SPRITE_PLANE_SPAN},x
+                 sta   $00,s
+
+                 lda   tiledata+{2*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{2*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{2*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{2*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{2*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02,s
+
+                 lda   tiledata+{3*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{3*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{3*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{3*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{3*SPRITE_PLANE_SPAN},x
+                 sta   $A0,s
+
+                 lda   tiledata+{3*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{3*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{3*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{3*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{3*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2,s
+
+                 tsc
+                 adc   #320
+                 tcs
+
+                 lda   tiledata+{4*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{4*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{4*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{4*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{4*SPRITE_PLANE_SPAN},x
+                 sta   $00,s
+
+                 lda   tiledata+{4*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{4*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{4*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{4*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{4*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02,s
+
+                 lda   tiledata+{5*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{5*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{5*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{5*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{5*SPRITE_PLANE_SPAN},x
+                 sta   $A0,s
+
+                 lda   tiledata+{5*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{5*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{5*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{5*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{5*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2,s
+
+                 tsc
+                 adc   #320
+                 tcs
+
+                 lda   tiledata+{6*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{6*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{6*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{6*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{6*SPRITE_PLANE_SPAN},x
+                 sta   $00,s
+
+                 lda   tiledata+{6*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{6*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{6*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{6*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{6*SPRITE_PLANE_SPAN}+2,x
+                 sta   $02,s
+
+                 lda   tiledata+{7*TILE_DATA_SPAN},y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{7*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{7*SPRITE_PLANE_SPAN},x
+                 ldx   spriteIdx
+                 andl  spritemask+{7*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{7*SPRITE_PLANE_SPAN},x
+                 sta   $A0,s
+
+                 lda   tiledata+{7*TILE_DATA_SPAN}+2,y
+                 ldx   spriteIdx+2
+                 andl  spritemask+{7*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{7*SPRITE_PLANE_SPAN}+2,x
+                 ldx   spriteIdx
+                 andl  spritemask+{7*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{7*SPRITE_PLANE_SPAN}+2,x
+                 sta   $A2,s
+
+                 _R0W0
+
+                 lda   stkSave
+                 tcs
+                 cli
+                 rts
+
+; There is only one sprite at this tile, so do a fast blit that directly combines a tile with a single
+; sprite and renders directly to the screen
+;
+; NOTE: Expect X-register to already have been set to the correct VBUFF address
+BlitOneSprite
+                 ldy   tileAddr                               ; load the address of this tile's data
+                 lda   screenAddr                             ; Get the on-screen address of this tile
+
+                 plb
 
                  phd
                  sei
@@ -518,47 +999,3 @@ TILE_DATA_SPAN equ 4
                  cli
                  pld
                  rts 
-
-; Run through all of the active sprites and put then on-screen.  We have three different heuristics depending on
-; how many active sprites there are intersecting this tile.
-
-; Version 2. No sprite place, instead each sprite has a set of pre-rendered panels and we render from
-; those panels in tile-sized blocks.
-;
-; If there is only one sprite + tile background, then we can render directly to the screen
-;  
-;  ldal  tiledata+0,x
-;  and   sprite+MASK_OFFSET,y
-;  ora   sprite,y
-;  sta   00
-;  ...
-;  sta   02
-;  ...
-;  sta   A0
-;  ...
-;  sta   A2
-;  tdc
-;  adc   #320
-;  tcd
-;
-; Since this is a common case, it is reasonable to do so.  Otherwise, we must explode the TS_SPRITE_FLAG to
-; get a list of sprite origin addresses and then flatten against the tile
-;
-;  ldal  tiledata+0,x
-;  ldx   spriteCount
-;  jmp   (disp,x)
-;  ...
-;  ldy   list+2
-;  and   sprite+MASK_OFFSET,y
-;  ora   sprite,y
-;  ldy   list
-;  and   sprite+MASK_OFFSET,y
-;  ora   sprite,y
-;  sta   00
-
-;  sta   02
-;  sta   A0
-;  sta   A2
-;  tdc
-;  adc   #320
-;  tcd
