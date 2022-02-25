@@ -13,6 +13,24 @@ The Generic Tile Engine (GTE) project is a tile engine built to exploit the uniq
   Parallax scrolling of two full-screen static layers
 </p>
 
+# Building from Source
+
+The library iscurrently implemented as a set of source files that must be compiled into a GS/OS application.  A set of example project can be found under the `demos` folder.  Each demo folder uses a `package.json` file to define the build targets and a build of each application can be created by executing a `npm run build` command.
+
+Each demo application has a top-level `App.s` that references the `src/Core.s` file which includes all of the GTE source
+files into a separage OMF Segment.  
+## Dependencies
+
+GTE uses the [merlin32](https://brutaldeluxe.fr/products/crossdevtools/merlin/) assembler to compile its source into GS/OS OMF files and [Cadius](https://brutaldeluxe.fr/products/crossdevtools/cadius/index.html) to copy those files onto a ProDOS disk image. The paths to these tool can be set in the `package.json` file.
+
+An empty 2MG disk image is included in `emu/Target.2mg` and is used as the default location for copying demo applications.  This image can be mounted in any IIgs emulator.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/lscharen/iigs-game-engine/master/.github/images/finder.png"/><br/>
+  Build of demo app in the IIgs Finder
+</p>
+
+
 # Getting Started
 
 ## Initialization
