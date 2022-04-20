@@ -46,6 +46,47 @@ _TBApplySpriteData
                  --^
                  rts 
 
+_TBApplySpriteDataOne
+                 ldx  spriteIdx
+]line            equ   0
+                 lup   8
+                 lda   blttmp+{]line*4}
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
+                 sta:  $0004+{]line*$1000},y
+
+                 lda   blttmp+{]line*4}+2
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+                 sta:  $0001+{]line*$1000},y
+]line            equ   ]line+1
+                 --^
+                 rts 
+
+_TBApplySpriteDataTwo
+]line            equ   0
+                 lup   8
+                 lda   blttmp+{]line*4}
+                 ldx  spriteIdx+2
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
+                 ldx  spriteIdx
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
+                 sta:  $0004+{]line*$1000},y
+
+                 lda   blttmp+{]line*4}+2
+                 ldx  spriteIdx+2
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+                 ldx  spriteIdx
+                 andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+                 oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+                 sta:  $0001+{]line*$1000},y
+]line            equ   ]line+1
+                 --^
+                 rts 
+
 ; Copy tile data into the direct page compositing buffer.  The main reason to do this in full passes is
 ; because we can avoid needing to use both the X and Y registers during the compositing process and
 ; reserve Y to hold the code field address.

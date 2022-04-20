@@ -41,17 +41,6 @@
 TILE_CTRL_MASK    equ             $FE00
 TILE_PROC_MASK    equ             $F800                  ; Select tile proc for rendering
 
-; Temporary direct page locatinos used by some of the complex tile renderers
-
-_X_REG           equ             tiletmp
-_Y_REG           equ             tiletmp+2
-_T_PTR           equ             tiletmp+4                         ; Copy of the tile address pointer
-_BASE_ADDR       equ             tiletmp+6                         ; Copy of BTableLow for this tile
-_SPR_X_REG       equ             tiletmp+8                         ; Cache address of sprite plane source for a tile
-_JTBL_CACHE      equ             tiletmp+10                        ; Cache the offset to the exception handler for a column
-_OP_CACHE        equ             tiletmp+12                        ; Cache of a relevant operand / oeprator
-_TILE_ID         equ             tiletmp+14                        ; Copy of the tile descriptor
-
 ; Low-level function to take a tile descriptor and return the address in the tiledata
 ; bank.  This is not too useful in the fast-path because the fast-path does more
 ; incremental calculations, but it is handy for other utility functions
@@ -113,56 +102,36 @@ _RenderTileBG1
 ; Given an address to a Tile Store record, dispatch to the appropriate tile renderer.  The Tile
 ; Store record contains all of the low-level information that's needed to call the renderer.
 ;
+; This routine sets the direct page register to the second page since we use that space to 
+; build and cache tile and sprite data, when necessary
 ; Y = address of tile
 _RenderTile2
-                 pea   >TileStore                     ; Need that addressing flexibility here.  Caller is responsible for restoring bank reg
-                 plb
-                 plb
-                 txy                                  ; We can be better than this....
+                 lda   TileStore+TS_SPRITE_FLAG,x     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
+                 bne   do_dirty_sprite
 
-                 lda   TileStore+TS_TILE_ID,y         ; build the finalized tile descriptor
-                 ldx   TileStore+TS_SPRITE_FLAG,y     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
-                 beq   :nosprite
+; Handle the non-sprite tile blit
 
-;                 txa
-;                 jsr   BuildActiveSpriteArray         ; Build the max 4 array of active sprites for this tile
-;                 sta   ActiveSpriteCount
+                 sep   #$20
+                 lda   TileStore+TS_CODE_ADDR_HIGH,x  ; load the bank of the target code field line
+                 pha                                  ; and put on the stack for later
 
-                 lda   TileStore+TS_VBUFF_ARRAY_ADDR,y ; Scratch space
-                 sta   _SPR_X_REG
-                 phy
-                 ldy   spriteIdx
-                 lda   (_SPR_X_REG),y
-                 sta   _SPR_X_REG
-                 ply
+                 lda   TileStore+TS_BASE_ADDR+1,x     ; load the base address of the code field ($0000 or $8000)
+                 sta   _BASE_ADDR+1                   ; so we can get by just copying the high byte
+                 rep   #$20
 
-                 lda   TileStore+TS_TILE_ID,y
-                 ora   #TILE_SPRITE_BIT
-;                 ldx   TileStore+TS_VBUFF_ARRAY_ADDR,y
-;                 stx   _SPR_X_REG
-
-:nosprite
-                 sta   _TILE_ID                       ; Some tile blitters need to get the tile descriptor
-                 and   #TILE_CTRL_MASK
-                 xba
-                 tax
-                 ldal  TileProcs,x                    ; load and patch in the appropriate subroutine
+                 lda   TileStore+TS_BASE_TILE_DISP,x  ; Get the address of the renderer for this tile
                  stal  :tiledisp+1
 
-                 ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
+                 lda   TileStore+TS_TILE_ID,x
+                 sta   _TILE_ID                       ; Some tile blitters need to get the tile descriptor
 
-                 sep   #$20                           ; load the bank of the target code field line
-                 lda   TileStore+TS_CODE_ADDR_HIGH,y
+                 ldy   TileStore+TS_CODE_ADDR_LOW,x   ; load the address of the code field
+                 lda   TileStore+TS_TILE_ADDR,x       ; load the address of this tile's data (pre-calculated)
                  pha
-                 rep   #$20
-                 lda   TileStore+TS_CODE_ADDR_LOW,y   ; load the address of the code field
-                 pha
-                 lda   TileStore+TS_BASE_ADDR,y       ; load the base address of the code field
-                 sta   _BASE_ADDR
 
-                 lda   TileStore+TS_WORD_OFFSET,y
-                 ply
-                 plb                                  ; set the bank
+                 lda   TileStore+TS_WORD_OFFSET,x
+                 plx
+                 plb                                  ; set the bank to the code field that will be updated
 
 ; B is set to the correct code field bank
 ; A is set to the tile word offset (0 through 80 in steps of 4)
@@ -170,6 +139,194 @@ _RenderTile2
 ; X is set to the address of the tile data
 
 :tiledisp        jmp   $0000                          ; render the tile
+
+; Let's make a macro helper for the bit test tree
+;                dobit   src_offset,dest,next_target,end_target
+dobit            MAC
+                 beq   last_bit
+                 ldx:  ]1,y
+                 stx   ]2
+                 jmp   ]3
+last_bit         ldx:  ]1,y
+                 stx   ]2
+                 jmp   ]4
+                 EOM
+
+; The sprite code is just responsible for quickly copying all of the sprite data
+; into the direct page temp area.
+
+do_dirty_sprite
+                 pei   TileStoreBankAndTileDataBank   ; Special value that has the TileStore bank in LSB and TileData bank in MSB
+                 plb
+
+; Cache a couple of values into the direct page, but preserve the Accumulator
+
+                 ldy   TileStore+TS_TILE_ADDR,x       ; load the address of this tile's data (pre-calculated)
+                 sty   tileAddr
+
+; This is very similar to the code in the dirty tile renderer, but we can't reuse 
+; because that code draws directly to the graphics screen, and this code draws
+; to a temporary budder that has a different stride.
+
+                 ldy   TileStore+TS_VBUFF_ARRAY_ADDR,x     ; base address of the VBUFF sprite address array for this tile
+
+                 lsr
+                 bcc   :loop_0_bit_1
+                 dobit $0000;sprite_ptr0;:loop_1_bit_1;CopyOneSprite
+
+:loop_0_bit_1    lsr
+                 bcc   :loop_0_bit_2
+                 dobit $0002;sprite_ptr0;:loop_1_bit_2;CopyOneSprite
+
+:loop_0_bit_2    lsr
+                 bcc   :loop_0_bit_3
+                 dobit $0004;sprite_ptr0;:loop_1_bit_3;CopyOneSprite
+
+:loop_0_bit_3    lsr
+                 bcc   :loop_0_bit_4
+                 dobit $0006;sprite_ptr0;:loop_1_bit_4;CopyOneSprite
+
+:loop_0_bit_4    lsr
+                 bcc   :loop_0_bit_5
+                 dobit $0008;sprite_ptr0;:loop_1_bit_5;CopyOneSprite
+
+:loop_0_bit_5    lsr
+                 bcc   :loop_0_bit_6
+                 dobit $000A;sprite_ptr0;:loop_1_bit_6;CopyOneSprite
+
+:loop_0_bit_6    lsr
+                 bcc   :loop_0_bit_7
+                 dobit $000C;sprite_ptr0;:loop_1_bit_7;CopyOneSprite
+
+:loop_0_bit_7    lsr
+                 bcc   :loop_0_bit_8
+                 dobit $000E;sprite_ptr0;:loop_1_bit_8;CopyOneSprite
+
+:loop_0_bit_8    lsr
+                 bcc   :loop_0_bit_9
+                 dobit $0010;sprite_ptr0;:loop_1_bit_9;CopyOneSprite
+
+:loop_0_bit_9    lsr
+                 bcc   :loop_0_bit_10
+                 ldx:  $0012,y
+                 stx   spriteIdx
+                 cmp   #0
+                 jne   :loop_1_bit_10
+                 jmp   CopyOneSprite
+
+:loop_0_bit_10   lsr
+                 bcc   :loop_0_bit_11
+                 dobit $0014;sprite_ptr0;:loop_1_bit_11;CopyOneSprite
+
+:loop_0_bit_11   lsr
+                 bcc   :loop_0_bit_12
+                 dobit $0016;sprite_ptr0;:loop_1_bit_12;CopyOneSprite
+
+:loop_0_bit_12   lsr
+                 bcc   :loop_0_bit_13
+                 dobit $0018;sprite_ptr0;:loop_1_bit_13;CopyOneSprite
+
+:loop_0_bit_13   lsr
+                 bcc   :loop_0_bit_14
+                 dobit $001A;sprite_ptr0;:loop_1_bit_14;CopyOneSprite
+
+:loop_0_bit_14   lsr
+                 bcc   :loop_0_bit_15
+                 dobit $001C;sprite_ptr0;:loop_1_bit_15;CopyOneSprite
+
+:loop_0_bit_15   ldx:  $001E,y
+                 stx   spriteIdx
+                 jmp   CopyOneSprite
+
+; We can optimize later, for now just copy the sprite data and mask into its own
+; direct page buffer and combine with the tile data later
+
+; We set up direct page pointers to the mask bank and use the bank register for the
+; data.
+CopyFourSpritesAbove
+
+; Copy three sprites into a temporary direct page buffer
+LDA_IL           equ   $A7    ; lda [dp]
+LDA_ILY          equ   $B7    ; lda [dp],y
+AND_IL           equ   $27    ; and [dp]
+AND_ILY          equ   $37    ; and [dp],y
+
+CopyThreeSprites
+]line            equ   0
+                 lup   8
+                 ldy   #]line*SPRITE_PLANE_SPAN
+                 lda   (spriteIdx+8),y
+                 db    AND_ILY,spriteIdx+4            ; Can't use long indirect inside LUP because of ']'
+                 ora   (spriteIdx+4),y
+                 db    AND_ILY,spriteIdx+0
+                 ora   (spriteIdx+0),y
+                 sta   tmp_sprite_data+{]line*4}
+
+                 db    LDA_ILY,spriteIdx+8
+                 db    AND_ILY,spriteIdx+4
+                 db    AND_ILY,spriteIdx+0
+                 sta   tmp_sprite_mask+{]line*4}
+
+                 ldy   #]line*SPRITE_PLANE_SPAN+2
+                 lda   (spriteIdx+8),y
+                 db    AND_ILY,spriteIdx+4 
+                 ora   (spriteIdx+4),y
+                 db    AND_ILY,spriteIdx+0
+                 ora   (spriteIdx+0),y
+                 sta   tmp_sprite_data+{]line*4}+2
+
+                 db    LDA_ILY,spriteIdx+8
+                 db    AND_ILY,spriteIdx+4
+                 db    AND_ILY,spriteIdx+0
+                 sta   tmp_sprite_mask+{]line*4}+2
+]line            equ   ]line+1
+                 --^
+;                 jmp   FinishTile
+
+; Copy two sprites into a temporary direct page buffer
+CopyTwoSprites
+]line            equ   0
+                 lup   8
+                 ldy   #]line*SPRITE_PLANE_SPAN
+                 lda   (spriteIdx+4),y
+                 db    AND_ILY,spriteIdx+0
+                 ora   (spriteIdx+0),y
+                 sta   tmp_sprite_data+{]line*4}
+
+                 db    LDA_ILY,spriteIdx+4
+                 db    AND_ILY,spriteIdx+0
+                 sta   tmp_sprite_mask+{]line*4}
+
+                 ldy   #]line*SPRITE_PLANE_SPAN+2
+                 lda   (spriteIdx+4),y
+                 db    AND_ILY,spriteIdx+0
+                 ora   (spriteIdx+0),y
+                 sta   tmp_sprite_data+{]line*4}+2
+
+                 db    LDA_ILY,spriteIdx+4
+                 db    AND_ILY,spriteIdx+0
+                 sta   tmp_sprite_mask+{]line*4}+2
+]line            equ   ]line+1
+                 --^
+;                 jmp   FinishTile
+
+; Copy a single piece of sprite data into a temporary direct page . X = spriteIdx
+CopyOneSprite
+]line            equ   0
+                 lup   8
+                 ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+                 sta   tmp_sprite_data+{]line*4}
+                 ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+                 sta   tmp_sprite_data+{]line*4}+2
+
+                 ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
+                 sta   tmp_sprite_mask+{]line*4}
+                 ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+                 sta   tmp_sprite_mask+{]line*4}+2
+]line            equ   ]line+1
+                 --^
+
+;                 jmp   FinishTile
 
 ; Reference all of the tile rendering subroutines defined in the TileXXXXX files.  Each file defines
 ; 8 entry points:
@@ -518,7 +675,7 @@ _CopyBG1Tile
 ; a tile.
 ;
 ; TileStore+TS_TILE_ID        : Tile descriptor
-; TileStore+TS_DIRTY          : $FFFF is clean, otherwise stores a back-reference to the DirtyTiles array
+; TileStore+TS_DIRTY          : $0000 is clean, any other value indicated a dirty tile
 ; TileStore+TS_TILE_ADDR      : Address of the tile in the tile data buffer
 ; TileStore+TS_CODE_ADDR_LOW  : Low word of the address in the code field that receives the tile
 ; TileStore+TS_CODE_ADDR_HIGH : High word of the address in the code field that receives the tile
@@ -590,11 +747,14 @@ InitTiles
                  lda  #0
                  stal TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
                  stal TileStore+TS_TILE_ADDR,x
-                 stal TileStore+TS_TILE_DISP,x
-
                  stal TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
-                 lda  #$FFFF                            ; none of the tiles are dirty
-                 stal TileStore+TS_DIRTY,x
+                 stal TileStore+TS_DIRTY,x              ; none of the tiles are dirty
+
+                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
+                 stal TileStore+TS_DIRTY_TILE_DISP,x
+
+                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
+                 stal TileStore+TS_BASE_TILE_DISP,x     
 
                  lda  :vbuff                            ; array of sprite vbuff addresses per tile
                  stal TileStore+TS_VBUFF_ARRAY_ADDR,x
@@ -700,7 +860,16 @@ _SetTile
                  ldal TileStore+TS_TILE_ID,x
                  and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
                  xba
-                 stal TileStore+TS_TILE_DISP,x
+                 tay
+                 lda  DirtyTileProcs,y
+                 stal TileStore+TS_DIRTY_TILE_DISP,x
+
+                 ldal TileStore+TS_TILE_ID,x        ; Get the non-sprite dispatch address
+                 and  #TILE_CTRL_MASK
+                 xba
+                 tay
+                 lda  TileProcs,y
+                 stal TileStore+TS_BASE_TILE_DISP,x
 
 ;                txa                                ; Add this tile to the list of dirty tiles to refresh
                  jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
@@ -731,11 +900,12 @@ _PushDirtyTile
 ; alternate entry point if the x-register is already set
 _PushDirtyTileX
                  ldal TileStore+TS_DIRTY,x
-                 bpl  :occupied2
+                 bne  :occupied2
 
-                 txa                                  ; any non-negative value will work, this saves work below
+                 inc                                  ; any non-zero value will work
                  stal TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
 
+                 txa
                  ldx  DirtyTileCount ; 4
                  sta  DirtyTiles,x   ; 6
                  inx                 ; 2
@@ -783,7 +953,15 @@ ApplyTiles       ENT
                  plb
                  rtl
 
+; The _ApplyTiles function is responsible for rendering all of the dirty tiles into the code
+; field.  In this function we switch to the second direct page which holds the temporary
+; working buffers for tile rendering.
 _ApplyTiles
+                 tdc
+                 clc
+                 adc  #$100                  ; move to the next page
+                 tcd
+
                  bra  :begin
 
 :loop
@@ -801,4 +979,124 @@ _ApplyTiles
 
 :begin           ldy  DirtyTileCount
                  bne  :loop
+
+                 tdc                         ; Move back to the original direct page
+                 sec
+                 sbc  #$100
+                 tcd
                  rts
+
+; To make processing the tile faster, we do them in chunks of eight.  This allows the loop to be
+; unrolled, which means we don't have to keep track of the register value and makes it faster to
+; clear the dirty tile flag after being processed.
+
+                 tdc                       ; Move to the dedicated direct page for tile rendering
+                 clc
+                 adc  #$100
+                 tcd
+
+                 phb                       ; Save the current bank
+                 tsc
+                 sta   tmp0                ; Save it on the direct page
+                 bra   at_loop
+
+; The DirtyTiles array and the TileStore information is in the Tile Store bank.  Because we
+; process up to 8 tiles as a time and the tile code sets the bank register to the target
+; code field bank, we need to restore the bank register each time.  So, we pre-push
+; 8 copies of the TileStore bank onto the stack.
+
+
+at_exit
+                 tdc                             ; Move back to the original direct page
+                 sec
+                 sbc  #$100
+                 tcd
+
+                 plb                             ; Restore the original data bank and return
+                 rts
+dt_base          equ   $FE                        ; top of second direct page space
+
+at_loop
+                 lda   tmp0
+                 tcs
+
+                 lda  DirtyTileCount              ; This is pre-multiplied by 2
+                 beq  at_exit                     ; If there are no items, exit
+
+                 ldx   TileStoreBankDoubled
+                 phx
+                 phx
+                 phx
+
+                 cmp  #16                         ; If there are >= 8 elements, then
+                 bcs  at_chunk                    ; do a full chunk
+
+                 stz  DirtyTileCount              ; Otherwise, this pass will handle them all
+                 tax
+                 jmp  (at_table,x)
+at_table         da   at_exit,at_one,at_two,at_three
+                 da   at_four,at_five,at_six,at_seven
+
+at_chunk         sec
+                 sbc  #16
+                 sta  DirtyTileCount              ; Fall through
+
+; Because all of the registers get used in the _RenderTile2 subroutine, we
+; push the values from the DirtyTiles array onto the stack and then pop off
+; the values as we go
+
+                 ldy   dt_base                    ; Reload the base index
+                 ldx   DirtyTiles+14,y            ; Load the TileStore offset
+                 stz   TileStore+TS_DIRTY,x       ; Clear this tile's dirty flag
+                 jsr  _RenderTile2                ; Draw the tile
+                 plb                              ; Reset the data bank to the TileStore bank
+
+at_seven
+                 ldy   dt_base
+                 ldx   DirtyTiles+12,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTile2
+                 plb
+
+at_six
+                 ldy   dt_base
+                 ldx   DirtyTiles+10,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTile2
+                 plb
+
+at_five
+                 ldy   dt_base
+                 ldx   DirtyTiles+8,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTile2
+                 plb
+
+at_four
+                 ldy   dt_base
+                 ldx   DirtyTiles+6,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTile2
+                 plb
+
+at_three
+                 ldy   dt_base
+                 ldx   DirtyTiles+4,y
+                 jsr   _RenderTile2
+                 plb
+
+at_two
+                 ldy   dt_base
+                 ldx   DirtyTiles+2,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTile2
+                 plb
+
+at_one
+                 ldy   dt_base
+                 ldx   DirtyTiles+0,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTile2
+                 plb
+
+                 jmp   at_loop

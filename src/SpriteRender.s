@@ -1,23 +1,42 @@
+; Alternate entry point that takes arguments in registers instead of using a _Sprite
+; record
+;
+; Y = VBUFF address
+; X = Tile Data address
+; A = Sprite Flags
+_DrawSpriteStamp
+             sty    tmp1
+             stx    tmp2
+             and    #DISP_MASK                    ; dispatch to all of the different orientations
+             sta    tmp3
+             jmp    _DSSCommon
+
 ; Function to render a sprite from a sprite definition into the internal data buffers
 ;
 ; X = sprite index
-_DrawSpriteSheet
+; _DrawSpriteSheet
 DISP_VFLIP   equ    $0004      ; hard code these because they are internal values
 DISP_HFLIP   equ    $0002
 DISP_MASK    equ    $0018      ; Isolate the size bits
 
-             phx
+;             phx
+;
+;             lda    _Sprites+VBUFF_ADDR,x
+;             sta    tmp1
+;
+;             lda    _Sprites+TILE_DATA_OFFSET,x
+;             sta    tmp2
+;
+;             lda    _Sprites+SPRITE_DISP,x
+;             and    #DISP_MASK                    ; dispatch to all of the different orientations
+;             sta    tmp3
+;
+;             jsr    _DSSCommon
+;
+;             plx
+;             rts
 
-             lda    _Sprites+VBUFF_ADDR,x
-             sta    tmp1
-
-             lda    _Sprites+TILE_DATA_OFFSET,x
-             sta    tmp2
-
-             lda    _Sprites+SPRITE_DISP,x
-             and    #DISP_MASK                    ; dispatch to all of the different orientations
-             sta    tmp3
-
+_DSSCommon
 ; Set bank
              phb
              pea   #^tiledata                     ; Set the bank to the tile data
@@ -58,8 +77,6 @@ DISP_MASK    equ    $0018      ; Isolate the size bits
 ; Restore bank
              plb                                  ; pop extra byte
              plb
-
-             plx
              rts
 ; 
 ; X = _Sprites array offset

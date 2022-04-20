@@ -81,105 +81,206 @@ _LocalToTileStore
 ; ...
 ;
 ; For the Y-coordinate, we just use "mod 8" instead of "mod 4"
-mdsOut  rts
+mdsOut2
+        lda   #6                                 ; Pick a value for a 0x0 tile sprite
+        sta   _Sprites+TS_COVERAGE_SIZE,y         ; zero the list of tile store addresses
+        rts
+
 _MarkDirtySprite
-
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_1,y       ; Clear this sprite's dirty tile list in case of an early exit
-        lda   _SpriteBits,y                      ; Cache its bit flag to mark in the tile slots
-        sta   SpriteBit
-
         lda   _Sprites+IS_OFF_SCREEN,y           ; Check if the sprite is visible in the playfield
-        bne   mdsOut
+        bne   mdsOut2
 
-; At this point we know that we have to update the tiles that overlap the sprite's rectangle defined
-; by (Top, Left), (Bottom, Right).  First, calculate the row and column in the TileStore that 
-; encloses the top-left on-screen corner of the sprite
+; Add the first visible row of the sprite to the Y-scroll offset to find the first line in the
+; code field that needs to be drawn.  The range of values is 0 to 199+207 = [0, 406]
 
         clc
         lda   _Sprites+SPRITE_CLIP_TOP,y
         adc   StartYMod208                       ; Adjust for the scroll offset
-        tax                                      ; cache
-        cmp   #208                               ; check if we went too far positive
-        bcc   *+5
-        sbc   #208
+        pha                                      ; Cache
+        and   #$FFF8                             ; mask first to ensure LSR will clear the carry
         lsr
-        lsr                                       ; This is the row in the Tile Store for top-left corner of the sprite
-        and   #$FFFE                              ; Store the value pre-multiplied by 2 for indexing in the :mark_R_C routines
+        lsr
+        tax
+        lda   TileStoreLookupYTable,x            ; Even numbers from [0, 100] (50 elements)
         sta   RowTop
+        pla
 
-; Next, calculate how many tiles are covered by the sprite.  This uses the table at the top of this function, but
-; the idea is that for every increment of StartX or StartY, that can shift the sprite into the next tile, up to
-; a maximum of mod 4 / mod 8.  So the effective width of a sprite is (((StartX + Clip_Left) mod 4) + Clip_Width) / 4
+; Get the position of the top edge within the tile and then add it to the sprite's height
+; to calculate the number of tiles that are overlapped.  We use the actual width and height
+; values here so small sprites (like 4x4 bullets) only force an update to the actual tiles
+; that are intersected, rather than assuming an 8x8 sprite always takes up that amount of
+; space.
 
         txa
         and   #$0007
-        sta   tmp0                                ; save to adjust sprite origin
+        tax                                       ; cache again. This is a bit faster than recalculating
 
-        lda   _Sprites+SPRITE_CLIP_HEIGHT,y       ; Nominal value between 0 and 16+7 = 23 = 10111
+        adc   _Sprites+SPRITE_CLIP_HEIGHT,y       ; Nominal value between 0 and 16+7 = 23 = 10111
         dec
-        clc
-        adc   tmp0
         and   #$0018
         sta   AreaIndex
 
-; Repeat to get the same information for the columns
+        txa
+        asl
+        tax
+        lda   :vbuff_mul,x
+        sta   tmp0
+
+; Add the horizontal position to the horizontal offset to find the first column in the
+; code field that needs to be drawn.  The range of values is 0 to 159+163 = [0, 322]
 
         clc
         lda   _Sprites+SPRITE_CLIP_LEFT,y
         adc   StartXMod164
         tax
-        cmp   #164
-        bcc   *+5
-        sbc   #164
+        and   #$FFFC
         lsr
-        and   #$FFFE                             ; Same pre-multiply by 2 for later
-        sta   ColLeft
+;        sta   ColLeft                            ; Even numbers from [0, 160] (80 elements)
+        adc   RowTop
+        sta   _Sprites+TS_LOOKUP_INDEX,y          ; This is the index into the TileStoreLookup table
+
+
+; Calculate the final address of the sprite data in the stamp buffer. We have to move earlier 
+; in the buffer based on the horizontal offset and move up for each vertical offset.
 
         txa
         and   #$0003
-        sta   tmp1                               ; save to adjust sprite origin
+        tax
 
-        lda   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
+        adc   tmp0                               ; add to the vertical offset
+
+; Subtract this value from the SPRITE_DISP address
+
+        eor   #$FFFF                             ; A = -X - 1
+        sec                                      ; C = 1
+        adc   _Sprites+SPRITE_DISP,y             ; A = SPRITE_DISP + (-X - 1) + 1 = SPRITE_DISP - X
+
+        sta   VBuffOrigin                        ; this is the final (adjusted) origin for this sprite
+
+; Load the base address of the appropriate TS_VBUFF_? offset for this sprite index and
+; store it as an indirect address.
+
+        lda   _Sprites+TS_VBUFF_BASE_ADDR,y
+        sta   tmp0
+
+; We know the starting corner of the TileStore.  Now, we need to figure out now many tiles
+; the sprite covers.  This is a function of the sprite's width and height and the specific
+; location of the upper-left corner of the sprite within the corner tile.
+
+        txa
+        adc   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
         dec
-        clc
-        adc   tmp1
+        and   #$000C
         lsr                                      ; max value = 4 = 0x04
-        and   #$0006
-        ora   AreaIndex
-        sta   AreaIndex
+        ora   AreaIndex                          ; merge into the area index
+
+; No need to copy the TileStore addresses into the Sprite's TILE_STORE_ADDR values.  Just
+; hold a copy of the corner offset into the lookup table and the sprite's size in tiles.
+; Then, when we need to erase we can just lookup the values in the TileStoreLookup table.
+
+        sta   _Sprites+TS_COVERAGE_SIZE,y
+        tax
+;        lda   TileStoreBaseIndex
+;        sta   _Sprites+TS_LOOKUP_INDEX,y
+
+; Jump to the appropriate marking routine
+
+        jmp   (:mark,x)
+
+mdsOut  rts
+;_MarkDirtySprite
+;
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_1,y       ; Clear this sprite's dirty tile list in case of an early exit
+;        lda   _SpriteBits,y                      ; Cache its bit flag to mark in the tile slots
+;        sta   SpriteBit
+
+;        lda   _Sprites+IS_OFF_SCREEN,y           ; Check if the sprite is visible in the playfield
+;        bne   mdsOut
+
+; At this point we know that we have to update the tiles that overlap the sprite's rectangle defined
+; by (Top, Left), (Bottom, Right).  First, calculate the row and column in the TileStore that 
+; encloses the top-left on-screen corner of the sprite
+
+;        clc
+;        lda   _Sprites+SPRITE_CLIP_TOP,y
+;        adc   StartYMod208                       ; Adjust for the scroll offset
+;        tax                                      ; cache
+;        cmp   #208                               ; check if we went too far positive
+;        bcc   *+5
+;        sbc   #208
+;        lsr
+;        lsr                                       ; This is the row in the Tile Store for top-left corner of the sprite
+;        and   #$FFFE                              ; Store the value pre-multiplied by 2 for indexing in the :mark_R_C routines
+;        sta   RowTop
+
+; Next, calculate how many tiles are covered by the sprite.  This uses the table at the top of this function, but
+; the idea is that for every increment of StartX or StartY, that can shift the sprite into the next tile, up to
+; a maximum of mod 4 / mod 8.  So the effective width of a sprite is (((StartX + Clip_Left) mod 4) + Clip_Width) / 4
+
+;        txa
+;        and   #$0007
+;        sta   tmp0                                ; save to adjust sprite origin
+
+;        lda   _Sprites+SPRITE_CLIP_HEIGHT,y       ; Nominal value between 0 and 16+7 = 23 = 10111
+;        dec
+;        clc
+;        adc   tmp0
+;        and   #$0018
+;        sta   AreaIndex
+
+; Repeat to get the same information for the columns
+
+;        clc
+;        lda   _Sprites+SPRITE_CLIP_LEFT,y
+;        adc   StartXMod164
+;        tax
+;        cmp   #164
+;        bcc   *+5
+;        sbc   #164
+;        lsr
+;        and   #$FFFE                             ; Same pre-multiply by 2 for later
+;        sta   ColLeft
+
+;        txa
+;        and   #$0003
+;        sta   tmp1                               ; save to adjust sprite origin;
+
+;        lda   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
+;        dec
+;        clc
+;        adc   tmp1
+;        lsr                                      ; max value = 4 = 0x04
+;        and   #$0006
+;        ora   AreaIndex
+;        sta   AreaIndex
 
 ; Calculate the modified origin address for the sprite.  We need to look at the sprite flip bits
 ; to determine which of the four sprite stamps is the correct one to use.  Then, offset that origin
 ; based on the (x, y) and (startx, starty) positions.
 
-        lda   _Sprites+SPRITE_DISP,y             ; Each stamp is 12 bytes
-        and   #$0006
-        tax
-        lda   :stamp_step,x
-        clc
-        adc   _Sprites+VBUFF_ADDR,y
-        sec
-        sbc   tmp1                               ; Subtract the horizontal within-tile displacement
-        asl   tmp0
-        ldx   tmp0
-        sec
-        sbc   :vbuff_mul,x
-        sta   VBuffOrigin
-        lda   #^TileStore
-        sta   tmp1
+;        lda   _Sprites+SPRITE_DISP,y             ; Get the sprite's base display address
+;        sec
+;        sbc   tmp1                               ; Subtract the horizontal within-tile displacement
+;        asl   tmp0
+;        ldx   tmp0
+;        sec
+;        sbc   :vbuff_mul,x
+;        sta   VBuffOrigin
+;        lda   #^TileStore
+;        sta   tmp1
 
 ; Dispatch to cover the tiles
 
-        ldx   AreaIndex
-        jmp   (:mark,x)
+;        ldx   AreaIndex
+;        jmp   (:mark,x)
 :mark   dw    :mark1x1,:mark1x2,:mark1x3,mdsOut
         dw    :mark2x1,:mark2x2,:mark2x3,mdsOut
         dw    :mark3x1,:mark3x2,:mark3x3,mdsOut
         dw    mdsOut,mdsOut,mdsOut,mdsOut
 
-:stamp_step dw  0,12,24,36
 :vbuff_mul  dw  0,52,104,156,208,260,312,364
+
 ; Dispatch to the calculated sizing
 
 ; Begin a list of subroutines to cover all of the valid sprite size combinations.  This is all unrolled code,
@@ -191,11 +292,170 @@ _MarkDirtySprite
 ;
 ; There *might* be some speed gained by pushing a list of :mark_R_C addressed onto the stack in the clipping routing
 ; and dispatching that way, but probably not...
+
+:mark1x1_v2
+
+        tax                                     ; Get the TileStoreBaseIndex
+
+        ldy   TileStoreLookup,x                 ; Get the offset into the TileStore for this tile
+
+        lda   SpriteBit                         ; Mark this tile as having this sprite
+        ora   TileStore+TS_SPRITE_FLAG,y
+        sta   TileStore+TS_SPRITE_FLAG,y
+
+        lda   VBuffOrigin
+        sta   (tmp0),y                          ; Fill in the slot for this sprite on this tile
+
+        lda   TileStore+TS_DIRTY,y              ; If this tile is not yet marked dirty, mark it
+        bne   exit1x1
+
+        ldx   DirtyTileCount
+        tya
+        sta   DirtyTiles,x
+        sta   TileStore+TS_DIRTY,y
+        inx
+        inx
+        stx   DirtyTileCount
+
+exit1x1
+        rts
+
+:mark2x2_v2
+
+; Put the TileStoreBaseIndex into the X-register
+
+        tax
+
+; Push a sentinel value of the stack that we use to inline all of the dirty tile array updates faster
+; and the end of this routine.
+
+        pea   #$0000
+
+; Now, move through each of the TileStore locations and set the necessary fields.  We have to do the
+; following
+;
+; 1. Set the marker bit in the TS_SPRITE_FLAG so the renderer knows which vbuff addresses to load
+; 2. Set the address of the sprite stamp graphics that are used.  This can change every frame.
+; 3. Mark the tile as dirty and put it on the list if it was marked dirty for the first time.
+
+        ldy   TileStoreLookup,x                 ; Get the offset into the TileStore for this tile
+
+        lda   SpriteBit                         ; Mark this tile as having this sprite
+        ora   TileStore+TS_SPRITE_FLAG,y
+        sta   TileStore+TS_SPRITE_FLAG,y
+
+        lda   TileStore+TS_DIRTY,y              ; If this tile is not yet marked dirty, queue it up
+        bne   *+3
+        phy
+
+        lda   VBuffOrigin
+        sta   (tmp0),y                          ; Fill in the slot for this sprite on this tile
+
+; Move to the next tile
+
+        ldy   TileStoreLookup+2,x
+
+        adc   #4                                ; Weave in the VBuffOrigin values to save a load every
+        sta   (tmp0),y                          ; other iteration
+
+        lda   SpriteBit
+        ora   TileStore+TS_SPRITE_FLAG,y
+        sta   TileStore+TS_SPRITE_FLAG,y
+
+        lda   TileStore+TS_DIRTY,y
+        bne   *+3
+        phy
+
+; Third tile
+
+        ldy   TileStoreLookup+TS_LOOKUP_SPAN,x
+
+        lda   SpriteBit
+        ora   TileStore+TS_SPRITE_FLAG,y
+        sta   TileStore+TS_SPRITE_FLAG,y
+
+        lda   TileStore+TS_DIRTY,y
+        bne   *+3
+        phy
+
+        lda   VBuffOrigin
+        adc   #SPRITE_PLANE_SPAN
+        sta   (tmp0),y
+
+; Fourth tile
+
+        ldy   TileStoreLookup+TS_LOOKUP_SPAN+2,x
+
+        adc   #4+SPRITE_PLANE_SPAN
+        sta   (tmp0),y
+
+        lda   SpriteBit
+        ora   TileStore+TS_SPRITE_FLAG,y
+        sta   TileStore+TS_SPRITE_FLAG,y
+
+; Lift this above the last TS_DIRTY check
+
+        ldx   DirtyTileCount
+
+; Check the TS_DIRTY flag for this tile.  We handle it immediately, if needed
+
+        lda   TileStore+TS_DIRTY,y
+        bne   skip
+
+; Now, update the Dirty Tile array
+
+        tya
+        sta   DirtyTiles,x
+        sta   TileStore+TS_DIRTY,y
+
+skip
+        pla
+        beq   :done1
+        sta   DirtyTiles+2,x
+        tay
+        sta   TileStore+TS_DIRTY,y
+
+        pla
+        beq   :done2
+        sta   DirtyTiles+4,x
+        tay
+        sta   TileStore+TS_DIRTY,y
+
+        pla
+        beq   :done3
+        sta   DirtyTiles+6,x
+        tay
+        sta   TileStore+TS_DIRTY,y
+
+; Maximum number of dirty tiles reached. Just fall through.
+
+        pla
+        txa
+        adc  #8
+        sta  DirtyTileCount
+        rts
+:done3
+        txa
+        adc  #6
+        sta  DirtyTileCount
+        rts
+:done2
+        txa
+        adc  #4
+        sta  DirtyTileCount
+        rts
+:done1
+        inx
+        inx
+        stx  DirtyTileCount
+
+        rts
+
 :mark1x1
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         rts
 
 ; NOTE: If we rework the _PushDirtyTile to use the Y register instead of the X register, we can
@@ -209,112 +469,112 @@ _MarkDirtySprite
 
 :mark1x2
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_0_1
-        sta   _Sprites+TILE_STORE_ADDR_2,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
         rts
 
 :mark1x3
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_0_1
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         jsr   :mark_0_2
-        sta   _Sprites+TILE_STORE_ADDR_3,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_4,y
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_4,y
         rts
 
 :mark2x1
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_1_0
-        sta   _Sprites+TILE_STORE_ADDR_2,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
         rts
 
 :mark2x2
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_0_1
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         jsr   :mark_1_0
-        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
         jsr   :mark_1_1
-        sta   _Sprites+TILE_STORE_ADDR_4,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_5,y
+;        sta   _Sprites+TILE_STORE_ADDR_4,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_5,y
         rts
 
 :mark2x3
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_0_1
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         jsr   :mark_0_2
-        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
         jsr   :mark_1_0
-        sta   _Sprites+TILE_STORE_ADDR_4,y
+;        sta   _Sprites+TILE_STORE_ADDR_4,y
         jsr   :mark_1_1
-        sta   _Sprites+TILE_STORE_ADDR_5,y
+;        sta   _Sprites+TILE_STORE_ADDR_5,y
         jsr   :mark_1_2
-        sta   _Sprites+TILE_STORE_ADDR_6,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_7,y
+;        sta   _Sprites+TILE_STORE_ADDR_6,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_7,y
         rts
 
 :mark3x1
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_1_0
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         jsr   :mark_2_0
-        sta   _Sprites+TILE_STORE_ADDR_3,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_4,y
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_4,y
         rts
 
 :mark3x2
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_1_0
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         jsr   :mark_2_0
-        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
         jsr   :mark_0_1
-        sta   _Sprites+TILE_STORE_ADDR_4,y
+;        sta   _Sprites+TILE_STORE_ADDR_4,y
         jsr   :mark_1_1
-        sta   _Sprites+TILE_STORE_ADDR_5,y
+;        sta   _Sprites+TILE_STORE_ADDR_5,y
         jsr   :mark_2_1
-        sta   _Sprites+TILE_STORE_ADDR_6,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_7,y
+;        sta   _Sprites+TILE_STORE_ADDR_6,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_7,y
         rts
 
 :mark3x3
         jsr   :mark_0_0
-        sta   _Sprites+TILE_STORE_ADDR_1,y
+;        sta   _Sprites+TILE_STORE_ADDR_1,y
         jsr   :mark_1_0
-        sta   _Sprites+TILE_STORE_ADDR_2,y
+;        sta   _Sprites+TILE_STORE_ADDR_2,y
         jsr   :mark_2_0
-        sta   _Sprites+TILE_STORE_ADDR_3,y
+;        sta   _Sprites+TILE_STORE_ADDR_3,y
         jsr   :mark_0_1
-        sta   _Sprites+TILE_STORE_ADDR_4,y
+;        sta   _Sprites+TILE_STORE_ADDR_4,y
         jsr   :mark_1_1
-        sta   _Sprites+TILE_STORE_ADDR_5,y
+;        sta   _Sprites+TILE_STORE_ADDR_5,y
         jsr   :mark_2_1
-        sta   _Sprites+TILE_STORE_ADDR_6,y
+;        sta   _Sprites+TILE_STORE_ADDR_6,y
         jsr   :mark_0_2
-        sta   _Sprites+TILE_STORE_ADDR_7,y
+;        sta   _Sprites+TILE_STORE_ADDR_7,y
         jsr   :mark_1_2
-        sta   _Sprites+TILE_STORE_ADDR_8,y
+;        sta   _Sprites+TILE_STORE_ADDR_8,y
         jsr   :mark_2_2
-        sta   _Sprites+TILE_STORE_ADDR_9,y
-        lda   #0
-        sta   _Sprites+TILE_STORE_ADDR_10,y
+;        sta   _Sprites+TILE_STORE_ADDR_9,y
+;        lda   #0
+;        sta   _Sprites+TILE_STORE_ADDR_10,y
         rts
 
 ; Begin List of subroutines to mark each tile offset

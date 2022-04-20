@@ -195,15 +195,13 @@ _RenderDirtyTile
 
             pei   TileStoreBankAndBank01         ; Special value that has the TileStore bank in LSB and $01 in MSB
             plb
-            txy
 
-            ldx   TileStore+TS_TILE_DISP,y       ; get the finalized tile descriptor
-            ldal  DirtyTileProcs,x               ; load and patch in the appropriate subroutine
+            lda   TileStore+TS_DIRTY_TILE_DISP,x ; load and patch in the appropriate subroutine
             stal  :tiledisp+1
 
-            ldx   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
-            lda   TileStore+TS_SCREEN_ADDR,y     ; Get the on-screen address of this tile
-            tay
+            ldy   TileStore+TS_SCREEN_ADDR,x     ; Get the on-screen address of this tile
+            lda   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
+            tax
 
             plb                                  ; set the bank
 
@@ -671,7 +669,7 @@ dirty_sprite
                  stx   spriteIdx+6
                  jmp   BlitFourSprites
 
-DirtyTileProcs       dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
+DirtyTileProcs   dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
 ;DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
 
 ; Blit tiles directly to the screen.
@@ -998,4 +996,4 @@ BlitOneSprite
                  _R0W0
                  cli
                  pld
-                 rts 
+                 rts

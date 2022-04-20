@@ -160,7 +160,7 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
 
 ; Generalized routine that calculates the on-screen address of the tiles and takes the 
 ; StartX and StartY values into consideration.  This routine really exists to support
-; the dirty tile rendering mode and the tiles *must* be aligned with the playfield.  
+; the dirty tile rendering mode and the tiles *must* be aligned with the playfield.
 ; That is, StartX % 4 == 0 and StartY % 8 == 0.  If these conditions are not met, then
 ; screen will not render correctly.
 _RecalcTileScreenAddrs

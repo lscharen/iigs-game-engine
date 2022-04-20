@@ -87,11 +87,11 @@ ActiveSpriteCount      equ   102
 BankLoad               equ   104
 TileStoreBankAndBank01 equ   106
 TileStoreBankAndTileDataBank equ 108
-Next                   equ   110
+TileStoreBankDoubled   equ   110
+Next                   equ   112
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
-AppSpace               equ   160         ; 16 bytes of space reserved for application use
-tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
+; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 
 tmp8                   equ   224         ; another 16 bytes of temporary space to be used as scratch 
@@ -111,6 +111,36 @@ tmp4                   equ   248
 tmp5                   equ   250
 tmp6                   equ   252
 tmp7                   equ   254
+
+; Defines for the second direct page (used in the tile blitters)
+
+sprite_ptr0            equ   0           ; Each tile can render up to 4 sprite blocks.  The sprite
+sprite_ptr1            equ   4           ; data and mask values live in different banks, but have a
+sprite_ptr2            equ   8           ; parallel structure.  The high word of each point is set to
+sprite_ptr3            equ   12          ; the mask bank.  With the Bank register set, both data and mask
+;                                        ; can be accessed through the same pointer, e.g. lda (sprite_ptr0)
+;                                        ; and [sprite_ptr0]
+
+tmp_sprite_data        equ   16          ; 32 byte temporary buffer to build up sprite data values
+tmp_sprite_mask        equ   48          ; 32 byte temporary buffer to build up sprite mask values
+tmp_tile_data          equ   80          ; 32 byte temporary buffer to build up tile data values
+tmp_tile_mask          equ   112         ; 32 byte temporary buffer to build up tile mask values
+
+; Temporary direct page locations used by some of the complex tile renderers
+_X_REG                 equ   144
+_Y_REG                 equ   146
+_T_PTR                 equ   148         ; Copy of the tile address pointer
+_BASE_ADDR             equ   150         ; Copy of BTableLow for this tile
+_SPR_X_REG             equ   152         ; Cache address of sprite plane source for a tile
+_JTBL_CACHE            equ   154         ; Cache the offset to the exception handler for a column
+_OP_CACHE              equ   156         ; Cache of a relevant operand / oeprator
+_TILE_ID               equ   158         ; Copy of the tile descriptor
+
+; Define free space the the application to use
+FREE_SPACE_DP2         equ   160
+
+; End direct page values
+
 
 DIRTY_BIT_BG0_X        equ   $0001
 DIRTY_BIT_BG0_Y        equ   $0002
@@ -153,17 +183,55 @@ SPRITE_8X8             equ   $0000
 SPRITE_VFLIP           equ   $0400
 SPRITE_HFLIP           equ   $0200
 
-MAX_TILES             equ  {26*41}            ; Number of tiles in the code field (41 columns * 26 rows)
-TILE_STORE_SIZE       equ  {MAX_TILES*2}      ; The tile store contains a tile descriptor in each slot
+; Stamp storage parameters
+VBUFF_STRIDE_BYTES     equ 12*4                          ; Each line has 4 slots of 16 pixels + 8 buffer pixels
+VBUFF_TILE_ROW_BYTES   equ 8*VBUFF_STRIDE_BYTES          ; Each row is comprised of 8 lines
+VBUFF_SPRITE_STEP      equ VBUFF_TILE_ROW_BYTES*3        ; Allocate space fo 16 rows + 8 rows of buffer
+VBUFF_SPRITE_START     equ {8*VBUFF_TILE_ROW_BYTES}+4    ; Start at an offset so $0000 can be used as an empty value
+VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps
+
+; Tile storage parameters
+TILE_STORE_WIDTH      equ  41
+TILE_STORE_HEIGHT     equ  26
+MAX_TILES             equ  {26*41}                ; Number of tiles in the code field (41 columns * 26 rows)
+TILE_STORE_SIZE       equ  {MAX_TILES*2}          ; The tile store contains a tile descriptor in each slot
 
 TS_TILE_ID            equ  TILE_STORE_SIZE*0      ; tile descriptor for this location
 TS_DIRTY              equ  TILE_STORE_SIZE*1      ; Flag. Used to prevent a tile from being queued multiple times per frame
 TS_SPRITE_FLAG        equ  TILE_STORE_SIZE*2      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
 TS_TILE_ADDR          equ  TILE_STORE_SIZE*3      ; cached value, the address of the tiledata for this tile
 TS_CODE_ADDR_LOW      equ  TILE_STORE_SIZE*4      ; const value, address of this tile in the code fields
-TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5      ; const value
+TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5
 TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
 TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
 TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
 TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
-TS_TILE_DISP          equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize tile dispatch in the Render function
+TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
+TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
+
+; 16 consecutive entries to provide directly addressable space for holding the VBUFF address for the
+; sprites that may be rendered at a given tile.  Given a tile store offset, X, the way to address the
+; address for the Y'th sprite is
+;
+;   lda TileStore+TS_VBUFF_0+{Y*TILE_STORE_SIZE},x
+;
+; Moving to the next tile can be done with a constant.
+;
+;   lda TileStore+TS_VBUFF_0+{Y*TILE_STORE_SIZE}+{41*row}+{2*col},x
+
+TS_VBUFF_0            equ  TILE_STORE_SIZE*12
+TS_VBUFF_1            equ  TILE_STORE_SIZE*13
+TS_VBUFF_2            equ  TILE_STORE_SIZE*14
+TS_VBUFF_3            equ  TILE_STORE_SIZE*15
+TS_VBUFF_4            equ  TILE_STORE_SIZE*16
+TS_VBUFF_5            equ  TILE_STORE_SIZE*17
+TS_VBUFF_6            equ  TILE_STORE_SIZE*18
+TS_VBUFF_7            equ  TILE_STORE_SIZE*19
+TS_VBUFF_8            equ  TILE_STORE_SIZE*20
+TS_VBUFF_9            equ  TILE_STORE_SIZE*21
+TS_VBUFF_10           equ  TILE_STORE_SIZE*22
+TS_VBUFF_11           equ  TILE_STORE_SIZE*23
+TS_VBUFF_12           equ  TILE_STORE_SIZE*22
+TS_VBUFF_13           equ  TILE_STORE_SIZE*23
+TS_VBUFF_14           equ  TILE_STORE_SIZE*24
+TS_VBUFF_15           equ  TILE_STORE_SIZE*25
