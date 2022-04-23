@@ -1,3 +1,3 @@
 ; sprite stamp masks
 spritemask ENT
-           ds   65536
+           ds   65535
