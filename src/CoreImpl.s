@@ -88,10 +88,7 @@ Overlay           EXT
 ; A = memory manager userId
 ; X = tool number
 _CoreStartUp
-                  sta       UserId              ; This is the first thing to do
-                  stx       ToolNum
-
-                  jsr       IntStartUp          ; Enable certain iterrupts
+                  jsr       IntStartUp          ; Enable certain interrupts
 
                   jsr       InitMemory          ; Allocate and initialize memory for the engine
                   jsr       EngineReset         ; All of the resources are allocated, put the engine in a known state

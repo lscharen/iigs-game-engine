@@ -14,6 +14,8 @@
 
 ToStrip         equ   $E10184
 
+                mx    %00
+
 _CallTable
                 adrl  {_CTEnd-_CallTable}/4
                 adrl  _TSBootInit-1
@@ -42,38 +44,35 @@ _TSBootInit
 ; StartUp(dPageAddr, userId)
 _TSStartUp
 
-rtll            =    1
-rtl2            =    rtl1+3
 userId          =    7
 zpToUse         =    userId+2
 
+                lda     zpToUse,s          ; Get the direct page address
+                phd                        ; Save the current direct page
+                tcd                        ; Set to our working direct page space
+
                 txa
-                and     #$00FF                ; Get just the tool number
-                tax
+                and     #$00FF             ; Get just the tool number
+                sta     ToolNum
 
-                lda     userId,s              ; Get the userId for memory allocations
-                tay
-                lda     zpToUse,s             ; Get the direct page address
+                lda     userId+2,s         ; Get the userId for memory allocations
+                sta     UserId
 
-                phd                           ; Save the current direct page
-                tcd                           ; Set to our working direct page space
-
-                tya                           ; A = memory manager user Id, X = tool number
-                jsr     _CoreStartUp          ; Initialize the library
+                jsr     _CoreStartUp       ; Initialize the library
 
 ; SetWAP(userOrSystem, tsNum, waptPtr)
 
-                pea     #$8000                ; $8000 = user tool set
-                pei     ToolNum               ; Push the tool number from the direct page
-                pea     $0000                 ; High word of WAP is zero (bank 0)
-                phd                           ; Low word of WAP is the direct page
+                pea     #$8000             ; $8000 = user tool set
+                pei     ToolNum            ; Push the tool number from the direct page
+                pea     $0000              ; High word of WAP is zero (bank 0)
+                phd                        ; Low word of WAP is the direct page
                 _SetWAP
 
-                pld                           ; Restore the caller's direct page
+                pld                        ; Restore the caller's direct page
 
-                lda     #0
-                clc
-                rtl
+                ldx     #0                 ; No error
+                ldy     #4                 ; Remove the 4 input bytes
+                jml     ToStrip
 
 _TSShutDown
                 cmp     #0                 ; Acc is low word of the WAP (direct page)
