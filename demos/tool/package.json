@@ -1,0 +1,30 @@
+{
+  "name": "gte-toolbox-demo",
+  "version": "1.0.0",
+  "description": "A testbed for developing a toolbox wrapper around the GTE library",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "../../macros",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
+  },
+  "scripts": {
+    "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+    "debug": "%npm_package_config_crossrunner% GTEToolTest -Source GTEToolTest_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
+    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+  }
+}

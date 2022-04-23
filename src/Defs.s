@@ -88,7 +88,9 @@ BankLoad               equ   104
 TileStoreBankAndBank01 equ   106
 TileStoreBankAndTileDataBank equ 108
 TileStoreBankDoubled   equ   110
-Next                   equ   112
+UserId                 equ   112         ; Memory manager user Id to use
+ToolNum                equ   114         ; Tool number assigned to us
+Next                   equ   116
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 ; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers

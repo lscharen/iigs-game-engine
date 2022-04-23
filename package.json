@@ -1,0 +1,29 @@
+{
+  "name": "generic-tile-engine",
+  "version": "1.0.0",
+  "description": "A tile-base game engine for the Apple IIgs",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "./macros",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
+  },
+  "scripts": {
+    "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% ./src/Master.s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+  }
+}

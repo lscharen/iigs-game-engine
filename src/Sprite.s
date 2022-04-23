@@ -62,9 +62,9 @@ InitSprites
 ; covering the exact same tiles.
 
 
-; Render a sprite stamp into the sprite buffer.  Stamps exits independent of the sprites
+; Render a sprite stamp into the sprite buffer.  Stamps exist independent of the sprites
 ; and sprite reference a specific stamp.  This is necessary because it's common for a
-; spite to change its graphic as its animating, but it is too costly to have to set up
+; sprite to change its graphic as its animating, but it is too costly to have to set up
 ; the stamp every time.  So this allows users to create stamps in advance and then
 ; assign them to the sprites as needed.
 ;

@@ -24,6 +24,82 @@ DefaultPalette   dw    $0000,$007F,$0090,$0FF0
                  dw    $0fa9,$0ff0,$00e0,$04DF
                  dw    $0d00,$078f,$0ccc,$0FFF
 
+
+; Allow the user to dynamically select one of the pre-configured screen sizes, or pass
+; in a specific width and height.  The screen is automatically centered.  If this is
+; not desired, then SetScreenRect should be used directly
+;
+;  0. Full Screen           : 40 x 25   320 x 200 (32,000 bytes (100.0%)) 
+;  1. Sword of Sodan        : 34 x 24   272 x 192 (26,112 bytes ( 81.6%))
+;  2. ~NES                  : 32 x 25   256 x 200 (25,600 bytes ( 80.0%))
+;  3. Task Force            : 32 x 22   256 x 176 (22,528 bytes ( 70.4%))
+;  4. Defender of the World : 35 x 20   280 x 160 (22,400 bytes ( 70.0%))
+;  5. Rastan                : 32 x 20   256 x 160 (20,480 bytes ( 64.0%))
+;  6. Game Boy Advanced     : 30 x 20   240 x 160 (19,200 bytes ( 60.0%))
+;  7. Ancient Land of Y's   : 36 x 16   288 x 128 (18,432 bytes ( 57.6%))
+;  8. Game Boy Color        : 20 x 18   160 x 144 (11,520 bytes ( 36.0%))
+;  9. Agony (Amiga)         : 36 x 24   288 x 192 (27,648 bytes ( 86.4%))
+; 10. Atari Lynx            : 20 x 13   160 x 102 (8,160 bytes  ( 25.5%))
+;
+;  X = mode number OR width in pixels (must be multiple of 2)
+;  Y = height in pixels (if X > 8)
+
+ScreenModeWidth   dw        320,272,256,256,280,256,240,288,160,288,160,320
+ScreenModeHeight  dw        200,192,200,176,160,160,160,128,144,192,102,1
+
+SetScreenMode     ENT
+                  phb
+                  phk
+                  plb
+                  jsr       _SetScreenMode
+                  plb
+                  rtl
+
+_SetScreenMode
+                  cpx       #11
+                  bcs       :direct             ; if x > 10, then assume X and Y are the dimensions
+
+                  txa
+                  asl
+                  tax
+
+                  ldy       ScreenModeHeight,x
+                  lda       ScreenModeWidth,x
+                  tax
+
+:direct           cpy       #201
+                  bcs       :exit
+
+                  cpx       #321
+                  bcs       :exit
+
+                  txa
+                  lsr
+                  pha                           ; Save X (width / 2) and Y (height)
+                  phy
+
+                  lda       #160                ; Center the screen
+                  sec
+                  sbc       3,s
+                  lsr
+                  xba
+                  pha                           ; Save half the origin coordinate
+
+                  lda       #200
+                  sec
+                  sbc       3,s                 ; This is now Y because of the PHA above
+                  lsr
+                  ora       1,s
+
+                  plx                           ; Throw-away to pop the stack
+                  ply
+                  plx
+
+                  jsr       SetScreenRect
+                  jmp       FillScreen          ; tail return
+:exit
+                  rts
+
 ; Return the current border color ($0 - $F) in the accumulator
 _GetBorderColor  lda   #0000
                  sep   #$20

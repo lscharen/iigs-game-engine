@@ -74,7 +74,7 @@ _GetBaseTileAddr
                  asl                                               ; x64
                  asl                                               ; x128
                  rts
-
+                 
 ; On entry
 ;
 ; B is set to the correct BG1 data bank
@@ -102,9 +102,14 @@ _RenderTileBG1
 ; Given an address to a Tile Store record, dispatch to the appropriate tile renderer.  The Tile
 ; Store record contains all of the low-level information that's needed to call the renderer.
 ;
+; There are two execution paths that are handled here.  First, if there is no sprite, then
+; the tile data is read directly and written into the code field in a single pass. If there
+; are sprites that overlap the tile, then the sprite data is combined with the tile data
+; and written to a temporary direct page buffer.  If 
+;
 ; This routine sets the direct page register to the second page since we use that space to 
 ; build and cache tile and sprite data, when necessary
-; Y = address of tile
+
 _RenderTile2
                  lda   TileStore+TS_SPRITE_FLAG,x     ; This is a bitfield of all the sprites that intersect this tile, only care if non-zero or not
                  bne   do_dirty_sprite
@@ -159,10 +164,19 @@ do_dirty_sprite
                  pei   TileStoreBankAndTileDataBank   ; Special value that has the TileStore bank in LSB and TileData bank in MSB
                  plb
 
-; Cache a couple of values into the direct page, but preserve the Accumulator
+; Cache a couple of values into the direct page that are used across all copy routines
 
-                 ldy   TileStore+TS_TILE_ADDR,x       ; load the address of this tile's data (pre-calculated)
-                 sty   tileAddr
+                 lda   TileStore+TS_TILE_ADDR,y       ; load the address of this tile's data (pre-calculated)
+                 sta   tileAddr
+
+                 ldx   TileStore+TS_VBUFF_ADDR_COUNT,y
+                 jmp   (dirty_sprite_dispatch,x)
+dirty_sprite_dispatch
+                 da    CopyNoSprites
+                 da    CopyOneSprite
+                 da    CopyTwoSprites
+                 da    CopyThreeSprites
+                 da    CopyFourSprites                     ; MAX, don't bother with more than 4 sprites per tile
 
 ; This is very similar to the code in the dirty tile renderer, but we can't reuse 
 ; because that code draws directly to the graphics screen, and this code draws
@@ -243,7 +257,15 @@ do_dirty_sprite
 
 ; We set up direct page pointers to the mask bank and use the bank register for the
 ; data.
-CopyFourSpritesAbove
+CopyFourSprites
+                 lda   TileStore+TS_VBUFF_ADDR_0,y
+                 sta   spriteIdx
+                 lda   TileStore+TS_VBUFF_ADDR_1,y
+                 sta   spriteIdx+4
+                 lda   TileStore+TS_VBUFF_ADDR_2,y
+                 sta   spriteIdx+8
+                 lda   TileStore+TS_VBUFF_ADDR_3,y
+                 sta   spriteIdx+12
 
 ; Copy three sprites into a temporary direct page buffer
 LDA_IL           equ   $A7    ; lda [dp]
@@ -252,6 +274,13 @@ AND_IL           equ   $27    ; and [dp]
 AND_ILY          equ   $37    ; and [dp],y
 
 CopyThreeSprites
+                 lda   TileStore+TS_VBUFF_ADDR_0,y
+                 sta   spriteIdx
+                 lda   TileStore+TS_VBUFF_ADDR_1,y
+                 sta   spriteIdx+4
+                 lda   TileStore+TS_VBUFF_ADDR_2,y
+                 sta   spriteIdx+8
+
 ]line            equ   0
                  lup   8
                  ldy   #]line*SPRITE_PLANE_SPAN
@@ -285,6 +314,11 @@ CopyThreeSprites
 
 ; Copy two sprites into a temporary direct page buffer
 CopyTwoSprites
+                 lda   TileStore+TS_VBUFF_ADDR_0,y
+                 sta   spriteIdx
+                 lda   TileStore+TS_VBUFF_ADDR_1,y
+                 sta   spriteIdx+4
+
 ]line            equ   0
                  lup   8
                  ldy   #]line*SPRITE_PLANE_SPAN
@@ -311,9 +345,56 @@ CopyTwoSprites
 ;                 jmp   FinishTile
 
 ; Copy a single piece of sprite data into a temporary direct page . X = spriteIdx
+;
+; X register is the offset of the underlying tile data
+; Y register is the line offset into the sprite data and mask buffers
+; There is a pointer for each sprite on the direct page that can be used
+; to access both the data and mask components of a sprite
+; The Data Bank reigster points to the sprite data
+;
+;    ldal   tiledata,x
+;    and    [spriteIdx],y
+;    ora    (spriteIdx),y
+;    sta    tmp_sprite_data
+;
+; For multiple sprites, we can chain together the and/ora instructions to stack the sprites
+;
+;    ldal   tiledata,x
+;    and    [spriteIdx],y
+;    ora    (spriteIdx),y
+;    and    [spriteIdx+4],y
+;    ora    (spriteIdx+4),y
+;    and    [spriteIdx+8],y
+;    ora    (spriteIdx+8),y
+;    sta    tmp_sprite_data
+;
+; When the sprites need to be drawn on top of the background, then change the order of operations
+;
+;    lda    (spriteIdx),y
+;    and    [spriteIdx+4],y
+;    ora    (spriteIdx+4),y
+;    and    [spriteIdx+8],y
+;    ora    (spriteIdx+8),y
+;    sta    tmp_sprite_data
+;    andl   tiledata+32,x
+;    oral   tiledata,x
+;
 CopyOneSprite
+                 clc
+                 lda   TileStore+TS_VBUFF_ADDR_0,y
+                 sta   spriteIdx
+                 adc   #2
+                 sta   spriteIdx+4
+
 ]line            equ   0
                  lup   8
+                 ldal  tiledata,x
+                 and   [spriteIdx]
+                 ora   (spriteIdx)
+                 sta   tmp_sprite_data+{]line*4}
+
+
+
                  ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
                  sta   tmp_sprite_data+{]line*4}
                  ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x

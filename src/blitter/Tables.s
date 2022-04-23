@@ -19,25 +19,26 @@
 ;
 ; Remember, because the data is pushed on to the stack, the last instruction, which is
 ; in the highest memory location, pushed data that apepars on the left edge of the screen.
-PER_TILE_SIZE     equ   3
-]step             equ   0
 
-                  dw    CODE_TOP    ; There is a spot where we load Col2CodeOffet-2,x
-Col2CodeOffset    lup   82
-                  dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
-]step             equ   ]step+1
-                  --^
-                  dw    CODE_TOP+{81*PER_TILE_SIZE}
+;PER_TILE_SIZE     equ   3
+;]step             equ   0
+
+;                  dw    CODE_TOP    ; There is a spot where we load Col2CodeOffet-2,x
+;Col2CodeOffset    lup   82
+;                  dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
+;]step             equ   ]step+1
+;                  --^
+;                  dw    CODE_TOP+{81*PER_TILE_SIZE}
 
 ; A parallel table to Col2CodeOffset that holds the offset to the exception handler address for each column
-SNIPPET_SIZE      equ   32
-]step             equ   0
-                  dw    SNIPPET_BASE
-JTableOffset      lup   82
-                  dw    SNIPPET_BASE+{{81-]step}*SNIPPET_SIZE}
-]step             equ   ]step+1
-                  --^
-                  dw    SNIPPET_BASE+{81*SNIPPET_SIZE}
+;SNIPPET_SIZE      equ   32
+;]step             equ   0
+;                  dw    SNIPPET_BASE
+;JTableOffset      lup   82
+;                  dw    SNIPPET_BASE+{{81-]step}*SNIPPET_SIZE}
+;]step             equ   ]step+1
+;                  --^
+;                  dw    SNIPPET_BASE+{81*SNIPPET_SIZE}
 
 ; Table of BRA instructions that are used to exit the code field.  Separate tables for
 ; even and odd aligned cases.

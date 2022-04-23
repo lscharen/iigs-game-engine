@@ -155,7 +155,6 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    cpx   #TILE_STORE_SIZE-2
                    bcc   :tsloop
 
-; Return
                    rts
 
 ; Generalized routine that calculates the on-screen address of the tiles and takes the 

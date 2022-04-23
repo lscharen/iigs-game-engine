@@ -16,49 +16,6 @@ ColLeft     equ   tmp9
 SpriteBit   equ   tmp10     ; set the bit of the value that if the current sprite index
 VBuffOrigin equ   tmp11
 
-; Helper function to take a local pixel coordinate [0, ScreenWidth-1],[0, ScreenHeight-1] and return the
-; row and column in the tile store that is corresponds to.  This takes into consideration the StartX and
-; StartY offsets.
-;
-; This is more specialized than the code in the _MarkDirtySprite routine below since it does not deal with
-; negative or off-screen values.
-_OriginToTileStore
-        lda   StartYMod208
-        lsr
-        lsr
-        and   #$FFFE                             ; Store the pre-multiplied by 2 for indexing
-        tay
-        lda   StartXMod164
-        lsr
-        and   #$FFFE                             ; Same pre-multiply by 2 for later
-        tax
-        rts
-
-; X = local x-coordinate (0, playfield width)
-; Y = local y-coordinate (0, playfield height)
-_LocalToTileStore
-        clc
-        tya
-        adc   StartYMod208                       ; Adjust for the scroll offset
-        cmp   #208                               ; check if we went too far positive
-        bcc   *+5
-        sbc   #208
-        lsr
-        lsr
-        and   #$FFFE                             ; Store the pre-multiplied by 2 for indexing
-        tay
-
-        clc
-        txa
-        adc   StartXMod164
-        cmp   #164
-        bcc   *+5
-        sbc   #164
-        lsr
-        and   #$FFFE                             ; Same pre-multiply by 2 for later
-        tax
-        rts
-
 ; Marks a sprite as dirty.  The work here is mapping from local screen coordinates to the 
 ; tile store indices.  The first step is to adjust the sprite coordinates based on the current
 ; code field offsets and then cache variations of this value needed in the rest of the subroutine
