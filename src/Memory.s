@@ -16,7 +16,11 @@
 
                mx        %00
 
-InitMemory     PushLong  #0                          ; space for result
+InitMemory     lda       EngineMode
+               bit       #ENGINE_MODE_BNK0_BUFF
+               beq       :no_bnk0_buff
+
+               PushLong  #0                          ; space for result
                PushLong  #$008000                    ; size (32k)
                PushWord  UserId
                PushWord  #%11000000_00010111         ; Fixed location
@@ -27,6 +31,7 @@ InitMemory     PushLong  #0                          ; space for result
                _Deref
                stx       Buff00
                sta       Buff00+2
+:no_bnk0_buff
 
                PushLong  #0                          ; space for result
                PushLong  #$008000                    ; size (32k)
@@ -41,7 +46,15 @@ InitMemory     PushLong  #0                          ; space for result
                sta       Buff01+2
 
                PushLong  #0                          ; space for result
-               PushLong  #$000A00                    ; size (10 pages)
+
+               pea       #0000                       ; size (2 or 10 pages)
+               lda       EngineMode
+               bit       #ENGINE_MODE_DYN_TILES
+               beq       :no_dyn_tiles
+               pea       #$0A00                      ; 10 pages if dynamic tiles are enabled
+               bra       :dyn_done
+:no_dyn_tiles  pea       #$0200                      ; 2 pages if dynamic tiles are disabled
+:dyn_done
                PushWord  UserId
                PushWord  #%11000000_00010101         ; Page-aligned, fixed bank
                PushLong  #$000000
@@ -52,11 +65,15 @@ InitMemory     PushLong  #0                          ; space for result
                stx       BlitterDP
 
 ; Allocate banks of memory for BG1
+               lda       EngineMode
+               bit       #ENGINE_MODE_TWO_LAYER
+               beq       :no_bg1
                jsr       AllocOneBank2
                sta       BG1DataBank
 
                jsr       AllocOneBank2
                sta       BG1AltBank
+:no_bg1
 
 ; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0

@@ -34,6 +34,8 @@ StartX                 equ   16          ; Which code buffer byte is the left ed
 StartY                 equ   18          ; Which code buffer line is the top of the screen. Range = 0 to 207
 EngineMode             equ   20          ; Defined the mode/capabilities that are enabled
                                          ;  bit 0: 0 = Single Background, 1 = Parallax
+                                         ;  bit 1: 0 = No Dynamic Tiles, 1 = Allocate Bank 00 space for dynamic tiles
+                                         ;  bit 2: 0 = No static buffer, 1 = Allocation Bank 00 space for a static screen buffer
 DirtyBits              equ   22          ; Identify values that have changed between frames
 
 BG1DataBank            equ   24          ; Data bank that holds BG1 layer data
@@ -143,7 +145,12 @@ FREE_SPACE_DP2         equ   160
 
 ; End direct page values
 
+; EngineMode definitions
+ENGINE_MODE_TWO_LAYER  equ   $0001
+ENGINE_MODE_DYN_TILES  equ   $0002
+ENGINE_MODE_BNK0_BUFF  equ   $0004
 
+; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
 DIRTY_BIT_BG0_Y        equ   $0002
 DIRTY_BIT_BG1_X        equ   $0004

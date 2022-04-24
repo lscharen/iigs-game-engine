@@ -7,10 +7,7 @@
                 use   Misc.Macs
                 use   Util.Macs
                 use   EDS.GSOS.Macs
-
-_GTEStartUp     MAC
-                UserTool  $02A0
-                <<<
+                use   GTE.Macs
 
                 mx         %00
 
@@ -18,31 +15,27 @@ _GTEStartUp     MAC
                 phk
                 plb
 
-                sta   UserId            ; GS/OS passed the memory manager user ID for the aoplication into the program
+                sta   UserId                  ; GS/OS passes the memory manager user ID for the aoplication into the program
+                _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                jsr   ToolStartUp             ; Start up the basic tools: Locator, Memory Manager, Misc
-                jsr   GTEStartUp
+                jsr   GTEStartUp              ; Load and install the GTE User Tool
 
+; Very simple actions
+:loop
+                pha                           ; space for result, with pattern
+                _GTEReadControl
+                pla
+                and   #$00FF
+                cmp   #'q'
+                bne   :loop
+
+; Shut down eveything
+                _GTEShutDown
                 _QuitGS qtRec
-
-                bcs        Fatal
-Fatal           brk        $00
 qtRec           adrl       $0000
                 da         $00
 
-ToolStartUp
-;                _TLStartUp                    ; normal tool initialization
-;                pha
-;                _MMStartUp
-;                pla
-;                sta   MasterId                ; our master handle references the memory allocated to us
-;                ora   #$0100                  ; set auxID = $01  (valid values $01-0f)
-;                sta   UserId                  ; any memory we request must use our own id 
-
-                _MTStartUp                     ; just start up the miscellaneous tools
-                rts
-
-; Load the GTE User Tool and register it
+; Load the GTE User Tool and install it
 GTEStartUp
                 pea   $0000
                 _LoaderStatus
@@ -60,12 +53,10 @@ GTEStartUp
                 pea   #^ToolPath
                 pea   #ToolPath
                 pea   $0001                   ; do not load into special memory
-;                pea   $0001                   ; GS/OS string for the argument
                 _InitialLoad
                 bcc    :ok1
                 brk    $01
 
-                
 :ok1
                 ply
                 pla                           ; Address of the loaded tool
@@ -86,7 +77,8 @@ GTEStartUp
                 tdc
                 adc   #$0100
                 pha
-                lda   UserId
+                pea   $0000                   ; No extra capabilities
+                lda   UserId                  ; Pass the userId for memory allocation
                 pha
                 _GTEStartUp
                 bcc    :ok3

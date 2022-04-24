@@ -85,8 +85,7 @@ Overlay           EXT
 
                   mx        %00
 
-; A = memory manager userId
-; X = tool number
+; Assumes the direct page is set and EngineMode and UserId has been initialized
 _CoreStartUp
                   jsr       IntStartUp          ; Enable certain interrupts
 
@@ -194,7 +193,7 @@ EngineReset
                   stz       OldStartY
                   stz       StartYMod208
 
-                  stz       EngineMode
+;                  stz       EngineMode
                   stz       DirtyBits
                   stz       LastRender
                   stz       LastPatchOffset

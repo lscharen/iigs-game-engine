@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
-    "debug": "%npm_package_config_crossrunner% GTEToolTest -Source GTEToolTest_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
+    "debug": "%npm_package_config_crossrunner% GTEToolDemo -Source MAINSEG_Output.txt -Debug -CompatibilityLayer",
     "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s"
   },
   "repository": {

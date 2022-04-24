@@ -14,6 +14,25 @@
 
 ToStrip         equ   $E10184
 
+; Define some macros to help streamline the entry and exit from the toolbox calls
+_TSEntry        mac
+                phd
+                phb
+                tcd
+                phk                        ; Default to setting the data back to the current bank.
+                plb
+                <<<
+
+_TSExit         mac
+                plb
+                pld
+                ldx     ]1                 ; Error code
+                ldy     ]2                 ; Number of stack bytes to remove
+                jml     ToStrip
+                <<<
+
+FirstParam      equ     10                  ; When using the _TSEntry macro, the first parameter is at 10,s
+
                 mx    %00
 
 _CallTable
@@ -27,7 +46,8 @@ _CallTable
                 adrl  _TSReserved-1
                 adrl  _TSReserved-1
 
-                adrl  _TSSetScreenMode
+                adrl  _TSReadControl-1
+                adrl  _TSSetScreenMode-1
 _CTEnd
 
 ; Do nothing when the tool set is installed
@@ -39,13 +59,14 @@ _TSBootInit
 ; Call the regular GTE startup function after setting the Work Area Pointer (WAP).  The caller must provide
 ; one page of Bank 0 memory for the tool set's private use and a userId to use for allocating memory
 ;
-; X = tool set number in low byte and function umber in high byte
+; X = tool set number in low byte and function number in high byte
 ;
-; StartUp(dPageAddr, userId)
+; StartUp(dPageAddr, capFlags, userId)
 _TSStartUp
 
 userId          =    7
-zpToUse         =    userId+2
+capFlags        =    userId+2
+zpToUse         =    userId+4
 
                 lda     zpToUse,s          ; Get the direct page address
                 phd                        ; Save the current direct page
@@ -57,6 +78,9 @@ zpToUse         =    userId+2
 
                 lda     userId+2,s         ; Get the userId for memory allocations
                 sta     UserId
+
+                lda     capFlags+2,s       ; Get the engine capability bits
+                sta     EngineMode
 
                 jsr     _CoreStartUp       ; Initialize the library
 
@@ -71,9 +95,10 @@ zpToUse         =    userId+2
                 pld                        ; Restore the caller's direct page
 
                 ldx     #0                 ; No error
-                ldy     #4                 ; Remove the 4 input bytes
+                ldy     #6                 ; Remove the 6 input bytes
                 jml     ToStrip
 
+; ShutDown()
 _TSShutDown
                 cmp     #0                 ; Acc is low word of the WAP (direct page)
                 beq     :inactive
@@ -114,7 +139,7 @@ _TSStatus
                 sta    1,s
                 tya
                 ora    1,s
-                sta    1,s        ; 0 if WAP is null, non-zero if WAP is set
+                sta    1,s                ; 0 if WAP is null, non-zero if WAP is set
 
                 lda     #0
                 clc
@@ -129,37 +154,28 @@ _TSReserved
 
 ; SetScreenMode(width, height)
 _TSSetScreenMode
-:height         equ     9
-:width          equ     11
+height          equ     FirstParam
+width           equ     FirstParam+2
 
-                phd                       ; Preserve the direct page
-                tcd                       ; Set the tool set direct pafe from WAP
+                _TSEntry
 
-                lda     :height,s
+                lda     height,s
                 tay
-                lda     :width,s
+                lda     width,s
                 tax
 ;                jsr     _SetScreenMode   ; Not implemented yet
 
-                pld                       ; Restore direct page
-
-                ldx     #0                 ; No error
-                ldy     #4                 ; Remove the 4 input bytes
-                jml     ToStrip
+                _TSExit #0;#4
 
 _TSReadControl
-:output         equ     9
+output          equ     FirstParam
 
-                phd                       ; Preserve the direct page
-                tcd
+                _TSEntry
 
                 jsr     _ReadControl
-                sta     :output,s
+                sta     output,s
 
-                pld
-                ldx     #0                 ; No error
-                ldy     #0                 ; Remove zero input bytes
-                jml     ToStrip
+                _TSExit #0;#0
 
 ; Insert the core GTE functions
 
