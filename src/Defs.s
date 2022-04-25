@@ -199,7 +199,11 @@ VBUFF_SPRITE_STEP      equ VBUFF_TILE_ROW_BYTES*3        ; Allocate space fo 16 
 VBUFF_SPRITE_START     equ {8*VBUFF_TILE_ROW_BYTES}+4    ; Start at an offset so $0000 can be used as an empty value
 VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps
 
+; This is 13 blocks wide
+SPRITE_PLANE_SPAN      equ VBUFF_STRIDE_BYTES
+
 ; Tile storage parameters
+TILE_DATA_SPAN        equ  4
 TILE_STORE_WIDTH      equ  41
 TILE_STORE_HEIGHT     equ  26
 MAX_TILES             equ  {26*41}                ; Number of tiles in the code field (41 columns * 26 rows)
@@ -218,29 +222,9 @@ TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32
 TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
 TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
 
-; 16 consecutive entries to provide directly addressable space for holding the VBUFF address for the
-; sprites that may be rendered at a given tile.  Given a tile store offset, X, the way to address the
-; address for the Y'th sprite is
-;
-;   lda TileStore+TS_VBUFF_0+{Y*TILE_STORE_SIZE},x
-;
-; Moving to the next tile can be done with a constant.
-;
-;   lda TileStore+TS_VBUFF_0+{Y*TILE_STORE_SIZE}+{41*row}+{2*col},x
-
-TS_VBUFF_0            equ  TILE_STORE_SIZE*12
-TS_VBUFF_1            equ  TILE_STORE_SIZE*13
-TS_VBUFF_2            equ  TILE_STORE_SIZE*14
-TS_VBUFF_3            equ  TILE_STORE_SIZE*15
-TS_VBUFF_4            equ  TILE_STORE_SIZE*16
-TS_VBUFF_5            equ  TILE_STORE_SIZE*17
-TS_VBUFF_6            equ  TILE_STORE_SIZE*18
-TS_VBUFF_7            equ  TILE_STORE_SIZE*19
-TS_VBUFF_8            equ  TILE_STORE_SIZE*20
-TS_VBUFF_9            equ  TILE_STORE_SIZE*21
-TS_VBUFF_10           equ  TILE_STORE_SIZE*22
-TS_VBUFF_11           equ  TILE_STORE_SIZE*23
-TS_VBUFF_12           equ  TILE_STORE_SIZE*22
-TS_VBUFF_13           equ  TILE_STORE_SIZE*23
-TS_VBUFF_14           equ  TILE_STORE_SIZE*24
-TS_VBUFF_15           equ  TILE_STORE_SIZE*25
+; Hold values for up to 4 sprites per tile
+TS_VBUFF_ADDR_0       equ  TILE_STORE_SIZE*12
+TS_VBUFF_ADDR_1       equ  TILE_STORE_SIZE*13
+TS_VBUFF_ADDR_2       equ  TILE_STORE_SIZE*14
+TS_VBUFF_ADDR_3       equ  TILE_STORE_SIZE*15
+TS_VBUFF_ADDR_COUNT   equ  TILE_STORE_SIZE*16    ; replace usage of TS_VBUFF_ARRAY_ADDR with this later

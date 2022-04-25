@@ -87,16 +87,16 @@ Overlay           EXT
 
 ; Assumes the direct page is set and EngineMode and UserId has been initialized
 _CoreStartUp
-                   jsr       IntStartUp          ; Enable certain interrupts
+                  jsr       IntStartUp          ; Enable certain interrupts
 
-                   jsr       InitMemory          ; Allocate and initialize memory for the engine
-;                  jsr       EngineReset         ; All of the resources are allocated, put the engine in a known state
+                  jsr       InitMemory          ; Allocate and initialize memory for the engine
+                  jsr       EngineReset         ; All of the resources are allocated, put the engine in a known state
 
-;                  jsr       InitGraphics        ; Initialize all of the graphics-related data
-;                  jsr       InitSprites         ; Initialize the sprite subsystem
-;                  jsr       InitTiles           ; Initialize the tile subsystem
+                  jsr       InitGraphics        ; Initialize all of the graphics-related data
+;                 jsr       InitSprites         ; Initialize the sprite subsystem
+                  jsr       InitTiles           ; Initialize the tile subsystem
 
-;                  jsr       InitTimers          ; Initialize the timer subsystem
+                  jsr       InitTimers          ; Initialize the timer subsystem
                   rts
 
 _CoreShutDown
@@ -243,7 +243,7 @@ EngineReset
                   ldx       #BlitBuff
                   lda       #^BlitBuff
                   ldy       tmp14
-;                  jsr       BuildBank
+                  jsr       BuildBank
 
                   lda       tmp14
                   clc

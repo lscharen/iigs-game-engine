@@ -171,7 +171,7 @@ width           equ     FirstParam+2
                 tay
                 lda     width,s
                 tax
-;                jsr     _SetScreenMode
+                jsr     _SetScreenMode
 
                 _TSExit #0;#4
 
@@ -192,8 +192,11 @@ output          equ     FirstParam
                 put     Memory.s
                 put     Timer.s
                 put     Graphics.s
+                put     Tiles.s
                 put     blitter/BG0.s
                 put     blitter/BG1.s
                 put     blitter/Template.s
+                put     blitter/TemplateUtils.s
                 put     blitter/Tables.s
                 put     blitter/Blitter.s
+;                put     blitter/Tiles.s

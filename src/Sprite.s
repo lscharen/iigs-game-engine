@@ -76,12 +76,12 @@ InitSprites
 ; Return:
 ;   A = vbuff address to be assigned to Sprite[VBUFF_ADDR]
 CreateSpriteStamp   ENT
-            phb
-            phk
-            plb
-            jsr    _CreateSpriteStamp
-            plb
-            rtl
+           phb
+           phk
+           plb
+           jsr    _CreateSpriteStamp
+           plb
+           rtl
 
 _CreateSpriteStamp
            pha                                       ; Save the descriptor
@@ -751,9 +751,6 @@ _CacheSpriteBanks
             sta    TileStoreBankDoubled
             
             rts
-
-; This is 13 blocks wide
-SPRITE_PLANE_SPAN equ VBUFF_STRIDE_BYTES
 
 ; A = x coordinate
 ; Y = y coordinate

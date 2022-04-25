@@ -669,7 +669,7 @@ dirty_sprite
                  stx   spriteIdx+6
                  jmp   BlitFourSprites
 
-DirtyTileProcs   dw  _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
+DirtyTileProcs   dw    _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
 ;DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
 
 ; Blit tiles directly to the screen.
@@ -698,8 +698,6 @@ _TBDirtyTile_VH
 ]dest            equ             ]dest+1
                  --^
                  rts
-
-TILE_DATA_SPAN equ 4
 
 ; If there are two or more sprites at a tile, we can still be fast, but need to do extra work because
 ; the VBUFF values need to be read from the direct page.  Thus, the direct page cannot be mapped onto
