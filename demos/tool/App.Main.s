@@ -11,6 +11,9 @@
 
                 mx         %00
 
+ScreenX         equ   0
+ScreenY         equ   2
+
 ; Typical init
                 phk
                 plb
@@ -20,6 +23,23 @@
 
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
 
+; Initialize the graphics screen to a 256x160 playfield
+
+                pea   #256
+                pea   #160
+                _GTESetScreenMode
+
+; Load a tileset in from an uncompressed $C1 picture. The top-left 256x128 rectangle is used
+; to populate the 512 tiles.
+
+
+; Manually fill in the 41x26 tiles of the TileStore with a test pattern.
+
+
+; Set the origin of the screen
+                stz   ScreenX
+                stz   ScreenY
+
 ; Very simple actions
 :loop
                 pha                           ; space for result, with pattern
@@ -27,9 +47,19 @@
                 pla
                 and   #$00FF
                 cmp   #'q'
-                bne   :loop
+                beq   :exit
 
-; Shut down eveything
+;                pei   ScreenX
+;                pei   ScreenY
+;                _GTESetBG0Origin
+
+;                _GTERender
+
+                inc   ScreenX                 ; Just keep incrementing, it's OK
+                bra   :loop
+
+; Shut down everything
+:exit
                 _GTEShutDown
                 _QuitGS qtRec
 qtRec           adrl       $0000

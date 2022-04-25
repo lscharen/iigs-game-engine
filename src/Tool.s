@@ -46,8 +46,11 @@ _CallTable
                 adrl  _TSReserved-1
                 adrl  _TSReserved-1
 
-                adrl  _TSReadControl-1        ; Function 9
-                adrl  _TSSetScreenMode-1      ; Function 10
+                adrl  _TSReadControl-1
+                adrl  _TSSetScreenMode-1
+                adrl  _TSSetTile-1
+                adrl  _TSSetBG0Origin-1
+                adrl  _TSRender-1
 _CTEnd
 
 ; Do nothing when the tool set is installed
@@ -175,6 +178,7 @@ width           equ     FirstParam+2
 
                 _TSExit #0;#4
 
+; ReadControl()
 _TSReadControl
 output          equ     FirstParam
 
@@ -183,7 +187,30 @@ output          equ     FirstParam
                 jsr     _ReadControl
                 sta     output,s
 
+                _TSExit  #0;#0
+
+; SetTile(xTile, yTile, tileId)
+_TSSetTile
+tileId          equ     FirstParam
+yTile           equ     FirstParam+2
+xTile           equ     FirstParam+4
+
+                _TSEntry
+                _TSExit #0;#6
+
+; SetBG0Origin(x, y)
+_TSSetBG0Origin
+yPos            equ     FirstParam
+xPos            equ     FirstParam+2
+
+                _TSEntry
+                _TSExit #0;#4
+
+; Render()
+_TSRender
+                _TSEntry
                 _TSExit #0;#0
+
 
 ; Insert the GTE code
 
