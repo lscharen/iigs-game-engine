@@ -121,6 +121,7 @@ InitMemory     lda       EngineMode
                brl       :bloop
 :exit1
 
+
                ldx       #0
                ldy       #0
 :bloop2

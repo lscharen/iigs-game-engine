@@ -59,7 +59,7 @@ _BltRange
 ;                beq   :primary
 ;                lda   BG1AltBank
 ;                bra   :alt
-:primary        lda   BG1DataBank
+:primary        lda   BG1DataBank    ; This is $00 if the TWO_LAYER bit of EngineMode is not set
 :alt
                 pha
                 plb

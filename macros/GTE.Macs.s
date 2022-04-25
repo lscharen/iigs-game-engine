@@ -24,3 +24,6 @@ _GTEStatus           MAC
 _GTEReadControl      MAC
                      UserTool  $900+GTEToolNum
                      <<<
+_GTESetScreenMode    MAC
+                     UserTool  $A00+GTEToolNum
+                     <<<    

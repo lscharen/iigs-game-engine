@@ -11,19 +11,23 @@ InitGraphics
                  lda   #0
                  jsr   _SetPalette
 
-                 jsr   _InitBG0             ; Initialize the background layers
-                 jsr   _InitBG1
+                 jsr   _InitBG0             ; Initialize the background layer
 
+                 lda   EngineMode
+                 bit   #ENGINE_MODE_TWO_LAYER
+                 beq   :no_bg1
+
+                 jsr   _InitBG1
                  lda   #0
                  jsr   _ClearBG1Buffer
 
+:no_bg1
                  rts
 
 DefaultPalette   dw    $0000,$007F,$0090,$0FF0
                  dw    $000F,$0080,$0f70,$0FFF
                  dw    $0fa9,$0ff0,$00e0,$04DF
                  dw    $0d00,$078f,$0ccc,$0FFF
-
 
 ; Allow the user to dynamically select one of the pre-configured screen sizes, or pass
 ; in a specific width and height.  The screen is automatically centered.  If this is
@@ -224,9 +228,132 @@ _WaitForVBL
                  rep   #$20
                  rts
 
+; Set the physical location of the virtual screen on the physical screen. The
+; screen size must by a multiple of 8
+;
+; A = XXYY where XX is the left edge [0, 159] and YY is the top edge [0, 199]
+; X = width (in bytes)
+; Y = height (in lines)
+;
+; This subroutine stores the screen positions in the direct page space and fills
+; in the double-length ScreenAddrR table that holds the address of the right edge
+; of the playfield.  This table is used to set addresses in the code banks when the
+; virtual origin is changed.
+;
+; We are not concerned about the raw performance of this function because it should
+; usually only be executed once during app initialization.  It doesn't get called
+; with any significant frequency.
 
+SetScreenRect      sty   ScreenHeight               ; Save the screen height and width
+                   stx   ScreenWidth
 
+                   tax                              ; Temp save of the accumulator
+                   and   #$00FF
+                   sta   ScreenY0
+                   clc
+                   adc   ScreenHeight
+                   sta   ScreenY1
 
+                   txa                              ; Restore the accumulator
+                   xba
+                   and   #$00FF
+                   sta   ScreenX0
+                   clc
+                   adc   ScreenWidth
+                   sta   ScreenX1
 
+                   lda   ScreenHeight               ; Divide the height in scanlines by 8 to get the number tiles
+                   lsr
+                   lsr
+                   lsr
+                   sta   ScreenTileHeight
 
+                   lda   ScreenWidth                ; Divide width in bytes by 4 to get the number of tiles
+                   lsr
+                   lsr
+                   sta   ScreenTileWidth
 
+                   lda   ScreenY0                   ; Calculate the address of the first byte
+                   asl                              ; of the right side of the playfield
+                   tax
+                   lda   ScreenAddr,x               ; This is the address for the left edge of the physical screen
+                   clc
+                   adc   ScreenX1
+                   dec
+                   pha                              ; Save for second loop
+
+                   ldx   #0
+                   ldy   ScreenHeight
+                   jsr   :loop
+                   pla                              ; Reset the address and continue filling in the
+                   ldy   ScreenHeight               ; second half of the table
+:loop              clc
+                   sta   RTable,x
+                   adc   #160
+                   inx
+                   inx
+                   dey
+                   bne   :loop
+
+; Calculate the screen locations for each tile corner
+
+                   lda   ScreenY0                   ; Calculate the address of the first byte
+                   asl                              ; of the right side of the playfield
+                   tax
+                   lda   ScreenAddr,x               ; This is the address for the left edge of the physical screen
+                   clc
+                   adc   ScreenX0
+
+                   ldx   #0
+                   ldy   #0
+:tsloop
+                   stal  TileStore+TS_SCREEN_ADDR,x
+
+                   clc
+                   adc   #4                         ; Go to the next tile
+
+                   iny
+                   cpy   #41                        ; If we've done 41 columns, move to the next line
+                   bcc   :nohop
+                   ldy   #0
+                   clc
+                   adc   #{8*160}-{4*41}
+:nohop
+
+                   inx
+                   inx
+                   cpx   #TILE_STORE_SIZE-2
+                   bcc   :tsloop
+
+                   rts
+
+; Clear the SHR screen and then infill the defined field
+FillScreen         lda   #0
+                   jsr   _ClearToColor
+
+                   ldy   ScreenY0
+:yloop
+                   tya
+                   asl   a
+                   tax
+                   lda   ScreenAddr,x
+                   clc
+                   adc   ScreenX0
+                   tax
+                   phy
+
+                   lda   ScreenWidth
+                   lsr
+                   tay
+                   lda   #$FFFF
+:xloop             stal  $E10000,x                  ; X is the absolute address
+                   inx
+                   inx
+                   dey
+                   bne   :xloop
+
+                   ply
+                   iny
+                   cpy   ScreenY1
+                   bcc   :yloop
+                   rts

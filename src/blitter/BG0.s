@@ -1,4 +1,4 @@
-; Support routinges for the primary background
+; Support routines for the primary background
 _InitBG0
                  lda   #DIRTY_BIT_BG0_X+DIRTY_BIT_BG0_Y
                  tsb   DirtyBits
