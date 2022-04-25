@@ -41,40 +41,13 @@
 TILE_CTRL_MASK    equ             $FE00
 TILE_PROC_MASK    equ             $F800                  ; Select tile proc for rendering
 
-; Low-level function to take a tile descriptor and return the address in the tiledata
-; bank.  This is not too useful in the fast-path because the fast-path does more
-; incremental calculations, but it is handy for other utility functions
-;
-; A = tile descriptor
-;
-; The address is the TileID * 128 + (HFLIP * 64)
-GetTileAddr      ENT
-                 jsr             _GetTileAddr
-                 rtl
-_GetTileAddr
-                 asl                                               ; Multiply by 2
-                 bit             #2*TILE_HFLIP_BIT                 ; Check if the horizontal flip bit is set
-                 beq             :no_flip
-                 inc                                               ; Set the LSB
-:no_flip         asl                                               ; x4
-                 asl                                               ; x8
-                 asl                                               ; x16
-                 asl                                               ; x32
-                 asl                                               ; x64
-                 asl                                               ; x128
-                 rts
+; Use some temporary space for the spriteIdx array (maximum of 4 entries)
 
-; Ignore the horizontal flip bit
-_GetBaseTileAddr
-                 asl                                               ; Multiply by 2
-                 asl                                               ; x4
-                 asl                                               ; x8
-                 asl                                               ; x16
-                 asl                                               ; x32
-                 asl                                               ; x64
-                 asl                                               ; x128
-                 rts
-                 
+stkSave     equ tmp9
+screenAddr  equ tmp10
+tileAddr    equ tmp11
+spriteIdx   equ tmp12
+
 ; On entry
 ;
 ; B is set to the correct BG1 data bank
@@ -115,7 +88,7 @@ _RenderTile2
                  bne   do_dirty_sprite
 
 ; Handle the non-sprite tile blit
-
+CopyNoSprites
                  sep   #$20
                  lda   TileStore+TS_CODE_ADDR_HIGH,x  ; load the bank of the target code field line
                  pha                                  ; and put on the stack for later
@@ -182,75 +155,75 @@ dirty_sprite_dispatch
 ; because that code draws directly to the graphics screen, and this code draws
 ; to a temporary budder that has a different stride.
 
-                 ldy   TileStore+TS_VBUFF_ARRAY_ADDR,x     ; base address of the VBUFF sprite address array for this tile
+;                 ldy   TileStore+TS_VBUFF_ARRAY_ADDR,x     ; base address of the VBUFF sprite address array for this tile
+;
+;                 lsr
+;                 bcc   :loop_0_bit_1
+;                 dobit $0000;sprite_ptr0;:loop_1_bit_1;CopyOneSprite
 
-                 lsr
-                 bcc   :loop_0_bit_1
-                 dobit $0000;sprite_ptr0;:loop_1_bit_1;CopyOneSprite
+;:loop_0_bit_1    lsr
+;                 bcc   :loop_0_bit_2
+;                 dobit $0002;sprite_ptr0;:loop_1_bit_2;CopyOneSprite
 
-:loop_0_bit_1    lsr
-                 bcc   :loop_0_bit_2
-                 dobit $0002;sprite_ptr0;:loop_1_bit_2;CopyOneSprite
+;:loop_0_bit_2    lsr
+;                 bcc   :loop_0_bit_3
+;                 dobit $0004;sprite_ptr0;:loop_1_bit_3;CopyOneSprite
 
-:loop_0_bit_2    lsr
-                 bcc   :loop_0_bit_3
-                 dobit $0004;sprite_ptr0;:loop_1_bit_3;CopyOneSprite
+;:loop_0_bit_3    lsr
+;                 bcc   :loop_0_bit_4
+;                 dobit $0006;sprite_ptr0;:loop_1_bit_4;CopyOneSprite
 
-:loop_0_bit_3    lsr
-                 bcc   :loop_0_bit_4
-                 dobit $0006;sprite_ptr0;:loop_1_bit_4;CopyOneSprite
+;:loop_0_bit_4    lsr
+;                 bcc   :loop_0_bit_5
+;                 dobit $0008;sprite_ptr0;:loop_1_bit_5;CopyOneSprite
 
-:loop_0_bit_4    lsr
-                 bcc   :loop_0_bit_5
-                 dobit $0008;sprite_ptr0;:loop_1_bit_5;CopyOneSprite
+;:loop_0_bit_5    lsr
+;                 bcc   :loop_0_bit_6
+;                 dobit $000A;sprite_ptr0;:loop_1_bit_6;CopyOneSprite
 
-:loop_0_bit_5    lsr
-                 bcc   :loop_0_bit_6
-                 dobit $000A;sprite_ptr0;:loop_1_bit_6;CopyOneSprite
+;:loop_0_bit_6    lsr
+;                 bcc   :loop_0_bit_7
+;                 dobit $000C;sprite_ptr0;:loop_1_bit_7;CopyOneSprite
 
-:loop_0_bit_6    lsr
-                 bcc   :loop_0_bit_7
-                 dobit $000C;sprite_ptr0;:loop_1_bit_7;CopyOneSprite
+;:loop_0_bit_7    lsr
+;                 bcc   :loop_0_bit_8
+;                 dobit $000E;sprite_ptr0;:loop_1_bit_8;CopyOneSprite
 
-:loop_0_bit_7    lsr
-                 bcc   :loop_0_bit_8
-                 dobit $000E;sprite_ptr0;:loop_1_bit_8;CopyOneSprite
+;:loop_0_bit_8    lsr
+;                 bcc   :loop_0_bit_9
+;                 dobit $0010;sprite_ptr0;:loop_1_bit_9;CopyOneSprite
 
-:loop_0_bit_8    lsr
-                 bcc   :loop_0_bit_9
-                 dobit $0010;sprite_ptr0;:loop_1_bit_9;CopyOneSprite
+;:loop_0_bit_9    lsr
+;                 bcc   :loop_0_bit_10
+;                 ldx:  $0012,y
+;                 stx   spriteIdx
+;                 cmp   #0
+;                 jne   :loop_1_bit_10
+;                 jmp   CopyOneSprite
 
-:loop_0_bit_9    lsr
-                 bcc   :loop_0_bit_10
-                 ldx:  $0012,y
-                 stx   spriteIdx
-                 cmp   #0
-                 jne   :loop_1_bit_10
-                 jmp   CopyOneSprite
+;:loop_0_bit_10   lsr
+;                 bcc   :loop_0_bit_11
+;                 dobit $0014;sprite_ptr0;:loop_1_bit_11;CopyOneSprite
 
-:loop_0_bit_10   lsr
-                 bcc   :loop_0_bit_11
-                 dobit $0014;sprite_ptr0;:loop_1_bit_11;CopyOneSprite
+;:loop_0_bit_11   lsr
+;                 bcc   :loop_0_bit_12
+;                 dobit $0016;sprite_ptr0;:loop_1_bit_12;CopyOneSprite
 
-:loop_0_bit_11   lsr
-                 bcc   :loop_0_bit_12
-                 dobit $0016;sprite_ptr0;:loop_1_bit_12;CopyOneSprite
+;:loop_0_bit_12   lsr
+;                 bcc   :loop_0_bit_13
+;                 dobit $0018;sprite_ptr0;:loop_1_bit_13;CopyOneSprite
 
-:loop_0_bit_12   lsr
-                 bcc   :loop_0_bit_13
-                 dobit $0018;sprite_ptr0;:loop_1_bit_13;CopyOneSprite
+;:loop_0_bit_13   lsr
+;                 bcc   :loop_0_bit_14
+;                 dobit $001A;sprite_ptr0;:loop_1_bit_14;CopyOneSprite
 
-:loop_0_bit_13   lsr
-                 bcc   :loop_0_bit_14
-                 dobit $001A;sprite_ptr0;:loop_1_bit_14;CopyOneSprite
+;:loop_0_bit_14   lsr
+;                 bcc   :loop_0_bit_15
+;                 dobit $001C;sprite_ptr0;:loop_1_bit_15;CopyOneSprite
 
-:loop_0_bit_14   lsr
-                 bcc   :loop_0_bit_15
-                 dobit $001C;sprite_ptr0;:loop_1_bit_15;CopyOneSprite
-
-:loop_0_bit_15   ldx:  $001E,y
-                 stx   spriteIdx
-                 jmp   CopyOneSprite
+;:loop_0_bit_15   ldx:  $001E,y
+;                 stx   spriteIdx
+;                 jmp   CopyOneSprite
 
 ; We can optimize later, for now just copy the sprite data and mask into its own
 ; direct page buffer and combine with the tile data later
@@ -388,12 +361,10 @@ CopyOneSprite
 
 ]line            equ   0
                  lup   8
-                 ldal  tiledata,x
-                 and   [spriteIdx]
-                 ora   (spriteIdx)
-                 sta   tmp_sprite_data+{]line*4}
-
-
+;                 ldal  tiledata,x
+;                 and   [spriteIdx]
+;                 ora   (spriteIdx)
+;                 sta   tmp_sprite_data+{]line*4}
 
                  ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
                  sta   tmp_sprite_data+{]line*4}
@@ -789,93 +760,6 @@ _CopyBG1Tile
 ; A list of dirty tiles that need to be updated in a given frame
 DirtyTileCount   ds   2
 DirtyTiles       ds   TILE_STORE_SIZE    ; At most this many tiles can possibly be update at once
-
-; Initialize the tile storage data structures.  This takes care of populating the tile records with the
-; appropriate constant values.
-InitTiles
-:col             equ  tmp0
-:row             equ  tmp1
-:vbuff           equ  tmp2
-
-; Fill in the TileStoreYTable.  This is just a table of offsets into the Tile Store for each row.  There
-; are 26 rows with a stride of 41
-                 ldy  #0
-                 lda  #0
-:yloop
-                 sta  TileStoreYTable,y
-                 clc
-                 adc  #41*2
-                 iny
-                 iny
-                 cpy  #26*2
-                 bcc  :yloop
-
-; Next, initialize the Tile Store itself
-
-                 ldx  #TILE_STORE_SIZE-2
-                 lda  #25
-                 sta  :row
-                 lda  #40
-                 sta  :col
-                 lda  #$8000
-                 sta  :vbuff
-
-:loop 
-
-; The first set of values in the Tile Store are changed during each frame based on the actions
-; that are happening
-
-                 lda  #0
-                 stal TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
-                 stal TileStore+TS_TILE_ADDR,x
-                 stal TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
-                 stal TileStore+TS_DIRTY,x              ; none of the tiles are dirty
-
-                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
-                 stal TileStore+TS_DIRTY_TILE_DISP,x
-
-                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
-                 stal TileStore+TS_BASE_TILE_DISP,x     
-
-                 lda  :vbuff                            ; array of sprite vbuff addresses per tile
-                 stal TileStore+TS_VBUFF_ARRAY_ADDR,x
-                 clc
-                 adc  #32
-                 sta  :vbuff
-
-; The next set of values are constants that are simply used as cached parameters to avoid needing to
-; calculate any of these values during tile rendering
-
-                 lda  :row                              ; Set the long address of where this tile
-                 asl                                    ; exists in the code fields
-                 tay
-                 lda  BRowTableHigh,y
-                 stal TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
-                 lda  BRowTableLow,y
-                 stal TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
-
-                 lda  :col                              ; Set the offset values based on the column
-                 asl                                    ; of this tile
-                 asl
-                 stal TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
-                 
-                 tay
-                 lda  Col2CodeOffset+2,y
-                 clc
-                 adcl TileStore+TS_BASE_ADDR,x
-                 stal TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
-
-                 dec  :col
-                 bpl  :hop
-                 dec  :row
-                 lda  #40
-                 sta  :col
-:hop
-
-                 dex
-                 dex
-                 bpl  :loop
-                 rts
 
 _ClearDirtyTiles
                  bra  :hop
