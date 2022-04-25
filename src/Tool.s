@@ -46,8 +46,8 @@ _CallTable
                 adrl  _TSReserved-1
                 adrl  _TSReserved-1
 
-                adrl  _TSReadControl-1
-                adrl  _TSSetScreenMode-1
+                adrl  _TSReadControl-1        ; Function 9
+                adrl  _TSSetScreenMode-1      ; Function 10
 _CTEnd
 
 ; Do nothing when the tool set is installed
@@ -82,7 +82,11 @@ zpToUse         =    userId+4
                 lda     capFlags+2,s       ; Get the engine capability bits
                 sta     EngineMode
 
+                phb
+                phk
+                plb
                 jsr     _CoreStartUp       ; Initialize the library
+                plb
 
 ; SetWAP(userOrSystem, tsNum, waptPtr)
 
@@ -106,7 +110,11 @@ _TSShutDown
                 phd
                 tcd                        ; Set the direct page for the toolset
 
+                phb
+                phk
+                plb
                 jsr     _CoreShutDown      ; Shut down the library
+                plb
 
                 pea     $8000
                 pei     ToolNum
@@ -163,7 +171,7 @@ width           equ     FirstParam+2
                 tay
                 lda     width,s
                 tax
-;                jsr     _SetScreenMode   ; Not implemented yet
+;                jsr     _SetScreenMode
 
                 _TSExit #0;#4
 
@@ -177,11 +185,15 @@ output          equ     FirstParam
 
                 _TSExit #0;#0
 
-; Insert the core GTE functions
+; Insert the GTE code
 
+                put     Math.s
                 put     CoreImpl.s
                 put     Memory.s
                 put     Timer.s
-;                put     Graphics.s
-;                put     blitter/Template.s
+                put     Graphics.s
+                put     blitter/BG0.s
+                put     blitter/BG1.s
+                put     blitter/Template.s
                 put     blitter/Tables.s
+                put     blitter/Blitter.s
