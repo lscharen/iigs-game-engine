@@ -14,6 +14,6 @@ REM Cadius does not overwrite files, so clear the root folder first
 
 REM Now copy files and folders as needed
 %CADIUS% ADDFILE %IMAGE% %FOLDER% .\GTEToolDemo
-%CADIUS% ADDFILE %IMAGE% %FOLDER% ..\..\src\GTETool
+%CADIUS% ADDFILE %IMAGE% %FOLDER% ..\..\src\Tool160
 
 REM Copy in the image assets

@@ -2,28 +2,6 @@
 ; of these routines are to adjust tables and patch in new values into the code field
 ; when the virtual Y-position of the play field changes.
 
-
-; SetBG0YPos
-;
-; Set the virtual position of the primary background layer.
-SetBG0YPos           ENT
-                     jsr   _SetBG0YPos
-                     rtl
-
-_SetBG0YPos
-                     cmp   StartY
-                     beq   :out                 ; Easy, if nothing changed, then nothing changes
-
-                     ldx   StartY               ; Load the old value (but don't save it yet)
-                     sta   StartY               ; Save the new position
-
-                     lda   #DIRTY_BIT_BG0_Y
-                     tsb   DirtyBits            ; Check if the value is already dirty, if so exit
-                     bne   :out                 ; without overwriting the original value
-
-                     stx   OldStartY            ; First change, so preserve the value
-:out                 rts
-
 ; Based on the current value of StartY in the direct page.  Set up the dispatch
 ; information so that the BltRange driver will render the correct code field
 ; lines in the correct order

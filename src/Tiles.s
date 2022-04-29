@@ -8,9 +8,6 @@
 ; A = tile descriptor
 ;
 ; The address is the TileID * 128 + (HFLIP * 64)
-GetTileAddr      ENT
-                 jsr             _GetTileAddr
-                 rtl
 _GetTileAddr
                  asl                                               ; Multiply by 2
                  bit             #2*TILE_HFLIP_BIT                 ; Check if the horizontal flip bit is set
@@ -35,6 +32,29 @@ _GetBaseTileAddr
                  asl                                               ; x128
                  rts
 
+
+; Helper function to get the address offset into the tile cachce / tile backing store
+; X = tile column [0, 40] (41 columns)
+; Y = tile row    [0, 25] (26 rows)
+_GetTileStoreOffset
+                 phx                        ; preserve the registers
+                 phy
+
+                 jsr  _GetTileStoreOffset0
+
+                 ply
+                 plx
+                 rts
+
+_GetTileStoreOffset0
+                 tya
+                 asl
+                 tay
+                 txa
+                 asl
+                 clc
+                 adc  TileStoreYTable,y
+                 rts
 
 ; Initialize the tile storage data structures.  This takes care of populating the tile records with the
 ; appropriate constant values.
@@ -83,11 +103,13 @@ InitTiles
 ;                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
 ;                 stal TileStore+TS_BASE_TILE_DISP,x     
 
-                 lda  :vbuff                            ; array of sprite vbuff addresses per tile
-                 stal TileStore+TS_VBUFF_ARRAY_ADDR,x
-                 clc
-                 adc  #32
-                 sta  :vbuff
+; *** DEPRECATED ***
+;                 lda  :vbuff                            ; array of sprite vbuff addresses per tile
+;                 stal TileStore+TS_VBUFF_ARRAY_ADDR,x
+;                 clc
+;                 adc  #32
+;                 sta  :vbuff
+; *** ********** ***
 
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering
@@ -122,3 +144,116 @@ InitTiles
                  dex
                  bpl  :loop
                  rts
+
+; Set a tile value in the tile backing store.  Mark dirty if the value changes
+;
+; A = tile id
+; X = tile column [0, 40] (41 columns)
+; Y = tile row    [0, 25] (26 rows)
+;
+; Registers are not preserved
+_SetTile
+                 pha
+                 jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
+                 tax
+                 pla
+                 
+                 cmpl TileStore+TS_TILE_ID,x        ; Only set to dirty if the value changed
+                 beq  :nochange
+
+                 stal TileStore+TS_TILE_ID,x        ; Value is different, store it.
+                 jsr  _GetTileAddr
+                 stal TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
+
+; Set the standard renderer procs for this tile.
+;
+;  1. The dirty render proc is always set the same.
+;  2. If BG1 and DYN_TILES are disabled, then the TS_BASE_TILE_DISP is selected from the Fast Renderers, otherwise
+;     it is selected from the full tile rendering functions.
+;  3. The copy process is selected based on the flip bits
+;
+; When a tile overlaps the sprite, it is the responsibility of the Render function to compose the appropriate
+; functionality.  Sometimes it is simple, but in cases of the sprites overlapping Dynamic Tiles and other cases
+; it can be more involved.
+
+                 ldal TileStore+TS_TILE_ID,x
+                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
+                 xba
+                 tay
+;                 lda  DirtyTileProcs,y
+;                 stal TileStore+TS_DIRTY_TILE_DISP,x
+
+;                 lda  CopyTileProcs,y
+;                 stal TileStore+TS_DIRTY_TILE_COPY,x
+
+                 lda  EngineMode
+                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
+                 beq  :fast
+
+                 ldal TileStore+TS_TILE_ID,x        ; Get the non-sprite dispatch address
+                 and  #TILE_CTRL_MASK
+                 xba
+                 tay
+;                 lda  TileProcs,y
+;                 stal TileStore+TS_BASE_TILE_DISP,x
+                 bra  :out
+
+:fast
+;                 lda  FastTileProcs,y
+;                 stal TileStore+TS_BASE_TILE_DISP,x
+:out
+
+;                txa                                ; Add this tile to the list of dirty tiles to refresh
+;                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
+
+:nochange        rts
+
+
+; SetBG0XPos
+;
+; Set the virtual horizontal position of the primary background layer.  In addition to 
+; updating the direct page state locations, this routine needs to preserve the original
+; value as well.  This is a bit subtle, because if this routine is called multiple times
+; with different values, we need to make sure the *original* value is preserved and not
+; continuously overwrite it.
+;
+; We assume that there is a clean code field in this routine
+SetBG0XPos          ENT
+                    jsr   _SetBG0XPos
+                    rtl
+
+_SetBG0XPos
+                    cmp   StartX
+                    beq   :out                       ; Easy, if nothing changed, then nothing changes
+
+                    ldx   StartX                     ; Load the old value (but don't save it yet)
+                    sta   StartX                     ; Save the new position
+
+                    lda   #DIRTY_BIT_BG0_X
+                    tsb   DirtyBits                  ; Check if the value is already dirty, if so exit
+                    bne   :out                       ; without overwriting the original value
+
+                    stx   OldStartX                  ; First change, so preserve the value
+:out                rts
+
+
+; SetBG0YPos
+;
+; Set the virtual position of the primary background layer.
+SetBG0YPos           ENT
+                     jsr   _SetBG0YPos
+                     rtl
+
+_SetBG0YPos
+                     cmp   StartY
+                     beq   :out                 ; Easy, if nothing changed, then nothing changes
+
+                     ldx   StartY               ; Load the old value (but don't save it yet)
+                     sta   StartY               ; Save the new position
+
+                     lda   #DIRTY_BIT_BG0_Y
+                     tsb   DirtyBits            ; Check if the value is already dirty, if so exit
+                     bne   :out                 ; without overwriting the original value
+
+                     stx   OldStartY            ; First change, so preserve the value
+:out                 rts

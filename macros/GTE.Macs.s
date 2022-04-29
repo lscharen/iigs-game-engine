@@ -26,4 +26,13 @@ _GTEReadControl      MAC
                      <<<
 _GTESetScreenMode    MAC
                      UserTool  $A00+GTEToolNum
-                     <<<    
+                     <<<
+_GTESetTile          MAC
+                     UserTool  $B00+GTEToolNum
+                     <<<
+_GTESetBG0Origin     MAC
+                     UserTool  $C00+GTEToolNum
+                     <<<
+_GTERender           MAC
+                     UserTool  $D00+GTEToolNum
+                     <<<

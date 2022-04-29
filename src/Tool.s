@@ -196,6 +196,14 @@ yTile           equ     FirstParam+2
 xTile           equ     FirstParam+4
 
                 _TSEntry
+
+                lda     xTile,s                ; Valid range [0, 40] (41 columns)
+                tax
+                lda     yTile,s                ; Valid range [0, 25] (26 rows)
+                tay
+                lda     tileId
+                jsr     _SetTile
+
                 _TSExit #0;#6
 
 ; SetBG0Origin(x, y)
@@ -204,11 +212,18 @@ yPos            equ     FirstParam
 xPos            equ     FirstParam+2
 
                 _TSEntry
+
+                lda     xPos,s
+                jsr     _SetBG0XPos
+                lda     yPos,s
+                jsr     _SetBG0YPos
+
                 _TSExit #0;#4
 
 ; Render()
 _TSRender
                 _TSEntry
+;                jsr     _Render
                 _TSExit #0;#0
 
 
@@ -220,6 +235,7 @@ _TSRender
                 put     Timer.s
                 put     Graphics.s
                 put     Tiles.s
+;                put     Render.s
                 put     blitter/BG0.s
                 put     blitter/BG1.s
                 put     blitter/Template.s

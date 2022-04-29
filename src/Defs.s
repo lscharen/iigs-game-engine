@@ -182,6 +182,8 @@ TILE_MASK_BIT          equ   $1000
 TILE_DYN_BIT           equ   $0800
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
+TILE_CTRL_MASK         equ   $FE00
+TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
 
 ; Sprite constants
 SPRITE_HIDE            equ   $2000
@@ -218,7 +220,9 @@ TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5
 TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
 TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
 TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
-TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
+;TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
+
+TS_BASE_TILE_COPY     equ  TILE_STORE_SIZE*9      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
 TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
 TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
 

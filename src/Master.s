@@ -1,7 +1,7 @@
 ; IIgs Generic Tile Engine User Toolset
 
             TYP   $BA                  ; Tool set file
-            DSK   GTETool
+            DSK   Tool160
             XPL
 
 ; Main toolbox interface and code

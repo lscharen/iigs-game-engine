@@ -3,33 +3,6 @@
 ; when the virtual X-position of the play field changes.
 
 
-; SetBG0XPos
-;
-; Set the virtual horizontal position of the primary background layer.  In addition to 
-; updating the direct page state locations, this routine needs to preserve the original
-; value as well.  This is a bit subtle, because if this routine is called multiple times
-; with different values, we need to make sure the *original* value is preserved and not
-; continuously overwrite it.
-;
-; We assume that there is a clean code field in this routine
-SetBG0XPos          ENT
-                    jsr   _SetBG0XPos
-                    rtl
-
-_SetBG0XPos
-                    cmp   StartX
-                    beq   :out                       ; Easy, if nothing changed, then nothing changes
-
-                    ldx   StartX                     ; Load the old value (but don't save it yet)
-                    sta   StartX                     ; Save the new position
-
-                    lda   #DIRTY_BIT_BG0_X
-                    tsb   DirtyBits                  ; Check if the value is already dirty, if so exit
-                    bne   :out                       ; without overwriting the original value
-
-                    stx   OldStartX                  ; First change, so preserve the value
-:out                rts
-
 ; Simple function that restores the saved opcode that are stashed in _applyBG0Xpos.  It is
 ; very important that opcodes are restored before new ones are inserted, because there is 
 ; only one, fixed storage location and old values will be overwritten if operations are not

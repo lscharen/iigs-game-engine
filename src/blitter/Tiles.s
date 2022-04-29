@@ -38,9 +38,6 @@
 ; It is simply too slow to try to horizontally reverse the pixel data on the fly.  This still allows
 ; for up to 512 tiles to be stored in a single bank, which should be sufficient.
 
-TILE_CTRL_MASK    equ             $FE00
-TILE_PROC_MASK    equ             $F800                  ; Select tile proc for rendering
-
 ; Use some temporary space for the spriteIdx array (maximum of 4 entries)
 
 stkSave     equ tmp9
@@ -48,29 +45,7 @@ screenAddr  equ tmp10
 tileAddr    equ tmp11
 spriteIdx   equ tmp12
 
-; On entry
-;
-; B is set to the correct BG1 data bank
-; A is set to the the tile descriptor
-; Y is set to the top-left address of the tile in the BG1 data bank
-;
-; tmp0/tmp1 is reserved 
-_RenderTileBG1
-                 pha                                               ; Save the tile descriptor
 
-                 and             #TILE_VFLIP_BIT+TILE_HFLIP_BIT    ; Only horizontal and vertical flips are supported for BG1
-                 xba
-                 tax
-                 ldal            :actions,x
-                 stal            :tiledisp+1
-
-                 pla
-                 and             #TILE_ID_MASK                     ; Mask out the ID and save just that
-                 _Mul128                                           ; multiplied by 128
-                 tax
-:tiledisp        jmp             $0000
-
-:actions         dw              _TBSolidBG1_00,_TBSolidBG1_0H,_TBSolidBG1_V0,_TBSolidBG1_VH
 
 ; Given an address to a Tile Store record, dispatch to the appropriate tile renderer.  The Tile
 ; Store record contains all of the low-level information that's needed to call the renderer.
@@ -317,41 +292,6 @@ CopyTwoSprites
                  --^
 ;                 jmp   FinishTile
 
-; Copy a single piece of sprite data into a temporary direct page . X = spriteIdx
-;
-; X register is the offset of the underlying tile data
-; Y register is the line offset into the sprite data and mask buffers
-; There is a pointer for each sprite on the direct page that can be used
-; to access both the data and mask components of a sprite
-; The Data Bank reigster points to the sprite data
-;
-;    ldal   tiledata,x
-;    and    [spriteIdx],y
-;    ora    (spriteIdx),y
-;    sta    tmp_sprite_data
-;
-; For multiple sprites, we can chain together the and/ora instructions to stack the sprites
-;
-;    ldal   tiledata,x
-;    and    [spriteIdx],y
-;    ora    (spriteIdx),y
-;    and    [spriteIdx+4],y
-;    ora    (spriteIdx+4),y
-;    and    [spriteIdx+8],y
-;    ora    (spriteIdx+8),y
-;    sta    tmp_sprite_data
-;
-; When the sprites need to be drawn on top of the background, then change the order of operations
-;
-;    lda    (spriteIdx),y
-;    and    [spriteIdx+4],y
-;    ora    (spriteIdx+4),y
-;    and    [spriteIdx+8],y
-;    ora    (spriteIdx+8),y
-;    sta    tmp_sprite_data
-;    andl   tiledata+32,x
-;    oral   tiledata,x
-;
 CopyOneSprite
                  clc
                  lda   TileStore+TS_VBUFF_ADDR_0,y
@@ -770,77 +710,6 @@ _ClearDirtyTiles
                  bne  :loop
                  rts
 
-; Helper function to get the address offset into the tile cachce / tile backing store
-; X = tile column [0, 40] (41 columns)
-; Y = tile row    [0, 25] (26 rows)
-GetTileStoreOffset ENT
-                 phb
-                 phk
-                 plb
-                 jsr  _GetTileStoreOffset
-                 plb
-                 rtl
-
-
-_GetTileStoreOffset
-                 phx                        ; preserve the registers
-                 phy
-
-                 jsr  _GetTileStoreOffset0
-
-                 ply
-                 plx
-                 rts
-
-_GetTileStoreOffset0
-                 tya
-                 asl
-                 tay
-                 txa
-                 asl
-                 clc
-                 adc  TileStoreYTable,y
-                 rts
-
-; Set a tile value in the tile backing store.  Mark dirty if the value changes
-;
-; A = tile id
-; X = tile column [0, 40] (41 columns)
-; Y = tile row    [0, 25] (26 rows)
-;
-; Registers are not preserved
-_SetTile
-                 pha
-                 jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
-                 tax
-                 pla
-                 
-                 cmpl TileStore+TS_TILE_ID,x        ; Only set to dirty if the value changed
-                 beq  :nochange
-
-                 stal TileStore+TS_TILE_ID,x        ; Value is different, store it.
-                 jsr  _GetTileAddr
-                 stal TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
-
-                 ldal TileStore+TS_TILE_ID,x
-                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
-                 xba
-                 tay
-                 lda  DirtyTileProcs,y
-                 stal TileStore+TS_DIRTY_TILE_DISP,x
-
-                 ldal TileStore+TS_TILE_ID,x        ; Get the non-sprite dispatch address
-                 and  #TILE_CTRL_MASK
-                 xba
-                 tay
-                 lda  TileProcs,y
-                 stal TileStore+TS_BASE_TILE_DISP,x
-
-;                txa                                ; Add this tile to the list of dirty tiles to refresh
-                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
-
-:nochange        rts
-           
 
 ; Append a new dirty tile record 
 ;

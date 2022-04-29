@@ -10,15 +10,7 @@
 ;
 ; Everything is composited into the tiles in the playfield and then the screen is rendered in
 ; a single pass.
-
-Render      ENT
-            phb
-            phk
-            plb
-            jsr   _Render
-            plb
-            rtl
-
+;
 ; TODO -- actually check the dirty bits and be selective on what gets updated.  For example, if
 ;         only the Y position changes, then we should only need to set new values on the 
 ;         virtual lines that were brought on screen.  If the X position only changes by one
@@ -36,13 +28,11 @@ _Render
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
-            nop
             jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
             jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
-            nop
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
@@ -108,58 +98,17 @@ _Render
 ; the sprite subsystem + tile attributes for single-screen games which should be able to run
 ; close to 60 fps.
 ;
-; Because we are register starved, there is a lot of inline code to quickly fetch the information
-; needed to render sprites appropriately.  If there was a way to efficiently maintain an ordered
-; and compact array of per-tile VBUFF addresses, rather than the current sparse array, then
-; the sprite handling code could be significantly streamlined.  A note for anyone attempting
-; this optimization:
-;
-; The _MarkDirtyTiles simply stores a sprite's per-tile VBUFF address and marks the tile 
-; as being occupied by the sprite with just 4 instructions
-;
-;    sta (vbuff_array_ptr),y
-;    lda TileStore+TS_SPRITE_FLAG,x
-;    ora SpriteBit,y
-;    sta TileStore+TS_SPRITE_FLAG,x
-;
-; Then, we have an unrolled loop that does repeated tests of
-;
-;    lsr
-;    bcc *+
-;    lda vbuff_array_ptr,y
-;    sta spriteVBuffArr
-;
-; The only gain to be had is if the sprites that are marked are in the high bits and there are no low-index
-; sprites.  Skipping over N bits of the SPRITE_FLAG takes only 5*N cycles.  So, on average, we might waste 
-; 40 cycles looking for the proper bit.
-;
-; Any improvement to the existing code would need to be able to maintain a data structure and get the final
-; values into the spriteVBuffArr for a total cost of under 75 cycles per tile.
-
-RenderDirty ENT
-            phb
-            phk
-            plb
-            jsr   _RenderDirty
-            plb
-            rtl
-
 ; In this renderer, we assume that there is no scrolling, so no need to update any information about
 ; the BG0/BG1 positions
 _RenderDirty
             lda   LastRender                    ; If the full renderer was last called, we assume that
             bne   :norecalc                     ; the scroll positions have likely changed, so recalculate
-            lda   #2                            ; blue
-            jsr   _SetBorderColor
             jsr   _RecalcTileScreenAddrs        ; them to make sure sprites draw at the correct screen address
 :norecalc
-            lda   #3                            ; purple
-            jsr   _SetBorderColor
-            jsr   _RenderSprites
 
-            lda   #4                            ; dk. green
-            jsr   _SetBorderColor
+            jsr   _RenderSprites
             jsr   _ApplyDirtyTiles
+
             lda   #1
             sta   LastRender
             rts
@@ -669,35 +618,6 @@ dirty_sprite
                  stx   spriteIdx+6
                  jmp   BlitFourSprites
 
-DirtyTileProcs   dw    _TBDirtyTile_00,_TBDirtyTile_0H,_TBDirtyTile_V0,_TBDirtyTile_VH
-;DirtyTileSpriteProcs dw  _TBDirtySpriteTile_00,_TBDirtySpriteTile_0H,_TBDirtySpriteTile_V0,_TBDirtySpriteTile_VH
-
-; Blit tiles directly to the screen.
-_TBDirtyTile_00
-_TBDirtyTile_0H
-]line            equ             0
-                 lup             8
-                 ldal            tiledata+{]line*4},x
-                 sta:            $0000+{]line*160},y
-                 ldal            tiledata+{]line*4}+2,x
-                 sta:            $0002+{]line*160},y
-]line            equ             ]line+1
-                 --^
-                 rts
-
-_TBDirtyTile_V0
-_TBDirtyTile_VH
-]src             equ             7
-]dest            equ             0
-                 lup             8
-                 ldal            tiledata+{]src*4},x
-                 sta:            $0000+{]dest*160},y
-                 ldal            tiledata+{]src*4}+2,x
-                 sta:            $0002+{]dest*160},y
-]src             equ             ]src-1
-]dest            equ             ]dest+1
-                 --^
-                 rts
 
 ; If there are two or more sprites at a tile, we can still be fast, but need to do extra work because
 ; the VBUFF values need to be read from the direct page.  Thus, the direct page cannot be mapped onto

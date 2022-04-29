@@ -49,9 +49,9 @@ ScreenY         equ   2
                 cmp   #'q'
                 beq   :exit
 
-;                pei   ScreenX
-;                pei   ScreenY
-;                _GTESetBG0Origin
+                pei   ScreenX
+                pei   ScreenY
+                _GTESetBG0Origin
 
 ;                _GTERender
 
@@ -119,4 +119,4 @@ GTEStartUp
 
 MasterId        ds    2
 UserId          ds    2
-ToolPath        str   '1/GTETool'
+ToolPath        str   '1/Tool160'
