@@ -1,5 +1,22 @@
 ; Basic tile functions
 
+; Copy tileset data from a pointer in memory to the tiledata back
+; X = high word
+; A = low word
+_LoadTileSet
+                sta  tmp0
+                stx  tmp2
+                ldy  #0
+                tyx
+:loop           lda  [tmp0],y
+                stal tiledata,x
+                dex
+                dex
+                dey
+                dey
+                bne  :loop
+                rts
+
 
 ; Low-level function to take a tile descriptor and return the address in the tiledata
 ; bank.  This is not too useful in the fast-path because the fast-path does more
@@ -10,8 +27,8 @@
 ; The address is the TileID * 128 + (HFLIP * 64)
 _GetTileAddr
                  asl                                               ; Multiply by 2
-                 bit             #2*TILE_HFLIP_BIT                 ; Check if the horizontal flip bit is set
-                 beq             :no_flip
+                 bit   #2*TILE_HFLIP_BIT                           ; Check if the horizontal flip bit is set
+                 beq   :no_flip
                  inc                                               ; Set the LSB
 :no_flip         asl                                               ; x4
                  asl                                               ; x8
@@ -199,12 +216,12 @@ _SetTile
                  bra  :out
 
 :fast
-;                 lda  FastTileProcs,y
-;                 stal TileStore+TS_BASE_TILE_DISP,x
+                 lda  FastTileProcs,y
+                 stal TileStore+TS_BASE_TILE_DISP,x
 :out
 
-;                txa                                ; Add this tile to the list of dirty tiles to refresh
-;                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
+                txa                                ; Add this tile to the list of dirty tiles to refresh
+                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
 
 :nochange        rts
 

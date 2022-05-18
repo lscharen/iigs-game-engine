@@ -37,16 +37,7 @@
 ;
 ; It is simply too slow to try to horizontally reverse the pixel data on the fly.  This still allows
 ; for up to 512 tiles to be stored in a single bank, which should be sufficient.
-
-; Use some temporary space for the spriteIdx array (maximum of 4 entries)
-
-stkSave     equ tmp9
-screenAddr  equ tmp10
-tileAddr    equ tmp11
-spriteIdx   equ tmp12
-
-
-
+;
 ; Given an address to a Tile Store record, dispatch to the appropriate tile renderer.  The Tile
 ; Store record contains all of the low-level information that's needed to call the renderer.
 ;
@@ -128,7 +119,7 @@ dirty_sprite_dispatch
 
 ; This is very similar to the code in the dirty tile renderer, but we can't reuse 
 ; because that code draws directly to the graphics screen, and this code draws
-; to a temporary budder that has a different stride.
+; to a temporary buffer that has a different stride.
 
 ;                 ldy   TileStore+TS_VBUFF_ARRAY_ADDR,x     ; base address of the VBUFF sprite address array for this tile
 ;
@@ -692,138 +683,10 @@ _CopyBG1Tile
 ; TileStore+TS_SPRITE_ADDR_15
 ; TileStore+TS_SPRITE_ADDR_16
 
-
-; TileStore+
-;TileStore        ENT
-;                 ds   TILE_STORE_SIZE*11
-
-; A list of dirty tiles that need to be updated in a given frame
-DirtyTileCount   ds   2
-DirtyTiles       ds   TILE_STORE_SIZE    ; At most this many tiles can possibly be update at once
-
-_ClearDirtyTiles
-                 bra  :hop
-:loop
-                 jsr  _PopDirtyTile
-:hop
-                 lda  DirtyTileCount
-                 bne  :loop
-                 rts
-
-
-; Append a new dirty tile record 
-;
-;  A = result of _GetTileStoreOffset for X, Y
-;
-; The main purpose of this function is to
-;
-;  1. Avoid marking the same tile dirty multiple times, and
-;  2. Pre-calculating all of the information necessary to render the tile
-PushDirtyTile    ENT
-                 phb
-                 phk
-                 plb
-                 jsr  _PushDirtyTile
-                 plb
-                 rtl
-
-; alternate version that is very slightly slower, but preserves the y-register
-_PushDirtyTile
-                 tax
-
-; alternate entry point if the x-register is already set
-_PushDirtyTileX
-                 ldal TileStore+TS_DIRTY,x
-                 bne  :occupied2
-
-                 inc                                  ; any non-zero value will work
-                 stal TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
-
-                 txa
-                 ldx  DirtyTileCount ; 4
-                 sta  DirtyTiles,x   ; 6
-                 inx                 ; 2
-                 inx                 ; 2
-                 stx  DirtyTileCount ; 4 = 18
-                 rts
-:occupied2
-                 txa                                ; Make sure TileStore offset is returned in the accumulator
-                 rts
-
-; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
-; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update,
-; because this routine merges the tile IDs stored in the Tile Store with the Sprite
-; information to set the TILE_SPRITE_BIT.  This is the *only* place in the entire code base that
-; applies this bit to a tile descriptor.
-PopDirtyTile     ENT
-                 phb
-                 phk
-                 plb
-                 jsr  _PopDirtyTile
-                 plb
-                 rtl
-
-_PopDirtyTile
-                 ldy  DirtyTileCount
-                 bne  _PopDirtyTile2
-                 rts
-
-_PopDirtyTile2                                       ; alternate entry point
-                 dey
-                 dey
-                 sty  DirtyTileCount                 ; remove last item from the list
-
-                 ldx  DirtyTiles,y                   ; load the offset into the Tile Store
-                 lda  #$FFFF
-                 stal TileStore+TS_DIRTY,x           ; clear the occupied backlink
-                 rts
-
-; Run through the dirty tile list and render them into the code field
-ApplyTiles       ENT
-                 phb
-                 phk
-                 plb
-                 jsr  _ApplyTiles
-                 plb
-                 rtl
-
-; The _ApplyTiles function is responsible for rendering all of the dirty tiles into the code
-; field.  In this function we switch to the second direct page which holds the temporary
-; working buffers for tile rendering.
-_ApplyTiles
-                 tdc
-                 clc
-                 adc  #$100                  ; move to the next page
-                 tcd
-
-                 bra  :begin
-
-:loop
-; Retrieve the offset of the next dirty Tile Store items in the X-register
-
-                 jsr  _PopDirtyTile2
-
-; Call the generic dispatch with the Tile Store record pointer at by the X-register.
-
-                 phb
-                 jsr  _RenderTile2
-                 plb
-
-; Loop again until the list of dirty tiles is empty
-
-:begin           ldy  DirtyTileCount
-                 bne  :loop
-
-                 tdc                         ; Move back to the original direct page
-                 sec
-                 sbc  #$100
-                 tcd
-                 rts
-
 ; To make processing the tile faster, we do them in chunks of eight.  This allows the loop to be
 ; unrolled, which means we don't have to keep track of the register value and makes it faster to
 ; clear the dirty tile flag after being processed.
-
+; _ApplyTilesUnrolled
                  tdc                       ; Move to the dedicated direct page for tile rendering
                  clc
                  adc  #$100

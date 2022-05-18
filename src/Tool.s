@@ -3,7 +3,6 @@
 ; Ref: Toolbox Reference, Volume 2, Appendix A
 ; Ref: IIgs Tech Note #73
 
-;                  use       Load.Macs.s
                 use   Mem.Macs.s
                 use   Misc.Macs.s
                 use   Util.Macs
@@ -51,6 +50,7 @@ _CallTable
                 adrl  _TSSetTile-1
                 adrl  _TSSetBG0Origin-1
                 adrl  _TSRender-1
+                adrl  _TSLoadTileSet-1
 _CTEnd
 
 ; Do nothing when the tool set is installed
@@ -223,9 +223,20 @@ xPos            equ     FirstParam+2
 ; Render()
 _TSRender
                 _TSEntry
-;                jsr     _Render
+                 jsr     _Render
                 _TSExit #0;#0
 
+; LoadTileSet(Pointer)
+_TSLoadTileSet
+TSPtr           equ     FirstParam
+
+                _TSEntry
+
+                lda     TSPtr+2,s
+                tax
+                lda     TSPtr,s
+                jsr     _LoadTileSet
+                _TSExit #0;#4
 
 ; Insert the GTE code
 
@@ -235,11 +246,17 @@ _TSRender
                 put     Timer.s
                 put     Graphics.s
                 put     Tiles.s
-;                put     Render.s
+                put     Render.s
+                put     tiles/DirtyTileQueue.s
+                put     tiles/FastRenderer.s
+                put     blitter/Horz.s
+                put     blitter/Vert.s
                 put     blitter/BG0.s
                 put     blitter/BG1.s
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
                 put     blitter/Tables.s
                 put     blitter/Blitter.s
+                put     blitter/TileProcs.s
+                put     blitter/Tiles00000.s
 ;                put     blitter/Tiles.s

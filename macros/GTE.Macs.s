@@ -36,3 +36,6 @@ _GTESetBG0Origin     MAC
 _GTERender           MAC
                      UserTool  $D00+GTEToolNum
                      <<<
+_GTELoadTileSet      MAC
+                     UserTool  $E00+GTEToolNum
+                     <<<

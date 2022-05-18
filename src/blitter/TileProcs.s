@@ -4,25 +4,14 @@
 _TBFillPEAOpcode
                  sep             #$20
                  lda             #$F4
-                 sta:            $0000,y
-                 sta:            $0003,y
-                 sta             $1000,y
-                 sta             $1003,y
-                 sta             $2000,y
-                 sta             $2003,y
-                 sta             $3000,y
-                 sta             $3003,y
-                 sta             $4000,y
-                 sta             $4003,y
-                 sta             $5000,y
-                 sta             $5003,y
-                 sta             $6000,y
-                 sta             $6003,y
-                 sta             $7000,y
-                 sta             $7003,y
+]line            equ   0
+                 lup   8
+                 sta:            $0000+{]line*$1000},y
+                 sta:            $0003+{]line*$1000},y
+]line            equ   ]line+1
+                 --^
                  rep             #$20
                  rts
-
 
 ; Copy tile data into the direct page compositing buffer.  The main reason to do this in full passes is
 ; because we can avoid needing to use both the X and Y registers during the compositing process and

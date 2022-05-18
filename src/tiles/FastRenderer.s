@@ -8,9 +8,7 @@
 _RenderTileFast
             ldx   TileStore+TS_VBUFF_ADDR_COUNT,y   ; How many sprites are on this tile?
             beq   NoSpritesFast                     ; This is faster if there are no sprites
-
-            lda   TileStore+TS_TILE_ID,y            ; Check if the tile has 
-            jmp   (fast_dispatch,x)
+            jmp   (fast_dispatch,x)                 ; Dispatch to the other routines
 fast_dispatch
             da    NoSpritesFast
             da    OneSpriteFast
@@ -31,6 +29,16 @@ NoSpritesFast
 ; ENGINE_MODE_DYN_TILES are both off.
 FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataVFast,_TBCopyDataVFast
 
+; Pointers to sprite data and masks
+spritedata_0  equ   tmp0
+spritedata_1  equ   tmp2
+spritedata_2  equ   tmp4
+spritedata_3  equ   tmp6
+spritemask_0  equ   tmp8
+spritemask_1  equ   tmp10
+spritemask_2  equ   tmp12
+spritemask_3  equ   tmp14
+
 ; Where there are sprites involved, the first step is to call a routine to copy the
 ; tile data into a temporary buffer.  Then the sprite data is merged and placed into
 ; the code field.
@@ -47,19 +55,15 @@ OneSpriteFast
             tay
             plb                                    ; set the code field bank
 
-]line       equ   0
-            lup   8
-            lda   blttmp+{]line*4}
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta:  $0004+{]line*$1000},y
+            OneSpriteToCodeField 0
+            OneSpriteToCodeField 1
+            OneSpriteToCodeField 2
+            OneSpriteToCodeField 3
+            OneSpriteToCodeField 4
+            OneSpriteToCodeField 5
+            OneSpriteToCodeField 6
+            OneSpriteToCodeField 7
 
-            lda   blttmp+{]line*4}+2
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta:  $0001+{]line*$1000},y
-]line       equ   ]line+1
-            --^
             rts
 
 TwoSpritesFast
@@ -81,25 +85,15 @@ TwoSpritesFast
             tay
             plb                                    ; set the code field bank
 
-]line       equ   0
-            lup   8
-            ldy   #{]line*SPRITE_PLANE_SPAN}
-            lda   blttmp+{]line*4}
-            andl  [spritemask_1],y
-            oral  [spritedata_1],y
-            andl  [spritemask_0],y
-            oral  [spritedata_0],y
-            sta:  $0004+{]line*$1000},x
+            TwoSpritesToCodeField 0
+            TwoSpritesToCodeField 1
+            TwoSpritesToCodeField 2
+            TwoSpritesToCodeField 3
+            TwoSpritesToCodeField 4
+            TwoSpritesToCodeField 5
+            TwoSpritesToCodeField 6
+            TwoSpritesToCodeField 7
 
-            ldy   #{]line*SPRITE_PLANE_SPAN}+2
-            lda   blttmp+{]line*4}+2
-            andl  [spritemask_1],y
-            oral  [spritedata_1],y
-            andl  [spritemask_0],y
-            oral  [spritedata_0],y
-            sta:  $0001+{]line*$1000},x
-]line       equ   ]line+1
-            --^
             rts
 
 ThreeSpritesFast
@@ -125,27 +119,13 @@ FourSpritesFast
             tay
             plb                                    ; set the code field bank
 
-]line       equ   0
-            lup   8
-            ldy   #{]line*SPRITE_PLANE_SPAN}
-            lda   blttmp+{]line*4}
-            andl  [spritemask_2],y
-            oral  [spritedata_2],y
-            andl  [spritemask_1],y
-            oral  [spritedata_1],y
-            andl  [spritemask_0],y
-            oral  [spritedata_0],y
-            sta:  $0004+{]line*$1000},x
+            ThreeSpritesToCodeField 0
+            ThreeSpritesToCodeField 1
+            ThreeSpritesToCodeField 2
+            ThreeSpritesToCodeField 3
+            ThreeSpritesToCodeField 4
+            ThreeSpritesToCodeField 5
+            ThreeSpritesToCodeField 6
+            ThreeSpritesToCodeField 7
 
-            ldy   #{]line*SPRITE_PLANE_SPAN}+2
-            lda   blttmp+{]line*4}+2
-            andl  [spritemask_2],y
-            oral  [spritedata_2],y
-            andl  [spritemask_1],y
-            oral  [spritedata_1],y
-            andl  [spritemask_0],y
-            oral  [spritedata_0],y
-            sta:  $0001+{]line*$1000},x
-]line       equ   ]line+1
-            --^
             rts
