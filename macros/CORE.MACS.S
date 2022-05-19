@@ -325,3 +325,57 @@ transparent
                 sta:  ]3+1,y
 next
                 eom
+
+; Large code blocks that can be used in sprite blitters
+; ]1: line number
+OneSpriteToCodeField mac
+            lda   blttmp+{]1*4}
+            andl  spritemask+{]1*SPRITE_PLANE_SPAN},x
+            oral  spritedata+{]1*SPRITE_PLANE_SPAN},x
+            sta:  $0004+{]1*$1000},y
+
+            lda   blttmp+{]1*4}+2
+            andl  spritemask+{]1*SPRITE_PLANE_SPAN}+2,x
+            oral  spritedata+{]1*SPRITE_PLANE_SPAN}+2,x
+            sta:  $0001+{]1*$1000},y
+            eom
+
+TwoSpritesToCodeField mac
+            ldy   #{]1*SPRITE_PLANE_SPAN}
+            lda   blttmp+{]1*4}
+            andl  [spritemask_1],y
+            oral  [spritedata_1],y
+            andl  [spritemask_0],y
+            oral  [spritedata_0],y
+            sta:  $0004+{]1*$1000},x
+
+            ldy   #{]1*SPRITE_PLANE_SPAN}+2
+            lda   blttmp+{]1*4}+2
+            andl  [spritemask_1],y
+            oral  [spritedata_1],y
+            andl  [spritemask_0],y
+            oral  [spritedata_0],y
+            sta:  $0001+{]1*$1000},x
+            eom
+
+ThreeSpritesToCodeField mac
+            ldy   #{]1*SPRITE_PLANE_SPAN}
+            lda   blttmp+{]1*4}
+            andl  [spritemask_2],y
+            oral  [spritedata_2],y
+            andl  [spritemask_1],y
+            oral  [spritedata_1],y
+            andl  [spritemask_0],y
+            oral  [spritedata_0],y
+            sta:  $0004+{]1*$1000},x
+
+            ldy   #{]1*SPRITE_PLANE_SPAN}+2
+            lda   blttmp+{]1*4}+2
+            andl  [spritemask_2],y
+            oral  [spritedata_2],y
+            andl  [spritemask_1],y
+            oral  [spritedata_1],y
+            andl  [spritemask_0],y
+            oral  [spritedata_0],y
+            sta:  $0001+{]1*$1000},x
+            eom

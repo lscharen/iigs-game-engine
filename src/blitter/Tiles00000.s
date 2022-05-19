@@ -36,8 +36,24 @@ _TBSolidTile_VH
 ;
 ; This does not increase the FPS by 37% because only a small number of tiles are drawn each frame, but it
 ; has an impact and can significantly help out when sprites trigger more dirty tile updates than normal.
+
+
+; This is called via a JMP (abs,x) with an extra byte on the stack that holds the bank
+; register value.  This must be restored prior to returning
 _TBCopyDataFast
                  tax
+]line            equ             0
+                 lup             8
+                 ldal            tiledata+{]line*4},x
+                 sta:            $0004+{]line*$1000},y
+                 ldal            tiledata+{]line*4}+2,x
+                 sta:            $0001+{]line*$1000},y
+]line            equ             ]line+1
+                 --^
+                 plb
+                 rts
+
+
 _TBCopyData
 ]line            equ             0
                  lup             8

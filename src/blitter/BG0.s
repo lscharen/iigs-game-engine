@@ -8,14 +8,6 @@ _InitBG0
 ;
 ; A=low word of picture address
 ; X=high word of pixture address
-CopyBinToField   ENT
-                 phb
-                 phk
-                 plb
-                 jsr   _CopyBinToField
-                 plb
-                 rtl
-
 _CopyBinToField
 :srcptr          equ   tmp0
 :line_cnt        equ   tmp2
@@ -222,14 +214,6 @@ _CopyBinToField
 ; X=high workd of pixture address
 ;
 ; Picture must be within one bank
-CopyPicToField   ENT
-                 phb
-                 phk
-                 plb
-                 jsr   _CopyPicToField
-                 plb
-                 rtl
-
 _CopyPicToField
 :srcptr          equ   tmp0
 :line_cnt        equ   tmp2

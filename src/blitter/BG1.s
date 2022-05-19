@@ -9,14 +9,6 @@ _InitBG1
 ; A=low word of picture address
 ; X=high word of pixture address
 ; Y=high word of BG1 bank
-CopyBinToBG1              ENT
-                          phb
-                          phk
-                          plb
-                          jsr   _CopyBinToBG1
-                          plb
-                          rtl
-
 _CopyBinToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
@@ -39,14 +31,6 @@ _CopyBinToBG1
 ; A=low word of picture address
 ; X=high word of pixture address
 ; Y=high word of BG1 bank
-CopyPicToBG1              ENT
-                          phb
-                          phk
-                          plb
-                          jsr   _CopyPicToBG1
-                          plb
-                          rtl
-
 _CopyPicToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
@@ -221,6 +205,8 @@ _ApplyBG1YPos
 :draw_count               equ   tmp2
 :ytbl_idx                 equ   tmp3
 
+                          phb                             ; Save the bank
+
                           lda   BG1StartY
                           jsr   Mod208
                           sta   BG1StartYMod208
@@ -277,7 +263,6 @@ _ApplyBG1YPos
 
                           jne   :loop
 
-                          phk
                           plb
                           rts
 
@@ -369,16 +354,14 @@ CopyBG1YTableToBG1Addr2
                           phx
                           phb
 
-                          phk                             ; restore access to this bank
-                          plb
+                          jsr   _SetDataBank              ; restore access to this bank
                           ldy   BG1OffsetIndex            ; Get the offset and save the values
                           jsr   SaveBG1OffsetValues
 
                           plb
                           plx                             ; x is used directly in this routine
                           ply
-                          jsr   ApplyBG1OffsetValues
-                          rts
+                          jmp   ApplyBG1OffsetValues
 
 SaveBG1OffsetValues
                           jmp   (:tbl,x)

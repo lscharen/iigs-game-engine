@@ -33,10 +33,10 @@ _BltRange
 
                 sep   #$20           ; 8-bit Acc
                 lda   BTableHigh,x   ; patch in the bank
-                sta   blt_entry+3
+                stal  blt_entry+3
 
                 lda   BTableLow+1,x  ; patch in the page
-                sta   blt_entry+2
+                stal  blt_entry+2
 
 ; The way we patch the exit code is subtle, but very fast.  The CODE_EXIT offset points to
 ; an JMP/JML instruction that transitions to the next line after all of the code has been
@@ -74,6 +74,7 @@ _BltRange
                 tsc                  ; save the stack pointer
                 stal  stk_save+1
 
+                bra   blt_return
 blt_entry       jml   $000000        ; Jump into the blitter code $XX/YY00
 
 blt_return      _R0W0
@@ -88,5 +89,6 @@ stk_save        lda   #0000          ; load the stack
                 sta   [:exit_ptr],y
                 rep   #$20
 
+blt_out
                 plb                  ; restore the bank
                 rts

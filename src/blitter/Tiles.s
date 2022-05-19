@@ -561,14 +561,6 @@ CopyTileMToDyn
 ; A = Tile ID (0 - 511)
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
-CopyBG0Tile      ENT
-                 phb
-                 phk
-                 plb
-                 jsr             _CopyBG0Tile
-                 plb
-                 rtl
-
 _CopyBG0Tile
                  phb                                               ; save the current bank
                  phx                                               ; save the original x-value
@@ -614,14 +606,6 @@ _CopyBG0Tile
 ; A = Tile ID (0 - 511)
 ; X = Tile column (0 - 40)
 ; Y = Tile row (0 - 25)
-CopyBG1Tile
-                 phb
-                 phk
-                 plb
-                 jsr             _CopyBG1Tile
-                 plb
-                 rtl
-
 _CopyBG1Tile
                  phb                                               ; save the current bank
                  phx                                               ; save the original x-value

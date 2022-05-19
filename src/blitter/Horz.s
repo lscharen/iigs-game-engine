@@ -21,6 +21,8 @@ _RestoreBG0Opcodes
 :draw_count_x2      equ   tmp3
 :exit_offset        equ   tmp4
 
+                    phb                              ; Save data bank
+
                     asl
                     sta   :virt_line_x2              ; Keep track of it
 
@@ -75,7 +77,6 @@ _RestoreBG0Opcodes
                     stz   LastPatchOffset            ; Clear the value once completed
 
 :out
-                    phk
                     plb
                     rts
 
@@ -279,6 +280,7 @@ _ApplyBG0XPos
 ; 2. Writes the BRA instruction to exit the code field
 ; 3. Writes the JMP entry point to enter the code field
 
+                    phb                              ; Save the existing bank
 :loop
                     lda   :virt_line
                     asl                              ; This will clear the carry bit
@@ -353,7 +355,7 @@ _ApplyBG0XPos
                     ldx   :draw_count_x2
                     ldy   :base_address         ; Y-register is preserved, this can be removed
                     pei   :exit_address
-                    jmp   :SaveHighOperand           ; Only used once, so "inline" it
+                    jmp   :SaveHighOperand      ; Only used once, so "inline" it
 :save_high_op_rtn
 
 :not_odd
@@ -374,7 +376,6 @@ _ApplyBG0XPos
 
                     jne   :loop
 
-                    phk
                     plb
                     rts
 

@@ -28,9 +28,9 @@ InitMemory     lda       EngineMode
                _NewHandle                            ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
-               _Deref
-               stx       Buff00
-               sta       Buff00+2
+;               _Deref
+;               stx       Buff00
+;               sta       Buff00+2
 :no_bnk0_buff
 
                PushLong  #0                          ; space for result
@@ -41,9 +41,9 @@ InitMemory     lda       EngineMode
                _NewHandle                            ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
-               _Deref
-               stx       Buff01
-               sta       Buff01+2
+;               _Deref
+;               stx       Buff01
+;               sta       Buff01+2
 
                PushLong  #0                          ; space for result
 
@@ -153,8 +153,8 @@ InitMemory     lda       EngineMode
 :exit
                rts
 
-Buff00         ds        4
-Buff01         ds        4
+;Buff00         ds        4
+;Buff01         ds        4
 
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
 
@@ -172,14 +172,6 @@ AllocOneBank   PushLong  #0
                rts
 
 ; Variation that returns the pointer in the X/A registers (X = low, A = high)
-AllocBank      ENT
-               phb
-               phk
-               plb
-               jsr       AllocOneBank2
-               plb
-               rtl
-
 AllocOneBank2  PushLong  #0
                PushLong  #$10000
                PushWord  UserId
@@ -190,5 +182,3 @@ AllocOneBank2  PushLong  #0
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                rts
-
-

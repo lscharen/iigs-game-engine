@@ -27,24 +27,6 @@ InitSprites
 ;           dex
 ;           bpl    :loop3
 
-; Initialize the VBUFF address offsets in the data and mask banks for each sprite
-;
-; The internal grid 12 tiles wide where each sprite has a 2x2 interior square with a
-; tile-size buffer all around. We pre-render each sprite with all four vert/horz flips
-;
-; Eventually we should be able to have a separate rendering path for vertically flipped
-; sprites and will be able to double the capacity of the stamp buffer
-
-           ldx    #0
-           lda    #VBUFF_SPRITE_START
-           clc
-:loop4     sta    VBuffAddrTable,x
-           adc    #VBUFF_SPRITE_STEP
-           inx
-           inx
-           cpx    #VBUFF_SLOT_COUNT*2
-           bcc    :loop4
-
 ; Precalculate some bank values
            jsr    _CacheSpriteBanks
            rts
@@ -68,38 +50,25 @@ InitSprites
 ; the stamp every time.  So this allows users to create stamps in advance and then
 ; assign them to the sprites as needed.
 ;
-; Currently, we support a maximum of 48 stamps.
+; Note that the user had full freedom to create a stamp at any VBUFF address, however,
+; without leaving a buffer around each stamp, graphical corruption will occur.  It is
+; recommended that the defines for VBUFF_SPRITE_START, VBUFF_TILE_ROW_BYTES and
+; VBUFF_TILE_COL_BYTES to calculate tile-aligned corner locations to lay out the 
+; sprite stamps in VBUFF memory.
 ;
 ; Input:
 ;   A = sprite descriptor
-;   X = stamp slot
-; Return:
-;   A = vbuff address to be assigned to Sprite[VBUFF_ADDR]
-CreateSpriteStamp   ENT
-           phb
-           phk
-           plb
-           jsr    _CreateSpriteStamp
-           plb
-           rtl
-
+;   Y = vbuff address
+;
+; The Sprite[VBUFF_ADDR] property must be set to the vbuff address passed into this function
+; to bind the sprite stamp to the sprite record.
 _CreateSpriteStamp
            pha                                       ; Save the descriptor
            jsr   _GetBaseTileAddr                    ; Get the address of the tile data
-           pha
 
-           txa
-           asl
-           tax
-           ldy   VBuffAddrTable,x                    ; Load the address of the stamp slot
-
-           plx                                       ; Pop the tile address
+           tax                                       ; Tile data address
            pla                                       ; Pop the sprite ID
-           phy                                       ; VBUFF_ADDR value
-           jsr   _DrawSpriteStamp                    ; Render the sprite data and create a stamp
-
-           pla                                       ; Pop the VBUFF_ADDR and return
-           rts
+           jmp   _DrawSpriteStamp                    ; Render the sprite data and create a stamp
 
 ; Add a new sprite to the rendering pipeline
 ;
@@ -123,14 +92,6 @@ _CreateSpriteStamp
 ; A = tileId + flags
 ; Y = High Byte = x-pos, Low Byte = y-pos
 ; X = Sprite Slot (0 - 15)
-AddSprite   ENT
-            phb
-            phk
-            plb
-            jsr    _AddSprite
-            plb
-            rtl
-
 _AddSprite
             pha
             txa
@@ -888,14 +849,6 @@ _PrecalcAllSpriteInfo
 ; picked up in the next AddSprite.
 ;
 ; A = Sprite ID
-RemoveSprite ENT
-            phb
-            phk
-            plb
-            jsr    _RemoveSprite
-            plb
-            rtl
-
 _RemoveSprite
             cmp   #MAX_SPRITES
             bcc   :ok
@@ -917,14 +870,6 @@ _RemoveSprite
 ; A = Sprite ID
 ; X = New Sprite Flags
 ; Y = New Sprite Stamp Address
-UpdateSprite ENT
-            phb
-            phk
-            plb
-            jsr    _UpdateSprite
-            plb
-            rtl
-
 _UpdateSprite
             cmp   #MAX_SPRITES
             bcc   :ok
@@ -961,14 +906,6 @@ _UpdateSprite
 ; A = sprite ID
 ; X = x position
 ; Y = y position
-MoveSprite  ENT
-            phb
-            phk
-            plb
-            jsr    _MoveSprite
-            plb
-            rtl
-
 _MoveSprite
             cmp   #MAX_SPRITES
             bcc   :ok
@@ -999,57 +936,3 @@ _MoveSprite
             sta   _Sprites+SPRITE_STATUS,x
 
             jmp   _PrecalcAllSpriteInfo         ; Can be specialized to only update (x,y) values
-
-; Sprite data structures.  We cache quite a few pieces of information about the sprite
-; to make calculations faster, so this is hidden from the caller.
-;
-;
-; Number of "off-screen" lines above logical (0,0)
-; NUM_BUFF_LINES  equ 24
-
-MAX_SPRITES     equ 16
-SPRITE_REC_SIZE equ 52
-
-; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
-; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
-; A REMOVED sprite if removed from the sprite list during the Render call, so it's ID is not
-; available to the AddSprite function until the next frame.
-
-SPRITE_STATUS_EMPTY    equ $0000         ; If the status value is zero, this sprite slot is available
-SPRITE_STATUS_OCCUPIED equ $8000         ; Set the MSB to flag it as occupied
-SPRITE_STATUS_ADDED    equ $0001         ; Sprite was just added (new sprite)
-SPRITE_STATUS_MOVED    equ $0002         ; Sprite's position was changed
-SPRITE_STATUS_UPDATED  equ $0004         ; Sprite's non-position attributes were changed
-SPRITE_STATUS_REMOVED  equ $0008         ; Sprite has been removed.
-
-SPRITE_STATUS      equ {MAX_SPRITES*0}
-; TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
-VBUFF_ADDR         equ {MAX_SPRITES*4}   ; Base address of the sprite's stamp in the data/mask banks
-SPRITE_ID          equ {MAX_SPRITES*6}
-SPRITE_X           equ {MAX_SPRITES*8}
-SPRITE_Y           equ {MAX_SPRITES*10}
-; TILE_STORE_ADDR_1  equ {MAX_SPRITES*12}
-TS_LOOKUP_INDEX     equ {MAX_SPRITES*12}       ; The index into the TileStoreLookup table corresponding to the top-left corner of the sprite
-; TILE_STORE_ADDR_2  equ {MAX_SPRITES*14}
-TS_COVERAGE_SIZE    equ {MAX_SPRITES*14}       ; Index into the lookup table of how many TileStore tiles are covered by this sprite
-;TILE_STORE_ADDR_3  equ {MAX_SPRITES*16}
-TS_VBUFF_BASE_ADDR  equ {MAX_SPRITES*16}       ; Fixed address of the TS_VBUFF_X memory locations
-;TILE_STORE_ADDR_4  equ {MAX_SPRITES*18}
-;TILE_STORE_ADDR_5  equ {MAX_SPRITES*20}
-;TILE_STORE_ADDR_6  equ {MAX_SPRITES*22}
-;TILE_STORE_ADDR_7  equ {MAX_SPRITES*24}
-;TILE_STORE_ADDR_8  equ {MAX_SPRITES*26}
-;TILE_STORE_ADDR_9  equ {MAX_SPRITES*28}
-;TILE_STORE_ADDR_10 equ {MAX_SPRITES*30}
-SPRITE_DISP        equ {MAX_SPRITES*32}  ; cached address of the specific stamp based on flags
-SPRITE_CLIP_LEFT   equ {MAX_SPRITES*34}
-SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*36}
-SPRITE_CLIP_TOP    equ {MAX_SPRITES*38}
-SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*40}
-IS_OFF_SCREEN      equ {MAX_SPRITES*42}
-SPRITE_WIDTH       equ {MAX_SPRITES*44}
-SPRITE_HEIGHT      equ {MAX_SPRITES*46}
-SPRITE_CLIP_WIDTH  equ {MAX_SPRITES*48}
-SPRITE_CLIP_HEIGHT equ {MAX_SPRITES*50}
-
-_Sprites       ds  SPRITE_REC_SIZE*MAX_SPRITES

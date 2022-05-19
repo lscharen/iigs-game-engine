@@ -21,12 +21,12 @@
 ; used in all of the other loops
 _Render
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
-            jsr   _ApplyBG1YPos
+;            jsr   _ApplyBG1YPos
 
 ; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
 ; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
             jsr   _ApplyBG0XPosPre
-            jsr   _ApplyBG1XPosPre
+;            jsr   _ApplyBG1XPosPre
 
 ;            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
@@ -36,7 +36,7 @@ _Render
             jsr   _ApplyTilesFast      ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
-            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+;            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
 
 ; The code fields are locked in now and ready to be rendered
 
@@ -99,26 +99,13 @@ _ApplyTilesFast
             adc  #$100                  ; move to the next page
             tcd
 
-            ldy  DirtyTileCount
-            beq  :out
-
-:loop
-; Retrieve the offset of the next dirty Tile Store items in the X-register
+            lda  DirtyTileCount         ; Cache the dirty tile count
+            sta  DP2_DIRTY_TILE_COUNT
 
             jsr  _PopDirtyTile2
 
-; Call the generic dispatch with the Tile Store record pointer at by the X-register.
+            stz  DirtyTileCount
 
-            phb
-            jsr  _RenderTileFast
-            plb
-
-; Loop again until the list of dirty tiles is empty
-
-            ldy  DirtyTileCount
-            bne  :loop
-
-:out
             tdc                         ; Move back to the original direct page
             sec
             sbc  #$100

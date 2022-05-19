@@ -150,8 +150,8 @@ IntShutDown
 OneSecHandler     mx        %11
                   phb
                   pha
-                  phk
-                  plb
+
+                  jsr       _SetDataBank
 
                   rep       #$20
                   inc       OneSecondCounter
@@ -167,10 +167,7 @@ OneSecHandler     mx        %11
                   rtl
                   mx        %00
 
-OneSecondCounter  ENT
-                  dw        0
-OldOneSecVec      ds        4
-
+; This is OK, it's referenced by a long address
 VBLTASK           hex       00000000
                   dw        0
                   hex       5AA5
@@ -270,11 +267,6 @@ ClearKbdStrobe    sep       #$20
                   rts
 
 ; Read the keyboard and paddle controls and return in a game-controller-like format
-LastKey           db        0
-ReadControl       ENT
-                  jsr       _ReadControl
-                  rtl
-
 _ReadControl      
                   pea       $0000               ; low byte = key code, high byte = %------AB 
 

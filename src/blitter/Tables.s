@@ -253,19 +253,6 @@ NextCol
 ]step             =     ]step+2
                   --^
 
-; A double-sized table of lookup values.  This is basically the cross-product of TileStoreYTable and
-; NextCol.  If is double-width and double-height so that, if we know a tile's address position
-; of (X + 41*Y), then any relative tile store address can be looked up by adding a constant value.
-;
-; 50 rows by 80 columns + 2 extra rows and columns
-TS_LOOKUP_WIDTH   equ 80
-TS_LOOKUP_HEIGHT  equ 50
-TS_LOOKUP_SPAN    equ {TS_LOOKUP_WIDTH+2}
-TS_LOOKUP_ROWS    equ {TS_LOOKUP_HEIGHT+2}
-
-TileStoreLookupYTable ds {TS_LOOKUP_HEIGHT*2}
-TileStoreLookup   ds  {TS_LOOKUP_SPAN*TS_LOOKUP_ROWS*2}
-
 ; This is a double-length table that holds the right-edge adresses of the playfield on the physical
 ; screen.  At most, it needs to hold 200 addresses for a full height playfield.  It is double-length
 ; so that code can pick any offset and copy values without needing to check for a wrap-around. If the
@@ -305,6 +292,3 @@ BG1YTable         lup   208
 BG1YOffsetTable   lup   26
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
                   --^
-
-; Table of base VBUFF addresses for each sprite stamp slot
-VBuffAddrTable    ds    2*VBUFF_SLOT_COUNT

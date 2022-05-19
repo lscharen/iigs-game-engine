@@ -9,15 +9,7 @@
 ; on the SHR screen or the current value of StartY
 ;
 ; This could be made faster by forcing a SCB array to be copied into PEAs ahead of time, but this
-; is a bit more flexible            
-BltSCB      ENT
-            phb
-            phk
-            plb
-            jsr   _BltSCB
-            plb
-            rtl
-
+; is a bit more flexible
 _BltSCBOut
             rts
 _BltSCB

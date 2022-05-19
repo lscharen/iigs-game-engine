@@ -11,6 +11,8 @@
 
                 mx         %00
 
+TSZelda         EXT                           ; tileset buffer
+
 ScreenX         equ   0
 ScreenY         equ   2
 
@@ -29,12 +31,41 @@ ScreenY         equ   2
                 pea   #160
                 _GTESetScreenMode
 
-; Load a tileset in from an uncompressed $C1 picture. The top-left 256x128 rectangle is used
-; to populate the 512 tiles.
+; Load a tileset
 
+                pea   #^TSZelda
+                pea   #TSZelda
+                _GTELoadTileSet
 
 ; Manually fill in the 41x26 tiles of the TileStore with a test pattern.
 
+                ldx   #0
+                ldy   #0
+
+:loop
+                phx
+                phy
+
+                phx
+                phy
+                pei   0
+                _GTESetTile
+
+                lda   0
+                inc
+                and   #$001F
+                sta   0
+
+                ply
+                plx
+                inx
+                cpx   #41
+                bcc   :loop
+
+                ldx   #0
+                iny
+                cpy   #26
+                bcc   :loop
 
 ; Set the origin of the screen
                 stz   ScreenX
@@ -53,7 +84,7 @@ ScreenY         equ   2
                 pei   ScreenY
                 _GTESetBG0Origin
 
-;                _GTERender
+                _GTERender
 
                 inc   ScreenX                 ; Just keep incrementing, it's OK
                 bra   :loop

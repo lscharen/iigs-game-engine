@@ -6,20 +6,12 @@
 ; If there are sprites, then the sprite data is flattened and stored into a direct page buffer
 ; and then copied into the code field
 _RenderTileFast
-            ldx   TileStore+TS_VBUFF_ADDR_COUNT,y   ; How many sprites are on this tile?
-            beq   NoSpritesFast                     ; This is faster if there are no sprites
-            jmp   (fast_dispatch,x)                 ; Dispatch to the other routines
-fast_dispatch
-            da    NoSpritesFast
-            da    OneSpriteFast
-            da    TwoSpritesFast
-            da    ThreeSpritesFast
-            da    FourSpritesFast
+;            lda   TileStore+TS_VBUFF_ADDR_COUNT,x   ; How many sprites are on this tile?
+;            bne   SpriteDispatch                    ; This is faster if there are no sprites
 
-NoSpritesFast
-            tyx
+NoSpriteFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
-            pha                                    ; and put on the stack for later. Has addl bank in high byte.
+            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
             lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
             plb                                    ; set the code field bank
@@ -27,7 +19,17 @@ NoSpritesFast
 
 ; The TS_BASE_TILE_DISP routines will come from this table when ENGINE_MODE_TWO_LAYER and
 ; ENGINE_MODE_DYN_TILES are both off.
-FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataVFast,_TBCopyDataVFast
+FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFast
+; dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataVFast,_TBCopyDataVFast
+
+SpriteDispatch
+            tax
+            jmp   (:,x)                            ; Dispatch to the other routines
+:           da    NoSpriteFast                     ; Placeholder
+            da    OneSpriteFast
+            da    TwoSpritesFast
+            da    ThreeSpritesFast
+            da    FourSpritesFast
 
 ; Pointers to sprite data and masks
 spritedata_0  equ   tmp0

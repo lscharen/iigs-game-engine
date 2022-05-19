@@ -45,6 +45,7 @@ _ApplyBG0YPos
 ; and ~2,500 per secord.  This is ~1% of our total CPU budget and is *just* enough cycles to be
 ; interesting.... Another 8 cycles could be removed by doing all calculatinos pre-multiplied by 2
 ; to avoid several 'asl' instructions
+                     phb
 :loop
                      lda   :virt_line
                      asl
@@ -91,7 +92,6 @@ _ApplyBG0YPos
 
                      jne   :loop
 
-                     phk
                      plb
                      rts
 

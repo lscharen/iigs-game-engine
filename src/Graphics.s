@@ -24,11 +24,6 @@ InitGraphics
 :no_bg1
                  rts
 
-DefaultPalette   dw    $0000,$007F,$0090,$0FF0
-                 dw    $000F,$0080,$0f70,$0FFF
-                 dw    $0fa9,$0ff0,$00e0,$04DF
-                 dw    $0d00,$078f,$0ccc,$0FFF
-
 ; Allow the user to dynamically select one of the pre-configured screen sizes, or pass
 ; in a specific width and height.  The screen is automatically centered.  If this is
 ; not desired, then SetScreenRect should be used directly
@@ -47,18 +42,6 @@ DefaultPalette   dw    $0000,$007F,$0090,$0FF0
 ;
 ;  X = mode number OR width in pixels (must be multiple of 2)
 ;  Y = height in pixels (if X > 8)
-
-ScreenModeWidth   dw        320,272,256,256,280,256,240,288,160,288,160,320
-ScreenModeHeight  dw        200,192,200,176,160,160,160,128,144,192,102,1
-
-SetScreenMode     ENT
-                  phb
-                  phk
-                  plb
-                  jsr       _SetScreenMode
-                  plb
-                  rtl
-
 _SetScreenMode
                   cpx       #11
                   bcs       :direct             ; if x > 10, then assume X and Y are the dimensions
@@ -113,10 +96,6 @@ _GetBorderColor  lda   #0000
                  rts
 
 ; Set the border color to the accumulator value.
-SetBorderColor   ENT
-                 jsr   _SetBorderColor
-                 rtl
-
 _SetBorderColor  sep   #$20                 ; ACC = $X_Y, REG = $W_Z
                  eorl  BORDER_REG           ; ACC = $(X^Y)_(Y^Z)
                  and   #$0F                 ; ACC = $0_(Y^Z)
@@ -135,17 +114,6 @@ _ClearToColor
                  rts
 
 ; Set a palette values
-; A = high word of palette data pointer, X = low word of palette data pointer, Y = palette number
-SetPalette       ENT
-                 phb                        ; save old data bank
-                 pha                        ; push 16-bit value
-                 plb                        ; pop 8-bit bank register
-                 tya
-                 jsr   _SetPalette
-                 plb                        ; pop the other half of the 16-bit push off
-                 plb                        ; restore the original data bank
-                 rtl
-
 ; A = palette number, X = palette address
 _SetPalette
                  and   #$000F               ; palette values are 0 - 15 and each palette is 32 bytes
@@ -307,7 +275,7 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    ldx   #0
                    ldy   #0
 :tsloop
-                   stal  TileStore+TS_SCREEN_ADDR,x
+                   sta   TileStore+TS_SCREEN_ADDR,x
 
                    clc
                    adc   #4                         ; Go to the next tile

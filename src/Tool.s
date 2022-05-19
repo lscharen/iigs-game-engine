@@ -10,6 +10,7 @@
                 use   Core.MACS.s
 
                 use   Defs.s
+                use   static/TileStoreDefs.s
 
 ToStrip         equ   $E10184
 
@@ -18,8 +19,7 @@ _TSEntry        mac
                 phd
                 phb
                 tcd
-                phk                        ; Default to setting the data back to the current bank.
-                plb
+                jsr  _SetDataBank
                 <<<
 
 _TSExit         mac
@@ -52,6 +52,14 @@ _CallTable
                 adrl  _TSRender-1
                 adrl  _TSLoadTileSet-1
 _CTEnd
+
+; Helper function to set the data back to the toolset default
+_SetDataBank    sep  #$20
+                lda  #^TileStore
+                pha
+                plb
+                rep  #$20
+                rts
 
 ; Do nothing when the tool set is installed
 _TSBootInit
@@ -86,8 +94,7 @@ zpToUse         =    userId+4
                 sta     EngineMode
 
                 phb
-                phk
-                plb
+                jsr     _SetDataBank
                 jsr     _CoreStartUp       ; Initialize the library
                 plb
 
@@ -114,8 +121,7 @@ _TSShutDown
                 tcd                        ; Set the direct page for the toolset
 
                 phb
-                phk
-                plb
+                jsr     _SetDataBank
                 jsr     _CoreShutDown      ; Shut down the library
                 plb
 
@@ -201,7 +207,7 @@ xTile           equ     FirstParam+4
                 tax
                 lda     yTile,s                ; Valid range [0, 25] (26 rows)
                 tay
-                lda     tileId
+                lda     tileId,s
                 jsr     _SetTile
 
                 _TSExit #0;#6
@@ -255,7 +261,6 @@ TSPtr           equ     FirstParam
                 put     blitter/BG1.s
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
-                put     blitter/Tables.s
                 put     blitter/Blitter.s
                 put     blitter/TileProcs.s
                 put     blitter/Tiles00000.s

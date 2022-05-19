@@ -35,8 +35,7 @@
 ; timer's user data section.
 StartScript    ENT
                phb
-               phk
-               plb
+               jsr   _SetDataBank
 
                phx                      ; Save the script array address
                pha
@@ -68,14 +67,6 @@ StartScript    ENT
 ARG1           equ   2
 ARG2           equ   4
 ARG3           equ   6
-
-DoScriptSeq    ENT
-               phb
-               phk
-               plb
-               jsl   _DoScriptSeq       ; Yes, this is a special JSL, because _DoScriptSeq is a time callback
-               plb
-               rtl
 
 _DoScriptSeq
                phx                      ; save the timer index; will need to update user data at the end
@@ -180,9 +171,9 @@ _SetDTile
 
 _UserCallback
                lda:  ARG1,y
-               sta   :dispatch+1
+               stal  :dispatch+1
                lda:  ARG1+1,y
-               sta   :dispatch+2
+               stal  :dispatch+2
                lda:  ARG3,y
 :dispatch      jsl   $000000
                brl   _dss_cmd_rtn

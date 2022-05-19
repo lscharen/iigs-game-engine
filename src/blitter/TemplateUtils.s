@@ -49,7 +49,7 @@ Counter            equ   tmp3
                    tax                              ; NOTE: Try to rework to use new TileStore2DLookup array
 
                    lda   OnScreenAddr
-                   stal  TileStore+TS_SCREEN_ADDR,x
+                   sta  TileStore+TS_SCREEN_ADDR,x
 
                    clc
                    adc   #4                         ; Go to the next tile
@@ -278,6 +278,10 @@ BuildBank
                    sta   :target+2
 
 :BuildLine2
+                   phb                              ; save bank and reset to the code bank because
+                   phk                              ; the template is part of this bank
+                   plb
+
                    lda   #CODE_LEN                  ; round up to an even number of bytes
                    inc
                    and   #$FFFE
@@ -315,6 +319,6 @@ BuildBank
                    cpx   #PagePatchNum
                    bcc   :dopage
 
-:out
                    rep   #$20
+                   plb
                    rts

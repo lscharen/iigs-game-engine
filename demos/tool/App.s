@@ -8,3 +8,8 @@
 
             ASM   App.Main.s
             SNA   Main
+
+; Segment #2 -- Tileset
+
+            ASM   Zelda.TileSet.s
+            SNA   TSET

@@ -92,7 +92,10 @@ TileStoreBankAndTileDataBank equ 108
 TileStoreBankDoubled   equ   110
 UserId                 equ   112         ; Memory manager user Id to use
 ToolNum                equ   114         ; Tool number assigned to us
-Next                   equ   116
+LastKey                equ   116
+LastTick               equ   118
+
+Next                   equ   120
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 ; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
@@ -141,8 +144,9 @@ _OP_CACHE              equ   156         ; Cache of a relevant operand / oeprato
 _TILE_ID               equ   158         ; Copy of the tile descriptor
 
 ; Define free space the the application to use
-FREE_SPACE_DP2         equ   160
-
+; FREE_SPACE_DP2         equ   160
+DP2_DIRTY_TILE_COUNT    equ   160         ; Local copy of dirty tile count to avoid banking
+DP2_DIRTY_TILE_CALLBACK equ  162
 ; End direct page values
 
 ; EngineMode definitions
@@ -197,6 +201,7 @@ SPRITE_HFLIP           equ   $0200
 ; Stamp storage parameters
 VBUFF_STRIDE_BYTES     equ 12*4                          ; Each line has 4 slots of 16 pixels + 8 buffer pixels
 VBUFF_TILE_ROW_BYTES   equ 8*VBUFF_STRIDE_BYTES          ; Each row is comprised of 8 lines
+VBUFF_TILE_COL_BYTES   equ 4
 VBUFF_SPRITE_STEP      equ VBUFF_TILE_ROW_BYTES*3        ; Allocate space fo 16 rows + 8 rows of buffer
 VBUFF_SPRITE_START     equ {8*VBUFF_TILE_ROW_BYTES}+4    ; Start at an offset so $0000 can be used as an empty value
 VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps
@@ -204,31 +209,32 @@ VBUFF_SLOT_COUNT       equ 48                            ; Have space for this m
 ; This is 13 blocks wide
 SPRITE_PLANE_SPAN      equ VBUFF_STRIDE_BYTES
 
-; Tile storage parameters
-TILE_DATA_SPAN        equ  4
-TILE_STORE_WIDTH      equ  41
-TILE_STORE_HEIGHT     equ  26
-MAX_TILES             equ  {26*41}                ; Number of tiles in the code field (41 columns * 26 rows)
-TILE_STORE_SIZE       equ  {MAX_TILES*2}          ; The tile store contains a tile descriptor in each slot
-
-TS_TILE_ID            equ  TILE_STORE_SIZE*0      ; tile descriptor for this location
-TS_DIRTY              equ  TILE_STORE_SIZE*1      ; Flag. Used to prevent a tile from being queued multiple times per frame
-TS_SPRITE_FLAG        equ  TILE_STORE_SIZE*2      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
-TS_TILE_ADDR          equ  TILE_STORE_SIZE*3      ; cached value, the address of the tiledata for this tile
-TS_CODE_ADDR_LOW      equ  TILE_STORE_SIZE*4      ; const value, address of this tile in the code fields
-TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5
-TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
-TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
-TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
-;TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
-
-TS_BASE_TILE_COPY     equ  TILE_STORE_SIZE*9      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
-TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
-TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
-
-; Hold values for up to 4 sprites per tile
-TS_VBUFF_ADDR_0       equ  TILE_STORE_SIZE*12
-TS_VBUFF_ADDR_1       equ  TILE_STORE_SIZE*13
-TS_VBUFF_ADDR_2       equ  TILE_STORE_SIZE*14
-TS_VBUFF_ADDR_3       equ  TILE_STORE_SIZE*15
-TS_VBUFF_ADDR_COUNT   equ  TILE_STORE_SIZE*16    ; replace usage of TS_VBUFF_ARRAY_ADDR with this later
+; External references to data bank
+TileStore         EXT
+DirtyTileCount    EXT
+DirtyTiles        EXT
+_Sprites          EXT
+TileStore         EXT
+TileStoreLookupYTable EXT
+TileStoreLookup   EXT
+Col2CodeOffset    EXT
+JTableOffset      EXT
+CodeFieldEvenBRA  EXT
+CodeFieldOddBRA   EXT
+ScreenAddr        EXT
+TileStoreYTable   EXT
+NextCol           EXT
+RTable            EXT
+BlitBuff          EXT
+BTableHigh        EXT
+BTableLow         EXT
+BRowTableHigh     EXT
+BRowTableLow      EXT
+BG1YTable         EXT
+BG1YOffsetTable   EXT
+OldOneSecVec      EXT
+OneSecondCounter  EXT
+Timers            EXT
+DefaultPalette    EXT
+ScreenModeWidth   EXT
+ScreenModeHeight  EXT

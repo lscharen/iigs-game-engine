@@ -10,14 +10,6 @@
 ; of the BG1 data buffer provides the "fill value".
 
 ANGLEBNK                  ext
-ApplyBG1XPosAngle         ENT
-                          phb
-                          phk
-                          plb
-                          jsr   _ApplyBG1XPosAngle
-                          plb
-                          rtl
-
 _ApplyBG1XPosAngle
 ;                          phy
 
@@ -62,14 +54,6 @@ _ApplyBG1XPosAngle
                           pld
                           rts
 
-ApplyBG1YPosAngle         ENT
-                          phb
-                          phk
-                          plb
-                          jsr   _ApplyBG1YPosAngle
-                          plb
-                          rtl
-
 _ApplyBG1YPosAngle
 :virt_line                equ   tmp0
 :lines_left               equ   tmp1
@@ -90,6 +74,7 @@ _ApplyBG1YPosAngle
                           lda   ScreenHeight
                           sta   :lines_left
 
+                          phb
 :loop
                           lda   :virt_line
                           asl
@@ -141,7 +126,6 @@ _ApplyBG1YPosAngle
 
                           jne   :loop
 
-                          phk
                           plb
                           rts
 
@@ -155,14 +139,13 @@ CopyAngleYTableToBG1Addr
                           phx
                           phb
 
-                          phk                             ; restore access to this bank
-                          plb
+                        
+                          jsr   _SetDataBank              ; restore access to this bank
                           jsr   SaveBG1AngleValues
 
                           plb
                           plx                             ; x is used directly in this routine
-                          jsr   ApplyBG1OffsetValues
-                          rts
+                          jmp   ApplyBG1OffsetValues
 
 SaveBG1AngleValues
                           jmp   (:tbl,x)

@@ -134,8 +134,11 @@ InitTiles
                  lda  :row                              ; Set the long address of where this tile
                  asl                                    ; exists in the code fields
                  tay
-                 lda  BRowTableHigh,y
+                 lda  #>TileStore                       ; get middle 16 bits: "00 -->BBHH<-- LL"
+                 and  #$FF00                            ; merge with code field bank
+                 ora  BRowTableHigh,y
                  stal TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
+
                  lda  BRowTableLow,y
                  stal TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
 

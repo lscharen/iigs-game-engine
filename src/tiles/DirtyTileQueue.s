@@ -1,8 +1,3 @@
-
-; A list of dirty tiles that need to be updated in a given frame
-DirtyTileCount   ds   2
-DirtyTiles       ds   TILE_STORE_SIZE    ; At most this many tiles can possibly be update at once
-
 _ClearDirtyTiles
                  bra  :hop
 :loop
@@ -62,3 +57,110 @@ _PopDirtyTile2                                       ; alternate entry point
                  lda  #$FFFF
                  stal TileStore+TS_DIRTY,x           ; clear the occupied backlink
                  rts
+
+; An optimized subroutine that runs through the dirty tile list and executes a callback function
+; for each dirty tile.  This is an unrolled loop, so we avoid the need to track a register and
+; decrement on each iteration.
+;
+; Also, if we are handling less that 8 dirty tiles, we use a code path that does not
+; need to use an index register
+;
+; Bank = Tile Store
+; D    = Page 2
+_PopDirtyTilesFast
+                 ldx  DP2_DIRTY_TILE_COUNT        ; This is pre-multiplied by 2
+                 bne  pdtf_not_empty              ; If there are no items, exit
+at_exit          rts
+pdtf_not_empty
+                 cpx  #16                         ; If there are >= 8 elements, then
+                 bcs  full_chunk                  ; do a full chunk
+
+                 stz  DP2_DIRTY_TILE_COUNT        ; Otherwise, this pass will handle them all
+                 jmp  (at_table,x)
+at_table         da   at_exit,at_one,at_two,at_three
+                 da   at_four,at_five,at_six,at_seven
+
+full_chunk       txa
+                 sbc  #16                         ; carry set from branch
+                 sta  DP2_DIRTY_TILE_COUNT        ; fall through
+                 tay                              ; use the Y-register for the index
+
+; Because all of the registers get used in the subroutine, we
+; push the values from the DirtyTiles array onto the stack and then pop off
+; the values as we go
+
+                 ldx   DirtyTiles+14,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+12,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+10,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+8,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+6,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+4,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+2,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+                 ldy   DP2_DIRTY_TILE_COUNT
+                 ldx   DirtyTiles+0,y
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+                 jmp   _PopDirtyTilesFast
+
+; These routines just handle between 1 and 7 dirty tiles
+at_seven
+                 ldx   DirtyTiles+12
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+at_six
+                 ldx   DirtyTiles+10
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+at_five
+                 ldx   DirtyTiles+8
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+at_four
+                 ldx   DirtyTiles+6
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+at_three
+                 ldx   DirtyTiles+4
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+at_two
+                 ldx   DirtyTiles+2
+                 stz   TileStore+TS_DIRTY,x
+                 jsr   _RenderTileFast
+
+at_one
+                 ldx   DirtyTiles+0
+                 stz   TileStore+TS_DIRTY,x
+                 jmp   _RenderTileFast
