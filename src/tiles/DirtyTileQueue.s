@@ -38,6 +38,24 @@ _PushDirtyTileX
                  txa                                ; Make sure TileStore offset is returned in the accumulator
                  rts
 
+; alternate entry point if the Y-register is already set
+_PushDirtyTileY
+                 lda  TileStore+TS_DIRTY,y
+                 bne  :occupied2
+
+                 inc                                  ; any non-zero value will work
+                 sta  TileStore+TS_DIRTY,y            ; and is 1 cycle faster than loading a constant value
+
+                 tya
+                 ldy  DirtyTileCount ; 4
+                 sta  DirtyTiles,y   ; 6
+                 iny                 ; 2
+                 iny                 ; 2
+                 sty  DirtyTileCount ; 4 = 18
+                 rts
+:occupied2
+                 tya                                ; Make sure TileStore offset is returned in the accumulator
+                 rts
 ; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
 ; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update,
 ; because this routine merges the tile IDs stored in the Tile Store with the Sprite
@@ -68,6 +86,7 @@ _PopDirtyTile2                                       ; alternate entry point
 ; Bank = Tile Store
 ; D    = Page 2
 _PopDirtyTilesFast
+;                 brk  $EE
                  ldx  DP2_DIRTY_TILE_COUNT        ; This is pre-multiplied by 2
                  bne  pdtf_not_empty              ; If there are no items, exit
 at_exit          rts

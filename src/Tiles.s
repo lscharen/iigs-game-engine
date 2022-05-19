@@ -175,15 +175,15 @@ InitTiles
 _SetTile
                  pha
                  jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
-                 tax
+                 tay
                  pla
                  
-                 cmpl TileStore+TS_TILE_ID,x        ; Only set to dirty if the value changed
+                 cmp  TileStore+TS_TILE_ID,y        ; Only set to dirty if the value changed
                  beq  :nochange
 
-                 stal TileStore+TS_TILE_ID,x        ; Value is different, store it.
+                 sta  TileStore+TS_TILE_ID,y        ; Value is different, store it.
                  jsr  _GetTileAddr
-                 stal TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
+                 sta  TileStore+TS_TILE_ADDR,y      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
 
 ; Set the standard renderer procs for this tile.
 ;
@@ -196,35 +196,33 @@ _SetTile
 ; functionality.  Sometimes it is simple, but in cases of the sprites overlapping Dynamic Tiles and other cases
 ; it can be more involved.
 
-                 ldal TileStore+TS_TILE_ID,x
+                 lda  TileStore+TS_TILE_ID,y
                  and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
                  xba
-                 tay
-;                 lda  DirtyTileProcs,y
-;                 stal TileStore+TS_DIRTY_TILE_DISP,x
+                 tax
+;                 ldal DirtyTileProcs,x
+;                 sta  TileStore+TS_DIRTY_TILE_DISP,y
 
-;                 lda  CopyTileProcs,y
-;                 stal TileStore+TS_DIRTY_TILE_COPY,x
+;                 ldal CopyTileProcs,x
+;                 sta  TileStore+TS_DIRTY_TILE_COPY,y
 
                  lda  EngineMode
                  bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
                  beq  :fast
 
-                 ldal TileStore+TS_TILE_ID,x        ; Get the non-sprite dispatch address
+                 lda  TileStore+TS_TILE_ID,y        ; Get the non-sprite dispatch address
                  and  #TILE_CTRL_MASK
                  xba
-                 tay
-;                 lda  TileProcs,y
-;                 stal TileStore+TS_BASE_TILE_DISP,x
+                 tax
+;                 ldal TileProcs,x
+;                 sta  TileStore+TS_BASE_TILE_DISP,y
                  bra  :out
 
 :fast
-                 lda  FastTileProcs,y
-                 stal TileStore+TS_BASE_TILE_DISP,x
+                 ldal FastTileProcs,x
+                 sta  TileStore+TS_BASE_TILE_DISP,y
 :out
-
-                txa                                ; Add this tile to the list of dirty tiles to refresh
-                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
+                 jmp  _PushDirtyTileY               ; on the next call to _ApplyTiles
 
 :nochange        rts
 

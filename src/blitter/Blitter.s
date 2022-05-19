@@ -74,7 +74,6 @@ _BltRange
                 tsc                  ; save the stack pointer
                 stal  stk_save+1
 
-                bra   blt_return
 blt_entry       jml   $000000        ; Jump into the blitter code $XX/YY00
 
 blt_return      _R0W0

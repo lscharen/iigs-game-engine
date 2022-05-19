@@ -102,7 +102,7 @@ _ApplyTilesFast
             lda  DirtyTileCount         ; Cache the dirty tile count
             sta  DP2_DIRTY_TILE_COUNT
 
-            jsr  _PopDirtyTile2
+            jsr  _PopDirtyTilesFast
 
             stz  DirtyTileCount
 
