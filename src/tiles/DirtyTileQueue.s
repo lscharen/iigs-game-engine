@@ -86,7 +86,6 @@ _PopDirtyTile2                                       ; alternate entry point
 ; Bank = Tile Store
 ; D    = Page 2
 _PopDirtyTilesFast
-;                 brk  $EE
                  ldx  DP2_DIRTY_TILE_COUNT        ; This is pre-multiplied by 2
                  bne  pdtf_not_empty              ; If there are no items, exit
 at_exit          rts

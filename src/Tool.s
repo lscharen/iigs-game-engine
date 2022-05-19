@@ -242,6 +242,7 @@ TSPtr           equ     FirstParam
                 tax
                 lda     TSPtr,s
                 jsr     _LoadTileSet
+
                 _TSExit #0;#4
 
 ; Insert the GTE code

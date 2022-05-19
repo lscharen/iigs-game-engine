@@ -5,7 +5,7 @@
 ; A = low word
 _LoadTileSet
                 sta  tmp0
-                stx  tmp2
+                stx  tmp1
                 ldy  #0
                 tyx
 :loop           lda  [tmp0],y

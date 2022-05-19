@@ -13,9 +13,9 @@ NoSpriteFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
-            lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)            
             lda   TileStore+TS_BASE_TILE_DISP,x    ; go to the tile copy routine (just basics)
             stal  nsf_patch+1
+            lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)            
             plb                                    ; set the code field bank
 nsf_patch   jmp   $0000
 
