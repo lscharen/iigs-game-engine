@@ -32,7 +32,6 @@ _RestoreBG0Opcodes
 
                     lda   LastPatchOffset            ; If zero, there are no saved opcodes
                     sta   :exit_offset
-                    beq   :loop
 
 :loop
                     ldx   :virt_line_x2

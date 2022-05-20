@@ -21,11 +21,11 @@ _PushDirtyTile
 
 ; alternate entry point if the x-register is already set
 _PushDirtyTileX
-                 ldal TileStore+TS_DIRTY,x
+                 lda  TileStore+TS_DIRTY,x
                  bne  :occupied2
 
                  inc                                  ; any non-zero value will work
-                 stal TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
+                 sta  TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
 
                  txa
                  ldx  DirtyTileCount ; 4

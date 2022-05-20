@@ -109,10 +109,10 @@ InitTiles
 ; that are happening
 
                  lda  #0
-                 stal TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
-                 stal TileStore+TS_TILE_ADDR,x
-                 stal TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
-                 stal TileStore+TS_DIRTY,x              ; none of the tiles are dirty
+                 sta  TileStore+TS_TILE_ID,x            ; clear the tile store with the special zero tile
+                 sta  TileStore+TS_TILE_ADDR,x
+                 sta  TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
+                 sta  TileStore+TS_DIRTY,x              ; none of the tiles are dirty
 
 ;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
 ;                 stal TileStore+TS_DIRTY_TILE_DISP,x
@@ -137,21 +137,21 @@ InitTiles
                  lda  #>TileStore                       ; get middle 16 bits: "00 -->BBHH<-- LL"
                  and  #$FF00                            ; merge with code field bank
                  ora  BRowTableHigh,y
-                 stal TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
+                 sta  TileStore+TS_CODE_ADDR_HIGH,x     ; High word of the tile address (just the bank)
 
                  lda  BRowTableLow,y
-                 stal TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
+                 sta  TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
 
                  lda  :col                              ; Set the offset values based on the column
                  asl                                    ; of this tile
                  asl
-                 stal TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
+                 sta  TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
                  
                  tay
                  lda  Col2CodeOffset+2,y
                  clc
-                 adcl TileStore+TS_BASE_ADDR,x
-                 stal TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
+                 adc  TileStore+TS_BASE_ADDR,x
+                 sta  TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
 
                  dec  :col
                  bpl  :hop
@@ -236,10 +236,6 @@ _SetTile
 ; continuously overwrite it.
 ;
 ; We assume that there is a clean code field in this routine
-SetBG0XPos          ENT
-                    jsr   _SetBG0XPos
-                    rtl
-
 _SetBG0XPos
                     cmp   StartX
                     beq   :out                       ; Easy, if nothing changed, then nothing changes
@@ -258,10 +254,6 @@ _SetBG0XPos
 ; SetBG0YPos
 ;
 ; Set the virtual position of the primary background layer.
-SetBG0YPos           ENT
-                     jsr   _SetBG0YPos
-                     rtl
-
 _SetBG0YPos
                      cmp   StartY
                      beq   :out                 ; Easy, if nothing changed, then nothing changes

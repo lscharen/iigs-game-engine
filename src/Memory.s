@@ -167,7 +167,7 @@ AllocOneBank   PushLong  #0
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                xba                                   ; swap accumulator bytes to XX00	
-               sta       :bank+2                     ; store as bank for next op (overwrite $XX00)
+               stal      :bank+2                     ; store as bank for next op (overwrite $XX00)
 :bank          ldal      $000001,X                   ; recover the bank address in A=XX/00	
                rts
 

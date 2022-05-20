@@ -296,9 +296,9 @@ _ReadControl
                   ora       1,s
                   sta       1,s
 
-                  cmpl      LastKey
+                  cmp       LastKey
                   beq       :KbdDown
-                  stal      LastKey
+                  sta       LastKey
 
                   lda       #PAD_KEY_DOWN       ; set the keydown flag
                   ora       2,s
@@ -306,8 +306,7 @@ _ReadControl
                   bra       :KbdDown
 
 :KbdNotDwn
-                  lda       #0
-                  stal      LastKey
+                  stz       LastKey
 :KbdDown
                   rep       #$20
                   pla
