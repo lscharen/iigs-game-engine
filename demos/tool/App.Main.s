@@ -9,6 +9,8 @@
                 use   EDS.GSOS.Macs
                 use   GTE.Macs
 
+                use   ../../src/Defs.s
+
                 mx         %00
 
 TSZelda         EXT                           ; tileset buffer
@@ -20,7 +22,7 @@ ScreenY         equ   2
                 phk
                 plb
 
-                sta   UserId                  ; GS/OS passes the memory manager user ID for the aoplication into the program
+                sta   MyUserId                ; GS/OS passes the memory manager user ID for the aoplication into the program
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
@@ -68,11 +70,18 @@ ScreenY         equ   2
                 bcc   :loop
 
 ; Set the origin of the screen
-                stz   ScreenX
-                stz   ScreenY
+
+                lda   #3
+                sta   ScreenX
+                lda   #10
+                sta   ScreenY
+
+                pea   #3
+                pea   #10
+                _GTESetBG0Origin
 
 ; Very simple actions
-:loop
+:evt_loop
                 pha                           ; space for result, with pattern
                 _GTEReadControl
                 pla
@@ -80,14 +89,56 @@ ScreenY         equ   2
                 cmp   #'q'
                 beq   :exit
 
+                cmp   #$15                    ; left = $08, right = $15, up = $0B, down = $0A
+                bne   :8
+                inc   ScreenX
+                bra   :next
+
+:8              cmp   #$08
+                bne   :9
+                dec   ScreenX
+                bra   :next
+
+:9              cmp   #$0B
+                bne   :10
+                inc   ScreenY
+                bra   :next
+
+:10             cmp   #$0A
+                bne   :next
+                dec   ScreenY
+
+:next
                 pei   ScreenX
                 pei   ScreenY
                 _GTESetBG0Origin
 
                 _GTERender
 
-                inc   ScreenX                 ; Just keep incrementing, it's OK
-                bra   :loop
+; Debug stuff
+                ldx   #$100
+                lda   StartX,x
+                ldx   #0
+                jsr   DrawWord
+
+                ldx   #$100
+                lda   StartY,x
+                ldx   #160*8
+                jsr   DrawWord
+
+                lda   ScreenX
+                ldx   #160*16
+                jsr   DrawWord
+
+                lda   ScreenY
+                ldx   #160*24
+                jsr   DrawWord
+
+                tdc
+                ldx   #160*32
+                jsr   DrawWord
+
+                brl   :evt_loop
 
 ; Shut down everything
 :exit
@@ -108,7 +159,7 @@ GTEStartUp
                 pea   $0000
                 pea   $0000                   ; result space
 
-                lda   UserId
+                lda   MyUserId
                 pha
 
                 pea   #^ToolPath
@@ -139,7 +190,7 @@ GTEStartUp
                 adc   #$0100
                 pha
                 pea   $0000                   ; No extra capabilities
-                lda   UserId                  ; Pass the userId for memory allocation
+                lda   MyUserId                  ; Pass the userId for memory allocation
                 pha
                 _GTEStartUp
                 bcc    :ok3
@@ -148,6 +199,8 @@ GTEStartUp
 :ok3
                 rts
 
-MasterId        ds    2
-UserId          ds    2
+MyUserId        ds    2
 ToolPath        str   '1/Tool160'
+
+                PUT        App.Msg.s
+                PUT        font.s
