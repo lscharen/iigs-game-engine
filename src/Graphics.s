@@ -244,7 +244,7 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    lda   ScreenY0                   ; Calculate the address of the first byte
                    asl                              ; of the right side of the playfield
                    tax
-                   lda   ScreenAddr,x               ; This is the address for the left edge of the physical screen
+                   lda   ScreenAddr,x               ; This is the address for the edge of the physical screen
                    clc
                    adc   ScreenX1
                    dec
@@ -252,9 +252,6 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
 
                    ldx   #0
                    ldy   ScreenHeight
-                   jsr   :loop
-                   pla                              ; Reset the address and continue filling in the
-                   ldy   ScreenHeight               ; second half of the table
 :loop              clc
                    sta   RTable,x
                    adc   #160
@@ -262,6 +259,16 @@ SetScreenRect      sty   ScreenHeight               ; Save the screen height and
                    inx
                    dey
                    bne   :loop
+
+                   ldy   ScreenHeight
+                   pla                              ; Reset the address and continue filling in the
+:loop2             clc
+                   sta   RTable,x
+                   adc   #160
+                   inx
+                   inx
+                   dey
+                   bne   :loop2
 
 ; Calculate the screen locations for each tile corner
 
