@@ -18,7 +18,7 @@ _BltRange
 
                 dey
                 tya                  ; Get the address of the line that we want to return from
-                adc   StartY         ; and create a pointer to it
+                adc   StartYMod208   ; and create a pointer to it
                 asl
                 tay
                 lda   BTableLow,y
@@ -27,7 +27,7 @@ _BltRange
                 sta   :exit_ptr+2
 
                 txa                  ; get the first line (0 - 199)
-                adc   StartY         ; add in the virtual offset (0, 207) -- max value of 406
+                adc   StartYMod208   ; add in the virtual offset (0, 207) -- max value of 406
                 asl
                 tax                  ; this is the offset into the blitter table
 
@@ -88,6 +88,5 @@ stk_save        lda   #0000          ; load the stack
                 sta   [:exit_ptr],y
                 rep   #$20
 
-blt_out
                 plb                  ; restore the bank
                 rts
