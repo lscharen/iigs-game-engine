@@ -744,7 +744,3 @@ skip
 ;_SpriteWidth        dw 4,8,4,8
 ;_SpriteWidthMinus1  dw 3,7,3,7
 ;_SpriteCols         dw 1,2,1,2
-
-; Convert sprite index to a bit position
-_SpriteBits         dw $0001,$0002,$0004,$0008,$0010,$0020,$0040,$0080,$0100,$0200,$0400,$0800,$1000,$2000,$4000,$8000
-_SpriteBitsNot      dw $FFFE,$FFFD,$FFFB,$FFF7,$FFEF,$FFDF,$FFBF,$FF7F,$FEFF,$FDFF,$FBFF,$F7FF,$EFFF,$DFFF,$BFFF,$7FFF

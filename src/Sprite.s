@@ -132,11 +132,39 @@ _AddSprite
 
             rts
 
+; Macro to make the unrolled loop more concise
+;
+; The macro
+;
+;   1. Load the tile store address from a fixed offset
+;   2. Clears the sprite bit from the TS_SPRITE_FLAG location
+;   3. Checks if the tile is dirty and marks it
+;   4. If the tile was dirty, save the tile store address to be added to the DirtyTiles list later
+TSClearSprite mac
+            ldy   TileStoreLookup+]1,x
+
+            lda   TileStore+TS_SPRITE_FLAG,y
+            and  tmp0
+            sta   TileStore+TS_SPRITE_FLAG,y
+
+            lda   TileStore+TS_DIRTY,y
+            bne   next
+
+            inc
+            sta   TileStore+TS_DIRTY,y
+            phy
+next
+            <<<
+
 ; Alternate implementation that uses the TS_COVERAGE_SIZE and TS_LOOKUP_INDEX properties to
 ; load the old values directly from the TileStoreLookup table, rather than caching them.
 ; This is more efficient, because the work in MarkDirtySprite is independent of the
 ; sprite size and, by inlining the _PushDirtyTile logic, we can save a fair amount of overhead
-_ClearSpriteFromTileStore2
+_ClearSpriteFromTileStore
+            tsc
+            sta   tmp1                                      ; We use the stack as a counter
+            lda   _SpriteBitsNot,y                          ; Cache this value in a direct page location
+            sta   tmp0
             ldx   _Sprites+TS_COVERAGE_SIZE,y
             jmp   (csfts_tbl,x)
 csfts_tbl   dw    csfts_1x1,csfts_1x2,csfts_1x3,csfts_out
@@ -144,215 +172,111 @@ csfts_tbl   dw    csfts_1x1,csfts_1x2,csfts_1x3,csfts_out
             dw    csfts_3x1,csfts_3x2,csfts_3x3,csfts_out
             dw    csfts_out,csfts_out,csfts_out,csfts_out
 
-; Just a single value to clear and add to the dirty tile list
+csfts_3x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 2
+            TSClearSprite 4
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+4
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}+2
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}+4
+            jmp   csfts_finish
+
+csfts_3x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 2
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}+2
+            jmp   csfts_finish
+
+csfts_3x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}
+            jmp   csfts_finish
+
+csfts_2x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 2
+            TSClearSprite 4
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+4
+            jmp   csfts_finish
+
+csfts_2x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 2
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
+            jmp   csfts_finish
+
+csfts_2x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            jmp   csfts_finish
+
+csfts_1x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 2
+            TSClearSprite 4
+            jmp   csfts_finish
+
+csfts_1x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
+            TSClearSprite 0
+            TSClearSprite 2
+            jmp   csfts_finish
+
 csfts_1x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
-            lda   TileStoreLookup,x
-            tax
+            TSClearSprite 0
 
-            lda   TileStore+TS_SPRITE_FLAG,x
-            and   _SpriteBitsNot,y
-            sta   TileStore+TS_SPRITE_FLAG,x
+; Second phase; put all the dirty tiles on the DirtyTiles list
+csfts_finish
+            tsc
+            eor   #$FFFF
+            sec
+            adc   tmp1                          ; Looks weird, but calculates (tmp1 - acc)
 
-            lda   TileStore+TS_DIRTY,x
-            bne   csfts_1x1_out
+            tax                                 ; This is 2 * N where N is the number of dirty tiles
+            ldy   DirtyTileCount                ; Grab a copy of the old index (for addressing)
 
-            inc                                  ; any non-zero value will work
-            sta   TileStore+TS_DIRTY,x            ; and is 1 cycle faster than loading a constant value
+            clc
+            adc   DirtyTileCount                ; Add the new items to the list
+            sta   DirtyTileCount
 
-            txa
-            ldx   DirtyTileCount
-            sta   DirtyTiles,x
-            inx
-            inx
-            stx   DirtyTileCount
-csfts_1x2
-csfts_1x3
-csfts_2x1
-csfts_2x3
-csfts_3x1
-csfts_3x2
-csfts_3x3
-csfts_1x1_out
-            rts
+            jmp   (dtloop,x)
+dtloop      dw    csfts_out, dtloop1, dtloop2,  dtloop3
+            dw    dtloop4,   dtloop5, dtloop6,  dtloop7
+            dw    dtloop8,   dtloop9, dtloop10, dtloop11
 
-; This is a more interesting case where the ability to batch things up starts to produce some
-; efficiency gains
-csfts_2x2   ldx   _Sprites+TS_LOOKUP_INDEX,y     ; Get the address of the old top-left corner
-            tay
-            ldx   TileStoreLookup,y
-
-            lda   TileStore+TS_SPRITE_FLAG,x
-            and   _SpriteBits
-            sta   TileStore+TS_SPRITE_FLAG,x
-
-            lda   TileStore+TS_DIRTY,x
-            beq   *+3
-            phx
-
-
-            ldx   TileStoreLookup+2,y
-
-            lda   TileStore+TS_SPRITE_FLAG,x
-            and   _SpriteBits
-            sta   TileStore+TS_SPRITE_FLAG,x
-
-            lda   TileStore+TS_DIRTY,x
-            beq   *+3
-            phx
-
-
-            ldx   TileStoreLookup+TS_LOOKUP_SPAN,y
-
-            lda   TileStore+TS_SPRITE_FLAG,x
-            and   _SpriteBits
-            sta   TileStore+TS_SPRITE_FLAG,x
-
-            lda   TileStore+TS_DIRTY,x
-            beq   *+3
-            phx
-
-
-            ldx   TileStoreLookup+TS_LOOKUP_SPAN+2,y
-
-            lda   TileStore+TS_SPRITE_FLAG,x
-            and   _SpriteBits
-            sta   TileStore+TS_SPRITE_FLAG,x
-
-            ldy   DirtyTileCount
-
-            lda   TileStore+TS_DIRTY,x
-            beq   skip_2x2
-
-            txa
-            sta   DirtyTiles,y
-            sta   TileStore+TS_DIRTY,x
-
-skip_2x2
-            pla
-            beq   :done1
-            sta   DirtyTiles+2,x
-            tay
-            sta   TileStore+TS_DIRTY,y
-
-            pla
-            beq   :done2
-            sta   DirtyTiles+4,x
-            tay
-            sta   TileStore+TS_DIRTY,y
-
-            pla
-            beq   :done3
-            sta   DirtyTiles+6,x
-            tay
-            sta   TileStore+TS_DIRTY,y
-
-; Maximum number of dirty tiles reached. Just fall through.
-
-            pla
-            txa
-            adc  #8
-            sta  DirtyTileCount
-            rts
-:done3
-            txa
-            adc  #6
-            sta  DirtyTileCount
-            rts
-:done2
-            txa
-            adc  #4
-            sta  DirtyTileCount
-            rts
-:done1
-            inx
-            inx
-            stx  DirtyTileCount
-
-            rts
-
-
-
-            lda   _SpriteBitsNot,y               ; Cache the bit value for this sprite
-
-            ldy   TileStoreLookup,x              ; Get the tile store offset
-
-
-            and   TileStore+TS_SPRITE_FLAG,y
-            sta   TileStore+TS_SPRITE_FLAG,y
+dtloop11    pla
+            sta   DirtyTiles+20,y
+dtloop10    pla
+            sta   DirtyTiles+18,y
+dtloop9     pla
+            sta   DirtyTiles+16,y
+dtloop8     pla
+            sta   DirtyTiles+14,y
+dtloop7     pla
+            sta   DirtyTiles+12,y
+dtloop6     pla
+            sta   DirtyTiles+10,y
+dtloop5     pla
+            sta   DirtyTiles+8,y
+dtloop4     pla
+            sta   DirtyTiles+6,y
+dtloop3     pla
+            sta   DirtyTiles+4,y
+dtloop2     pla
+            sta   DirtyTiles+2,y
+dtloop1     pla
+            sta   DirtyTiles+0,y
 
 csfts_out   rts
-
-; Run through the list of tile store offsets that this sprite was last drawn into and mark
-; those tiles as dirty.  The largest number of tiles that a sprite could possibly cover is 20
-; (an unaligned 4x3 sprite), covering a 5x4 area of play field tiles.
-;
-; Y register = sprite record index
-_CSFTS_Out  rts
-_ClearSpriteFromTileStore
-;            ldx   _Sprites+TILE_STORE_ADDR_1,y
-;            beq   _CSFTS_Out
-;            ldal  TileStore+TS_SPRITE_FLAG,x       ; Clear the bit in the bit field.  This seems wasteful, but
-;            and   _SpriteBitsNot,y                 ; there is no indexed form of TSB/TRB and caching the value in
-;            stal  TileStore+TS_SPRITE_FLAG,x       ; a direct page location, only saves 1 or 2 cycles per and costs 10.
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_2,y
-;            beq   _CSFTS_Out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_3,y
-;            beq   _CSFTS_Out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_4,y
-;            beq   _CSFTS_Out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_5,y
-;            beq   :out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_6,y
-;            beq   :out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_7,y
-;            beq   :out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_8,y
-;            beq   :out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jsr   _PushDirtyTileX
-
-;            ldx   _Sprites+TILE_STORE_ADDR_9,y
-;            beq   :out
-;            ldal  TileStore+TS_SPRITE_FLAG,x
-;            and   _SpriteBitsNot,y
-;            stal  TileStore+TS_SPRITE_FLAG,x
-;            jmp   _PushDirtyTileX
-
-:out        rts
 
 ; This function looks at the sprite list and renders the sprite plane data into the appropriate
 ; tiles in the code field.  There are a few phases to this routine.  The assumption is that
@@ -437,7 +361,7 @@ phase1      dw    :phase1_0
 ; tile store locations to the dirty tile list.
 _DoPhase1
             lda   _Sprites+SPRITE_STATUS,y
-            ora   forceSpriteFlag
+            ora   ForceSpriteFlag
             bit   #SPRITE_STATUS_MOVED+SPRITE_STATUS_REMOVED
             beq   :no_clear
             jsr   _ClearSpriteFromTileStore
@@ -520,7 +444,7 @@ phase2      dw    :phase2_0
 _DoPhase2
             lda   _Sprites+SPRITE_STATUS,y
             beq   :out                          ; If phase 1 marked us as empty, do nothing
-            ora   forceSpriteFlag
+            ora   ForceSpriteFlag
             and   #SPRITE_STATUS_ADDED+SPRITE_STATUS_MOVED+SPRITE_STATUS_UPDATED
             beq   :out
 
@@ -580,7 +504,6 @@ RebuildSpriteArray
             stx   ActiveSpriteCount
             rts
 
-forceSpriteFlag ds 2
 _RenderSprites
 
 ; Check to see if any sprites have been added or removed.  If so, then we regenerate the active
@@ -617,7 +540,7 @@ _RenderSprites
 ;                    occupies and old locations that it no longer covers.  It's possible that just testing
 ;                    for equality would be the easiest win to know when we can skip everything.
 
-            stz   forceSpriteFlag
+            stz   ForceSpriteFlag
             lda   StartX
             cmp   OldStartX
             bne   :force_update
@@ -628,7 +551,7 @@ _RenderSprites
 
 :force_update
             lda   #SPRITE_STATUS_MOVED
-            sta   forceSpriteFlag
+            sta   ForceSpriteFlag
 :no_change
 
 ; Dispatch to the first phase of rendering the sprites. By pre-building the list, we know exactly
@@ -636,12 +559,12 @@ _RenderSprites
 ; of an iterating variable
 
             ldx   ActiveSpriteCount
-            jmp   (phase1,x)
+;            jmp   (phase1,x)
 phase1_rtn
 
 ; Dispatch to the second phase of rendering the sprites.
             ldx   ActiveSpriteCount
-            jmp   (phase2,x)
+;            jmp   (phase2,x)
 phase2_rtn
 
             rts

@@ -94,8 +94,9 @@ UserId                 equ   112         ; Memory manager user Id to use
 ToolNum                equ   114         ; Tool number assigned to us
 LastKey                equ   116
 LastTick               equ   118
+ForceSpriteFlag        equ   120
 
-Next                   equ   120
+Next                   equ   122
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 ; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers

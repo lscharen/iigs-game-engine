@@ -223,8 +223,6 @@ xPos            equ     FirstParam+2
                 lda     xPos,s
                 jsr     _SetBG0XPos
                 lda     yPos,s
-                bpl     *+5
-                lda     #0
                 jsr     _SetBG0YPos
 
                 _TSExit #0;#4
