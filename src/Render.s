@@ -74,7 +74,7 @@ _Render
 ;            ldy   ScreenHeight
 ;            jsr   _BltSCB
 
-            lda   StartY              ; Restore the fields back to their original state
+            lda   StartYMod208              ; Restore the fields back to their original state
             ldx   ScreenHeight
             jsr   _RestoreBG0Opcodes
 

@@ -97,6 +97,7 @@ InitMemory     lda       EngineMode
                sta       BTableHigh+]step+{208*2},x  ; 16 lines per bank
 ]step          equ       ]step+2
                --^
+
                lda       BlitBuff,y
                sta       BTableLow,x
                sta       BTableLow+{208*2},x
@@ -110,10 +111,12 @@ InitMemory     lda       EngineMode
                --^
 
                txa
+               clc
                adc       #16*2                       ; move to the next chunk of BTableHigh and BTableLow
                tax
 
                tya
+               clc
                adc       #4                          ; move to the next bank address
                tay
                cmp       #4*13
@@ -152,9 +155,6 @@ InitMemory     lda       EngineMode
                brl       :bloop2
 :exit
                rts
-
-;Buff00         ds        4
-;Buff01         ds        4
 
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
 

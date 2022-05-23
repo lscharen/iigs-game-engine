@@ -308,7 +308,6 @@ RTable            ENT
 
 ; Array of addresses for the banks that hold the blitter. 
 BlitBuff          ENT
-                  dw    $5a5a
                   ds    4*13
 
 ; The blitter table (BTable) is a double-length table that holds the full 4-byte address of each
@@ -373,6 +372,12 @@ ScreenModeWidth   ENT
                  dw        320,272,256,256,280,256,240,288,160,288,160,320
 ScreenModeHeight  ENT
                  dw        200,192,200,176,160,160,160,128,144,192,102,1
+
+; Convert sprite index to a bit position
+_SpriteBits      ENT
+                 dw $0001,$0002,$0004,$0008,$0010,$0020,$0040,$0080,$0100,$0200,$0400,$0800,$1000,$2000,$4000,$8000
+_SpriteBitsNot   ENT
+                 dw $FFFE,$FFFD,$FFFB,$FFF7,$FFEF,$FFDF,$FFBF,$FF7F,$FEFF,$FDFF,$FBFF,$F7FF,$EFFF,$DFFF,$BFFF,$7FFF
 
 blt_return
 stk_save

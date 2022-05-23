@@ -51,6 +51,7 @@ _CallTable
                 adrl  _TSSetBG0Origin-1
                 adrl  _TSRender-1
                 adrl  _TSLoadTileSet-1
+                adrl  _TSCreateSpriteStamp-1
 _CTEnd
 
 ; Helper function to set the data back to the toolset default
@@ -222,6 +223,8 @@ xPos            equ     FirstParam+2
                 lda     xPos,s
                 jsr     _SetBG0XPos
                 lda     yPos,s
+                bpl     *+5
+                lda     #0
                 jsr     _SetBG0YPos
 
                 _TSExit #0;#4
@@ -245,6 +248,60 @@ TSPtr           equ     FirstParam
 
                 _TSExit #0;#4
 
+; CreateSpriteStamp(spriteId: Word, vbuffAddr: Word)
+_TSCreateSpriteStamp
+:vbuff          equ     FirstParam
+:spriteId       equ     FirstParam+2
+
+                _TSEntry
+
+                lda     :vbuff,s
+                tay
+                lda     :spriteId,s
+                jsr     _CreateSpriteStamp
+
+                _TSExit #0;#4
+
+_TSAddSprite
+:spriteSlot     equ    FirstParam+0
+:spriteY        equ    FirstParam+2
+:spriteX        equ    FirstParam+4
+:spriteId       equ    FirstParam+6
+
+                _TSEntry
+
+                lda    :spriteY,s
+                and    #$00FF
+                xba
+                sta    :spriteY,s
+                lda    :spriteX,s
+                and    #$00FF
+                ora    :spriteY,s
+                tay
+
+                lda    :spriteSlot,s
+                tax
+
+                lda    :spriteId,s
+                jsr    _AddSprite
+
+                _TSExit #0;#8
+
+_TSUpdateSprite
+:vbuff          equ    FirstParam+0
+:spriteFlags    equ    FirstParam+2
+:spriteSlot     equ    FirstParam+4
+                _TSEntry
+
+                lda    :spriteFlags,s
+                tax
+                lda    :vbuff,s
+                tay
+                lda    :spriteSlot,s
+                jsr    _UpdateSprite
+
+                _TSExit #0;#6
+
 ; Insert the GTE code
 
                 put     Math.s
@@ -253,6 +310,8 @@ TSPtr           equ     FirstParam
                 put     Timer.s
                 put     Graphics.s
                 put     Tiles.s
+                put     Sprite.s
+                put     SpriteRender.s
                 put     Render.s
                 put     tiles/DirtyTileQueue.s
                 put     tiles/FastRenderer.s

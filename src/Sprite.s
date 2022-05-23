@@ -117,7 +117,6 @@ _AddSprite
             sta   _Sprites+SPRITE_X,x           ; X coordinate
 
             jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
-;            jsr   _DrawSpriteSheet              ; Render the sprite into internal space
 
 ; Mark the dirty bit to indicate that the active sprite list needs to be rebuilt in the next
 ; render call
@@ -535,7 +534,7 @@ _DoPhase2
 ; can be drawn to the screen.  This routine is also responsible for setting the specific
 ; VBUFF address for each sprite's tile sheet position
 
-            jmp   _MarkDirtySprite
+;            jmp   _MarkDirtySprite
 :out
             rts
 
@@ -867,7 +866,7 @@ _RemoveSprite
 ; Update the sprite's flags. We do not allow the size of a sprite to be changed.  That requires
 ; the sprite to be removed and re-added.
 ;
-; A = Sprite ID
+; A = Sprite slot
 ; X = New Sprite Flags
 ; Y = New Sprite Stamp Address
 _UpdateSprite

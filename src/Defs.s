@@ -238,3 +238,5 @@ Timers            EXT
 DefaultPalette    EXT
 ScreenModeWidth   EXT
 ScreenModeHeight  EXT
+_SpriteBits       EXT
+_SpriteBitsNot    EXT

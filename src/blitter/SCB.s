@@ -28,10 +28,10 @@ _BltSCB
 
             lda   SCBArrayPtr+2
             bpl   :bind_to_bg0
-            lda   BG1StartY
+            lda   BG1StartYMod208
             bra   :bind_to_bg1
 :bind_to_bg0 
-            lda   StartY
+            lda   StartYMod208
 :bind_to_bg1
             clc
             adc   SCBArrayPtr

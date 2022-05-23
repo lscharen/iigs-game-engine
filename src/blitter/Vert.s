@@ -91,8 +91,9 @@ _ApplyBG0YPos
                      sta   :lines_left
 
                      jne   :loop
-
                      plb
+
+:out
                      rts
 
 ; Unrolled copy routine to move RTable intries into STK_ADDR position.  
@@ -145,7 +146,7 @@ CopyRTableToStkAddr
 :x14                 ldal  RTable+26,x
                      sta   STK_ADDR+$D000,y
 :x13                 ldal  RTable+24,x
-                     sta:  STK_ADDR+$C000,y
+                     sta   STK_ADDR+$C000,y
 :x12                 ldal  RTable+22,x
                      sta   STK_ADDR+$B000,y
 :x11                 ldal  RTable+20,x
@@ -153,7 +154,7 @@ CopyRTableToStkAddr
 :x10                 ldal  RTable+18,x
                      sta   STK_ADDR+$9000,y
 :x09                 ldal  RTable+16,x
-                     sta:  STK_ADDR+$8000,y
+                     sta   STK_ADDR+$8000,y
 :x08                 ldal  RTable+14,x
                      sta   STK_ADDR+$7000,y
 :x07                 ldal  RTable+12,x
@@ -161,7 +162,7 @@ CopyRTableToStkAddr
 :x06                 ldal  RTable+10,x
                      sta   STK_ADDR+$5000,y
 :x05                 ldal  RTable+08,x
-                     sta:  STK_ADDR+$4000,y
+                     sta   STK_ADDR+$4000,y
 :x04                 ldal  RTable+06,x
                      sta   STK_ADDR+$3000,y
 :x03                 ldal  RTable+04,x
