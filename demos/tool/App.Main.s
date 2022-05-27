@@ -39,6 +39,26 @@ ScreenY         equ   2
                 pea   #TSZelda
                 _GTELoadTileSet
 
+; Create stamps for the sprites we are going to use
+HERO_SPRITE_1   equ   SPRITE_16X16+1
+HERO_SLOT       equ   0
+
+                pea   HERO_SPRITE_1                 ; sprinte id
+                pea   VBUFF_SPRITE_START            ; vbuff address
+                _GTECreateSpriteStamp
+
+; Create sprites
+                pea   HERO_SPRITE_1                 ; sprite id
+                pea   #10                           ; screen x-position (<256)
+                pea   #8                            ; screen y-position (<256)
+                pea   HERO_SLOT                     ; sprite slot (0 - 15)
+                _GTEAddSprite
+
+                pea   HERO_SLOT                     ; update the sprite in this slot
+                pea   $0000                         ; with these flags (h/v flip)
+                pea   VBUFF_SPRITE_START            ; and use this stamp
+                _GTEUpdateSprite
+
 ; Manually fill in the 41x26 tiles of the TileStore with a test pattern.
 
                 ldx   #0
@@ -71,14 +91,9 @@ ScreenY         equ   2
 
 ; Set the origin of the screen
 
-                lda   #3
-                sta   ScreenX
-                lda   #10
+                stz   ScreenX
+                lda   #63
                 sta   ScreenY
-
-                pea   #3
-                pea   #10
-                _GTESetBG0Origin
 
 ; Very simple actions
 :evt_loop

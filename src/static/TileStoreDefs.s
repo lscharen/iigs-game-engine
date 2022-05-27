@@ -45,18 +45,34 @@ SPRITE_STATUS_MOVED    equ $0002         ; Sprite's position was changed
 SPRITE_STATUS_UPDATED  equ $0004         ; Sprite's non-position attributes were changed
 SPRITE_STATUS_REMOVED  equ $0008         ; Sprite has been removed.
 
-SPRITE_STATUS      equ {MAX_SPRITES*0}
-; TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
-VBUFF_ADDR         equ {MAX_SPRITES*4}   ; Base address of the sprite's stamp in the data/mask banks
-SPRITE_ID          equ {MAX_SPRITES*6}
-SPRITE_X           equ {MAX_SPRITES*8}
-SPRITE_Y           equ {MAX_SPRITES*10}
-; TILE_STORE_ADDR_1  equ {MAX_SPRITES*12}
-TS_LOOKUP_INDEX     equ {MAX_SPRITES*12}       ; The index into the TileStoreLookup table corresponding to the top-left corner of the sprite
-; TILE_STORE_ADDR_2  equ {MAX_SPRITES*14}
-TS_COVERAGE_SIZE    equ {MAX_SPRITES*14}       ; Index into the lookup table of how many TileStore tiles are covered by this sprite
+; These values are set by the user
+SPRITE_STATUS        equ {MAX_SPRITES*0}
+SPRITE_ID            equ {MAX_SPRITES*2}
+SPRITE_X             equ {MAX_SPRITES*4}
+SPRITE_Y             equ {MAX_SPRITES*6}
+
+; These values are cached / calculated during the rendering process
+VBUFF_ADDR           equ {MAX_SPRITES*8}         ; Base address of the sprite's stamp in the data/mask banks
+TS_LOOKUP_INDEX      equ {MAX_SPRITES*10}        ; The index from the TileStoreLookup table that corresponds to the top-left corner of the sprite
+TS_COVERAGE_SIZE     equ {MAX_SPRITES*12}        ; Representation of how many TileStore tiles (NxM) are covered by this sprite
+OLD_TS_LOOKUP_INDEX  equ {MAX_SPRITES*14}        ; Copy of the values to support diffing
+OLD_TS_COVERAGE_SIZE equ {MAX_SPRITES*16}
+SPRITE_DISP          equ {MAX_SPRITES*18}        ; Cached address of the specific stamp based on sprite flags
+SPRITE_CLIP_LEFT     equ {MAX_SPRITES*20}
+SPRITE_CLIP_RIGHT    equ {MAX_SPRITES*22}
+SPRITE_CLIP_TOP      equ {MAX_SPRITES*24}
+SPRITE_CLIP_BOTTOM   equ {MAX_SPRITES*26}
+IS_OFF_SCREEN        equ {MAX_SPRITES*28}
+SPRITE_WIDTH         equ {MAX_SPRITES*30}
+SPRITE_HEIGHT        equ {MAX_SPRITES*32}
+SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*34}
+SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*36}
+TS_VBUFF_BASE        equ {MAX_SPRITES*38}        ; Finalized VBUFF address based on the sprite position and tile offsets
+;TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
+;TILE_STORE_ADDR_1  equ {MAX_SPRITES*12}
+;TILE_STORE_ADDR_2  equ {MAX_SPRITES*14}
 ;TILE_STORE_ADDR_3  equ {MAX_SPRITES*16}
-TS_VBUFF_BASE_ADDR  equ {MAX_SPRITES*16}       ; Fixed address of the TS_VBUFF_X memory locations
+;TS_VBUFF_BASE_ADDR  equ {MAX_SPRITES*16}       ; Fixed address of the TS_VBUFF_X memory locations
 ;TILE_STORE_ADDR_4  equ {MAX_SPRITES*18}
 ;TILE_STORE_ADDR_5  equ {MAX_SPRITES*20}
 ;TILE_STORE_ADDR_6  equ {MAX_SPRITES*22}
@@ -64,16 +80,6 @@ TS_VBUFF_BASE_ADDR  equ {MAX_SPRITES*16}       ; Fixed address of the TS_VBUFF_X
 ;TILE_STORE_ADDR_8  equ {MAX_SPRITES*26}
 ;TILE_STORE_ADDR_9  equ {MAX_SPRITES*28}
 ;TILE_STORE_ADDR_10 equ {MAX_SPRITES*30}
-SPRITE_DISP        equ {MAX_SPRITES*32}  ; cached address of the specific stamp based on flags
-SPRITE_CLIP_LEFT   equ {MAX_SPRITES*34}
-SPRITE_CLIP_RIGHT  equ {MAX_SPRITES*36}
-SPRITE_CLIP_TOP    equ {MAX_SPRITES*38}
-SPRITE_CLIP_BOTTOM equ {MAX_SPRITES*40}
-IS_OFF_SCREEN      equ {MAX_SPRITES*42}
-SPRITE_WIDTH       equ {MAX_SPRITES*44}
-SPRITE_HEIGHT      equ {MAX_SPRITES*46}
-SPRITE_CLIP_WIDTH  equ {MAX_SPRITES*48}
-SPRITE_CLIP_HEIGHT equ {MAX_SPRITES*50}
 
 ; 50 rows by 80 columns + 2 extra rows and columns
 TS_LOOKUP_WIDTH   equ 80

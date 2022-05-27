@@ -368,10 +368,14 @@ DefaultPalette   ENT
 ;  8. Game Boy Color        : 20 x 18   160 x 144 (11,520 bytes ( 36.0%))
 ;  9. Agony (Amiga)         : 36 x 24   288 x 192 (27,648 bytes ( 86.4%))
 ; 10. Atari Lynx            : 20 x 13   160 x 102 (8,160 bytes  ( 25.5%))
-ScreenModeWidth   ENT
+ScreenModeWidth  ENT
                  dw        320,272,256,256,280,256,240,288,160,288,160,320
-ScreenModeHeight  ENT
+ScreenModeHeight ENT
                  dw        200,192,200,176,160,160,160,128,144,192,102,1
+
+; List of addresses of the VBuff arrays for each Tile Store entry, indexed by sprite index
+VBuffArrayAddr   ENT
+                 ds  MAX_SPRITES*2
 
 ; Convert sprite index to a bit position
 _SpriteBits      ENT

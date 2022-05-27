@@ -309,6 +309,7 @@ _TSUpdateSprite
                 put     Graphics.s
                 put     Tiles.s
                 put     Sprite.s
+                put     Sprite2.s
                 put     SpriteRender.s
                 put     Render.s
                 put     tiles/DirtyTileQueue.s

@@ -82,7 +82,7 @@ BG1TileMapPtr          equ   86
 
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
-LastRender             equ   96          ; Record which reder function was last executed
+LastRender             equ   96          ; Record which render function was last executed
 ; gap
 SpriteMap              equ   100         ; Bitmap of open sprite slots.
 ActiveSpriteCount      equ   102
@@ -96,7 +96,8 @@ LastKey                equ   116
 LastTick               equ   118
 ForceSpriteFlag        equ   120
 
-Next                   equ   122
+VBuffArrayPtr          equ   122
+SpriteRemovedFlag      equ   126         ; Indicate if any sprites were removed this frame
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 ; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
@@ -241,3 +242,4 @@ ScreenModeWidth   EXT
 ScreenModeHeight  EXT
 _SpriteBits       EXT
 _SpriteBitsNot    EXT
+VBuffArrayAddr    EXT
