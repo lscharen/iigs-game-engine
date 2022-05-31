@@ -58,20 +58,17 @@ OneSpriteFast
             plb
 
 ;            jmp   _TBApplySpriteData2
-
 _TBApplySpriteData2
 ]line       equ   0
             lup   8
-            lda   blttmp+{]line*4}
+            lda   tmp_tile_data+{]line*4}
             andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
             oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
-;            lda   #$FFFF
             sta:  $0004+{]line*$1000},y
 
-            lda   blttmp+{]line*4}+2
+            lda   tmp_tile_data+{]line*4}+2
             andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
             oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-;            lda   #$FFFF
             sta:  $0001+{]line*$1000},y
 ]line       equ   ]line+1
             --^

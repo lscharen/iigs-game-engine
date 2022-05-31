@@ -38,7 +38,7 @@ InitSprites
             adc    #4*2                        ; skip ahead 4 tiles
             inx
             inx
-            cpx    #8*2
+            cpx    #16*2
             bcc    :loop4
 
 ; Precalculate some bank values
@@ -153,7 +153,7 @@ _DoPhase1
 
             jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
-; Need to calculate new VBUFF information.  The could be reuqired for UPDATED, ADDED or MOVED
+; Need to calculate new VBUFF information.  The could be required for UPDATED, ADDED or MOVED
 ; sprites, so we do it unconditionally.
 :no_clear
             jsr   _CalcDirtySprite
@@ -648,6 +648,7 @@ _PrecalcAllSpriteInfo
             sbc   _Sprites+SPRITE_CLIP_TOP,x
             inc
             sta   _Sprites+SPRITE_CLIP_HEIGHT,x
+
             rts
 
 :offscreen
@@ -691,14 +692,19 @@ _UpdateSprite
             tax
             pla
 
-            cmp   _Sprites+SPRITE_ID,x          ; If the flags changed, need to redraw the sprite
-            bne   :sprite_flag_change           ; on the next frame
+; Do some work to see if only the H or V bits have changed.  If so, merge them into the
+; SPRITE_ID
+            eor   _Sprites+SPRITE_ID,x          ; If either bit has changed, this will be non-zero
+            and   #SPRITE_VFLIP+SPRITE_HFLIP 
+            bne   :sprite_flag_change
+
             tya
             cmp   _Sprites+VBUFF_ADDR,x          ; Did the stamp change?
             bne   :sprite_stamp_change
             rts                                 ; Nothing changed, so just return
 
 :sprite_flag_change
+            eor   _Sprites+SPRITE_ID,x          ; put the new bits into the value. ---HV--- ^ SPRITE_ID & 00011000 ^ SPRITE_ID = SSSHVSSS
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
             tya
 :sprite_stamp_change

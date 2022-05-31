@@ -61,15 +61,18 @@ _CalcDirtySprite
         sta   _Sprites+OLD_TS_LOOKUP_INDEX,y
 
 ; Add the first visible row of the sprite to the Y-scroll offset to find the first line in the
-; code field that needs to be drawn.  The range of values is 0 to 199+207 = [0, 406]
+; code field that needs to be drawn.  The range of values is 0 to 199+207 = [0, 406]. This
+; value is dividede by 8, so the range of lookup values is [0, 50], so 51 possible values.
 
         clc
         lda   _Sprites+SPRITE_CLIP_TOP,y
         adc   StartYMod208                       ; Adjust for the scroll offset
-        tax                                      ; Cache
+        pha                                      ; Cache
         and   #$FFF8                             ; mask first to ensure LSR will clear the carry
         lsr
         lsr
+        tax
+        lda   TileStoreLookupYTable,x
         sta   RowTop                             ; Even numbers from [0, 100] (50 elements)
 
 ; Get the position of the top edge within the tile and then add it to the sprite's height
@@ -78,7 +81,7 @@ _CalcDirtySprite
 ; that are intersected, rather than assuming an 8x8 sprite always takes up that amount of
 ; space.
 
-        txa
+        pla
         and   #$0007
         tax                                       ; cache again. This is a bit faster than recalculating
 
@@ -94,7 +97,8 @@ _CalcDirtySprite
         sta   tmp0
 
 ; Add the horizontal position to the horizontal offset to find the first column in the
-; code field that needs to be drawn.  The range of values is 0 to 159+163 = [0, 322]
+; code field that needs to be drawn.  The range of values is 0 to 159+163 = [0, 322]. 
+; This value is divided by 4, so 81 possible values
 
         clc
         lda   _Sprites+SPRITE_CLIP_LEFT,y
@@ -201,8 +205,8 @@ TSSetSprite mac
 next
         <<<
 
-ROW     equ TILE_STORE_WIDTH*2
-COL     equ TILE_DATA_SPAN
+ROW     equ TILE_STORE_WIDTH*2                      ; This many bytes to the next row in TileStore coordinates
+COL     equ 2                                       ; This many bytes for each element
 
 :mark1x1
         ldx   _Sprites+VBUFF_ARRAY_ADDR,y           ; get the address of this sprite's vbuff values
@@ -264,10 +268,10 @@ COL     equ TILE_DATA_SPAN
         sta:  {1*ROW}+{1*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0;#{0*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2;#{0*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0;#{1*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2;#{1*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2
         rts
 
 :mark2x3
@@ -286,12 +290,12 @@ COL     equ TILE_DATA_SPAN
         sta:  {1*ROW}+{2*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0;#{0*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2;#{0*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+4;#{0*VBUFF_TILE_ROW_BYTES}+{2*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0;#{1*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2;#{1*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+4;#{1*VBUFF_TILE_ROW_BYTES}+{2*VBUFF_TILE_COL_BYTES}
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+4
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+4
         rts
 
 :mark3x1
@@ -304,9 +308,9 @@ COL     equ TILE_DATA_SPAN
         sta:  {2*ROW}+{0*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0;#{0*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0;#{1*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+0;#{2*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+0
         rts
 
 :mark3x2
@@ -325,12 +329,12 @@ COL     equ TILE_DATA_SPAN
         sta:  {2*ROW}+{1*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0;#{0*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2;#{0*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0;#{1*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2;#{1*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+0;#{2*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+2;#{2*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+2
         rts
 
 :mark3x3
@@ -355,13 +359,13 @@ COL     equ TILE_DATA_SPAN
         sta:  {2*ROW}+{2*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0;#{0*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2;#{0*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+4;#{0*VBUFF_TILE_ROW_BYTES}+{2*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0;#{1*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2;#{1*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+4;#{1*VBUFF_TILE_ROW_BYTES}+{2*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+0;#{2*VBUFF_TILE_ROW_BYTES}+{0*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+2;#{2*VBUFF_TILE_ROW_BYTES}+{1*VBUFF_TILE_COL_BYTES}
-        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+4;#{2*VBUFF_TILE_ROW_BYTES}+{2*VBUFF_TILE_COL_BYTES}
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  0*{TS_LOOKUP_SPAN*2}+4
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  1*{TS_LOOKUP_SPAN*2}+4
+        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+0
+        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+2
+        TSSetSprite  2*{TS_LOOKUP_SPAN*2}+4
         rts
