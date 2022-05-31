@@ -84,18 +84,6 @@ CopyNoSprites
 
 :tiledisp        jmp   $0000                          ; render the tile
 
-; Let's make a macro helper for the bit test tree
-;                dobit   src_offset,dest,next_target,end_target
-dobit            MAC
-                 beq   last_bit
-                 ldx:  ]1,y
-                 stx   ]2
-                 jmp   ]3
-last_bit         ldx:  ]1,y
-                 stx   ]2
-                 jmp   ]4
-                 EOM
-
 ; The sprite code is just responsible for quickly copying all of the sprite data
 ; into the direct page temp area.
 
@@ -117,83 +105,9 @@ dirty_sprite_dispatch
                  da    CopyThreeSprites
                  da    CopyFourSprites                     ; MAX, don't bother with more than 4 sprites per tile
 
-; This is very similar to the code in the dirty tile renderer, but we can't reuse 
-; because that code draws directly to the graphics screen, and this code draws
-; to a temporary buffer that has a different stride.
-
-;                 ldy   TileStore+TS_VBUFF_ARRAY_ADDR,x     ; base address of the VBUFF sprite address array for this tile
-;
-;                 lsr
-;                 bcc   :loop_0_bit_1
-;                 dobit $0000;sprite_ptr0;:loop_1_bit_1;CopyOneSprite
-
-;:loop_0_bit_1    lsr
-;                 bcc   :loop_0_bit_2
-;                 dobit $0002;sprite_ptr0;:loop_1_bit_2;CopyOneSprite
-
-;:loop_0_bit_2    lsr
-;                 bcc   :loop_0_bit_3
-;                 dobit $0004;sprite_ptr0;:loop_1_bit_3;CopyOneSprite
-
-;:loop_0_bit_3    lsr
-;                 bcc   :loop_0_bit_4
-;                 dobit $0006;sprite_ptr0;:loop_1_bit_4;CopyOneSprite
-
-;:loop_0_bit_4    lsr
-;                 bcc   :loop_0_bit_5
-;                 dobit $0008;sprite_ptr0;:loop_1_bit_5;CopyOneSprite
-
-;:loop_0_bit_5    lsr
-;                 bcc   :loop_0_bit_6
-;                 dobit $000A;sprite_ptr0;:loop_1_bit_6;CopyOneSprite
-
-;:loop_0_bit_6    lsr
-;                 bcc   :loop_0_bit_7
-;                 dobit $000C;sprite_ptr0;:loop_1_bit_7;CopyOneSprite
-
-;:loop_0_bit_7    lsr
-;                 bcc   :loop_0_bit_8
-;                 dobit $000E;sprite_ptr0;:loop_1_bit_8;CopyOneSprite
-
-;:loop_0_bit_8    lsr
-;                 bcc   :loop_0_bit_9
-;                 dobit $0010;sprite_ptr0;:loop_1_bit_9;CopyOneSprite
-
-;:loop_0_bit_9    lsr
-;                 bcc   :loop_0_bit_10
-;                 ldx:  $0012,y
-;                 stx   spriteIdx
-;                 cmp   #0
-;                 jne   :loop_1_bit_10
-;                 jmp   CopyOneSprite
-
-;:loop_0_bit_10   lsr
-;                 bcc   :loop_0_bit_11
-;                 dobit $0014;sprite_ptr0;:loop_1_bit_11;CopyOneSprite
-
-;:loop_0_bit_11   lsr
-;                 bcc   :loop_0_bit_12
-;                 dobit $0016;sprite_ptr0;:loop_1_bit_12;CopyOneSprite
-
-;:loop_0_bit_12   lsr
-;                 bcc   :loop_0_bit_13
-;                 dobit $0018;sprite_ptr0;:loop_1_bit_13;CopyOneSprite
-
-;:loop_0_bit_13   lsr
-;                 bcc   :loop_0_bit_14
-;                 dobit $001A;sprite_ptr0;:loop_1_bit_14;CopyOneSprite
-
-;:loop_0_bit_14   lsr
-;                 bcc   :loop_0_bit_15
-;                 dobit $001C;sprite_ptr0;:loop_1_bit_15;CopyOneSprite
-
-;:loop_0_bit_15   ldx:  $001E,y
-;                 stx   spriteIdx
-;                 jmp   CopyOneSprite
-
 ; We can optimize later, for now just copy the sprite data and mask into its own
 ; direct page buffer and combine with the tile data later
-
+;
 ; We set up direct page pointers to the mask bank and use the bank register for the
 ; data.
 CopyFourSprites

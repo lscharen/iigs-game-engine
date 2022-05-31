@@ -102,22 +102,22 @@ _Render
 
 ; The _ApplyTilesFast is the same as _ApplyTiles, but we use the _RenderTileFast subroutine
 _ApplyTilesFast
+            ldx  DirtyTileCount
+
             tdc
             clc
             adc  #$100                  ; move to the next page
             tcd
 
-            lda  DirtyTileCount         ; Cache the dirty tile count
-            sta  DP2_DIRTY_TILE_COUNT
-
+            stx  DP2_DIRTY_TILE_COUNT   ; Cache the dirty tile count
             jsr  _PopDirtyTilesFast
-
-            stz  DirtyTileCount
 
             tdc                         ; Move back to the original direct page
             sec
             sbc  #$100
             tcd
+
+            stz  DirtyTileCount         ; Reset the dirty tile count
             rts
 
 ; The _ApplyTiles function is responsible for rendering all of the dirty tiles into the code
@@ -198,17 +198,10 @@ _ApplyDirtyTiles
 
 ; Only render solid tiles and sprites
 _RenderDirtyTile
-            ldx   TileStore+TS_VBUFF_ADDR_COUNT,y   ; How many sprites are on this tile?
+            lda   TileStore+TS_SPRITE_FLAG,y
             beq   NoSpritesDirty                    ; This is faster if there are no sprites
 
-            lda   TileStore+TS_TILE_ID,y            ; Check if the tile has 
-            jmp   (dirty_dispatch,x)
-dirty_dispatch
-            da    NoSpritesDirty
-            da    OneSpriteDirty
-            da    TwoSpritesDirty
-            da    ThreeSpritesDirty
-            da    FourSpritesDirty
+;           TODO: handle sprite drawing
 
 ; The rest of this function handles that non-sprite blit, which is super fast since it blits directly from the
 ; tile data store to the graphics screen with no masking. The only extra work is selecting a blit function
@@ -218,12 +211,12 @@ dirty_dispatch
 ; Y is set to the top-left address of the tile in SHR screen
 ; A is set to the address of the tile data
 NoSpritesDirty
-            tyx
-            ldy   TileStore+TS_SCREEN_ADDR,x       ; Get the on-screen address of this tile
-            lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
+            lda   TileStore+TS_DIRTY_TILE_DISP,y
+            stal  :nsd+1
+            ldx   TileStore+TS_SCREEN_ADDR,y       ; Get the on-screen address of this tile
+            lda   TileStore+TS_TILE_ADDR,y         ; load the address of this tile's data (pre-calculated)
             plb                                    ; set the code field bank
-            jmp   (TileStore+TS_DIRTY_TILE_DISP,x) ; go to the tile copy routine (just basics)
-
+:nsd        jmp   $0000
 ; Use some temporary space for the spriteIdx array (maximum of 4 entries)
 
 stkSave     equ tmp9
@@ -240,7 +233,7 @@ ThreeSpritesDirty
 TwoSpritesDirty
 
             sta  tileAddr
-            sty  screenAddr
+            stx  screenAddr
 
             plb
             tsc

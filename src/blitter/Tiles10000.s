@@ -30,7 +30,6 @@ _TBFastSpriteTile_VH
 ; Need to update the X-register before calling this
 _TBApplySpriteData
                  ldx   _SPR_X_REG                               ; set to the unaligned tile block address in the sprite plane
-
 ]line            equ   0
                  lup   8
                  lda   blttmp+{]line*4}

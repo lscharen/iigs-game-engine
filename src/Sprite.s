@@ -19,18 +19,31 @@ InitSprites
            cpx    #$FFFE
            bne    :loop2
 
-; Clear values in the sprite array
+; Set the VBuff array addresses for each sprite, since they're static
 
-;           ldx    #{MAX_SPRITES-1}*2
-;:loop3     stz    _Sprites+TILE_STORE_ADDR_1,x
-;           dex
-;           dex
-;           bpl    :loop3
+            ldx    #0
+            lda    #VBuffArray
+:loop3      sta    _Sprites+VBUFF_ARRAY_ADDR,x
+            clc
+            adc    #4*2                        ; skip ahead 4 tiles
+            inx
+            inx
+            cpx    #8*2
+            bcc    :loop3
+
+; Now do the second set of sprites
+            lda    #VBuffArray+{3*{TILE_STORE_WIDTH*2}}
+:loop4      sta    _Sprites+VBUFF_ARRAY_ADDR,x
+            clc
+            adc    #4*2                        ; skip ahead 4 tiles
+            inx
+            inx
+            cpx    #8*2
+            bcc    :loop4
 
 ; Precalculate some bank values
            jsr    _CacheSpriteBanks
            rts
-
 
 ; _RenderSprites
 ;
@@ -59,7 +72,7 @@ InitSprites
 ;          a. If it is not marked in the DirtyTile list
 ;             * Clear its bit from the TileStore's TS_SPRITE_FLAG
 ;             * Add the tile to the DirtyTile list
-;
+;t
 ; 2. If a sprite is marked as SPRITE_STATUS_REMOVED, then
 ;    A. Clear its bit from the SpriteBits bitmap
 ;    B. For each tile the sprite overlaps with:
@@ -134,6 +147,8 @@ _DoPhase1
             lda   _SpriteBits,y                   ; Clear from the sprite bitmap
             sta   SpriteRemovedFlag               ; Stick a non-zero value here
             trb   SpriteMap
+            lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
+            sta   _Sprites+SPRITE_STATUS,y
 
             jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
@@ -153,15 +168,6 @@ _DoPhase1
 ; current tiles marked for update
 :no_move
             jmp   _MarkDirtySpriteTiles
-
-; Once all of the sprite values have been calculated, we need to scan the dirty tile list and
-; collapse the sprite information down to no more than 4 vbuff references per tile.  We used to
-; do this on the fly in the renderer, but that required differentiating between tile with and 
-; without sprites in the core rendering function.  My lifting this up, we simplify the core code
-; and possible open up some optimization opportunities.
-_SetTileStoreVBuffAddrs
-
-
 
 ; Dispatch table.  It's unintersting, so it's tucked out of the way
 phase1      dw    :phase1_0
@@ -200,8 +206,8 @@ phase1      dw    :phase1_0
 :phase1_2   ldy   activeSpriteList+2
             jsr   _DoPhase1
 :phase1_1   ldy   activeSpriteList
-            jsr   _DoPhase1
-:phase1_0   jmp   _SetTileStoreVBuffAddrs
+            jmp   _DoPhase1
+:phase1_0   rts
 
 ; Utility function to calculate the difference in tile positions between a sprite's current
 ; position and it's previous position.  This gets interesting because the number of tiles
@@ -299,9 +305,6 @@ _AddSprite
             lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
             tsb   SpriteMap                     ; Mark it in the sprite map bit field
 
-;            txa                                 ; And return the sprite ID
-;            clc                                 ; Mark that the sprite was successfully added
-
             rts
 
 ; Macro to make the unrolled loop more concise
@@ -314,7 +317,7 @@ TSClearSprite mac
             ldy   TileStoreLookup+]1,x
 
             lda   TileStore+TS_SPRITE_FLAG,y
-            and  tmp0
+            and   tmp0
             sta   TileStore+TS_SPRITE_FLAG,y
 
             lda   TileStore+TS_DIRTY,y

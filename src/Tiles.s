@@ -120,14 +120,6 @@ InitTiles
 ;                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
 ;                 stal TileStore+TS_BASE_TILE_DISP,x     
 
-; *** DEPRECATED ***
-;                 lda  :vbuff                            ; array of sprite vbuff addresses per tile
-;                 stal TileStore+TS_VBUFF_ARRAY_ADDR,x
-;                 clc
-;                 adc  #32
-;                 sta  :vbuff
-; *** ********** ***
-
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering
 
@@ -267,3 +259,211 @@ _SetBG0YPos
 
                      stx   OldStartY            ; First change, so preserve the value
 :out                 rts
+
+; Macro helper for the bit test tree
+;           dobit   bit_position,dest;next;exit
+dobit       mac
+            lsr
+            bcc   next_bit
+            beq   last_bit
+            tax
+            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            sta   sprite_ptr0+{]2*4}
+            txa
+            jmp   ]3
+last_bit    lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            sta   sprite_ptr0+{]2*4}
+            jmp   ]4
+next_bit
+            <<<
+
+; Specialization for the first sprite which can just return the vbuff address
+; in a register if there is only one sprite intersecting the tile
+dobit1      mac
+            lsr
+            bcc   next_bit
+            beq   last_bit
+            tax
+            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            sta   sprite_ptr0+{]2*4}
+            txa
+            jmp   ]3
+last_bit    lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            jmp   ]4
+next_bit
+            <<<
+
+; Optimization discussion.  In the Sprite2.s file, we calculate the VBUFF address for each tile overlapped
+; by a sprite:
+;
+;    4 lda   VBuffOrigin
+;    3 adc   ]2
+;    7 sta   [tmp0],y
+;
+; and then in this macro it is loaded again and copied to the direct page.  If a sprite is never drawn, this is
+; wasted work (which is not too ofter since >4 sprites would need to be overlapping), but still.
+;
+;    6 ldy:  {]1*TILE_STORE_SIZE},x
+;    4 sty   sprite_ptr0+{]2*4}
+;
+; Since we know *exactly* which sprite is being accessed, the _Sprites+TS_VBUFF_BASE,y value can be loaded without
+; an index
+;
+;    5 lda   _Sprites+TS_VBUFF_BASE+{]1*2}
+;    6 adc   {]1*TILE_STORE_SIZE},x
+;    4 sta   sprite_ptr0+{]2*4}
+;    2 tya   
+;
+;    = a savings of at least (24 - 17) = 7 cycles per tile and more if the sprite is skipped.
+;
+; The problem is that this still required storing a value for the sprite in the tile store.  What is ideal is
+; if there is a way to know implicitly which relative tile offset we are on for a given sprite and use
+; that to calculate the offset...
+;
+; What do we know
+;   X = current tile
+;   Sprite+TS_LOOKUP_INDEX
+;
+;   txa
+;   sbc   _Sprites+TS_LOOKUP_INDEX+{]1*2}
+;   tay
+;   lda   _Sprites+TS_VBUFF_BASE+{]1*2}
+;   adc   DisplacementTable,y
+;   sta   sprite_ptr0+{]2*4}
+;
+; Have the sprite select a table base which holds the offset values, pre-adjusted for the TS_LOOKUP_INDEX. The table
+; values are fixed. Yes!! This is the solution!!  It will only need 288 bytes of total space
+;
+; Best implementation will pass the Tile Store index in Y instead of X
+;
+; 5          lda   _Sprites+VBUFF_TABLE+{]1*2}
+; 6          sta   self_mod
+; 6          lda   $0000,x
+; 4          sta   sprite_ptr0+{]2*4}
+; 2          tya
+;
+; or
+;
+; 5          lda   _Sprites+VBUFF_TABLE+{]1*2}
+; 4          sta   tmp0
+; 7          lda   (tmp0),y
+; 4          sta   sprite_ptr0+{]2*4}
+; 2          txa
+;
+; Even better, if the VBUFF_TABLE (only 32 bytes) was already stored in the second direct page
+;
+; 7          lda   (VBUFF_TABLE+{]1*2}),y
+; 5          adc   _Sprites+VBUFF_TABLE+{]1*2}
+; 4          sta   sprite_ptr0+{]2*4}
+; 2          txa
+;
+; Final saving compared to current implementation is (24 - 18) = 6 cycles per tile and we eliminate
+; the need to pre-calculate
+;
+
+; If we find a last bit (4th in this case) and will exit
+stpbit      mac
+            lsr
+            bcc   next_bit
+            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            sta   sprite_ptr0+{]2*4}
+            jmp   ]3
+next_bit
+            <<<
+
+; Last bit test which *must* be set
+endbit      mac
+            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            sta   sprite_ptr0+{]2*4}
+            jmp   ]3
+            <<<
+
+; OPTIMIZATION:
+;
+;           bit     #$00FF                    ; Optimization to skip the first 8 bits if they are all zeros
+;           bne     norm_entry
+;           xba
+;           jmp     skip_entry
+;
+; Placed at the entry point
+
+; This is a complex, but fast subroutine that is called from the core tile rendering code.  It
+; Takes a bitmap of sprites in the Accumulator and then extracts the VBuff addresses for the
+; target TileStore entry and places them in specific direct page locations.
+;
+; Inputs:
+;  A = sprite bitmap (assumed to be non-zero)
+;  Y = tile store index
+;  D = second work page
+;  B = vbuff array bank
+; Output:
+;  X = 
+;
+; ]1 address of single sprite process
+; ]2 address of two sprite process
+; ]3 address of three sprite process
+; ]4 address of four sprite process
+
+SpriteBitsToVBuffAddrs mac
+           dobit1  0;0;b_1_1;]1
+           dobit1  1;0;b_2_1;]1
+           dobit1  2;0;b_3_1;]1
+           dobit1  3;0;b_4_1;]1
+           dobit1  4;0;b_5_1;]1
+           dobit1  5;0;b_6_1;]1
+           dobit1  6;0;b_7_1;]1
+           dobit1  7;0;b_8_1;]1
+           dobit1  8;0;b_9_1;]1
+           dobit1  9;0;b_10_1;]1
+           dobit1  10;0;b_11_1;]1
+           dobit1  11;0;b_12_1;]1
+           dobit1  12;0;b_13_1;]1
+           dobit1  13;0;b_14_1;]1
+           dobit1  14;0;b_15_1;]1
+           endbit 15;0;]1
+
+b_1_1      dobit  1;1;b_2_2;]2
+b_2_1      dobit  2;1;b_3_2;]2
+b_3_1      dobit  3;1;b_4_2;]2
+b_4_1      dobit  4;1;b_5_2;]2
+b_5_1      dobit  5;1;b_6_2;]2
+b_6_1      dobit  6;1;b_7_2;]2
+b_7_1      dobit  7;1;b_8_2;]2
+b_8_1      dobit  8;1;b_9_2;]2
+b_9_1      dobit  9;1;b_10_2;]2
+b_10_1     dobit  10;1;b_11_2;]2
+b_11_1     dobit  11;1;b_12_2;]2
+b_12_1     dobit  12;1;b_13_2;]2
+b_13_1     dobit  13;1;b_14_2;]2
+b_14_1     dobit  14;1;b_15_2;]2
+b_15_1     endbit 15;1;]2
+
+b_2_2      dobit  2;2;b_3_3;]3
+b_3_2      dobit  3;2;b_4_3;]3
+b_4_2      dobit  4;2;b_5_3;]3
+b_5_2      dobit  5;2;b_6_3;]3
+b_6_2      dobit  6;2;b_7_3;]3
+b_7_2      dobit  7;2;b_8_3;]3
+b_8_2      dobit  8;2;b_9_3;]3
+b_9_2      dobit  9;2;b_10_3;]3
+b_10_2     dobit  10;2;b_11_3;]3
+b_11_2     dobit  11;2;b_12_3;]3
+b_12_2     dobit  12;2;b_13_3;]3
+b_13_2     dobit  13;2;b_14_3;]3
+b_14_2     dobit  14;2;b_15_3;]3
+b_15_2     endbit 15;2;]3
+
+b_3_3      stpbit 3;3;]4
+b_4_3      stpbit 4;3;]4
+b_5_3      stpbit 5;3;]4
+b_6_3      stpbit 6;3;]4
+b_7_3      stpbit 7;3;]4
+b_8_3      stpbit 8;3;]4
+b_9_3      stpbit 9;3;]4
+b_10_3     stpbit 10;3;]4
+b_11_3     stpbit 11;3;]4
+b_12_3     stpbit 12;3;]4
+b_13_3     stpbit 13;3;]4
+b_14_3     stpbit 14;3;]4
+b_15_3     endbit 15;3;]4
+           <<<

@@ -96,7 +96,7 @@ LastKey                equ   116
 LastTick               equ   118
 ForceSpriteFlag        equ   120
 
-VBuffArrayPtr          equ   122
+;VBuffArrayPtr          equ   122
 SpriteRemovedFlag      equ   126         ; Indicate if any sprites were removed this frame
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
@@ -147,8 +147,10 @@ _TILE_ID               equ   158         ; Copy of the tile descriptor
 
 ; Define free space the the application to use
 ; FREE_SPACE_DP2         equ   160
-DP2_DIRTY_TILE_COUNT    equ   160         ; Local copy of dirty tile count to avoid banking
+DP2_DIRTY_TILE_COUNT    equ  160         ; Local copy of dirty tile count to avoid banking
 DP2_DIRTY_TILE_CALLBACK equ  162
+
+SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuffArray addresses
 ; End direct page values
 
 ; EngineMode definitions
@@ -242,4 +244,4 @@ ScreenModeWidth   EXT
 ScreenModeHeight  EXT
 _SpriteBits       EXT
 _SpriteBitsNot    EXT
-VBuffArrayAddr    EXT
+VBuffArray        EXT

@@ -52,8 +52,23 @@ _CallTable
                 adrl  _TSRender-1
                 adrl  _TSLoadTileSet-1
                 adrl  _TSCreateSpriteStamp-1
+                adrl  _TSAddSprite-1
+                adrl  _TSMoveSprite-1
+                adrl  _TSUpdateSprite-1
+                adrl  _TSRemoveSprite-1
 _CTEnd
-
+_GTEAddSprite        MAC
+                     UserTool  $1000+GTEToolNum
+                     <<<
+_GTEMoveSprite       MAC
+                     UserTool  $1100+GTEToolNum
+                     <<<
+_GTEUpdateSprite     MAC
+                     UserTool  $1200+GTEToolNum
+                     <<<
+_GTERemoveSprite     MAC
+                     UserTool  $1300+GTEToolNum
+                     <<<
 ; Helper function to set the data back to the toolset default
 _SetDataBank    sep  #$20
                 lda  #^TileStore
@@ -285,6 +300,21 @@ _TSAddSprite
 
                 _TSExit #0;#8
 
+_TSMoveSprite
+:spriteY        equ    FirstParam+0
+:spriteX        equ    FirstParam+2
+:spriteSlot     equ    FirstParam+4
+                _TSEntry
+
+                lda    :spriteX,s
+                tax
+                lda    :spriteY,s
+                tay
+                lda    :spriteSlot,s
+                jsr    _MoveSprite
+
+                _TSExit #0;#6
+
 _TSUpdateSprite
 :vbuff          equ    FirstParam+0
 :spriteFlags    equ    FirstParam+2
@@ -299,6 +329,15 @@ _TSUpdateSprite
                 jsr    _UpdateSprite
 
                 _TSExit #0;#6
+
+_TSRemoveSprite
+:spriteSlot     equ    FirstParam+0
+                _TSEntry
+
+                lda    :spriteSlot,s
+                jsr    _UpdateSprite
+
+                _TSExit #0;#2
 
 ; Insert the GTE code
 

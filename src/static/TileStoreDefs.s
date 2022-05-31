@@ -14,24 +14,17 @@ TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5
 TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
 TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
 TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
-;TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
-
 TS_BASE_TILE_COPY     equ  TILE_STORE_SIZE*9      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
 TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
 TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
 
-; Hold values for up to 4 sprites per tile
-TS_VBUFF_ADDR_0       equ  TILE_STORE_SIZE*12
-TS_VBUFF_ADDR_1       equ  TILE_STORE_SIZE*13
-TS_VBUFF_ADDR_2       equ  TILE_STORE_SIZE*14
-TS_VBUFF_ADDR_3       equ  TILE_STORE_SIZE*15
-TS_VBUFF_ADDR_COUNT   equ  TILE_STORE_SIZE*16    ; replace usage of TS_VBUFF_ARRAY_ADDR with this later
+TILE_STORE_NUM        equ  12                     ; Need this many parallel arrays
 
 ; Sprite data structures.  We cache quite a few pieces of information about the sprite
 ; to make calculations faster, so this is hidden from the caller.
 
 MAX_SPRITES            equ 16
-SPRITE_REC_SIZE        equ 52
+SPRITE_REC_SIZE        equ 42
 
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
@@ -68,6 +61,7 @@ SPRITE_HEIGHT        equ {MAX_SPRITES*32}
 SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*34}
 SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*36}
 TS_VBUFF_BASE        equ {MAX_SPRITES*38}        ; Finalized VBUFF address based on the sprite position and tile offsets
+VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*40}        ; Fixed address where this sprite's VBUFF addresses are stores. The array is the same shape as TileStore, but much smaller
 ;TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
 ;TILE_STORE_ADDR_1  equ {MAX_SPRITES*12}
 ;TILE_STORE_ADDR_2  equ {MAX_SPRITES*14}

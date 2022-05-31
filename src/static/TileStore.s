@@ -2,18 +2,15 @@
 
                 put  ../Defs.s
                 put  TileStoreDefs.s
-                put  ../blitter/Template.s
 
 ;-------------------------------------------------------------------------------------
 ;
-; Buffer space
-
-          ds    256
+                put  ../blitter/Template.s
 
 ;-------------------------------------------------------------------------------------
 
 TileStore      ENT
-               ds   {TILE_STORE_SIZE*17}
+               ds   {TILE_STORE_SIZE*TILE_STORE_NUM}
 
 ;-------------------------------------------------------------------------------------
 ;
@@ -23,7 +20,7 @@ TileStore      ENT
 DirtyTileCount ENT
                ds   2
 DirtyTiles     ENT
-               ds   TILE_STORE_SIZE    ; At most this many tiles can possibly be update at once
+               ds   TILE_STORE_SIZE    ; At most this many tiles can possibly be updated at once
 
 ;-------------------------------------------------------------------------------------
 ;
@@ -373,9 +370,15 @@ ScreenModeWidth  ENT
 ScreenModeHeight ENT
                  dw        200,192,200,176,160,160,160,128,144,192,102,1
 
-; List of addresses of the VBuff arrays for each Tile Store entry, indexed by sprite index
-VBuffArrayAddr   ENT
-                 ds  MAX_SPRITES*2
+; VBuff arrays for each sprite. We need at least a 3x3 block for each sprite and the shape of the
+; array must match the TileStore structure.  The TileStore is 41 blocks wide.  To keep things simple
+; we allocate 8 sprites in the first row and 8 more sprites in the 4th row.  So we need to allocate a
+; total of 6 rows of TileStore space
+;
+; It is *critical* that this array be placed in a memory location that is greated than the largest
+; TileStore offset.
+VBuffArray       ENT
+                 ds  6*{TILE_STORE_WIDTH*2}
 
 ; Convert sprite index to a bit position
 _SpriteBits      ENT

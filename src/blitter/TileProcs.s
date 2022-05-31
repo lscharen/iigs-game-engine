@@ -27,6 +27,18 @@ _TBCopyTileDataAndMaskToCBuffV
                  jsr   _TBCopyTileDataToCBuffV
                  jmp   _TBCopyTileMaskToCBuffV
 
+_CopyTileDataToDP2
+]line            equ   0
+                 lup   8
+                 ldal  tiledata+{]line*4},x
+                 sta   tmp_tile_data+{]line*4}
+
+                 ldal  tiledata+{]line*4}+2,x
+                 sta   tmp_tile_data+{]line*4}+2
+]line            equ   ]line+1
+                 --^
+                 rts
+
 _TBCopyTileDataToCBuff
 ]line            equ   0
                  lup   8
