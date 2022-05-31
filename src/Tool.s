@@ -335,7 +335,7 @@ _TSRemoveSprite
                 _TSEntry
 
                 lda    :spriteSlot,s
-                jsr    _UpdateSprite
+                jsr    _RemoveSprite
 
                 _TSExit #0;#2
 

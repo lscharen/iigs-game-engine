@@ -39,31 +39,6 @@ FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFa
 SpriteDispatch
             txy
             SpriteBitsToVBuffAddrs OneSpriteFast;OneSpriteFast;OneSpriteFast;OneSpriteFast
-            sta   sprite_ptr0
-            ldx   TileStore+TS_TILE_ADDR,y
-            jsr   _CopyTileDataToDP2               ; preserves Y
-            lda   TileStore+TS_CODE_ADDR_HIGH,y    ; load the bank of the target code field line
-            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
-            ldx   sprite_ptr0                      ; address of sprite vbuff info
-            lda   TileStore+TS_CODE_ADDR_LOW,y     ; load the address of the code field
-            tay
-;            jmp   _TBApplySpriteData2
-
-_TBApplySpriteData2
-]line       equ   0
-            lup   8
-            lda   blttmp+{]line*4}
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta:  $0004+{]line*$1000},y
-
-            lda   blttmp+{]line*4}+2
-            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta:  $0001+{]line*$1000},y
-]line       equ   ]line+1
-            --^
-            rts 
 
 ; Where there are sprites involved, the first step is to call a routine to copy the
 ; tile data into a temporary buffer.  Then the sprite data is merged and placed into
@@ -72,6 +47,39 @@ _TBApplySpriteData2
 ; A = vbuff address
 ; Y = tile store address
 OneSpriteFast
+            sta   sprite_ptr0
+            ldx   TileStore+TS_TILE_ADDR,y
+            jsr   _CopyTileDataToDP2               ; preserves Y
+            lda   TileStore+TS_CODE_ADDR_HIGH,y    ; load the bank of the target code field line
+            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
+            ldx   sprite_ptr0                      ; address of sprite vbuff info
+            lda   TileStore+TS_CODE_ADDR_LOW,y     ; load the address of the code field
+            tay
+            plb
+
+;            jmp   _TBApplySpriteData2
+
+_TBApplySpriteData2
+]line       equ   0
+            lup   8
+            lda   blttmp+{]line*4}
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            oral  spritedata+{]line*SPRITE_PLANE_SPAN},x
+;            lda   #$FFFF
+            sta:  $0004+{]line*$1000},y
+
+            lda   blttmp+{]line*4}+2
+            andl  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            oral  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+;            lda   #$FFFF
+            sta:  $0001+{]line*$1000},y
+]line       equ   ]line+1
+            --^
+            plb
+            rts 
+
+
+OneSpriteFastX
             tax                                    ; address of the sprite data
             lda   TileStore+TS_BASE_TILE_COPY,y    ; copy routine (handles flips and other behaviors)
             stal  osf_copy+1
