@@ -36,10 +36,35 @@ _Sprites       ENT
 ; can be looked up by adding a constant value.
                       ds  \,$00             ; pad to the next page boundary
 TileStoreLookupYTable ENT
-                      ds  {TS_LOOKUP_HEIGHT*2}
-TileStoreLookup       ENT
-                      ds  {TS_LOOKUP_SPAN*TS_LOOKUP_ROWS*2}
+]line                 equ  0
+                      lup  TS_LOOKUP_HEIGHT
+                      dw   ]line
+]line                 equ  ]line+{2*TS_LOOKUP_SPAN}
+                      --^
 
+; Width of tile store is 41 elements
+TileStoreData mac
+              dw  ]1+0,]1+2,]1+4,]1+6,]1+8,]1+10,]1+12,]1+14
+              dw  ]1+16,]1+18,]1+20,]1+22,]1+24,]1+26,]1+28,]1+30
+              dw  ]1+32,]1+34,]1+36,]1+38,]1+40,]1+42,]1+44,]1+46
+              dw  ]1+48,]1+50,]1+52,]1+54,]1+56,]1+58,]1+60,]1+62
+              dw  ]1+64,]1+66,]1+68,]1+70,]1+72,]1+74,]1+76,]1+78
+              dw  ]1+80
+              <<<
+; Create a lookup table with two runs of offsets, plus an overlap area on the end (41+41+1 = 83 = TS_LOOKUP_SPAN)
+TileStoreLookup       ENT
+]row                  equ  0
+                      lup  TILE_STORE_HEIGHT
+                      TileStoreData ]row*2*TILE_STORE_WIDTH
+                      TileStoreData ]row*2*TILE_STORE_WIDTH
+                      dw   ]row*2*TILE_STORE_WIDTH
+]row                  equ  ]row+1
+                      --^
+
+;                      ds   {TS_LOOKUP_SPAN*TS_LOOKUP_ROWS*2}
+;
+;TILE_STORE_WIDTH      equ  41
+;TILE_STORE_HEIGHT     equ  26
 ;-------------------------------------------------------------------------------------
 ;
 ; Other data tables

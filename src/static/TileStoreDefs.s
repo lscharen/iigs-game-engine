@@ -75,11 +75,12 @@ VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*40}        ; Fixed address where this spri
 ;TILE_STORE_ADDR_9  equ {MAX_SPRITES*28}
 ;TILE_STORE_ADDR_10 equ {MAX_SPRITES*30}
 
-; 50 rows by 80 columns + 2 extra rows and columns
-TS_LOOKUP_WIDTH   equ 80
-TS_LOOKUP_HEIGHT  equ 50
-TS_LOOKUP_SPAN    equ {TS_LOOKUP_WIDTH+2}
-TS_LOOKUP_ROWS    equ {TS_LOOKUP_HEIGHT+2}
+; 51 rows by 81 columns + 2 extra rows and columns for sprite sizes
+TS_LOOKUP_WIDTH   equ 81
+TS_LOOKUP_HEIGHT  equ 51
+TS_LOOKUP_BORDER  equ 2
+TS_LOOKUP_SPAN    equ {TS_LOOKUP_WIDTH+TS_LOOKUP_BORDER}
+TS_LOOKUP_ROWS    equ {TS_LOOKUP_HEIGHT+TS_LOOKUP_BORDER}
 
 ; Blitter template constancts
 PER_TILE_SIZE     equ   3
