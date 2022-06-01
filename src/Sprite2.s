@@ -16,6 +16,17 @@ AreaIndex   equ   tmp7
 SpriteBit   equ   tmp10     ; set the bit of the value that if the current sprite index
 ; VBuffOrigin equ   tmp11
 
+; Table of pre-multiplied vbuff strides
+vbuff_mul
+        dw  0*VBUFF_STRIDE_BYTES
+        dw  1*VBUFF_STRIDE_BYTES
+        dw  2*VBUFF_STRIDE_BYTES
+        dw  3*VBUFF_STRIDE_BYTES
+        dw  4*VBUFF_STRIDE_BYTES
+        dw  5*VBUFF_STRIDE_BYTES
+        dw  6*VBUFF_STRIDE_BYTES
+        dw  7*VBUFF_STRIDE_BYTES
+
 ; Marks a sprite as dirty.  The work here is mapping from local screen coordinates to the 
 ; tile store indices.  The first step is to adjust the sprite coordinates based on the current
 ; code field offsets and then cache variations of this value needed in the rest of the subroutine
@@ -94,7 +105,7 @@ _CalcDirtySprite
         txa                                       ; Get the vertical offset in the VBUFF memory
         asl
         tax
-        ldal  :vbuff_mul,x
+        ldal  vbuff_mul,x
         sta   tmp0
 
 ; Add the horizontal position to the horizontal offset to find the first column in the
@@ -104,23 +115,29 @@ _CalcDirtySprite
         clc
         lda   _Sprites+SPRITE_CLIP_LEFT,y
         adc   StartXMod164
-        tax
+        pha
         and   #$FFFC
         lsr                                       ; Even numbers from [0, 160] (80 elements)
         adc   RowTop
         sta   _Sprites+TS_LOOKUP_INDEX,y          ; This is the index into the TileStoreLookup table
 
-; Create an offset value for loading the calculated VBUFF addresses within the core renderer
+; Create an offset value for loading the calculated VBUFF addresses within the core renderer by
+; subtracting the actual TileStore offset from the sprite's vbuff address array
 
-        eor   #$FFFF
+        tax
+        lda   _Sprites+VBUFF_ARRAY_ADDR,y
         sec
-        adc   _Sprites+VBUFF_ARRAY_ADDR,y
+        sbc   TileStoreLookup,x
+
+;        eor   #$FFFF
+;        sec
+;        adc   _Sprites+VBUFF_ARRAY_ADDR,y
         sta   tmp1                                ; Spill this value to direct page temp space
 
 ; Calculate the final address of the sprite data in the stamp buffer. We have to move earlier 
 ; in the buffer based on the horizontal offset and move up for each vertical offset.
 
-        txa
+        pla
         and   #$0003
         tax
         clc
@@ -167,22 +184,12 @@ _MarkDirtySpriteTiles
 
         clc
         ldx    _Sprites+TS_COVERAGE_SIZE,y
-        jmp    (:mark,x)
+        jmp    (mdsmark,x)
 
-:mark   dw    :mark1x1,:mark1x2,:mark1x3,mdsOut
+mdsmark dw    :mark1x1,:mark1x2,:mark1x3,mdsOut
         dw    :mark2x1,:mark2x2,:mark2x3,mdsOut
         dw    :mark3x1,:mark3x2,:mark3x3,mdsOut
         dw    mdsOut,mdsOut,mdsOut,mdsOut
-
-:vbuff_mul
-        dw  0*VBUFF_STRIDE_BYTES
-        dw  1*VBUFF_STRIDE_BYTES
-        dw  2*VBUFF_STRIDE_BYTES
-        dw  3*VBUFF_STRIDE_BYTES
-        dw  4*VBUFF_STRIDE_BYTES
-        dw  5*VBUFF_STRIDE_BYTES
-        dw  6*VBUFF_STRIDE_BYTES
-        dw  7*VBUFF_STRIDE_BYTES
 
 ; Pair of macros to make the unrolled loop more concise
 ;
