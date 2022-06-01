@@ -150,6 +150,11 @@ _DoPhase1
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
             sta   _Sprites+SPRITE_STATUS,y
 
+            lda   _Sprites+TS_COVERAGE_SIZE,y     ; Manually copy current value to old
+            sta   _Sprites+OLD_TS_COVERAGE_SIZE,y
+            lda   _Sprites+TS_LOOKUP_INDEX,y
+            sta   _Sprites+OLD_TS_LOOKUP_INDEX,y
+
             jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
 ; Need to calculate new VBUFF information.  The could be required for UPDATED, ADDED or MOVED
@@ -158,15 +163,26 @@ _DoPhase1
             jsr   _CalcDirtySprite
 
 ; If the sprite is marked as ADDED, then it does not need to have its old tile locations cleared
+
             lda   tmpA
             bit   #SPRITE_STATUS_ADDED
             bne   :no_move
-            jsr   _ClearSpriteFromTileStore
+
+; If the sprite was not ADDED and also not MOVED, then there is no reason to erase the old tiles
+; because they will be overwritten anyway.
+
+            bit   #SPRITE_STATUS_MOVED
+            beq   :no_move
+
+;            jsr   _ClearSpriteFromTileStore
             ldy   tmpY
 
 ; Anything else (MOVED, UPDATED, ADDED) will need to have the VBUFF information updated and the 
 ; current tiles marked for update
 :no_move
+            lda   #SPRITE_STATUS_OCCUPIED              ; Clear the dirty bits (ADDED, UPDATED, MOVED)
+            sta   _Sprites+SPRITE_STATUS,y
+
             jmp   _MarkDirtySpriteTiles
 
 ; Dispatch table.  It's unintersting, so it's tucked out of the way
@@ -341,7 +357,7 @@ next
 _ClearSpriteFromTileStore
             lda   _SpriteBitsNot,y                          ; Cache this value in a direct page location
             sta   tmp0
-            ldx   _Sprites+TS_COVERAGE_SIZE,y
+            ldx   _Sprites+OLD_TS_COVERAGE_SIZE,y
             jmp   (csfts_tbl,x)
 csfts_tbl   dw    csfts_1x1,csfts_1x2,csfts_1x3,csfts_out
             dw    csfts_2x1,csfts_2x2,csfts_2x3,csfts_out
@@ -350,66 +366,66 @@ csfts_tbl   dw    csfts_1x1,csfts_1x2,csfts_1x3,csfts_out
 
 csfts_out   rts
 
-csfts_3x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_3x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 4
-            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+4
-            TSClearSprite 2*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 2*{TS_LOOKUP_SPAN*2}+2
             TSClearSprite 2*{TS_LOOKUP_SPAN*2}+4
             rts
 
-csfts_3x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_3x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
-            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
-            TSClearSprite 2*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 2*{TS_LOOKUP_SPAN*2}+2
             rts
 
-csfts_3x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_3x1   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
-            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
-            TSClearSprite 2*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
+            TSClearSprite 2*{TS_LOOKUP_SPAN*2}+0
             rts
 
-csfts_2x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_2x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 4
-            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+4
             rts
 
-csfts_2x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_2x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
-            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
             rts
 
-csfts_2x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_2x1   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
-            TSClearSprite 1*{TS_LOOKUP_SPAN*2}
+            TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             rts
 
-csfts_1x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_1x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 4
             rts
 
-csfts_1x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_1x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             rts
 
-csfts_1x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
+csfts_1x1   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 0
             rts
 

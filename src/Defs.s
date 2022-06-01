@@ -203,10 +203,10 @@ SPRITE_VFLIP           equ   $0400
 SPRITE_HFLIP           equ   $0200
 
 ; Stamp storage parameters
-VBUFF_STRIDE_BYTES     equ 12*4                          ; Each line has 4 slots of 16 pixels + 8 buffer pixels
-VBUFF_TILE_ROW_BYTES   equ 8*VBUFF_STRIDE_BYTES          ; Each row is comprised of 8 lines
+VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
+VBUFF_TILE_ROW_BYTES   equ {8*VBUFF_STRIDE_BYTES}        ; Each row is comprised of 8 lines
 VBUFF_TILE_COL_BYTES   equ 4
-VBUFF_SPRITE_STEP      equ VBUFF_TILE_ROW_BYTES*3        ; Allocate space fo 16 rows + 8 rows of buffer
+VBUFF_SPRITE_STEP      equ {VBUFF_TILE_ROW_BYTES*3}      ; Allocate space fo 16 rows + 8 rows of buffer
 VBUFF_SPRITE_START     equ {8*VBUFF_TILE_ROW_BYTES}+4    ; Start at an offset so $0000 can be used as an empty value
 VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps
 

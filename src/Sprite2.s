@@ -55,6 +55,7 @@ _CalcDirtySprite
         bne   mdsOut2
 
 ; Copy the current values into the old value slots
+
         lda   _Sprites+TS_COVERAGE_SIZE,y
         sta   _Sprites+OLD_TS_COVERAGE_SIZE,y
         lda   _Sprites+TS_LOOKUP_INDEX,y
@@ -173,7 +174,15 @@ _MarkDirtySpriteTiles
         dw    :mark3x1,:mark3x2,:mark3x3,mdsOut
         dw    mdsOut,mdsOut,mdsOut,mdsOut
 
-:vbuff_mul  dw  0,52,104,156,208,260,312,364
+:vbuff_mul
+        dw  0*VBUFF_STRIDE_BYTES
+        dw  1*VBUFF_STRIDE_BYTES
+        dw  2*VBUFF_STRIDE_BYTES
+        dw  3*VBUFF_STRIDE_BYTES
+        dw  4*VBUFF_STRIDE_BYTES
+        dw  5*VBUFF_STRIDE_BYTES
+        dw  6*VBUFF_STRIDE_BYTES
+        dw  7*VBUFF_STRIDE_BYTES
 
 ; Pair of macros to make the unrolled loop more concise
 ;
