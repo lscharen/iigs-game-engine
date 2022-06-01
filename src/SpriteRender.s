@@ -4,44 +4,24 @@
 ; Y = VBUFF address
 ; X = Tile Data address
 ; A = Sprite Flags
+DISP_VFLIP   equ    $0004      ; hard code these because they are internal values
+DISP_HFLIP   equ    $0002
+DISP_MASK    equ    $0018      ; Preserve the size bits
+
 _DrawSpriteStamp
              sty    tmp1
              stx    tmp2
+             xba
              and    #DISP_MASK                    ; dispatch to all of the different orientations
              sta    tmp3
-             jmp    _DSSCommon
 
-; Function to render a sprite from a sprite definition into the internal data buffers
-;
-; X = sprite index
-; _DrawSpriteSheet
-DISP_VFLIP   equ    $0004      ; hard code these because they are internal values
-DISP_HFLIP   equ    $0002
-DISP_MASK    equ    $0018      ; Isolate the size bits
-
-;             phx
-;
-;             lda    _Sprites+VBUFF_ADDR,x
-;             sta    tmp1
-;
-;             lda    _Sprites+TILE_DATA_OFFSET,x
-;             sta    tmp2
-;
-;             lda    _Sprites+SPRITE_DISP,x
-;             and    #DISP_MASK                    ; dispatch to all of the different orientations
-;             sta    tmp3
-;
-;             jsr    _DSSCommon
-;
-;             plx
-;             rts
-
-_DSSCommon
-; Set bank
              phb
              pea   #^tiledata                     ; Set the bank to the tile data
              plb
 
+; X = sprite ID
+; Y = Tile Data
+; A = VBUFF address
              ldx    tmp3
              ldy    tmp2
              lda    tmp1
@@ -53,7 +33,7 @@ _DSSCommon
              ldy    tmp2
              lda    tmp1
              clc
-             adc    #4*3
+             adc    #3*4
              jsr    _DrawSprite
 
              lda    tmp3
@@ -62,7 +42,7 @@ _DSSCommon
              ldy    tmp2
              lda    tmp1
              clc
-             adc    #4*6
+             adc    #6*4
              jsr    _DrawSprite
 
              lda    tmp3
@@ -71,7 +51,7 @@ _DSSCommon
              ldy    tmp2
              lda    tmp1
              clc
-             adc    #4*9
+             adc    #9*4
              jsr    _DrawSprite
 
 ; Restore bank
@@ -81,7 +61,6 @@ _DSSCommon
 ; 
 ; X = _Sprites array offset
 _DrawSprite
-;             ldx   _Sprites+SPRITE_DISP,y        ; use bits 9, 10, 11, 12 and 13 to dispatch
              jmp   (draw_sprite,x)
 
 draw_sprite  dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
@@ -183,6 +162,9 @@ draw_16x8hv
              ply
              jmp   _DrawTile8x8V
 
+; X = sprite ID
+; Y = Tile Data
+; A = VBUFF address
 draw_16x16
              clc
              tax

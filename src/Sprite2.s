@@ -5,16 +5,16 @@
 ;Top      equ   tmp3
 ;Bottom   equ   tmp4
 
-Origin      equ   tmp4
-TileTop     equ   tmp5
+;Origin      equ   tmp4
+;TileTop     equ   tmp5
 RowTop      equ   tmp6
 AreaIndex   equ   tmp7
 
-TileLeft    equ   tmp8
-ColLeft     equ   tmp9
+;TileLeft    equ   tmp8
+;ColLeft     equ   tmp9
 
 SpriteBit   equ   tmp10     ; set the bit of the value that if the current sprite index
-VBuffOrigin equ   tmp11
+; VBuffOrigin equ   tmp11
 
 ; Marks a sprite as dirty.  The work here is mapping from local screen coordinates to the 
 ; tile store indices.  The first step is to adjust the sprite coordinates based on the current
@@ -122,6 +122,7 @@ _CalcDirtySprite
         txa
         and   #$0003
         tax
+        clc
         adc   tmp0                               ; add to the vertical offset
 
 ; Subtract this value from the SPRITE_DISP address
@@ -136,6 +137,7 @@ _CalcDirtySprite
 ; location of the upper-left corner of the sprite within the corner tile.
 
         txa
+        clc
         adc   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
         dec
         and   #$000C
@@ -184,7 +186,7 @@ _MarkDirtySpriteTiles
 ; The second macro is the same as the first, but the VBUFF calculation is moved up so that the value
 ; from the previous step can be reused and save a load every other step.
 TSSetSprite mac
-        ldy   TileStoreLookup+]1,x
+        ldy   TileStoreLookup+{]1},x
 
         lda   SpriteBit
         ora   TileStore+TS_SPRITE_FLAG,y

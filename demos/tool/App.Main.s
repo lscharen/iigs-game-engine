@@ -43,14 +43,14 @@ ScreenY         equ   2
 HERO_SPRITE_1   equ   SPRITE_16X16+1
 HERO_SLOT       equ   0
 
-                pea   HERO_SPRITE_1                 ; sprinte id
+                pea   HERO_SPRITE_1                 ; sprint id
                 pea   VBUFF_SPRITE_START            ; vbuff address
                 _GTECreateSpriteStamp
 
 ; Create sprites
                 pea   HERO_SPRITE_1                 ; sprite id
-                pea   #10                           ; screen x-position (<256)
-                pea   #8                            ; screen y-position (<256)
+                pea   #0                            ; screen x-position (<256)
+                pea   #0                            ; screen y-position (<256)
                 pea   HERO_SLOT                     ; sprite slot (0 - 15)
                 _GTEAddSprite
 
@@ -70,7 +70,10 @@ HERO_SLOT       equ   0
 
                 phx
                 phy
-                pei   0
+                lda   0
+                clc
+                adc   #64
+                pha
                 _GTESetTile
 
                 lda   0
@@ -90,10 +93,10 @@ HERO_SLOT       equ   0
                 bcc   :loop
 
 ; Set the origin of the screen
+:skip
 
                 stz   ScreenX
-                lda   #63
-                sta   ScreenY
+                stz   ScreenY
 
 ; Very simple actions
 :evt_loop
@@ -127,6 +130,12 @@ HERO_SLOT       equ   0
                 pei   ScreenX
                 pei   ScreenY
                 _GTESetBG0Origin
+
+; Update the sprite each frame for testing
+;                pea   HERO_SLOT
+;                pea   $0000
+;                pea   VBUFF_SPRITE_START
+;                _GTEUpdateSprite
 
                 _GTERender
 

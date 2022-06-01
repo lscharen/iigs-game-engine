@@ -70,13 +70,13 @@ CopyDynSpriteWord MAC
 ;
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Tile
 ; code.
-                ldal  spritemask+]1,x            ; load the mask value
+                ldal  spritemask+{]1},x            ; load the mask value
                 bne   mixed                      ; a non-zero value may be mixed
 
 ; This is a solid word
                 lda   #$00F4          ; PEA instruction
                 sta:  ]2,y
-                ldal  spritedata+]1,x ; load the sprite data
+                ldal  spritedata+{]1},x ; load the sprite data
                 sta:  ]2+1,y          ; PEA operand
                 bra   next
 
@@ -95,12 +95,12 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is a fully transpare
 
                 lda   #$0029          ; AND #SPRITE_MASK
                 sta:  $0002,y
-                ldal  spritemask+]1,x 
+                ldal  spritemask+{]1},x 
                 sta:  $0003,y
 
                 lda   #$0009          ; ORA #SPRITE_DATA
                 sta:  $0005,y
-                ldal  spritedata+]1,x
+                ldal  spritedata+{]1},x
                 sta:  $0006,y
 
                 lda   #$0D80          ; branch to the prologue (BRA *+15)

@@ -143,7 +143,6 @@ _DoPhase1
 
             bit   #SPRITE_STATUS_REMOVED
             beq   :no_clear
-            brk    $02
 
             lda   _SpriteBits,y                   ; Clear from the sprite bitmap
             sta   SpriteRemovedFlag               ; Stick a non-zero value here
@@ -315,7 +314,7 @@ _AddSprite
 ;   3. Checks if the tile is dirty and marks it
 ;   4. If the tile was dirty, save the tile store address to be added to the DirtyTiles list later
 TSClearSprite mac
-            ldy   TileStoreLookup+]1,x
+            ldy   TileStoreLookup+{]1},x
 
             lda   TileStore+TS_SPRITE_FLAG,y
             and   tmp0

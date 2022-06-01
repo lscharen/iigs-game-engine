@@ -93,7 +93,7 @@ pdtf_not_empty
                  cpx  #16                         ; If there are >= 8 elements, then
                  bcs  full_chunk                  ; do a full chunk
 
-                 stz  DP2_DIRTY_TILE_COUNT        ; Otherwise, this pass will handle them all
+;                 stz  DP2_DIRTY_TILE_COUNT        ; Otherwise, this pass will handle them all
                  jmp  (at_table,x)
 at_table         da   at_exit,at_one,at_two,at_three
                  da   at_four,at_five,at_six,at_seven
