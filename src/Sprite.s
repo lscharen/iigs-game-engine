@@ -174,7 +174,7 @@ _DoPhase1
             bit   #SPRITE_STATUS_MOVED
             beq   :no_move
 
-;            jsr   _ClearSpriteFromTileStore
+            jsr   _ClearSpriteFromTileStore
             ldy   tmpY
 
 ; Anything else (MOVED, UPDATED, ADDED) will need to have the VBUFF information updated and the 

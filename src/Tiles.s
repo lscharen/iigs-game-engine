@@ -80,20 +80,7 @@ InitTiles
 :row             equ  tmp1
 :vbuff           equ  tmp2
 
-; Fill in the TileStoreYTable.  This is just a table of offsets into the Tile Store for each row.  There
-; are 26 rows with a stride of 41
-                 ldy  #0
-                 lda  #0
-:yloop
-                 sta  TileStoreYTable,y
-                 clc
-                 adc  #41*2
-                 iny
-                 iny
-                 cpy  #26*2
-                 bcc  :yloop
-
-; Next, initialize the Tile Store itself
+; Initialize the Tile Store
 
                  ldx  #TILE_STORE_SIZE-2
                  lda  #25
@@ -105,7 +92,7 @@ InitTiles
 
 :loop 
 
-; The first set of values in the Tile Store are changed during each frame based on the actions
+; The first set of values in the Tile Store that are changed during each frame based on the actions
 ; that are happening
 
                  lda  #0
@@ -114,11 +101,25 @@ InitTiles
                  sta  TileStore+TS_SPRITE_FLAG,x        ; no sprites are set at the beginning
                  sta  TileStore+TS_DIRTY,x              ; none of the tiles are dirty
 
+; Set the default tile rendering functions
+
+                 lda  EngineMode
+                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
+                 beq  :fast
+;                 ldal TileProcs
+;                 sta  TileStore+TS_BASE_TILE_DISP,x
+                 bra  :out
+:fast
+                 ldal FastTileProcs
+                 sta  TileStore+TS_BASE_TILE_DISP,x
+:out
+
 ;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
 ;                 stal TileStore+TS_DIRTY_TILE_DISP,x
 ;
 ;                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
 ;                 stal TileStore+TS_BASE_TILE_DISP,x     
+
 
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering

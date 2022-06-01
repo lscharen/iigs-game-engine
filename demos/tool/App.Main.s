@@ -39,6 +39,19 @@ ScreenY         equ   2
                 pea   #TSZelda
                 _GTELoadTileSet
 
+; Set the palette
+                ldx   #11*2
+:ploop
+                lda   palette,x
+                stal  $E19E00,x
+                dex
+                dex
+                bpl   :ploop
+                bra   sprt
+
+palette dw $0000,$08C1,$0C41,$0F93,$0777,$0FDA,$00A0,$0000,$0D20,$0FFF,$023E
+sprt
+
 ; Create stamps for the sprites we are going to use
 HERO_SPRITE_1   equ   SPRITE_16X16+1
 HERO_SLOT       equ   0
@@ -49,8 +62,8 @@ HERO_SLOT       equ   0
 
 ; Create sprites
                 pea   HERO_SPRITE_1                 ; sprite id
-                pea   #0                            ; screen x-position (<256)
-                pea   #0                            ; screen y-position (<256)
+                pea   #11                            ; screen x-position (<256)
+                pea   #23                           ; screen y-position (<256)
                 pea   HERO_SLOT                     ; sprite slot (0 - 15)
                 _GTEAddSprite
 
@@ -59,44 +72,62 @@ HERO_SLOT       equ   0
                 pea   VBUFF_SPRITE_START            ; and use this stamp
                 _GTEUpdateSprite
 
-; Manually fill in the 41x26 tiles of the TileStore with a test pattern.
+; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees 
+;
+;   Tile 65 Tile 66
+;   Tile 97 Tile 98
 
-                ldx   #0
-                ldy   #0
+                stz   0            ; X
+                stz   2            ; Y
 
-:loop
+:tloop
+                ldx   0
+                ldy   2
+
                 phx
                 phy
-
+                pea   #65
+                
+                inx
                 phx
                 phy
-                lda   0
-                clc
-                adc   #64
-                pha
+                pea   #66
+
+                iny
+                phx
+                phy
+                pea   #98
+
+                dex
+                phx
+                phy
+                pea   #97
+
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
                 _GTESetTile
 
                 lda   0
                 inc
-                and   #$001F
+                inc
                 sta   0
+                cmp   #40
+                bcc   :tloop
 
-                ply
-                plx
-                inx
-                cpx   #41
-                bcc   :loop
+                stz   0
+                lda   2
+                inc
+                inc
+                sta   2
+                cmp   #25
+                bcc   :tloop
 
-                ldx   #0
-                iny
-                cpy   #26
-                bcc   :loop
+; Set the screen coordinates
 
-; Set the origin of the screen
-:skip
-
-                stz   ScreenX
-                stz   ScreenY
+                lda   #8
+                sta   ScreenX
+                sta   ScreenY
 
 ; Very simple actions
 :evt_loop
@@ -138,6 +169,7 @@ HERO_SLOT       equ   0
 ;                _GTEUpdateSprite
 
                 _GTERender
+                brl   :evt_loop
 
 ; Debug stuff
                 ldx   #$100

@@ -14,6 +14,8 @@ TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5
 TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
 TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
 TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
+
+; TODO: Move these arrays into the K bank to support direct dispatch via jmp (abs,x)
 TS_BASE_TILE_COPY     equ  TILE_STORE_SIZE*9      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
 TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
 TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
@@ -43,9 +45,9 @@ SPRITE_STATUS        equ {MAX_SPRITES*0}
 SPRITE_ID            equ {MAX_SPRITES*2}
 SPRITE_X             equ {MAX_SPRITES*4}
 SPRITE_Y             equ {MAX_SPRITES*6}
+VBUFF_ADDR           equ {MAX_SPRITES*8}         ; Base address of the sprite's stamp in the data/mask banks
 
 ; These values are cached / calculated during the rendering process
-VBUFF_ADDR           equ {MAX_SPRITES*8}         ; Base address of the sprite's stamp in the data/mask banks
 TS_LOOKUP_INDEX      equ {MAX_SPRITES*10}        ; The index from the TileStoreLookup table that corresponds to the top-left corner of the sprite
 TS_COVERAGE_SIZE     equ {MAX_SPRITES*12}        ; Representation of how many TileStore tiles (NxM) are covered by this sprite
 OLD_TS_LOOKUP_INDEX  equ {MAX_SPRITES*14}        ; Copy of the values to support diffing
