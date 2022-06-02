@@ -53,6 +53,8 @@ TileStoreData mac
               <<<
 ; Create a lookup table with two runs of offsets, plus an overlap area on the end (41+41+1 = 83 = TS_LOOKUP_SPAN)
 TileStoreLookup       ENT
+
+; First copy
 ]row                  equ  0
                       lup  TILE_STORE_HEIGHT
                       TileStoreData ]row*2*TILE_STORE_WIDTH
@@ -61,10 +63,20 @@ TileStoreLookup       ENT
 ]row                  equ  ]row+1
                       --^
 
-;                      ds   {TS_LOOKUP_SPAN*TS_LOOKUP_ROWS*2}
-;
-;TILE_STORE_WIDTH      equ  41
-;TILE_STORE_HEIGHT     equ  26
+; Second copy
+]row                  equ  0
+                      lup  TILE_STORE_HEIGHT
+                      TileStoreData ]row*2*TILE_STORE_WIDTH
+                      TileStoreData ]row*2*TILE_STORE_WIDTH
+                      dw   ]row*2*TILE_STORE_WIDTH
+]row                  equ  ]row+1
+                      --^
+
+; Last row
+                      TileStoreData 0*2*TILE_STORE_WIDTH
+                      TileStoreData 0*2*TILE_STORE_WIDTH
+                      dw   0*2*TILE_STORE_WIDTH
+
 ;-------------------------------------------------------------------------------------
 ;
 ; Other data tables

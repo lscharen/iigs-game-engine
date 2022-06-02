@@ -78,6 +78,9 @@ VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*40}        ; Fixed address where this spri
 ;TILE_STORE_ADDR_10 equ {MAX_SPRITES*30}
 
 ; 51 rows by 81 columns + 2 extra rows and columns for sprite sizes
+;
+; 53 rows = TILE_STORE_HEIGHT + TILE_STORE_HEIGHT + 1
+; 83 cols = TILE_STORE_WIDTH + TILE_STORE_WIDTH + 1
 TS_LOOKUP_WIDTH   equ 81
 TS_LOOKUP_HEIGHT  equ 51
 TS_LOOKUP_BORDER  equ 2
