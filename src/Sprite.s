@@ -41,6 +41,14 @@ InitSprites
             cpx    #16*2
             bcc    :loop4
 
+; Initialize the Page 2 pointers
+            ldx    #$100
+            lda    #^spritemask
+            sta    sprite_ptr0+2,x
+            sta    sprite_ptr1+2,x
+            sta    sprite_ptr2+2,x
+            sta    sprite_ptr3+2,x
+
 ; Precalculate some bank values
             jsr    _CacheSpriteBanks
             rts
