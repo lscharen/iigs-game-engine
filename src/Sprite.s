@@ -42,8 +42,8 @@ InitSprites
             bcc    :loop4
 
 ; Precalculate some bank values
-           jsr    _CacheSpriteBanks
-           rts
+            jsr    _CacheSpriteBanks
+            rts
 
 ; _RenderSprites
 ;
@@ -585,7 +585,7 @@ _PrecalcAllSpriteInfo
             lda   _Sprites+VBUFF_ADDR,x
             clc
             adc   _stamp_step,y
-            sta   _Sprites+SPRITE_DISP,y
+            sta   _Sprites+SPRITE_DISP,x
 
 ; Set the sprite's width and height
             lda   #4

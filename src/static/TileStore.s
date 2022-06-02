@@ -412,7 +412,7 @@ ScreenModeHeight ENT
 ; we allocate 8 sprites in the first row and 8 more sprites in the 4th row.  So we need to allocate a
 ; total of 6 rows of TileStore space
 ;
-; It is *critical* that this array be placed in a memory location that is greated than the largest
+; It is *critical* that this array be placed in a memory location that is greater than the largest
 ; TileStore offset.
 VBuffArray       ENT
                  ds  6*{TILE_STORE_WIDTH*2}

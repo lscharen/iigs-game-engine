@@ -95,9 +95,9 @@ ToolNum                equ   114         ; Tool number assigned to us
 LastKey                equ   116
 LastTick               equ   118
 ForceSpriteFlag        equ   120
+SpriteRemovedFlag      equ   122         ; Indicate if any sprites were removed this frame
 
-;VBuffArrayPtr          equ   122
-SpriteRemovedFlag      equ   126         ; Indicate if any sprites were removed this frame
+
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 ; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
@@ -206,8 +206,8 @@ SPRITE_HFLIP           equ   $0200
 VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
 VBUFF_TILE_ROW_BYTES   equ {8*VBUFF_STRIDE_BYTES}        ; Each row is comprised of 8 lines
 VBUFF_TILE_COL_BYTES   equ 4
-VBUFF_SPRITE_STEP      equ {VBUFF_TILE_ROW_BYTES*3}      ; Allocate space fo 16 rows + 8 rows of buffer
-VBUFF_SPRITE_START     equ {8*VBUFF_TILE_ROW_BYTES}+4    ; Start at an offset so $0000 can be used as an empty value
+VBUFF_SPRITE_STEP      equ {VBUFF_TILE_ROW_BYTES*3}      ; Allocate space for 16 rows + 8 rows of buffer
+VBUFF_SPRITE_START     equ {VBUFF_TILE_ROW_BYTES+4}      ; Start at an offset so $0000 can be used as an empty value
 VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps
 
 ; This is 13 blocks wide

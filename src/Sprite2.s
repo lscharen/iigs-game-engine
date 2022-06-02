@@ -171,9 +171,9 @@ _CalcDirtySprite
 mdsOut  rts
 
 
-; NOTE: The VBuffArrayAddr lookup table is set up so that each sprite's vbuff address is stored in a
-;       parallel structure to the Tile Store.  This allows up to use the same TileStoreLookup offset
-;       to index into the array of 16 sprite VBUFF addresses that are bound to a given tile
+; NOTE: The VBuffArray table is set up so that each sprite's vbuff address is stored in a
+;       parallel structure to the Tile Store.  This allows up to use the same TileStoreLookup
+;       offset to index into the array of 16 sprite VBUFF addresses that are bound to a given tile
 _MarkDirtySpriteTiles
         lda    _SpriteBits,y
         sta    SpriteBit
@@ -224,8 +224,8 @@ COL     equ 2                                       ; This many bytes for each e
 
 :mark1x1
         ldx   _Sprites+VBUFF_ARRAY_ADDR,y           ; get the address of this sprite's vbuff values
-        lda   _Sprites+TS_VBUFF_BASE,y                 ; get the starting vbuff address
-        sta:  {0*ROW}+{0*COL},x                      ; Put in the vbuff address
+        lda   _Sprites+TS_VBUFF_BASE,y              ; get the starting vbuff address
+        sta:  {0*ROW}+{0*COL},x                     ; Put in the vbuff address
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite   0*{TS_LOOKUP_SPAN*2}
