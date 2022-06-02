@@ -575,20 +575,17 @@ _CacheSpriteBanks
 ; it's tile information, or changing its position.
 ;
 ; X = sprite index
-_stamp_step dw  0,12,24,36
 _PrecalcAllSpriteInfo
             lda   _Sprites+SPRITE_ID,x 
 ;            and   #$3E00
             xba
             and   #$0006
 
-            txy                            ; swap X/Y for this...
-            tax
-            lda   _Sprites+VBUFF_ADDR,y
+            tay
+            lda   _Sprites+VBUFF_ADDR,x
             clc
-            adcl  _stamp_step,x
+            adc   _stamp_step,y
             sta   _Sprites+SPRITE_DISP,y
-            tyx
 
 ; Set the sprite's width and height
             lda   #4
@@ -604,7 +601,7 @@ _PrecalcAllSpriteInfo
 :width_4
 
             lda   _Sprites+SPRITE_ID,x
-            bit   #$0800                        ; width select
+            bit   #$0800                        ; height select
             beq   :height_8
             lda   #16
             sta   _Sprites+SPRITE_HEIGHT,x
@@ -734,7 +731,7 @@ _UpdateSprite
 ; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
 ; a full remove/add cycle needs to happen
 ;
-; A = sprite ID
+; A = sprite slot
 ; X = x position
 ; Y = y position
 _MoveSprite
@@ -750,7 +747,6 @@ _MoveSprite
 
             cmp   _Sprites+SPRITE_X,x
             bne   :changed1
-            sta   _Sprites+SPRITE_X,x           ; Update the X coordinate
             tya
             cmp   _Sprites+SPRITE_Y,x
             bne   :changed2

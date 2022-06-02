@@ -423,5 +423,9 @@ _SpriteBits      ENT
 _SpriteBitsNot   ENT
                  dw $FFFE,$FFFD,$FFFB,$FFF7,$FFEF,$FFDF,$FFBF,$FF7F,$FEFF,$FDFF,$FBFF,$F7FF,$EFFF,$DFFF,$BFFF,$7FFF
 
+; Steps to the different sprite stamps
+_stamp_step      ENT
+                 dw  0,12,24,36
+
 blt_return
 stk_save

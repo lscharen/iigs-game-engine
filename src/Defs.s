@@ -245,3 +245,4 @@ ScreenModeHeight  EXT
 _SpriteBits       EXT
 _SpriteBitsNot    EXT
 VBuffArray        EXT
+_stamp_step       EXT

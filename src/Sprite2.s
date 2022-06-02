@@ -128,10 +128,6 @@ _CalcDirtySprite
         lda   _Sprites+VBUFF_ARRAY_ADDR,y
         sec
         sbc   TileStoreLookup,x
-
-;        eor   #$FFFF
-;        sec
-;        adc   _Sprites+VBUFF_ARRAY_ADDR,y
         sta   tmp1                                ; Spill this value to direct page temp space
 
 ; Calculate the final address of the sprite data in the stamp buffer. We have to move earlier 

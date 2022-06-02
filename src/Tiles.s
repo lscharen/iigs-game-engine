@@ -268,11 +268,11 @@ dobit       mac
             bcc   next_bit
             beq   last_bit
             tax
-            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             sta   sprite_ptr0+{]2*4}
             txa
             jmp   ]3
-last_bit    lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             sta   sprite_ptr0+{]2*4}
             jmp   ]4
 next_bit
@@ -280,16 +280,17 @@ next_bit
 
 ; Specialization for the first sprite which can just return the vbuff address
 ; in a register if there is only one sprite intersecting the tile
+;           dobit   bit_position,dest;next;exit
 dobit1      mac
             lsr
             bcc   next_bit
             beq   last_bit
             tax
-            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             sta   sprite_ptr0+{]2*4}
             txa
             jmp   ]3
-last_bit    lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             jmp   ]4
 next_bit
             <<<
@@ -366,7 +367,7 @@ next_bit
 stpbit      mac
             lsr
             bcc   next_bit
-            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
 next_bit
@@ -374,7 +375,7 @@ next_bit
 
 ; Last bit test which *must* be set
 endbit      mac
-            lda   (SPRITE_VBUFF_PTR+{]2*2}),y
+            lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
             <<<
@@ -421,7 +422,7 @@ SpriteBitsToVBuffAddrs mac
            dobit1  12;0;b_13_1;]1
            dobit1  13;0;b_14_1;]1
            dobit1  14;0;b_15_1;]1
-           endbit 15;0;]1
+           endbit  15;0;]1
 
 b_1_1      dobit  1;1;b_2_2;]2
 b_2_1      dobit  2;1;b_3_2;]2
