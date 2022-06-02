@@ -56,6 +56,8 @@ _CallTable
                 adrl  _TSMoveSprite-1
                 adrl  _TSUpdateSprite-1
                 adrl  _TSRemoveSprite-1
+
+                adrl  _TSGetSeconds-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -202,12 +204,12 @@ width           equ     FirstParam+2
 
 ; ReadControl()
 _TSReadControl
-output          equ     FirstParam
+:output         equ     FirstParam
 
                 _TSEntry
 
                 jsr     _ReadControl
-                sta     output,s
+                sta     :output,s
 
                 _TSExit  #0;#0
 
@@ -338,6 +340,16 @@ _TSRemoveSprite
                 jsr    _RemoveSprite
 
                 _TSExit #0;#2
+
+_TSGetSeconds
+:output         equ     FirstParam
+
+                _TSEntry
+
+                ldal    OneSecondCounter
+                sta     :output,s
+
+                _TSExit  #0;#0
 
 ; Insert the GTE code
 

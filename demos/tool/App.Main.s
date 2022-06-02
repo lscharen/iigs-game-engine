@@ -15,8 +15,12 @@
 
 TSZelda         EXT                           ; tileset buffer
 
+MAX_SPRITES     equ   1
+
 ScreenX         equ   0
 ScreenY         equ   2
+Tmp0            equ   4
+Tmp1            equ   6
 
 ; Typical init
                 phk
@@ -53,30 +57,43 @@ palette dw $0000,$08C1,$0C41,$0F93,$0777,$0FDA,$00A0,$0000,$0D20,$0FFF,$023E
 sprt
 
 ; Create stamps for the sprites we are going to use
-HERO_SPRITE_1   equ   SPRITE_16X16+1
-HERO_SLOT       equ   0
+HERO_SPRITE     equ   SPRITE_16X16+1
 
-                pea   HERO_SPRITE_1                 ; sprint id
+                pea   HERO_SPRITE                   ; sprint id
                 pea   VBUFF_SPRITE_START            ; vbuff address
                 _GTECreateSpriteStamp
 
 ; Create sprites
-                pea   HERO_SPRITE_1                 ; sprite id
-                pea   #11                            ; screen x-position (<256)
-                pea   #23                           ; screen y-position (<256)
-                pea   HERO_SLOT                     ; sprite slot (0 - 15)
+                stz   Tmp0
+                stz   Tmp1
+
+                ldx   Tmp0
+:sloop
+                pea   HERO_SPRITE                   ; sprite id
+                lda   PlayerX,x
+                pha
+                lda   PlayerY,x
+                pha
+                pei   Tmp1
                 _GTEAddSprite
 
-                pea   HERO_SLOT                     ; update the sprite in this slot
+                pei   Tmp1                          ; update the sprite in this slot
                 pea   $0000                         ; with these flags (h/v flip)
                 pea   VBUFF_SPRITE_START            ; and use this stamp
                 _GTEUpdateSprite
+
+                inc   Tmp1
+                ldx   Tmp0
+                inx
+                inx
+                stx   Tmp0
+                cpx   #MAX_SPRITES*2
+                bcc   :sloop
 
 ; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees 
 ;
 ;   Tile 65 Tile 66
 ;   Tile 97 Tile 98
-
                 stz   0            ; X
                 stz   2            ; Y
 
@@ -123,6 +140,10 @@ HERO_SLOT       equ   0
                 cmp   #25
                 bcc   :tloop
 
+; Initialize the frame counter
+
+                stz   FrameCount
+
 ; Set the screen coordinates
 
                 lda   #8
@@ -136,8 +157,29 @@ HERO_SLOT       equ   0
                 pla
                 and   #$00FF
                 cmp   #'q'
-                beq   :exit
-
+                bne   :3
+                brl   :exit
+:3
+                cmp   #'s'
+                bne   :4
+                inc   PlayerY
+                brl   :next
+:4
+                cmp   #'w'
+                bne   :5
+                dec   PlayerY
+                brl   :next
+:5
+                cmp   #'d'
+                bne   :6
+                inc   PlayerX
+                brl   :next
+:6
+                cmp   #'a'
+                bne   :7
+                dec   PlayerX
+                brl   :next
+:7
                 cmp   #$15                    ; left = $08, right = $15, up = $0B, down = $0A
                 bne   :8
                 inc   ScreenX
@@ -146,53 +188,101 @@ HERO_SLOT       equ   0
 :8              cmp   #$08
                 bne   :9
                 dec   ScreenX
-                bra   :next
+                brl   :next
 
 :9              cmp   #$0B
                 bne   :10
                 inc   ScreenY
-                bra   :next
+                brl   :next
 
 :10             cmp   #$0A
                 bne   :next
                 dec   ScreenY
 
 :next
+                inc   ScreenX
+
                 pei   ScreenX
                 pei   ScreenY
                 _GTESetBG0Origin
 
-; Update the sprite each frame for testing
-;                pea   HERO_SLOT
-;                pea   $0000
-;                pea   VBUFF_SPRITE_START
-;                _GTEUpdateSprite
+                stz   Tmp0
+                stz   Tmp1
+
+                ldx   Tmp0
+loopX
+                lda   PlayerX,x
+                clc
+                adc   PlayerU,x
+                sta   PlayerX,x
+                bpl   is_posx
+                lda   PlayerU,x
+                eor   #$FFFF
+                inc
+                sta   PlayerU,x
+                bra   do_y
+is_posx         cmp   #128
+                bcc   do_y
+                lda   PlayerU,x
+                eor   #$FFFF
+                inc
+                sta   PlayerU,x
+
+do_y
+                lda   PlayerY,x
+                clc
+                adc   PlayerV,x
+                sta   PlayerY,x
+                bpl   is_posy
+                lda   PlayerV,x
+                eor   #$FFFF
+                inc
+                sta   PlayerV,x
+                bra   do_z
+is_posy         cmp   #160
+                bcc   do_z
+                lda   PlayerV,x
+                eor   #$FFFF
+                inc
+                sta   PlayerV,x
+do_z
+                pei   Tmp1
+                lda   PlayerX,x
+                pha
+                lda   PlayerY,x
+                pha
+                _GTEMoveSprite
+
+                inc   Tmp1
+                ldx   Tmp0
+                inx
+                inx
+                stx   Tmp0
+                cpx   #MAX_SPRITES*2
+                bcc   loopX
 
                 _GTERender
-                brl   :evt_loop
+                inc   FrameCount
 
 ; Debug stuff
-                ldx   #$100
-                lda   StartX,x
+                pha
+                _GTEGetSeconds
+                pla
+                cmp   LastSecond
+                beq   :no_fps
+                sta   LastSecond
+                
+                lda   FrameCount
                 ldx   #0
+                ldy   #$FFFF
                 jsr   DrawWord
 
-                ldx   #$100
-                lda   StartY,x
-                ldx   #160*8
-                jsr   DrawWord
+                stz   FrameCount
+:no_fps
 
-                lda   ScreenX
-                ldx   #160*16
-                jsr   DrawWord
-
-                lda   ScreenY
-                ldx   #160*24
-                jsr   DrawWord
-
-                tdc
-                ldx   #160*32
-                jsr   DrawWord
+;                tdc
+;                ldx   #160*32
+;                jsr   DrawWord
 
                 brl   :evt_loop
 
@@ -202,6 +292,12 @@ HERO_SLOT       equ   0
                 _QuitGS qtRec
 qtRec           adrl       $0000
                 da         $00
+
+; Array of sprite positions and velocities
+PlayerX  dw  0,14,29,34,45,67,81,83,92,101,39,22,7,74,111,9
+PlayerY  dw  7,24,13,56,35,72,23,8,93,123,134,87,143,14,46,65
+PlayerU  dw  1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4
+PlayerV  dw  1,1,1,1,2,2,2,4,3,3,3,3,4,4,4,4
 
 ; Load the GTE User Tool and install it
 GTEStartUp
@@ -257,6 +353,8 @@ GTEStartUp
 
 MyUserId        ds    2
 ToolPath        str   '1/Tool160'
+FrameCount      ds    2
+LastSecond      dw    0
 
                 PUT        App.Msg.s
                 PUT        font.s

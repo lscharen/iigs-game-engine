@@ -1,5 +1,5 @@
 ; Feature flags
-NO_INTERRUPTS     equ       1                   ; turn off for crossrunner debugging
+NO_INTERRUPTS     equ       0                   ; turn off for crossrunner debugging
 NO_MUSIC          equ       1                   ; turn music + tool loading off
 
 ; External data space provided by the main program segment
@@ -267,8 +267,7 @@ ClearKbdStrobe    sep       #$20
                   rts
 
 ; Read the keyboard and paddle controls and return in a game-controller-like format
-_ReadControl      
-                  pea       $0000               ; low byte = key code, high byte = %------AB 
+_ReadControl      pea       $0000               ; low byte = key code, high byte = %------AB 
 
                   sep       #$20
                   ldal      OPTION_KEY_REG      ; 'B' button

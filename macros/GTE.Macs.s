@@ -54,3 +54,6 @@ _GTEUpdateSprite     MAC
 _GTERemoveSprite     MAC
                      UserTool  $1300+GTEToolNum
                      <<<
+_GTEGetSeconds       MAC
+                     UserTool  $1400+GTEToolNum
+                     <<<
