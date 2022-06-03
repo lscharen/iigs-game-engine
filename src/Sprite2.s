@@ -56,6 +56,9 @@ vbuff_mul
 ;  _Sprites+TS_LOOKUP_INDEX  : TileStore index of the upper-left corner of the sprite
 ;  _Sprites+TS_VBUFF_BASE    : Address of the top-left corner of the sprite in the VBUFF sprite stamp memory
 ;
+; The clipped sprite coordinates are used to calculate the tiles that are visible, but the actual 
+; sprite coordinates (including handling negative values) are used to calculate the VBUFF offset
+; values.
 mdsOut2
         lda   #6                                 ; Pick a value for a 0x0 tile sprite
         sta   _Sprites+TS_COVERAGE_SIZE,y         ; zero the list of tile store addresses
@@ -95,18 +98,10 @@ _CalcDirtySprite
 
         pla
         and   #$0007
-        tax                                       ; cache again. This is a bit faster than recalculating
-
         adc   _Sprites+SPRITE_CLIP_HEIGHT,y       ; Nominal value between 0 and 16+7 = 23 = 10111
         dec
         and   #$0018
         sta   AreaIndex
-
-        txa                                       ; Get the vertical offset in the VBUFF memory
-        asl
-        tax
-        ldal  vbuff_mul,x
-        sta   tmp0
 
 ; Add the horizontal position to the horizontal offset to find the first column in the
 ; code field that needs to be drawn.  The range of values is 0 to 159+163 = [0, 322]. 
@@ -121,21 +116,52 @@ _CalcDirtySprite
         adc   RowTop
         sta   _Sprites+TS_LOOKUP_INDEX,y          ; This is the index into the TileStoreLookup table
 
-; Create an offset value for loading the calculated VBUFF addresses within the core renderer by
-; subtracting the actual TileStore offset from the sprite's vbuff address array
 
-        tax
-        lda   _Sprites+VBUFF_ARRAY_ADDR,y
-        sec
-        sbc   TileStoreLookup,x
-        sta   tmp1                                ; Spill this value to direct page temp space
-
-; Calculate the final address of the sprite data in the stamp buffer. We have to move earlier 
-; in the buffer based on the horizontal offset and move up for each vertical offset.
+; Calculate the final amount of visible tiles that need to be refreshed and use that to
+; set the coverage size index.
 
         pla
         and   #$0003
-        tax
+        adc   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
+        dec
+        and   #$000C
+        lsr                                      ; max value = 4 = 0x04
+        ora   AreaIndex                          ; merge into the area index
+        sta   _Sprites+TS_COVERAGE_SIZE,y        ; Save this value as a key to the coverage size of the sprite
+
+
+; Calculate the VBUFF offset based on the actual (signed) sprite position
+
+        clc                                       ; Carry should still be clear here....
+        lda   StartYMod208
+        and   #$0007
+        adc   _Sprites+SPRITE_Y,y
+        bmi   :neg_y
+        and   #$0007
+:neg_y
+        asl                                       ; Multiply by 48.  Would be nice to use a 
+        asl                                       ; table lookup, but the values can be negative
+        asl                                       ; so do the calculation
+        asl
+        sta   tmp0
+        asl
+        clc
+        adc   tmp0
+        sta   tmp0
+
+; Calculate the final address of the sprite data in the stamp buffer. We have to move earlier 
+; in the buffer based on the horizontal offset and move up for each vertical offset.
+;
+; For a negative value we need to adjust the vbuff by the number of off-screen tiles plus
+; the alignment adjustment.
+
+        clc
+        lda   StartXMod164
+        and   #$0003
+        adc   _Sprites+SPRITE_X,y
+        bmi   :neg_x
+        and   #$0003
+:neg_x
         clc
         adc   tmp0                               ; add to the vertical offset
 
@@ -146,18 +172,14 @@ _CalcDirtySprite
         adc   _Sprites+SPRITE_DISP,y             ; A = SPRITE_DISP + (-X - 1) + 1 = SPRITE_DISP - X
         sta   _Sprites+TS_VBUFF_BASE,y
 
-; We know the starting corner of the TileStore.  Now, we need to figure out now many tiles
-; the sprite covers.  This is a function of the sprite's width and height and the specific
-; location of the upper-left corner of the sprite within the corner tile.
+; Create an offset value for loading the calculated VBUFF addresses within the core renderer by
+; subtracting the actual TileStore offset from the sprite's vbuff address array
 
-        txa
-        clc
-        adc   _Sprites+SPRITE_CLIP_WIDTH,y       ; max width = 8 = 0x08
-        dec
-        and   #$000C
-        lsr                                      ; max value = 4 = 0x04
-        ora   AreaIndex                          ; merge into the area index
-        sta   _Sprites+TS_COVERAGE_SIZE,y        ; Save this value as a key to the coverage size of the sprite
+        ldx   _Sprites+TS_LOOKUP_INDEX,y
+        lda   _Sprites+VBUFF_ARRAY_ADDR,y
+        sec
+        sbc   TileStoreLookup,x
+        sta   tmp1                                ; Spill this value to direct page temp space
 
 ; Last task. Since we don't need to use the X-register to cache values; load the direct page 2 
 ; offset for the SPRITE_VBUFF_PTR and save it
