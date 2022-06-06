@@ -246,3 +246,5 @@ _SpriteBits       EXT
 _SpriteBitsNot    EXT
 VBuffArray        EXT
 _stamp_step       EXT
+VBuffVertTableSelect EXT
+VBuffHorzTableSelect EXT

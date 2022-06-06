@@ -88,7 +88,7 @@ _CalcDirtySprite
         lsr
         tax
         lda   TileStoreLookupYTable,x
-        sta   RowTop                             ; Even numbers from [0, 100] (50 elements)
+        sta   RowTop                             ; Even numbers from [0, 100] (51 elements)
 
 ; Get the position of the top edge within the tile and then add it to the sprite's height
 ; to calculate the number of tiles that are overlapped.  We use the actual width and height
@@ -112,7 +112,12 @@ _CalcDirtySprite
         adc   StartXMod164
         pha
         and   #$FFFC
-        lsr                                       ; Even numbers from [0, 160] (80 elements)
+        lsr                                       ; Even numbers from [0, 160] (81 elements)
+;        cmp   #TILE_STORE_WIDTH*2
+;        bcc   :x_in_range
+;        sbc   #TILE_STORE_WIDTH*2
+;:x_in_range
+        sta   tmp3
         adc   RowTop
         sta   _Sprites+TS_LOOKUP_INDEX,y          ; This is the index into the TileStoreLookup table
 
@@ -174,9 +179,17 @@ _CalcDirtySprite
 
 ; Create an offset value for loading the calculated VBUFF addresses within the core renderer by
 ; subtracting the actual TileStore offset from the sprite's vbuff address array
+;
+; The X-register still has the TileStoreLookupYTable index, which we re-use to get a VBuff
+; array selector for the vertical location
 
+        lda   VBuffVertTableSelect,x              ; A bunch of 12, 24 or 36 values
+        clc
+        ldx   tmp3
+        adc   VBuffHorzTableSelect,x              ; A bunch of 0, 4 or 8 values
+        clc
+        adc   #VBuffArray
         ldx   _Sprites+TS_LOOKUP_INDEX,y
-        lda   _Sprites+VBUFF_ARRAY_ADDR,y
         sec
         sbc   TileStoreLookup,x
         sta   tmp1                                ; Spill this value to direct page temp space
@@ -245,20 +258,20 @@ ROW     equ TILE_STORE_WIDTH*2                      ; This many bytes to the nex
 COL     equ 2                                       ; This many bytes for each element
 
 :mark1x1
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y           ; get the address of this sprite's vbuff values
-        lda   _Sprites+TS_VBUFF_BASE,y              ; get the starting vbuff address
-        sta:  {0*ROW}+{0*COL},x                     ; Put in the vbuff address
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y           ; get the address of this sprite's vbuff values
+;        lda   _Sprites+TS_VBUFF_BASE,y              ; get the starting vbuff address
+;        sta:  {0*ROW}+{0*COL},x                     ; Put in the vbuff address
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite   0*{TS_LOOKUP_SPAN*2}
         rts
 
 :mark1x2
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{1*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{1*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -266,13 +279,13 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark1x3
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{2*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{2*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -281,11 +294,11 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark2x1
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES
-        sta:  {1*ROW}+{0*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES
+;        sta:  {1*ROW}+{0*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -293,15 +306,15 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark2x2
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES-VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{1*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES-VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{1*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -311,19 +324,19 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark2x3
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{2*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES-{2*VBUFF_TILE_COL_BYTES}
-        sta:  {1*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{2*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{2*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES-{2*VBUFF_TILE_COL_BYTES}
+;        sta:  {1*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{2*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -335,13 +348,13 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark3x1
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES
-        sta:  {1*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES
-        sta:  {2*ROW}+{0*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES
+;        sta:  {1*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES
+;        sta:  {2*ROW}+{0*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -350,19 +363,19 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark3x2
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES-VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES-VBUFF_TILE_COL_BYTES
-        sta:  {2*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {2*ROW}+{1*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES-VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES-VBUFF_TILE_COL_BYTES
+;        sta:  {2*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {2*ROW}+{1*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0
@@ -374,25 +387,25 @@ COL     equ 2                                       ; This many bytes for each e
         rts
 
 :mark3x3
-        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
-        lda   _Sprites+TS_VBUFF_BASE,y
-        sta:  {0*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {0*ROW}+{2*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES-{2*VBUFF_TILE_COL_BYTES}
-        sta:  {1*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {1*ROW}+{2*COL},x
-        adc   #VBUFF_TILE_ROW_BYTES-{2*VBUFF_TILE_COL_BYTES}
-        sta:  {2*ROW}+{0*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {2*ROW}+{1*COL},x
-        adc   #VBUFF_TILE_COL_BYTES
-        sta:  {2*ROW}+{2*COL},x
+;        ldx   _Sprites+VBUFF_ARRAY_ADDR,y
+;        lda   _Sprites+TS_VBUFF_BASE,y
+;        sta:  {0*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {0*ROW}+{2*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES-{2*VBUFF_TILE_COL_BYTES}
+;        sta:  {1*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {1*ROW}+{2*COL},x
+;        adc   #VBUFF_TILE_ROW_BYTES-{2*VBUFF_TILE_COL_BYTES}
+;        sta:  {2*ROW}+{0*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {2*ROW}+{1*COL},x
+;        adc   #VBUFF_TILE_COL_BYTES
+;        sta:  {2*ROW}+{2*COL},x
 
         ldx   _Sprites+TS_LOOKUP_INDEX,y
         TSSetSprite  0*{TS_LOOKUP_SPAN*2}+0

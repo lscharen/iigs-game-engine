@@ -19,27 +19,72 @@ InitSprites
            cpx    #$FFFE
            bne    :loop2
 
-; Set the VBuff array addresses for each sprite, since they're static
+; Initialize the VBuff offset values for the different cases
 
-            ldx    #0
-            lda    #VBuffArray
-:loop3      sta    _Sprites+VBUFF_ARRAY_ADDR,x
-            clc
-            adc    #4*2                        ; skip ahead 4 tiles
-            inx
-            inx
-            cpx    #8*2
-            bcc    :loop3
+TILE_STORE_SPAN   equ {TILE_STORE_WIDTH*2}
+LAST_ROW          equ {TILE_STORE_SPAN*{TILE_STORE_HEIGHT-1}}
+NEXT_TO_LAST_ROW  equ {TILE_STORE_SPAN*{TILE_STORE_HEIGHT-2}}
+LAST_COL          equ {TILE_STORE_WIDTH-1}*2
+NEXT_TO_LAST_COL  equ {TILE_STORE_WIDTH-2}*2
+
+           lda    #0                          ; Normal row, Normal column
+           ldx    #0
+           jsr    _SetVBuffValues
+
+           lda    #8
+           ldx    #LAST_COL                   ; Normal row, Last column
+           jsr    _SetVBuffValues
+
+           lda    #16
+           ldx    #NEXT_TO_LAST_COL           ; Normal row, Next-to-Last column
+           jsr    _SetVBuffValues
+
+           lda    #24                         ; Last row, normal column
+           ldx    #LAST_ROW
+           jsr    _SetVBuffValues
+
+           lda    #32
+           ldx    #LAST_ROW+LAST_COL          ; Last row, Last column
+           jsr    _SetVBuffValues
+
+           lda    #40
+           ldx    #LAST_ROW+NEXT_TO_LAST_COL  ; Last row, Next-to-Last column
+           jsr    _SetVBuffValues
+
+           lda    #48                         ; Next-to-Last row, normal column
+           ldx    #NEXT_TO_LAST_ROW
+           jsr    _SetVBuffValues
+
+           lda    #56
+           ldx    #NEXT_TO_LAST_ROW+LAST_COL          ; Next-to-Last row, Last column
+           jsr    _SetVBuffValues
+
+           lda    #64
+           ldx    #NEXT_TO_LAST_ROW+NEXT_TO_LAST_COL  ; Next-to-Last row, Next-to-Last column
+           jsr    _SetVBuffValues
+
+; Set the VBuff array addresses for each sprite, since they're static
+;
+; NOTE: Can remove later
+;            ldx    #0
+;            lda    #VBuffArray
+;:loop3      sta    _Sprites+VBUFF_ARRAY_ADDR,x
+;            clc
+;            adc    #4*2                        ; skip ahead 4 tiles
+;            inx
+;            inx
+;            cpx    #8*2
+;            bcc    :loop3
 
 ; Now do the second set of sprites
-            lda    #VBuffArray+{3*{TILE_STORE_WIDTH*2}}
-:loop4      sta    _Sprites+VBUFF_ARRAY_ADDR,x
-            clc
-            adc    #4*2                        ; skip ahead 4 tiles
-            inx
-            inx
-            cpx    #16*2
-            bcc    :loop4
+;            lda    #VBuffArray+{3*{TILE_STORE_WIDTH*2}}
+;:loop4      sta    _Sprites+VBUFF_ARRAY_ADDR,x
+;            clc
+;            adc    #4*2                        ; skip ahead 4 tiles
+;            inx
+;            inx
+;            cpx    #16*2
+;            bcc    :loop4
 
 ; Initialize the Page 2 pointers
             ldx    #$100
@@ -53,6 +98,53 @@ InitSprites
             jsr    _CacheSpriteBanks
             rts
 
+; Call with X-register set to TileStore tile and Acc set to the VBuff slot offset
+_SetVBuffValues
+COL_BYTES  equ 4                                   ; VBUFF_TILE_COL_BYTES
+ROW_BYTES  equ 384                                 ; VBUFF_TILE_ROW_BYTES
+
+           clc
+           adc   #VBuffArray
+           sec
+           sbc   TileStoreLookup,x
+           sta   tmp0
+
+           ldy   TileStoreLookup,x
+           lda   #{0*COL_BYTES}+{0*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+2,x
+           lda   #{1*COL_BYTES}+{0*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+4,x
+           lda   #{2*COL_BYTES}+{0*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+1*{TS_LOOKUP_SPAN*2},x
+           lda   #{0*COL_BYTES}+{1*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+1*{TS_LOOKUP_SPAN*2}+2,x
+           lda   #{1*COL_BYTES}+{1*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+1*{TS_LOOKUP_SPAN*2}+4,x
+           lda   #{2*COL_BYTES}+{1*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+2*{TS_LOOKUP_SPAN*2},x
+           lda   #{0*COL_BYTES}+{2*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+2*{TS_LOOKUP_SPAN*2}+2,x
+           lda   #{1*COL_BYTES}+{2*ROW_BYTES}
+           sta   (tmp0),y
+
+           ldy   TileStoreLookup+2*{TS_LOOKUP_SPAN*2}+4,x
+           lda   #{2*COL_BYTES}+{2*ROW_BYTES}
+           sta   (tmp0),y
+            rts
 ; _RenderSprites
 ;
 ; The function is responsible for updating all of the rendering information based on any changes

@@ -59,7 +59,7 @@ TileStoreLookup       ENT
                       lup  TILE_STORE_HEIGHT
                       TileStoreData ]row*2*TILE_STORE_WIDTH
                       TileStoreData ]row*2*TILE_STORE_WIDTH
-                      dw   ]row*2*TILE_STORE_WIDTH
+                      dw   ]row*2*TILE_STORE_WIDTH,]row*2*TILE_STORE_WIDTH+2
 ]row                  equ  ]row+1
                       --^
 
@@ -68,14 +68,17 @@ TileStoreLookup       ENT
                       lup  TILE_STORE_HEIGHT
                       TileStoreData ]row*2*TILE_STORE_WIDTH
                       TileStoreData ]row*2*TILE_STORE_WIDTH
-                      dw   ]row*2*TILE_STORE_WIDTH
+                      dw   ]row*2*TILE_STORE_WIDTH,]row*2*TILE_STORE_WIDTH+2
 ]row                  equ  ]row+1
                       --^
 
-; Last row
+; Last two rows
                       TileStoreData 0*2*TILE_STORE_WIDTH
                       TileStoreData 0*2*TILE_STORE_WIDTH
-                      dw   0*2*TILE_STORE_WIDTH
+                      dw   0*2*TILE_STORE_WIDTH,0*2*TILE_STORE_WIDTH+2
+                      TileStoreData 1*2*TILE_STORE_WIDTH
+                      TileStoreData 1*2*TILE_STORE_WIDTH
+                      dw   1*2*TILE_STORE_WIDTH,1*2*TILE_STORE_WIDTH+2
 
 ;-------------------------------------------------------------------------------------
 ;
@@ -408,14 +411,73 @@ ScreenModeHeight ENT
                  dw        200,192,200,176,160,160,160,128,144,192,102,1
 
 ; VBuff arrays for each sprite. We need at least a 3x3 block for each sprite and the shape of the
-; array must match the TileStore structure.  The TileStore is 41 blocks wide.  To keep things simple
-; we allocate 8 sprites in the first row and 8 more sprites in the 4th row.  So we need to allocate a
-; total of 6 rows of TileStore space
+; array must match the TileStore structure.  The TileStore is 41 blocks wide. 
 ;
 ; It is *critical* that this array be placed in a memory location that is greater than the largest
-; TileStore offset.
-VBuffArray       ENT
-                 ds  6*{TILE_STORE_WIDTH*2}
+; TileStore offset because the engine maintaines a per-sprite pointer equal to the VBuff array
+; address minut the TileStore offset for the top-left corner of that sprite.  This allows all of
+; the sprites to share the same table, but the result of the subtraction has to be positive.
+;
+; Each block of data contains fixed offsets for the relative position of vbuff addresses.  There
+; are multiple copies of the array to handle cases where a sprite needs to transition across the
+; boundary.
+;
+; For example. If a sprite is drawn in the last column, but is two blocks wide, the TileIndex
+; value for the first column is $52 and the second column is $00.  Since the pointer to the
+; VBuffArray is pre-adjusted by the first column's size, the first offset value will be read
+; from (VBuffArray - $52)[$52] = VBuffArray[0], which is correct.  However, the second column will be
+; read from (VBuffArray - $52)[$00] which is one row off from the correct value's location.
+;
+; The wrapping also need to account for vertical wrapping. Consider a 16x16 sprite with its top-left
+; conder inside the physical tile that is the bottom-right-most tile in the Tile Store.  So, the
+; lookup index for this tile is (26*41*2)-2 = 2130.  When using the lookup table, each step to the
+; right or down will cause wrap-around.  So the lookup addresses look like this
+;
+;   +------+------+     +------+------+
+;   | $852 | $800 |     | $000 | $004 |
+;   +------+------+ --> +------+------+
+;   | $052 | $000 |     | $030 | $034 |
+;   +------+------+     +------+------+
+;
+; We need to maintain 9 different lookup table variations, which is equal to the number of tile
+; in the largest sprite (3x3 tiles = 9 different border cases)
+
+;COL_BYTES        equ 4                                   ; VBUFF_TILE_COL_BYTES
+;ROW_BYTES        equ 384                                 ; VBUFF_TILE_ROW_BYTES
+
+; Define the offset values
+;___NA_NA___      equ 0
+;ROW_0_COL_0      equ {{0*COL_BYTES}+{0*ROW_BYTES}}
+;ROW_0_COL_1      equ {{1*COL_BYTES}+{0*ROW_BYTES}}
+;ROW_0_COL_2      equ {{2*COL_BYTES}+{0*ROW_BYTES}}
+;ROW_1_COL_0      equ {{0*COL_BYTES}+{1*ROW_BYTES}}
+;ROW_1_COL_1      equ {{1*COL_BYTES}+{1*ROW_BYTES}}
+;ROW_1_COL_2      equ {{2*COL_BYTES}+{1*ROW_BYTES}}
+;ROW_2_COL_0      equ {{0*COL_BYTES}+{2*ROW_BYTES}}
+;ROW_2_COL_1      equ {{1*COL_BYTES}+{2*ROW_BYTES}}
+;ROW_2_COL_2      equ {{2*COL_BYTES}+{2*ROW_BYTES}}
+
+; Allocate an amount of space equal to a TileStore block because we could have vertical wrap around.
+; The rest of the values are in just the first few rows following this block
+;
+; The first block of 4 values is the "normal" case, (X in [0, N-3], Y in [0, M-3]), so no wrap around is needed
+; The second block is (X = N-1, Y in [0, M-3])
+; The third block is (X = N-2, Y in [0, M-3])
+; The fourth block is (X in [0, N-3], Y = M-1)
+; The fifth block is (X = N-1, Y = M-1)
+; The sixth block is (X = N-2, Y = M-1)
+; The seventh block is (X in [0, N-3], Y = M-2)
+; The eighth block is (X = N-1, Y = M-2)
+; The ninth block is (X = N-2, Y = M-2)
+
+VBuffVertTableSelect ENT
+                  ds  51*2
+VBuffHorzTableSelect ENT
+                  ds  81*2
+
+VBuffStart        ds  TILE_STORE_SIZE
+VBuffArray        ENT
+                  ds  {TILE_STORE_WIDTH*2}*3
 
 ; Convert sprite index to a bit position
 _SpriteBits      ENT

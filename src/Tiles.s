@@ -287,10 +287,14 @@ dobit1      mac
             beq   last_bit
             tax
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             txa
             jmp   ]3
 last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc    ; pre-adjust these later
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             jmp   ]4
 next_bit
             <<<
