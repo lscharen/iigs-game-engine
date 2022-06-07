@@ -113,10 +113,6 @@ _CalcDirtySprite
         pha
         and   #$FFFC
         lsr                                       ; Even numbers from [0, 160] (81 elements)
-;        cmp   #TILE_STORE_WIDTH*2
-;        bcc   :x_in_range
-;        sbc   #TILE_STORE_WIDTH*2
-;:x_in_range
         sta   tmp3
         adc   RowTop
         sta   _Sprites+TS_LOOKUP_INDEX,y          ; This is the index into the TileStoreLookup table
@@ -183,7 +179,7 @@ _CalcDirtySprite
 ; The X-register still has the TileStoreLookupYTable index, which we re-use to get a VBuff
 ; array selector for the vertical location
 
-        lda   VBuffVertTableSelect,x              ; A bunch of 12, 24 or 36 values
+        lda   VBuffVertTableSelect,x              ; A bunch of 0, 12 or 24 values
         clc
         ldx   tmp3
         adc   VBuffHorzTableSelect,x              ; A bunch of 0, 4 or 8 values

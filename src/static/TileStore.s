@@ -470,10 +470,22 @@ ScreenModeHeight ENT
 ; The eighth block is (X = N-1, Y = M-2)
 ; The ninth block is (X = N-2, Y = M-2)
 
-VBuffVertTableSelect ENT
-                  ds  51*2
+VBuffVertTableSelect ENT                            ; 51 entries
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,48,24
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,48,24
 VBuffHorzTableSelect ENT
-                  ds  81*2
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,16,8
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,0
+                  dw 0,0,0,0,0,0,0,0,0,16,8
 
 VBuffStart        ds  TILE_STORE_SIZE
 VBuffArray        ENT

@@ -19,13 +19,14 @@ InitSprites
            cpx    #$FFFE
            bne    :loop2
 
-; Initialize the VBuff offset values for the different cases
+; Initialize the VBuff offset values for the different cases. These are locations in
+; the TileStoreLookup table, which has different dimensions than the underlying TileStore
+; array
 
-TILE_STORE_SPAN   equ {TILE_STORE_WIDTH*2}
-LAST_ROW          equ {TILE_STORE_SPAN*{TILE_STORE_HEIGHT-1}}
-NEXT_TO_LAST_ROW  equ {TILE_STORE_SPAN*{TILE_STORE_HEIGHT-2}}
-LAST_COL          equ {TILE_STORE_WIDTH-1}*2
-NEXT_TO_LAST_COL  equ {TILE_STORE_WIDTH-2}*2
+LAST_ROW          equ {2*TS_LOOKUP_SPAN*{TILE_STORE_HEIGHT-1}}
+NEXT_TO_LAST_ROW  equ {2*TS_LOOKUP_SPAN*{TILE_STORE_HEIGHT-2}}
+LAST_COL          equ {{TILE_STORE_WIDTH-1}*2}
+NEXT_TO_LAST_COL  equ {{TILE_STORE_WIDTH-2}*2}
 
            lda    #0                          ; Normal row, Normal column
            ldx    #0
@@ -98,7 +99,7 @@ NEXT_TO_LAST_COL  equ {TILE_STORE_WIDTH-2}*2
             jsr    _CacheSpriteBanks
             rts
 
-; Call with X-register set to TileStore tile and Acc set to the VBuff slot offset
+; Call with X-register set to TileStore tile and A set to the VBuff slot offset
 _SetVBuffValues
 COL_BYTES  equ 4                                   ; VBUFF_TILE_COL_BYTES
 ROW_BYTES  equ 384                                 ; VBUFF_TILE_ROW_BYTES
@@ -121,27 +122,27 @@ ROW_BYTES  equ 384                                 ; VBUFF_TILE_ROW_BYTES
            lda   #{2*COL_BYTES}+{0*ROW_BYTES}
            sta   (tmp0),y
 
-           ldy   TileStoreLookup+1*{TS_LOOKUP_SPAN*2},x
+           ldy   TileStoreLookup+{1*{TS_LOOKUP_SPAN*2}},x
            lda   #{0*COL_BYTES}+{1*ROW_BYTES}
            sta   (tmp0),y
 
-           ldy   TileStoreLookup+1*{TS_LOOKUP_SPAN*2}+2,x
+           ldy   TileStoreLookup+{1*{TS_LOOKUP_SPAN*2}}+2,x
            lda   #{1*COL_BYTES}+{1*ROW_BYTES}
            sta   (tmp0),y
 
-           ldy   TileStoreLookup+1*{TS_LOOKUP_SPAN*2}+4,x
+           ldy   TileStoreLookup+{1*{TS_LOOKUP_SPAN*2}}+4,x
            lda   #{2*COL_BYTES}+{1*ROW_BYTES}
            sta   (tmp0),y
 
-           ldy   TileStoreLookup+2*{TS_LOOKUP_SPAN*2},x
+           ldy   TileStoreLookup+{2*{TS_LOOKUP_SPAN*2}},x
            lda   #{0*COL_BYTES}+{2*ROW_BYTES}
            sta   (tmp0),y
 
-           ldy   TileStoreLookup+2*{TS_LOOKUP_SPAN*2}+2,x
+           ldy   TileStoreLookup+{2*{TS_LOOKUP_SPAN*2}}+2,x
            lda   #{1*COL_BYTES}+{2*ROW_BYTES}
            sta   (tmp0),y
 
-           ldy   TileStoreLookup+2*{TS_LOOKUP_SPAN*2}+4,x
+           ldy   TileStoreLookup+{2*{TS_LOOKUP_SPAN*2}}+4,x
            lda   #{2*COL_BYTES}+{2*ROW_BYTES}
            sta   (tmp0),y
             rts

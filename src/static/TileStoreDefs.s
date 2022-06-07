@@ -5,20 +5,20 @@ TILE_STORE_HEIGHT     equ  26
 MAX_TILES             equ  {26*41}                ; Number of tiles in the code field (41 columns * 26 rows)
 TILE_STORE_SIZE       equ  {MAX_TILES*2}          ; The tile store contains a tile descriptor in each slot
 
-TS_TILE_ID            equ  TILE_STORE_SIZE*0      ; tile descriptor for this location
-TS_DIRTY              equ  TILE_STORE_SIZE*1      ; Flag. Used to prevent a tile from being queued multiple times per frame
-TS_SPRITE_FLAG        equ  TILE_STORE_SIZE*2      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
-TS_TILE_ADDR          equ  TILE_STORE_SIZE*3      ; cached value, the address of the tiledata for this tile
-TS_CODE_ADDR_LOW      equ  TILE_STORE_SIZE*4      ; const value, address of this tile in the code fields
-TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5
-TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
-TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
-TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
+TS_TILE_ID            equ  {TILE_STORE_SIZE*0}      ; tile descriptor for this location
+TS_DIRTY              equ  {TILE_STORE_SIZE*1}      ; Flag. Used to prevent a tile from being queued multiple times per frame
+TS_SPRITE_FLAG        equ  {TILE_STORE_SIZE*2}      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
+TS_TILE_ADDR          equ  {TILE_STORE_SIZE*3}      ; cached value, the address of the tiledata for this tile
+TS_CODE_ADDR_LOW      equ  {TILE_STORE_SIZE*4}      ; const value, address of this tile in the code fields
+TS_CODE_ADDR_HIGH     equ  {TILE_STORE_SIZE*5}
+TS_WORD_OFFSET        equ  {TILE_STORE_SIZE*6}      ; const value, word offset value for this tile if LDA (dp),y instructions re used
+TS_BASE_ADDR          equ  {TILE_STORE_SIZE*7}      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
+TS_SCREEN_ADDR        equ  {TILE_STORE_SIZE*8}      ; cached value of on-screen location of tile. Used for DirtyRender.
 
 ; TODO: Move these arrays into the K bank to support direct dispatch via jmp (abs,x)
-TS_BASE_TILE_COPY     equ  TILE_STORE_SIZE*9      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
-TS_BASE_TILE_DISP     equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
-TS_DIRTY_TILE_DISP    equ  TILE_STORE_SIZE*11     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
+TS_BASE_TILE_COPY     equ  {TILE_STORE_SIZE*9}      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
+TS_BASE_TILE_DISP     equ  {TILE_STORE_SIZE*10}     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
+TS_DIRTY_TILE_DISP    equ  {TILE_STORE_SIZE*11}     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
 
 TILE_STORE_NUM        equ  12                     ; Need this many parallel arrays
 
@@ -91,7 +91,7 @@ TS_LOOKUP_BORDER  equ 2
 TS_LOOKUP_SPAN    equ {TS_LOOKUP_WIDTH+TS_LOOKUP_BORDER}
 TS_LOOKUP_ROWS    equ {TS_LOOKUP_HEIGHT+TS_LOOKUP_BORDER}
 
-; Blitter template constancts
+; Blitter template constants
 PER_TILE_SIZE     equ   3
 SNIPPET_SIZE      equ   32
 
