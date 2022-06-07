@@ -38,7 +38,7 @@ FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFa
 
 SpriteDispatch
             txy
-            SpriteBitsToVBuffAddrs OneSpriteFast;TwoSpritesFast;TwoSpritesFast;TwoSpritesFast
+            SpriteBitsToVBuffAddrs OneSpriteFast;TwoSpritesFast;ThreeSpritesFast;ThreeSpritesFast
 
 ; Where there are sprites involved, the first step is to call a routine to copy the
 ; tile data into a temporary buffer.  Then the sprite data is merged and placed into
@@ -113,7 +113,6 @@ TwoSpritesFast
             ply                                    ; Pop off CODE_ADDR_LOW
             plb                                    ; Set the CODE_ADDR_HIGH bank
 
-_TBApplySpriteData3
 ]line       equ   0
             lup   8
             lda   tmp_tile_data+{]line*4}
@@ -125,7 +124,61 @@ _TBApplySpriteData3
             plb                                   ; Reset to the bank in the top byte of CODE_ADDR_HIGH
             rts 
 
+ThreeSpriteLine mac
+;            and   [sprite_ptr2],y
+            db    $37,sprite_ptr2
+            ora   (sprite_ptr2),y
+;            and   [sprite_ptr1],y
+            db    $37,sprite_ptr1
+            ora   (sprite_ptr1),y
+;            and   [sprite_ptr0],y
+            db    $37,sprite_ptr0
+            ora   (sprite_ptr0),y
+            <<<
+
 ThreeSpritesFast
+            ldx   TileStore+TS_TILE_ADDR,y
+            lda   TileStore+TS_CODE_ADDR_HIGH,y    ; load the bank of the target code field line
+            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
+            lda   TileStore+TS_CODE_ADDR_LOW,y     ; load the address of the code field
+            pha                                    ; Need to pop it later....
+
+            sep   #$20                             ; set the sprite data bank
+            lda   #^spritedata
+            pha
+            plb
+            rep   #$20
+
+]line       equ   0
+            lup   8
+            ldy   #{]line*SPRITE_PLANE_SPAN}
+            ldal  tiledata+{]line*4},x
+            ThreeSpriteLine
+            sta   tmp_tile_data+{]line*4}
+
+            ldy   #{]line*SPRITE_PLANE_SPAN}+2
+            ldal  tiledata+{]line*4}+2,x
+            ThreeSpriteLine
+            sta   tmp_tile_data+{]line*4}+2
+]line            equ   ]line+1
+            --^
+
+            ply                                    ; Pop off CODE_ADDR_LOW
+            plb                                    ; Set the CODE_ADDR_HIGH bank
+
+]line       equ   0
+            lup   8
+            lda   tmp_tile_data+{]line*4}
+            sta:  $0004+{]line*$1000},y
+            lda   tmp_tile_data+{]line*4}+2
+            sta:  $0001+{]line*$1000},y
+]line       equ   ]line+1
+            --^
+            plb                                   ; Reset to the bank in the top byte of CODE_ADDR_HIGH
+            rts
+
+
+
 FourSpritesFast
 ;            tyx
 ;            lda   TileStore+TS_TILE_ADDR,y
