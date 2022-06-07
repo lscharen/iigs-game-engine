@@ -269,10 +269,14 @@ dobit       mac
             beq   last_bit
             tax
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             txa
             jmp   ]3
 last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc    ; pre-adjust these later
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]4
 next_bit
@@ -299,79 +303,13 @@ last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
 next_bit
             <<<
 
-; Optimization discussion.  In the Sprite2.s file, we calculate the VBUFF address for each tile overlapped
-; by a sprite:
-;
-;    4 lda   VBuffOrigin
-;    3 adc   ]2
-;    7 sta   [tmp0],y
-;
-; and then in this macro it is loaded again and copied to the direct page.  If a sprite is never drawn, this is
-; wasted work (which is not too ofter since >4 sprites would need to be overlapping), but still.
-;
-;    6 ldy:  {]1*TILE_STORE_SIZE},x
-;    4 sty   sprite_ptr0+{]2*4}
-;
-; Since we know *exactly* which sprite is being accessed, the _Sprites+TS_VBUFF_BASE,y value can be loaded without
-; an index
-;
-;    5 lda   _Sprites+TS_VBUFF_BASE+{]1*2}
-;    6 adc   {]1*TILE_STORE_SIZE},x
-;    4 sta   sprite_ptr0+{]2*4}
-;    2 tya   
-;
-;    = a savings of at least (24 - 17) = 7 cycles per tile and more if the sprite is skipped.
-;
-; The problem is that this still required storing a value for the sprite in the tile store.  What is ideal is
-; if there is a way to know implicitly which relative tile offset we are on for a given sprite and use
-; that to calculate the offset...
-;
-; What do we know
-;   X = current tile
-;   Sprite+TS_LOOKUP_INDEX
-;
-;   txa
-;   sbc   _Sprites+TS_LOOKUP_INDEX+{]1*2}
-;   tay
-;   lda   _Sprites+TS_VBUFF_BASE+{]1*2}
-;   adc   DisplacementTable,y
-;   sta   sprite_ptr0+{]2*4}
-;
-; Have the sprite select a table base which holds the offset values, pre-adjusted for the TS_LOOKUP_INDEX. The table
-; values are fixed. Yes!! This is the solution!!  It will only need 288 bytes of total space
-;
-; Best implementation will pass the Tile Store index in Y instead of X
-;
-; 5          lda   _Sprites+VBUFF_TABLE+{]1*2}
-; 6          sta   self_mod
-; 6          lda   $0000,x
-; 4          sta   sprite_ptr0+{]2*4}
-; 2          tya
-;
-; or
-;
-; 5          lda   _Sprites+VBUFF_TABLE+{]1*2}
-; 4          sta   tmp0
-; 7          lda   (tmp0),y
-; 4          sta   sprite_ptr0+{]2*4}
-; 2          txa
-;
-; Even better, if the VBUFF_TABLE (only 32 bytes) was already stored in the second direct page
-;
-; 7          lda   (VBUFF_TABLE+{]1*2}),y
-; 5          adc   _Sprites+VBUFF_TABLE+{]1*2}
-; 4          sta   sprite_ptr0+{]2*4}
-; 2          txa
-;
-; Final saving compared to current implementation is (24 - 18) = 6 cycles per tile and we eliminate
-; the need to pre-calculate
-;
-
 ; If we find a last bit (4th in this case) and will exit
 stpbit      mac
             lsr
             bcc   next_bit
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc    ; pre-adjust these later
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
 next_bit
@@ -380,6 +318,8 @@ next_bit
 ; Last bit test which *must* be set
 endbit      mac
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc    ; pre-adjust these later
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
             <<<
