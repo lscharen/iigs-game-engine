@@ -261,7 +261,7 @@ draw_16x16hv
              tax
              tya
              pha
-             adc   #128+{128*32}                        ; Bottom-right source to top-left 
+             adc   #{128*{32+1}}+64                        ; Bottom-right source to top-left 
              tay
              jsr   _DrawTile8x8V
 
@@ -269,7 +269,7 @@ draw_16x16hv
              adc   #4
              tax
              lda   1,s
-             adc   #{128*32}
+             adc   #{128*32}+64
              tay
              jsr   _DrawTile8x8V
 
@@ -277,14 +277,16 @@ draw_16x16hv
              adc   #{8*SPRITE_PLANE_SPAN}-4
              tax
              lda    1,s
-             adc    #128
+             adc    #128+64
              tay
              jsr   _DrawTile8x8V
 
              txa
              adc   #4
              tax
-             ply
+             pla
+             adc   #64
+             tay
              jmp   _DrawTile8x8V
 
 
