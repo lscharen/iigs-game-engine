@@ -46,7 +46,6 @@ ToolStartUp
                   rts
 
 MasterId          ds        2
-;UserId            ds        2
 
 ; Fatal error handler invoked by the _Err macro
 PgmDeath          tax

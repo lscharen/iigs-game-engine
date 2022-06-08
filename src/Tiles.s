@@ -111,7 +111,7 @@ InitTiles
                  bra  :out
 :fast
                  ldal FastTileProcs
-                 sta  TileStore+TS_BASE_TILE_DISP,x
+                 stal K_TS_BASE_TILE_DISP,x
 :out
 
 ;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
@@ -213,7 +213,9 @@ _SetTile
 
 :fast
                  ldal FastTileProcs,x
-                 sta  TileStore+TS_BASE_TILE_DISP,y
+                 tyx
+                 stal K_TS_BASE_TILE_DISP,x
+
 :out
                  jmp  _PushDirtyTileY               ; on the next call to _ApplyTiles
 
@@ -413,3 +415,6 @@ b_13_3     stpbit 13;3;]4
 b_14_3     stpbit 14;3;]4
 b_15_3     endbit 15;3;]4
            <<<
+
+; Store some tables in the K bank that will be used exclusively for jmp (abs,x) dispatch
+K_TS_BASE_TILE_DISP ds TILE_STORE_SIZE

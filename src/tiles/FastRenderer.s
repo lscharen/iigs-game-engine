@@ -13,25 +13,20 @@ NoSpriteFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
-            lda   TileStore+TS_BASE_TILE_DISP,x    ; go to the tile copy routine (just basics)
-            stal  nsf_patch+1
+;            lda   TileStore+TS_BASE_TILE_DISP,x    ; go to the tile copy routine (just basics)
+;            stal  nsf_patch+1
             lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
             plb                                    ; set the code field bank
-nsf_patch   jmp   $0000
+            jmp   (K_TS_BASE_TILE_DISP,x)
+
+;nsf_patch   jmp   $0000
 
 ; The TS_BASE_TILE_DISP routines will come from this table when ENGINE_MODE_TWO_LAYER and
 ; ENGINE_MODE_DYN_TILES are both off.
 FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFast,_TBCopyDataFast
+
 ; dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataVFast,_TBCopyDataVFast
 
-; NOTE: Inlining the dispatch would eliminate a JSR,RTS,LDX, and JMP (abs,x) because the exit code
-;       could jump directly to the target address.  Net savings of 20 cycles per tile.  For a 16x16
-;       sprite with a 3x3 block coverage this is 180 cycles per frame per block...  This would also 
-;       preserve a register
-;
-;       For comparison, a fast one sprite copy takes 22 cycles per word, so this would save
-;       about 1/2 block of render time per tile.
-;
 ; Need to determine if the sprite or tile data is on top, as that will decide whether the
 ; sprite or tile data is copied into the temporary buffer first.  Also, if TWO_LAYER is set
 ; then the mask information must be copied as well....This is the last decision point.
