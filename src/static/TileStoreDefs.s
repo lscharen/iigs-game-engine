@@ -50,32 +50,18 @@ VBUFF_ADDR           equ {MAX_SPRITES*8}         ; Base address of the sprite's 
 ; These values are cached / calculated during the rendering process
 TS_LOOKUP_INDEX      equ {MAX_SPRITES*10}        ; The index from the TileStoreLookup table that corresponds to the top-left corner of the sprite
 TS_COVERAGE_SIZE     equ {MAX_SPRITES*12}        ; Representation of how many TileStore tiles (NxM) are covered by this sprite
-OLD_TS_LOOKUP_INDEX  equ {MAX_SPRITES*14}        ; Copy of the values to support diffing
-OLD_TS_COVERAGE_SIZE equ {MAX_SPRITES*16}
-SPRITE_DISP          equ {MAX_SPRITES*18}        ; Cached address of the specific stamp based on sprite flags
-SPRITE_CLIP_LEFT     equ {MAX_SPRITES*20}
-SPRITE_CLIP_RIGHT    equ {MAX_SPRITES*22}
-SPRITE_CLIP_TOP      equ {MAX_SPRITES*24}
-SPRITE_CLIP_BOTTOM   equ {MAX_SPRITES*26}
-IS_OFF_SCREEN        equ {MAX_SPRITES*28}
-SPRITE_WIDTH         equ {MAX_SPRITES*30}
-SPRITE_HEIGHT        equ {MAX_SPRITES*32}
-SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*34}
-SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*36}
-TS_VBUFF_BASE        equ {MAX_SPRITES*38}        ; Finalized VBUFF address based on the sprite position and tile offsets
-VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*40}        ; Fixed address where this sprite's VBUFF addresses are stores. The array is the same shape as TileStore, but much smaller
-;TILE_DATA_OFFSET   equ {MAX_SPRITES*2}
-;TILE_STORE_ADDR_1  equ {MAX_SPRITES*12}
-;TILE_STORE_ADDR_2  equ {MAX_SPRITES*14}
-;TILE_STORE_ADDR_3  equ {MAX_SPRITES*16}
-;TS_VBUFF_BASE_ADDR  equ {MAX_SPRITES*16}       ; Fixed address of the TS_VBUFF_X memory locations
-;TILE_STORE_ADDR_4  equ {MAX_SPRITES*18}
-;TILE_STORE_ADDR_5  equ {MAX_SPRITES*20}
-;TILE_STORE_ADDR_6  equ {MAX_SPRITES*22}
-;TILE_STORE_ADDR_7  equ {MAX_SPRITES*24}
-;TILE_STORE_ADDR_8  equ {MAX_SPRITES*26}
-;TILE_STORE_ADDR_9  equ {MAX_SPRITES*28}
-;TILE_STORE_ADDR_10 equ {MAX_SPRITES*30}
+SPRITE_DISP          equ {MAX_SPRITES*14}        ; Cached address of the specific stamp based on sprite flags
+SPRITE_CLIP_LEFT     equ {MAX_SPRITES*16}
+SPRITE_CLIP_RIGHT    equ {MAX_SPRITES*18}
+SPRITE_CLIP_TOP      equ {MAX_SPRITES*20}
+SPRITE_CLIP_BOTTOM   equ {MAX_SPRITES*22}
+IS_OFF_SCREEN        equ {MAX_SPRITES*24}
+SPRITE_WIDTH         equ {MAX_SPRITES*26}
+SPRITE_HEIGHT        equ {MAX_SPRITES*28}
+SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*30}
+SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*32}
+TS_VBUFF_BASE        equ {MAX_SPRITES*34}        ; Finalized VBUFF address based on the sprite position and tile offsets
+VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*36}        ; Fixed address where this sprite's VBUFF addresses are stores. The array is the same shape as TileStore, but much smaller
 
 ; 52 rows by 82 columns + 2 extra rows and columns for sprite sizes
 ;

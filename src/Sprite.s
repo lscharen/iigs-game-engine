@@ -64,29 +64,6 @@ NEXT_TO_LAST_COL  equ {{TILE_STORE_WIDTH-2}*2}
            ldx    #NEXT_TO_LAST_ROW+NEXT_TO_LAST_COL  ; Next-to-Last row, Next-to-Last column
            jsr    _SetVBuffValues
 
-; Set the VBuff array addresses for each sprite, since they're static
-;
-; NOTE: Can remove later
-;            ldx    #0
-;            lda    #VBuffArray
-;:loop3      sta    _Sprites+VBUFF_ARRAY_ADDR,x
-;            clc
-;            adc    #4*2                        ; skip ahead 4 tiles
-;            inx
-;            inx
-;            cpx    #8*2
-;            bcc    :loop3
-
-; Now do the second set of sprites
-;            lda    #VBuffArray+{3*{TILE_STORE_WIDTH*2}}
-;:loop4      sta    _Sprites+VBUFF_ARRAY_ADDR,x
-;            clc
-;            adc    #4*2                        ; skip ahead 4 tiles
-;            inx
-;            inx
-;            cpx    #16*2
-;            bcc    :loop4
-
 ; Initialize the Page 2 pointers
             ldx    #$100
             lda    #^spritemask
@@ -231,13 +208,9 @@ _RenderSprites
 
 ; Implement the logic for updating sprite and tile rendering information. Each iteration of the 
 ; ActiveSpriteCount will call this routine with the Y-register set to the sprite index
-tmpY        equ   tmp15
-tmpA        equ   tmp14
 _DoPhase1
             lda   _Sprites+SPRITE_STATUS,y
             ora   ForceSpriteFlag
-            sta   tmpA
-            sty   tmpY
 
 ; First step, if a sprite is being removed, then we just have to clear its old tile information
 ; and mark the tiles it overlapped as dirty.
@@ -251,21 +224,15 @@ _DoPhase1
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
             sta   _Sprites+SPRITE_STATUS,y
 
-            lda   _Sprites+TS_COVERAGE_SIZE,y     ; Manually copy current value to old
-            sta   _Sprites+OLD_TS_COVERAGE_SIZE,y
-            lda   _Sprites+TS_LOOKUP_INDEX,y
-            sta   _Sprites+OLD_TS_LOOKUP_INDEX,y
-
             jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
 ; Need to calculate new VBUFF information.  The could be required for UPDATED, ADDED or MOVED
-; sprites, so we do it unconditionally.
+; sprites, so we do it unconditionally, but we do need to mark the current sprite for erasure if
+; needed
 :no_clear
-            jsr   _CalcDirtySprite
 
 ; If the sprite is marked as ADDED, then it does not need to have its old tile locations cleared
 
-            lda   tmpA
             bit   #SPRITE_STATUS_ADDED
             bne   :no_move
 
@@ -275,12 +242,15 @@ _DoPhase1
             bit   #SPRITE_STATUS_MOVED
             beq   :no_move
 
+            phy
             jsr   _ClearSpriteFromTileStore
-            ldy   tmpY
+            ply
 
 ; Anything else (MOVED, UPDATED, ADDED) will need to have the VBUFF information updated and the 
 ; current tiles marked for update
 :no_move
+            jsr   _CalcDirtySprite                     ; This function preserves Y
+
             lda   #SPRITE_STATUS_OCCUPIED              ; Clear the dirty bits (ADDED, UPDATED, MOVED)
             sta   _Sprites+SPRITE_STATUS,y
 
@@ -384,7 +354,7 @@ _CreateSpriteStamp
 ; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
 ; with a width of 256 pixels.
 ;
-; A = tileId + flags
+; A = vbuffAddress
 ; Y = High Byte = x-pos, Low Byte = y-pos
 ; X = Sprite Slot (0 - 15)
 _AddSprite
@@ -458,7 +428,7 @@ next
 _ClearSpriteFromTileStore
             lda   _SpriteBitsNot,y                          ; Cache this value in a direct page location
             sta   tmp0
-            ldx   _Sprites+OLD_TS_COVERAGE_SIZE,y
+            ldx   _Sprites+TS_COVERAGE_SIZE,y
             jmp   (csfts_tbl,x)
 csfts_tbl   dw    csfts_1x1,csfts_1x2,csfts_1x3,csfts_out
             dw    csfts_2x1,csfts_2x2,csfts_2x3,csfts_out
@@ -467,7 +437,7 @@ csfts_tbl   dw    csfts_1x1,csfts_1x2,csfts_1x3,csfts_out
 
 csfts_out   rts
 
-csfts_3x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_3x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 4
@@ -479,7 +449,7 @@ csfts_3x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 2*{TS_LOOKUP_SPAN*2}+4
             rts
 
-csfts_3x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_3x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
@@ -488,13 +458,13 @@ csfts_3x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 2*{TS_LOOKUP_SPAN*2}+2
             rts
 
-csfts_3x1   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_3x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 2*{TS_LOOKUP_SPAN*2}+0
             rts
 
-csfts_2x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_2x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 4
@@ -503,30 +473,30 @@ csfts_2x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+4
             rts
 
-csfts_2x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_2x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+2
             rts
 
-csfts_2x1   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_2x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 1*{TS_LOOKUP_SPAN*2}+0
             rts
 
-csfts_1x3   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_1x3   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             TSClearSprite 4
             rts
 
-csfts_1x2   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_1x2   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             TSClearSprite 2
             rts
 
-csfts_1x1   ldx   _Sprites+OLD_TS_LOOKUP_INDEX,y
+csfts_1x1   ldx   _Sprites+TS_LOOKUP_INDEX,y
             TSClearSprite 0
             rts
 
@@ -637,37 +607,6 @@ _CacheSpriteBanks
             sta    TileStoreBankDoubled
             
             rts
-
-; A = x coordinate
-; Y = y coordinate
-;GetSpriteVBuffAddr ENT
-;            jsr   _GetSpriteVBuffAddr
-;            rtl
-
-; A = x coordinate
-; Y = y coordinate
-;_GetSpriteVBuffAddr
-;            pha
-;            tya
-;            clc
-;            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
-;            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
-;            clc
-;            adc   1,s
-;            sta   1,s
-;            pla
-;            rts
-
-; Version that uses temporary space (tmp15)
-;_GetSpriteVBuffAddrTmp
-;            sta   tmp15
-;            tya
-;            clc
-;            adc   #NUM_BUFF_LINES               ; The virtual buffer has 24 lines of off-screen space
-;            xba                                 ; Each virtual scan line is 256 bytes wide for overdraw space
-;            clc
-;            adc   tmp15
-;            rts
 
 ; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
 ; specifically the draw/erase routines more efficient.
