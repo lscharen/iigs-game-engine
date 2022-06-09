@@ -3,10 +3,24 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "world-map.tmx",
     "expandedProjectPaths": [
+        "."
     ],
+    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
+        "world-map.tmx": {
+            "scale": 4,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 143.375,
+                "y": 120.75
+            }
+        },
+        "world-tiles.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 1
+        }
     },
     "last.imagePath": "C:/checkout/iigs-game-engine/demos/fatdog-rpg/assets",
     "map.height": 128,
@@ -15,9 +29,13 @@
     "map.tileWidth": 8,
     "map.width": 128,
     "openFiles": [
+        "world-map.tmx",
+        "world-tiles.tsx"
     ],
     "project": "fatdog-rpg.tiled-project",
     "recentFiles": [
+        "world-tiles.tsx",
+        "world-map.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {

@@ -15,18 +15,21 @@
 
 TSZelda         EXT                           ; tileset buffer
 
-MAX_SPRITES     equ   1
+MAX_SPRITES     equ   16
 
 ScreenX         equ   0
 ScreenY         equ   2
 Tmp0            equ   4
 Tmp1            equ   6
+KeyState        equ   8
+Selected        equ   10
+Flips           equ   12
 
 ; Typical init
                 phk
                 plb
 
-                sta   MyUserId                ; GS/OS passes the memory manager user ID for the aoplication into the program
+                sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
@@ -35,6 +38,8 @@ Tmp1            equ   6
 
                 pea   #256
                 pea   #160
+;                pea   #176
+;                pea   #144
                 _GTESetScreenMode
 
 ; Load a tileset
@@ -110,6 +115,8 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 phy
                 pea   #66
 
+                cpy   #24
+                beq   :skip_last
                 iny
                 phx
                 phy
@@ -122,6 +129,7 @@ HERO_SPRITE     equ   SPRITE_16X16+1
 
                 _GTESetTile
                 _GTESetTile
+:skip_last
                 _GTESetTile
                 _GTESetTile
 
@@ -146,9 +154,13 @@ HERO_SPRITE     equ   SPRITE_16X16+1
 
 ; Set the screen coordinates
 
-                lda   #8
+                lda   #128
                 sta   ScreenX
+                lda   #128
                 sta   ScreenY
+
+                stz   Selected
+                stz   Flips
 
 ; Very simple actions
 :evt_loop
@@ -157,27 +169,95 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 pla
                 and   #$00FF
                 cmp   #'q'
-                bne   :3
+                bne   :2
                 brl   :exit
+:2
+;                cmp    KeyState
+;                beq    :evt_loop
+;                sta    KeyState
+;                cmp    #0
+;                beq    :evt_loop
+
+;                cmp   #' '
+;                bne   :evt_loop              ; only advance one frame at a time
+;                brl   :next
+
 :3
+                cmp   #'1'
+                bcc   :3a
+                cmp   #'9'
+                bcs   :3a
+                sec
+                sbc   #'1'
+                asl
+                sta   Selected
+                brl   :next
+
+:3a
+                cmp   #'r'
+                bne   :3b
+                lda    Flips
+                clc
+                adc    #SPRITE_HFLIP
+                and    #SPRITE_VFLIP+SPRITE_HFLIP
+                sta    Flips
+                
+                pei   Selected                      ; update the sprite in this slot
+                pei   Flips                         ; with these flags (h/v flip)
+                pea   VBUFF_SPRITE_START            ; and use this stamp
+                _GTEUpdateSprite
+
+:3b
+                cmp   #'x'
+                bne   :3d
+                ldx   Selected
+                lda   PlayerX,x
+                clc
+                adc   PlayerU,x
+                sta   PlayerX,x
+
+                lda   PlayerY,x
+                clc
+                adc   PlayerV,x
+                sta   PlayerY,x
+                brl   :next
+:3d
+                cmp   #'z'
+                bne   :3e
+                ldx   Selected
+                lda   PlayerX,x
+                sec
+                sbc   PlayerU,x
+                sta   PlayerX,x
+
+                lda   PlayerY,x
+                sec
+                sbc   PlayerV,x
+                sta   PlayerY,x
+                brl   :next
+:3e
                 cmp   #'s'
                 bne   :4
-                inc   PlayerY
+                ldx   Selected
+                inc   PlayerY,x
                 brl   :next
 :4
                 cmp   #'w'
                 bne   :5
-                dec   PlayerY
+                ldx   Selected
+                dec   PlayerY,x
                 brl   :next
 :5
                 cmp   #'d'
                 bne   :6
-                inc   PlayerX
+                ldx   Selected
+                inc   PlayerX,x
                 brl   :next
 :6
                 cmp   #'a'
                 bne   :7
-                dec   PlayerX
+                ldx   Selected
+                dec   PlayerX,x
                 brl   :next
 :7
                 cmp   #$15                    ; left = $08, right = $15, up = $0B, down = $0A
@@ -200,11 +280,13 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 dec   ScreenY
 
 :next
-                inc   ScreenX
+;                inc   ScreenX
 
                 pei   ScreenX
                 pei   ScreenY
                 _GTESetBG0Origin
+
+;                brl   no_animate
 
                 stz   Tmp0
                 stz   Tmp1
@@ -216,6 +298,8 @@ loopX
                 adc   PlayerU,x
                 sta   PlayerX,x
                 bpl   is_posx
+                cmp   #-15
+                bcs   do_y
                 lda   PlayerU,x
                 eor   #$FFFF
                 inc
@@ -234,6 +318,8 @@ do_y
                 adc   PlayerV,x
                 sta   PlayerY,x
                 bpl   is_posy
+                cmp   #-15
+                bcs   do_z
                 lda   PlayerV,x
                 eor   #$FFFF
                 inc
@@ -246,6 +332,19 @@ is_posy         cmp   #160
                 inc
                 sta   PlayerV,x
 do_z
+                inc   Tmp1
+                ldx   Tmp0
+                inx
+                inx
+                stx   Tmp0
+                cpx   #MAX_SPRITES*2
+                bcc   loopX
+
+no_animate
+                stz   Tmp0
+                stz   Tmp1
+                ldx   Tmp0
+loopY
                 pei   Tmp1
                 lda   PlayerX,x
                 pha
@@ -259,7 +358,7 @@ do_z
                 inx
                 stx   Tmp0
                 cpx   #MAX_SPRITES*2
-                bcc   loopX
+                bcc   loopY
 
                 _GTERender
                 inc   FrameCount
@@ -294,8 +393,8 @@ qtRec           adrl       $0000
                 da         $00
 
 ; Array of sprite positions and velocities
-PlayerX  dw  0,14,29,34,45,67,81,83,92,101,39,22,7,74,111,9
-PlayerY  dw  7,24,13,56,35,72,23,8,93,123,134,87,143,14,46,65
+PlayerX  dw  8,14,29,34,45,67,81,83,92,101,39,22,7,74,111,9
+PlayerY  dw  72,24,13,56,35,72,23,8,93,123,134,87,143,14,46,65
 PlayerU  dw  1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4
 PlayerV  dw  1,1,1,1,2,2,2,4,3,3,3,3,4,4,4,4
 

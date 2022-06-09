@@ -2440,79 +2440,79 @@ TSZelda     ENT
 
 ; Tile ID 65
 ; From image coordinates 0, 16
-            hex   55555555
-            hex   55556567
-            hex   55656666
-            hex   55667666
-            hex   56666666
-            hex   56666676
+            hex   00000000
+            hex   00006567
+            hex   00656666
+            hex   00667666
+            hex   06666666
+            hex   06666676
             hex   66666666
             hex   66766666
 
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   ffffffff
+            hex   ffff0000
+            hex   ff000000
+            hex   f0000000
+            hex   f0000000
             hex   00000000
             hex   00000000
             hex   00000000
 
-            hex   55555555
-            hex   76565555
-            hex   66665655
-            hex   66676655
-            hex   66666665
-            hex   67666665
+            hex   00000000
+            hex   76560000
+            hex   66665600
+            hex   66676600
+            hex   66666660
+            hex   67666660
             hex   66666666
             hex   66666766
 
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   ffffffff
+            hex   0000ffff
+            hex   000000ff
+            hex   000000ff
+            hex   0000000f
+            hex   0000000f
             hex   00000000
             hex   00000000
 
 ; Tile ID 66
 ; From image coordinates 8, 16
-            hex   55555555
-            hex   77555555
-            hex   67777555
-            hex   66776755
-            hex   66677755
-            hex   66767775
-            hex   66777755
-            hex   66677775
+            hex   00000000
+            hex   77000000
+            hex   67777000
+            hex   66776700
+            hex   66677700
+            hex   66767770
+            hex   66777700
+            hex   66677770
+
+            hex   ffffffff
+            hex   00ffffff
+            hex   00000fff
+            hex   000000ff
+            hex   000000ff
+            hex   0000000f
+            hex   000000ff
+            hex   0000000f
 
             hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   00000077
+            hex   00077776
+            hex   00767766
+            hex   00777666
+            hex   07776766
+            hex   00777766
+            hex   07777666
 
-            hex   55555555
-            hex   55555577
-            hex   55577776
-            hex   55767766
-            hex   55777666
-            hex   57776766
-            hex   55777766
-            hex   57777666
-
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   ffffffff
+            hex   ffffff00
+            hex   fff00000
+            hex   ff000000
+            hex   ff000000
+            hex   f0000000
+            hex   ff000000
+            hex   f0000000
 
 ; Tile ID 67
 ; From image coordinates 16, 16
@@ -3656,79 +3656,79 @@ TSZelda     ENT
 
 ; Tile ID 97
 ; From image coordinates 0, 24
-            hex   56666666
+            hex   06666666
             hex   66667666
             hex   66666666
             hex   66766666
-            hex   56666667
-            hex   55566a6a
-            hex   55557aaa
-            hex   55577777
+            hex   06666667
+            hex   00066a6a
+            hex   00007aaa
+            hex   00077777
 
+            hex   f0000000
             hex   00000000
             hex   00000000
             hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   f0000000
+            hex   fff00000
+            hex   ffff0000
+            hex   fff00000
 
-            hex   66666665
+            hex   66666660
             hex   66676666
             hex   66666666
             hex   66666766
-            hex   76666665
-            hex   a6a66555
-            hex   aaa75555
-            hex   77777555
+            hex   76666660
+            hex   a6a66000
+            hex   aaa70000
+            hex   77777000
 
+            hex   0000000f
             hex   00000000
             hex   00000000
             hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   0000000f
+            hex   00000fff
+            hex   0000ffff
+            hex   00000fff
 
 ; Tile ID 98
 ; From image coordinates 8, 24
-            hex   76677675
-            hex   66677775
-            hex   67777755
-            hex   66767755
-            hex   77777555
-            hex   77655555
+            hex   76677670
+            hex   66677770
+            hex   67777700
+            hex   66767700
+            hex   77777000
+            hex   77600000
             hex   aa777777
-            hex   77777755
+            hex   77777700
 
+            hex   0000000f
+            hex   0000000f
+            hex   000000ff
+            hex   000000ff
+            hex   00000fff
+            hex   000fffff
             hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   000000ff
 
-            hex   57677667
-            hex   57777666
-            hex   55777776
-            hex   55776766
-            hex   55577777
-            hex   55555677
+            hex   07677667
+            hex   07777666
+            hex   00777776
+            hex   00776766
+            hex   00077777
+            hex   00000677
             hex   777777aa
-            hex   55777777
+            hex   00777777
 
+            hex   f0000000
+            hex   f0000000
+            hex   ff000000
+            hex   ff000000
+            hex   fff00000
+            hex   fffff000
             hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
-            hex   00000000
+            hex   ff000000
 
 ; Tile ID 99
 ; From image coordinates 16, 24
