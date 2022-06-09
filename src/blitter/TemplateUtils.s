@@ -211,6 +211,7 @@ BuildBank
 :bankArray         equ   tmp0
 :target            equ   tmp2
 :nextBank          equ   tmp4
+:entryOffset       equ   tmp6
 
                    stx   :bankArray
                    sta   :bankArray+2
@@ -246,7 +247,16 @@ BuildBank
 ; Change the patched value to one of DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based on the capabilities
 ; that the engine needs.
 
-                   lda   #$F000+{DP_ENTRY}          ; Set the address from each line to the next
+                   lda   #DP_ENTRY
+                   sta   :entryOffset
+                   lda   EngineMode
+                   bne   :not_simple
+                   lda   #ONE_LYR_ENTRY
+                   sta   :entryOffset
+:not_simple
+
+                   lda   #$F000                        ; Set the address from each line to the next
+                   ora   :entryOffset
                    ldy   #CODE_EXIT+1
                    ldx   #15*2
                    jsr   SetAbsAddrs
@@ -255,7 +265,9 @@ BuildBank
                    jsr   SetDPAddrs
 
                    ldy   #$F000+CODE_EXIT           ; Patch the last line with a JML to go to the next bank
-                   lda   #{$005C+{DP_ENTRY}*256}
+                   lda   :entryOffset
+                   xba
+                   ora   #$005C
                    sta   [:target],y
                    ldy   #$F000+CODE_EXIT+2
                    lda   :nextBank
