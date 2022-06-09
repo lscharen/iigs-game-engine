@@ -17,7 +17,7 @@ TS_SCREEN_ADDR        equ  {TILE_STORE_SIZE*8}      ; cached value of on-screen 
 
 ; TODO: Move these arrays into the K bank to support direct dispatch via jmp (abs,x)
 TS_BASE_TILE_COPY     equ  {TILE_STORE_SIZE*9}      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
-TS_BASE_TILE_DISP     equ  {TILE_STORE_SIZE*10}     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
+; TS_BASE_TILE_DISP     equ  {TILE_STORE_SIZE*10}     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
 TS_DIRTY_TILE_DISP    equ  {TILE_STORE_SIZE*11}     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
 
 TILE_STORE_NUM        equ  12                     ; Need this many parallel arrays
