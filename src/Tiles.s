@@ -112,6 +112,10 @@ InitTiles
 :fast
                  ldal FastTileProcs
                  stal K_TS_BASE_TILE_DISP,x
+                 ldal FastTileCopy
+                 stal K_TS_COPY_TILE_DATA,x
+                 ldal FastSpriteSub
+                 stal K_TS_SPRITE_TILE_DISP,x
 :out
 
 ;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
@@ -189,6 +193,10 @@ _SetTile
 ; functionality.  Sometimes it is simple, but in cases of the sprites overlapping Dynamic Tiles and other cases
 ; it can be more involved.
 
+                 lda  EngineMode
+                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
+                 beq  :fast
+
                  lda  TileStore+TS_TILE_ID,y
                  and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
                  xba
@@ -199,10 +207,6 @@ _SetTile
 ;                 ldal CopyTileProcs,x
 ;                 sta  TileStore+TS_DIRTY_TILE_COPY,y
 
-                 lda  EngineMode
-                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
-                 beq  :fast
-
                  lda  TileStore+TS_TILE_ID,y        ; Get the non-sprite dispatch address
                  and  #TILE_CTRL_MASK
                  xba
@@ -212,9 +216,29 @@ _SetTile
                  bra  :out
 
 :fast
+                 tyx
+                 lda  TileStore+TS_TILE_ID,y        ; First, check if the sprites are over or under
+                 bit  #TILE_PRIORITY_BIT
+                 beq  :fast_over
+                 ldal FastSpriteSub+2
+                 bra  :fast_under
+:fast_over       ldal FastSpriteSub
+:fast_under      stal K_TS_SPRITE_TILE_DISP,x
+
+                 lda  TileStore+TS_TILE_ID,y          ; Now, set the draw and copy routines based on H/V bits
+                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT  ; get the lookup value
+                 xba
+                 tax
+                 phx
+
                  ldal FastTileProcs,x
                  tyx
                  stal K_TS_BASE_TILE_DISP,x
+
+                 plx
+                 ldal FastTileCopy,x
+                 tyx
+                 stal K_TS_COPY_TILE_DATA,x
 
 :out
                  jmp  _PushDirtyTileY               ; on the next call to _ApplyTiles
@@ -417,4 +441,7 @@ b_15_3     endbit 15;3;]4
            <<<
 
 ; Store some tables in the K bank that will be used exclusively for jmp (abs,x) dispatch
-K_TS_BASE_TILE_DISP ds TILE_STORE_SIZE
+
+K_TS_BASE_TILE_DISP   ds TILE_STORE_SIZE      ; draw the tile without a sprite
+K_TS_COPY_TILE_DATA   ds TILE_STORE_SIZE      ; copy the tile into temp storage (used when tile below sprite)
+K_TS_SPRITE_TILE_DISP ds TILE_STORE_SIZE      ; select the sprite routine for this tile

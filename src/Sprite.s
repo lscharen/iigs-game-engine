@@ -601,6 +601,10 @@ _CacheSpriteBanks
             ora    #^TileStore
             sta    TileStoreBankAndTileDataBank
 
+            xba
+            ldx    #$100
+            sta    DP2_TILEDATA_AND_TILESTORE_BANKS,x     ; put a reversed copy in the second direct page
+
             lda    #>TileStore
             and    #$FF00
             ora    #^TileStore

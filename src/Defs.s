@@ -150,6 +150,9 @@ _TILE_ID               equ   158         ; Copy of the tile descriptor
 DP2_DIRTY_TILE_COUNT    equ  160         ; Local copy of dirty tile count to avoid banking
 DP2_DIRTY_TILE_CALLBACK equ  162
 
+; Some pre-defined bank values
+DP2_TILEDATA_AND_TILESTORE_BANKS equ 164
+
 SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuffArray addresses
 ; End direct page values
 

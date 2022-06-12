@@ -67,6 +67,19 @@ _TBCopyData
 
 _TBCopyDataVFast
                  tax
+]src             equ             7
+]dest            equ             0
+                 lup             8
+                 ldal            tiledata+{]src*4},x
+                 sta:            $0004+{]dest*$1000},y
+                 ldal            tiledata+{]src*4}+2,x
+                 sta:            $0001+{]dest*$1000},y
+]src             equ             ]src-1
+]dest            equ             ]dest+1
+                 --^
+                 plb
+                 rts
+
 _TBCopyDataV
 ]src             equ             7
 ]dest            equ             0
