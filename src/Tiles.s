@@ -110,14 +110,10 @@ InitTiles
 ;                 sta  TileStore+TS_BASE_TILE_DISP,x
                  bra  :out
 :fast
-                 lda  #_TBConstTile0                     ; Use the special tile 0 routines
-;                 ldal FastTileProcs
-                 stal K_TS_BASE_TILE_DISP,x
-                 lda  #_TBConstTileDataToDP2
-;                 ldal FastTileCopy
-                 stal K_TS_COPY_TILE_DATA,x
-                 ldal FastSpriteSub
-                 stal K_TS_SPRITE_TILE_DISP,x
+                 lda  #0                                 ; Initialize with Tile 0
+                 ldy  #FastOverZero
+                 jsr  _SetTileProcs
+
 :out
 
 ;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
@@ -197,8 +193,11 @@ _SetTile
 
                  lda  EngineMode
                  bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
-                 beq  :fast
+                 bne  :not_fast
+                 brl  _SetTileFast
+:nochange        rts
 
+:not_fast
                  lda  TileStore+TS_TILE_ID,y
                  and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
                  xba
@@ -215,46 +214,116 @@ _SetTile
                  tax
 ;                 ldal TileProcs,x
 ;                 sta  TileStore+TS_BASE_TILE_DISP,y
-                 bra  :out
+                 jmp  _PushDirtyTileY               ; on the next call to _ApplyTiles
 
-:fast
+; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
+; the tile priority bit is set, and whether this is the special tile 0 or not.
+_SetTileFast
                  tyx
-                 lda  TileStore+TS_TILE_ID,y        ; First, check if the sprites are over or under
+                 lda  TileStore+TS_TILE_ID,x
                  bit  #TILE_PRIORITY_BIT
                  beq  :fast_over
-                 ldal FastSpriteSub+2
-                 bra  :fast_under
-:fast_over       ldal FastSpriteSub
-:fast_under      stal K_TS_SPRITE_TILE_DISP,x
+:fast_under      bit  #TILE_ID_MASK
+                 beq  :fast_under_zero
+                 ldy  #FastUnderNonZero
+                 jsr  _SetTileProcs
+                 jmp  _PushDirtyTileX
 
-                 lda  TileStore+TS_TILE_ID,y          ; Now, set the draw and copy routines based on H/V bits
-                 bit  #TILE_ID_MASK                   ; unless it's the special Tile 0
-                 beq  :fast_0
-                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT  ; get the lookup value
-                 xba
-                 tax
-                 phx
+:fast_under_zero ldy  #FastUnderZero
+                 jsr  _SetTileProcs
+                 jmp  _PushDirtyTileX
 
-                 ldal FastTileProcs,x
-                 tyx
-                 stal K_TS_BASE_TILE_DISP,x
+:fast_over       bit  #TILE_ID_MASK
+                 beq  :fast_over_zero
+                 ldy  #FastOverNonZero
+                 jsr  _SetTileProcs
+                 jmp  _PushDirtyTileX
 
-                 plx
-                 ldal FastTileCopy,x
-                 tyx
-                 stal K_TS_COPY_TILE_DATA,x
-                 bra  :out
-:fast_0 
-                 lda  #_TBConstTile0                     ; Use the special tile 0 routines
-                 stal K_TS_BASE_TILE_DISP,x
-                 lda  #_TBConstTileDataToDP2
-                 stal K_TS_COPY_TILE_DATA,x
+:fast_over_zero  ldy  #FastOverZero
+                 jsr  _SetTileProcs
+                 jmp  _PushDirtyTileX
 
 :out
                  jmp  _PushDirtyTileY               ; on the next call to _ApplyTiles
 
-:nochange        rts
+; X = Tile Store offset
+; Y = table address
+; A = TILE_ID
+;
+; see TileProcTables in static/TileStore.s
+bnkPtr  equ  blttmp
+tblPtr  equ  blttmp+4
+stpTmp  equ  blttmp+8
+_SetTileProcs
+                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT  ; get the lookup value
+                 xba
+                 sta  stpTmp                            ; save it
 
+; Set a long pointer to this bank
+                 phk
+                 phk
+                 pla
+                 and  #$00FF
+                 stz  bnkPtr                          ; pointer to this bank
+                 sta  bnkPtr+2
+
+                 sty  tblPtr                          ; pointer to the table
+                 sta  tblPtr+2
+
+; Lookup the base tile procedure
+
+                 clc
+                 ldy  #0
+                 lda  [tblPtr],y                      ; load address of the base tile proc array
+                 adc  stpTmp                          ; add the offset
+                 tay
+                 lda  [bnkPtr],y                      ; load the actual value
+                 stal K_TS_BASE_TILE_DISP,x         ; store it in the dispatch table
+
+; Lookup the tile copy routine
+
+                 clc
+                 ldy  #2
+                 lda  [tblPtr],y                      ; load address to the tile copy proc array
+                 adc  stpTmp
+                 tay
+                 lda  [bnkPtr],y
+                 stal K_TS_COPY_TILE_DATA,x
+
+; Finally, load in the last two addresses directly
+
+                 ldy  #4
+                 lda  [tblPtr],y
+                 stal K_TS_SPRITE_TILE_DISP,x
+
+                 ldy  #6
+                 lda  [tblPtr],y
+                 stal K_TS_ONE_SPRITE,x
+                 rts
+
+
+; TileProcTables
+;
+; Tables of tuples used to populate the K_TS_* dispatch arrays for different combinations. Easier to maintain
+; than a bunch of conditional code.  Each "table" address holds four pointers to routines to handle the four
+; combinations of HFLIP and VFLIP bits.
+;
+; First address:  A table of routines that render a tile when there is no sprite present
+; Second address: A table of routines that copy a tile into the direct page workspace
+; Third address:  The general sprite routine; currently only used for Over/Under selection
+; Fourth address: The specific sprite routine to use when only one sprite intersects the tile
+FastOverNonZero   dw   FastTileProcs,FastTileCopy,FastSpriteOver,_OneSpriteFastOver
+FastOverZero      dw   FastTileProcs0,FastTileCopy0,FastSpriteOver,_OneSpriteFastOver0
+FastUnderNonZero  dw   FastTileProcs,FastTileCopy,FastSpriteUnder,_OneSpriteFastUnder
+FastUnderZero     dw   FastTileProcs0,FastTileCopy0,FastSpriteUnder,_OneSpriteFastUnder0
+
+; The routines will come from this table when ENGINE_MODE_TWO_LAYER and ENGINE_MODE_DYN_TILES
+; are both off.
+FastTileProcs     dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataVFast,_TBCopyDataVFast
+FastTileCopy      dw   _CopyTileDataToDP2,_CopyTileDataToDP2,_CopyTileDataToDP2V,_CopyTileDataToDP2V
+
+FastTileProcs0    dw   _TBConstTile0,_TBConstTile0,_TBConstTile0,_TBConstTile0
+FastTileCopy0     dw   _TBConstTileDataToDP2,_TBConstTileDataToDP2,_TBConstTileDataToDP2,_TBConstTileDataToDP2
 
 ; SetBG0XPos
 ;
@@ -455,3 +524,4 @@ b_15_3     endbit 15;3;]4
 K_TS_BASE_TILE_DISP   ds TILE_STORE_SIZE      ; draw the tile without a sprite
 K_TS_COPY_TILE_DATA   ds TILE_STORE_SIZE      ; copy the tile into temp storage (used when tile below sprite)
 K_TS_SPRITE_TILE_DISP ds TILE_STORE_SIZE      ; select the sprite routine for this tile
+K_TS_ONE_SPRITE       ds TILE_STORE_SIZE      ; specialized sprite routine when only one sprite covers the tile
