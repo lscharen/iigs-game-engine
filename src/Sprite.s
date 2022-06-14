@@ -605,6 +605,13 @@ _CacheSpriteBanks
             ldx    #$100
             sta    DP2_TILEDATA_AND_TILESTORE_BANKS,x     ; put a reversed copy in the second direct page
 
+            lda    #>spritedata
+            and    #$FF00
+            ora    #^TileStore
+            xba
+            ldx    #$100
+            sta    DP2_SPRITEDATA_AND_TILESTORE_BANKS,x     ; put a reversed copy in the second direct page
+
             lda    #>TileStore
             and    #$FF00
             ora    #^TileStore

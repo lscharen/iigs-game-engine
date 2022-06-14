@@ -107,3 +107,38 @@ _TBCopyTileMaskToCBuffV
                  --^
                  rts
 
+; Tile 0 specializations
+; _TBConstTile
+;
+; A specialized routine that fills in a tile with a single constant value.  It's intended to be used to
+; fill in solid colors, so there are no specialized horizontal or verical flipped variants
+_TBConstTile0    tax
+                 lda             #0
+_TBConstTileX    sta:            $0001,y
+                 sta:            $0004,y
+                 sta             $1001,y
+                 sta             $1004,y
+                 sta             $2001,y
+                 sta             $2004,y
+                 sta             $3001,y
+                 sta             $3004,y
+                 sta             $4001,y
+                 sta             $4004,y
+                 sta             $5001,y
+                 sta             $5004,y
+                 sta             $6001,y
+                 sta             $6004,y
+                 sta             $7001,y
+                 sta             $7004,y
+                 plb
+                 rts
+;                 jmp             _TBFillPEAOpcode
+
+_TBConstTileDataToDP2
+]line            equ   0
+                 lup   8
+                 stz   tmp_tile_data+{]line*4}
+                 stz   tmp_tile_data+{]line*4}+2
+]line            equ   ]line+1
+                 --^
+                 rts

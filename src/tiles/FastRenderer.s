@@ -7,14 +7,15 @@
 ; and then copied into the code field
 _RenderTileFast
             lda   TileStore+TS_SPRITE_FLAG,x       ; any sprites on this line?
-            bne   SpriteDispatch
+            bne   :sprites
 
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
             lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
             plb                                    ; set the code field bank
-            jmp   (K_TS_BASE_TILE_DISP,x)          ; go to the tile copy routine (just basics)
+            jmp   (K_TS_BASE_TILE_DISP,x)          ; go to the tile copy routine
+:sprites    jmp   (K_TS_SPRITE_TILE_DISP,x)        ; go to the sprite+tile routine
 
 ; The TS_BASE_TILE_DISP routines will come from this table when ENGINE_MODE_TWO_LAYER and
 ; ENGINE_MODE_DYN_TILES are both off.
@@ -22,21 +23,24 @@ FastTileProcs dw   _TBCopyDataFast,_TBCopyDataFast,_TBCopyDataVFast,_TBCopyDataV
 FastTileCopy  dw   _CopyTileDataToDP2,_CopyTileDataToDP2,_CopyTileDataToDP2V,_CopyTileDataToDP2V
 FastSpriteSub dw   FastSpriteOver,FastSpriteUnder
 
-; Need to determine if the sprite or tile data is on top, as that will decide whether the
-; sprite or tile data is copied into the temporary buffer first.  Also, if TWO_LAYER is set
-; then the mask information must be copied as well....This is the last decision point.
-
-SpriteDispatch
-            jmp   (K_TS_SPRITE_TILE_DISP,x)
-
+; Optimized routines to render sprites on top of the tile data and update the code field
+; assuming that the opcode will never need to be reset, e.g. all of the instructions are
+; PEA opcodes, so only the operands need to be set.
+;
+; Since the sprite is drawn on top of the tile, the first step is to copy the tile data
+; into the direct page temporary space, then dispatch to the appropriate sprite rendering
+; subroutine
 FastSpriteOver
             txy
             SpriteBitsToVBuffAddrs OneSpriteFast;TwoSpritesFast;ThreeSpritesFast;FourSpritesFast
 
+; Optimized routines for drawing sprites underneath the tile.  In this case, the sprite is drawn first,
+; so we have to calculate the sprite dispatch subrotine to copy the sprite data into the direct
+; page space and then merge it with the tile data at the end.
 FastSpriteUnder
+            rts
             txy
             SpriteBitsToVBuffAddrs OneSpriteFastUnder;OneSpriteFastUnder;OneSpriteFastUnder;OneSpriteFastUnder
-
 
 ; This handles sprite with the tile above
 OneSpriteFastUnder
@@ -88,17 +92,17 @@ _CopySpriteDataToDP2
 OneSpriteFast
             sta   sprite_ptr0
             tyx
-            ldy   TileStore+TS_TILE_ADDR,x
 
-            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
-            plb
-            jsr   (K_TS_COPY_TILE_DATA,x)
-            plb
+            ldy   TileStore+TS_TILE_ADDR,x         ; load the tile address
+            pei   DP2_TILEDATA_AND_TILESTORE_BANKS ; copy the tile.  Setting the bank
+            plb                                    ; saves 16 cycles and costs 14, so it's
+            jsr   (K_TS_COPY_TILE_DATA,x)          ; a small win, but we really do it to be
+            plb                                    ; able to preserve the X register
 
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
-            ldx   sprite_ptr0                      ; address of sprite vbuff info
+            ldx   sprite_ptr0
             plb
 
 ]line       equ   0
@@ -115,7 +119,7 @@ OneSpriteFast
 ]line       equ   ]line+1
             --^
             plb
-            rts 
+            rts
 
 TwoSpriteLine mac
 ;            and   [sprite_ptr1],y
@@ -127,35 +131,51 @@ TwoSpriteLine mac
             <<<
 
 TwoSpritesFast
-            ldx   TileStore+TS_TILE_ADDR,y
-            lda   TileStore+TS_CODE_ADDR_HIGH,y    ; load the bank of the target code field line
-            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
-            lda   TileStore+TS_CODE_ADDR_LOW,y     ; load the address of the code field
-            pha                                    ; Need to pop it later....
+            tyx                                    ; save for after compositing the sprites
 
-            sep   #$20                             ; set the sprite data bank
-            lda   #^spritedata
-            pha
+            ldy   TileStore+TS_TILE_ADDR,x
+            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
             plb
-            rep   #$20
+            jsr   (K_TS_COPY_TILE_DATA,x)
+            plb
+
+            pei   DP2_SPRITEDATA_AND_TILESTORE_BANKS 
+            plb                                    ; set the sprite data bank
 
 ]line       equ   0
             lup   8
             ldy   #{]line*SPRITE_PLANE_SPAN}
-            ldal  tiledata+{]line*4},x
+            lda   tmp_tile_data+{]line*4}
             TwoSpriteLine
             sta   tmp_tile_data+{]line*4}
 
             ldy   #{]line*SPRITE_PLANE_SPAN}+2
-            ldal  tiledata+{]line*4}+2,x
+            lda   tmp_tile_data+{]line*4}+2
             TwoSpriteLine
             sta   tmp_tile_data+{]line*4}+2
-]line            equ   ]line+1
+]line       equ   ]line+1
             --^
 
-            ply                                    ; Pop off CODE_ADDR_LOW
+            plb                                    ; restore access to data bank
+
+; Fall through
+_CopyDP2ToCodeField
+            lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
+            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
+            ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
             plb                                    ; Set the CODE_ADDR_HIGH bank
-            jmp   _CopyDP2ToCodeField
+
+]line       equ   0
+            lup   8
+            lda   tmp_tile_data+{]line*4}
+            sta:  $0004+{]line*$1000},y
+            lda   tmp_tile_data+{]line*4}+2
+            sta:  $0001+{]line*$1000},y
+]line       equ   ]line+1
+            --^
+
+            plb                                   ; Reset to the bank in the top byte of CODE_ADDR_HIGH
+            rts
 
 ThreeSpriteLine mac
 ;            and   [sprite_ptr2],y
@@ -170,34 +190,32 @@ ThreeSpriteLine mac
             <<<
 
 ThreeSpritesFast
-            ldx   TileStore+TS_TILE_ADDR,y
-            lda   TileStore+TS_CODE_ADDR_HIGH,y    ; load the bank of the target code field line
-            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
-            lda   TileStore+TS_CODE_ADDR_LOW,y     ; load the address of the code field
-            pha                                    ; Need to pop it later....
+            tyx                                    ; save for after compositing the sprites
 
-            sep   #$20                             ; set the sprite data bank
-            lda   #^spritedata
-            pha
+            ldy   TileStore+TS_TILE_ADDR,x
+            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
             plb
-            rep   #$20
+            jsr   (K_TS_COPY_TILE_DATA,x)
+            plb
+
+            pei   DP2_SPRITEDATA_AND_TILESTORE_BANKS 
+            plb                                    ; set the sprite data bank
 
 ]line       equ   0
             lup   8
             ldy   #{]line*SPRITE_PLANE_SPAN}
-            ldal  tiledata+{]line*4},x
+            lda   tmp_tile_data+{]line*4}
             ThreeSpriteLine
             sta   tmp_tile_data+{]line*4}
 
             ldy   #{]line*SPRITE_PLANE_SPAN}+2
-            ldal  tiledata+{]line*4}+2,x
+            lda   tmp_tile_data+{]line*4}+2
             ThreeSpriteLine
             sta   tmp_tile_data+{]line*4}+2
-]line            equ   ]line+1
+]line       equ   ]line+1
             --^
 
-            ply                                    ; Pop off CODE_ADDR_LOW
-            plb                                    ; Set the CODE_ADDR_HIGH bank
+            plb
             jmp   _CopyDP2ToCodeField
 
 FourSpriteLine mac
@@ -216,45 +234,30 @@ FourSpriteLine mac
             <<<
 
 FourSpritesFast
-            ldx   TileStore+TS_TILE_ADDR,y
-            lda   TileStore+TS_CODE_ADDR_HIGH,y    ; load the bank of the target code field line
-            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
-            lda   TileStore+TS_CODE_ADDR_LOW,y     ; load the address of the code field
-            pha                                    ; Need to pop it later....
+            tyx                                    ; save for after compositing the sprites
 
-            sep   #$20                             ; set the sprite data bank
-            lda   #^spritedata
-            pha
+            ldy   TileStore+TS_TILE_ADDR,x
+            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
             plb
-            rep   #$20
+            jsr   (K_TS_COPY_TILE_DATA,x)
+            plb
+
+            pei   DP2_SPRITEDATA_AND_TILESTORE_BANKS 
+            plb                                    ; set the sprite data bank
 
 ]line       equ   0
             lup   8
             ldy   #{]line*SPRITE_PLANE_SPAN}
-            ldal  tiledata+{]line*4},x
+            lda   tmp_tile_data+{]line*4}
             FourSpriteLine
             sta   tmp_tile_data+{]line*4}
 
             ldy   #{]line*SPRITE_PLANE_SPAN}+2
-            ldal  tiledata+{]line*4}+2,x
+            lda   tmp_tile_data+{]line*4}+2
             FourSpriteLine
             sta   tmp_tile_data+{]line*4}+2
 ]line            equ   ]line+1
             --^
 
-            ply                                    ; Pop off CODE_ADDR_LOW
-            plb                                    ; Set the CODE_ADDR_HIGH bank
-
-; Fall through
-
-_CopyDP2ToCodeField
-]line       equ   0
-            lup   8
-            lda   tmp_tile_data+{]line*4}
-            sta:  $0004+{]line*$1000},y
-            lda   tmp_tile_data+{]line*4}+2
-            sta:  $0001+{]line*$1000},y
-]line       equ   ]line+1
-            --^
-            plb                                   ; Reset to the bank in the top byte of CODE_ADDR_HIGH
-            rts
+            plb
+            jmp   _CopyDP2ToCodeField

@@ -110,9 +110,11 @@ InitTiles
 ;                 sta  TileStore+TS_BASE_TILE_DISP,x
                  bra  :out
 :fast
-                 ldal FastTileProcs
+                 lda  #_TBConstTile0                     ; Use the special tile 0 routines
+;                 ldal FastTileProcs
                  stal K_TS_BASE_TILE_DISP,x
-                 ldal FastTileCopy
+                 lda  #_TBConstTileDataToDP2
+;                 ldal FastTileCopy
                  stal K_TS_COPY_TILE_DATA,x
                  ldal FastSpriteSub
                  stal K_TS_SPRITE_TILE_DISP,x
@@ -226,6 +228,8 @@ _SetTile
 :fast_under      stal K_TS_SPRITE_TILE_DISP,x
 
                  lda  TileStore+TS_TILE_ID,y          ; Now, set the draw and copy routines based on H/V bits
+                 bit  #TILE_ID_MASK                   ; unless it's the special Tile 0
+                 beq  :fast_0
                  and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT  ; get the lookup value
                  xba
                  tax
@@ -238,6 +242,12 @@ _SetTile
                  plx
                  ldal FastTileCopy,x
                  tyx
+                 stal K_TS_COPY_TILE_DATA,x
+                 bra  :out
+:fast_0 
+                 lda  #_TBConstTile0                     ; Use the special tile 0 routines
+                 stal K_TS_BASE_TILE_DISP,x
+                 lda  #_TBConstTileDataToDP2
                  stal K_TS_COPY_TILE_DATA,x
 
 :out

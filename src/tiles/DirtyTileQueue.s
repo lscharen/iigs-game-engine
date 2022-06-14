@@ -80,7 +80,7 @@ _PopDirtyTile2                                       ; alternate entry point
 ; for each dirty tile.  This is an unrolled loop, so we avoid the need to track a register and
 ; decrement on each iteration.
 ;
-; Also, if we are handling less that 8 dirty tiles, we use a code path that does not
+; Also, if we are handling less than 8 dirty tiles, we use a code path that does not
 ; need to use an index register
 ;
 ; Bank = Tile Store
