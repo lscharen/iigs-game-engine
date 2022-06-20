@@ -114,8 +114,9 @@ InitTiles
                  bra  :out
 :fast
                  lda  #0                                 ; Initialize with Tile 0
-                 ldy  #FastOverZA
+                 ldy  #FastProcs
                  jsr  _SetTileProcs
+                 bra  :out
 
 :dyn             lda  #0                                 ; Initialize with Tile 0
                  ldy  #DynOverZA
@@ -209,25 +210,26 @@ _SetTile
 
 ; Calculate the base tile proc selector from the tile Id
                  stz  procIdx
-                 lda  newTileId
 
-                 clc
-                 bit  #TILE_PRIORITY_BIT
+                 lda  #TILE_PRIORITY_BIT
+                 bit  newTileId
                  beq  :low_priority
-                 sec
-:low_priority    asl  procIdx
+                 lda  #4
+                 sta  procIdx
+:low_priority
 
-                 clc
-                 bit  #TILE_ID_MASK
+                 lda  #TILE_ID_MASK
+                 bit  newTileId
                  bne  :not_zero
-                 sec
-:not_zero        asl  procIdx
+                 lda  #2
+                 tsb  procIdx
+:not_zero
 
-                 clc
-                 bit  #TILE_VFLIP_BIT
+                 lda  #TILE_VFLIP_BIT
                  beq  :no_vflip
-                 sec
-:no_vflip        asl  procIdx
+                 lda  #1
+                 tsb  procIdx
+:no_vflip
 
 ; Multiple by 6 to get the correct table entry index
 
@@ -235,7 +237,7 @@ _SetTile
                  lda  procIdx
                  asl
                  adc  procIdx
-                 tay
+                 sta  procIdx
 
 ; Now integrate with the engine mode indicator
 
@@ -270,7 +272,7 @@ _SetTile
 ; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
 ; the tile priority bit is set, and whether this is the special tile 0 or not.
 :setTileFast
-                 lda  #FastProcs
+                 ldy  #FastProcs
                  lda  procIdx
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX
@@ -280,21 +282,18 @@ _SetTile
 ; are both Dynamic tiles or both Basic tiles, then  we can use an optimized routine.  Otherwise
 ; we must set the opcodes as well as the operands
 :setTileDyn
-                 lda  #DynProcs
+                 brk  $55
+                 ldy  #DynProcs
                  lda  procIdx
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX
-
-:out
-                 jmp  _PushDirtyTileY               ; on the next call to _ApplyTiles
 
 ; X = Tile Store offset
 ; Y = Engine Mode Base Table address
 ; A = Table proc index
 ;
 ; see TileProcTables in static/TileStore.s
-bnkPtr  equ  blttmp
-tblPtr  equ  blttmp+4
+tblPtr  equ  blttmp
 _SetTileProcs
 
 ; Set a long pointer to this bank
@@ -447,6 +446,7 @@ last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
             clc    ; pre-adjust these later
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
+            tyx
             jmp   (K_TS_ONE_SPRITE,x)
 next_bit
             <<<
@@ -470,6 +470,15 @@ endbit      mac
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
+            <<<
+
+endbit1     mac
+            lda   (SPRITE_VBUFF_PTR+{]1*2}),y
+            clc    ; pre-adjust these later
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
+            sta   sprite_ptr0+{]2*4}
+            tyx
+            jmp   (K_TS_ONE_SPRITE,x)
             <<<
 
 ; OPTIMIZATION:
@@ -499,22 +508,22 @@ endbit      mac
 ; ]4 address of four sprite process
 
 SpriteBitsToVBuffAddrs mac
-           dobit1  0;0;b_1_1;]1
-           dobit1  1;0;b_2_1;]1
-           dobit1  2;0;b_3_1;]1
-           dobit1  3;0;b_4_1;]1
-           dobit1  4;0;b_5_1;]1
-           dobit1  5;0;b_6_1;]1
-           dobit1  6;0;b_7_1;]1
-           dobit1  7;0;b_8_1;]1
-           dobit1  8;0;b_9_1;]1
-           dobit1  9;0;b_10_1;]1
-           dobit1  10;0;b_11_1;]1
-           dobit1  11;0;b_12_1;]1
-           dobit1  12;0;b_13_1;]1
-           dobit1  13;0;b_14_1;]1
-           dobit1  14;0;b_15_1;]1
-           endbit  15;0;]1
+           dobit1  0;0;b_1_1
+           dobit1  1;0;b_2_1
+           dobit1  2;0;b_3_1
+           dobit1  3;0;b_4_1
+           dobit1  4;0;b_5_1
+           dobit1  5;0;b_6_1
+           dobit1  6;0;b_7_1
+           dobit1  7;0;b_8_1
+           dobit1  8;0;b_9_1
+           dobit1  9;0;b_10_1
+           dobit1  10;0;b_11_1
+           dobit1  11;0;b_12_1
+           dobit1  12;0;b_13_1
+           dobit1  13;0;b_14_1
+           dobit1  14;0;b_15_1
+           endbit1 15;0
 
 b_1_1      dobit  1;1;b_2_2;]2
 b_2_1      dobit  2;1;b_3_2;]2

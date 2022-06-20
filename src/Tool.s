@@ -368,7 +368,6 @@ _TSGetSeconds
                 put     render/Sprite1.s
                 put     render/Sprite2.s
                 put     tiles/DirtyTileQueue.s
-;                put     tiles/FastRenderer.s
                 put     blitter/Horz.s
                 put     blitter/Vert.s
                 put     blitter/BG0.s
