@@ -388,11 +388,13 @@ OldOneSecVec      ENT
                   ds        4
 Timers            ENT
                   ds        TIMER_REC_SIZE*MAX_TIMERS
+
+; From the IIgs ref 
 DefaultPalette   ENT
-                 dw    $0000,$007F,$0090,$0FF0
-                 dw    $000F,$0080,$0f70,$0FFF
-                 dw    $0fa9,$0ff0,$00e0,$04DF
-                 dw    $0d00,$078f,$0ccc,$0FFF
+                 dw    $0000,$0777,$0841,$072C
+                 dw    $000F,$0080,$0F70,$0D00
+                 dw    $0FA9,$0FF0,$00E0,$04DF
+                 dw    $0DAF,$078F,$0CCC,$0FFF
 
 ;  0. Full Screen           : 40 x 25   320 x 200 (32,000 bytes (100.0%)) 
 ;  1. Sword of Sodan        : 34 x 24   272 x 192 (26,112 bytes ( 81.6%))

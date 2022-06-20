@@ -153,6 +153,7 @@ DP2_DIRTY_TILE_CALLBACK equ  162
 ; Some pre-defined bank values
 DP2_TILEDATA_AND_TILESTORE_BANKS equ 164
 DP2_SPRITEDATA_AND_TILESTORE_BANKS equ 166
+DP2_TILEDATA_AND_SPRITEDATA_BANKS equ 168
 
 SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuffArray addresses
 ; End direct page values
@@ -186,16 +187,16 @@ PAD_BUTTON_A           equ   $02
 PAD_KEY_DOWN           equ   $04
 
 ; Tile constants
-TILE_ID_MASK           equ   $01FF
-TILE_SPRITE_BIT        equ   $8000                  ; Set if this tile intersects an active sprite
+; TILE_RESERVED_BIT      equ   $8000
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
-TILE_FRINGE_BIT        equ   $2000
-TILE_MASK_BIT          equ   $1000
-TILE_DYN_BIT           equ   $0800
+TILE_FRINGE_BIT        equ   $2000                  ; Unused
+TILE_MASK_BIT          equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
+TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
+TILE_ID_MASK           equ   $01FF
 TILE_CTRL_MASK         equ   $FE00
-TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
+; TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
 
 ; Sprite constants
 SPRITE_HIDE            equ   $2000

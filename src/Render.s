@@ -211,8 +211,8 @@ _RenderDirtyTile
 ; Y is set to the top-left address of the tile in SHR screen
 ; A is set to the address of the tile data
 NoSpritesDirty
-            lda   TileStore+TS_DIRTY_TILE_DISP,y
-            stal  :nsd+1
+;            lda   TileStore+TS_DIRTY_TILE_DISP,y
+;            stal  :nsd+1
             ldx   TileStore+TS_SCREEN_ADDR,y       ; Get the on-screen address of this tile
             lda   TileStore+TS_TILE_ADDR,y         ; load the address of this tile's data (pre-calculated)
             plb                                    ; set the code field bank

@@ -56,11 +56,9 @@ _PushDirtyTileY
 :occupied2
                  tya                                ; Make sure TileStore offset is returned in the accumulator
                  rts
+
 ; Remove a dirty tile from the list and return it in state ready to be rendered.  It is important
-; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update,
-; because this routine merges the tile IDs stored in the Tile Store with the Sprite
-; information to set the TILE_SPRITE_BIT.  This is the *only* place in the entire code base that
-; applies this bit to a tile descriptor.
+; that the core rendering functions *only* use _PopDirtyTile to get a list of tiles to update.
 _PopDirtyTile
                  ldy  DirtyTileCount
                  bne  _PopDirtyTile2
@@ -93,7 +91,6 @@ pdtf_not_empty
                  cpx  #16                         ; If there are >= 8 elements, then
                  bcs  full_chunk                  ; do a full chunk
 
-;                 stz  DP2_DIRTY_TILE_COUNT        ; Otherwise, this pass will handle them all
                  jmp  (at_table,x)
 at_table         da   at_exit,at_one,at_two,at_three
                  da   at_four,at_five,at_six,at_seven
@@ -109,76 +106,76 @@ full_chunk       txa
 
                  ldx   DirtyTiles+14,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+12,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+10,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+8,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+6,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+4,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+2,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
                  ldy   DP2_DIRTY_TILE_COUNT
                  ldx   DirtyTiles+0,y
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
                  jmp   _PopDirtyTilesFast
 
 ; These routines just handle between 1 and 7 dirty tiles
 at_seven
                  ldx   DirtyTiles+12
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
 at_six
                  ldx   DirtyTiles+10
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
 at_five
                  ldx   DirtyTiles+8
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
 at_four
                  ldx   DirtyTiles+6
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
 at_three
                  ldx   DirtyTiles+4
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
 at_two
                  ldx   DirtyTiles+2
                  stz   TileStore+TS_DIRTY,x
-                 jsr   _RenderTileFast
+                 jsr   _RenderTile
 
 at_one
                  ldx   DirtyTiles+0
                  stz   TileStore+TS_DIRTY,x
-                 jmp   _RenderTileFast
+                 jmp   _RenderTile

@@ -42,6 +42,7 @@ _TBSolidTile_VH
 ; register value.  This must be restored prior to returning
 _TBCopyDataFast
                  tax
+_TBCopyDataFastX
 ]line            equ             0
                  lup             8
                  ldal            tiledata+{]line*4},x
@@ -53,6 +54,10 @@ _TBCopyDataFast
                  plb
                  rts
 
+_TBCopyDataSlow
+                 tax
+                 jsr   _TBFillPEAOpcode
+                 jmp   _TBCopyDataFastX
 
 _TBCopyData
 ]line            equ             0
@@ -67,6 +72,7 @@ _TBCopyData
 
 _TBCopyDataVFast
                  tax
+_TBCopyDataVFastX
 ]src             equ             7
 ]dest            equ             0
                  lup             8
@@ -79,6 +85,11 @@ _TBCopyDataVFast
                  --^
                  plb
                  rts
+
+_TBCopyDataVSlow
+                 tax
+                 jsr   _TBFillPEAOpcode
+                 jmp   _TBCopyDataVFastX
 
 _TBCopyDataV
 ]src             equ             7

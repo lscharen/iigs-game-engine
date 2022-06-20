@@ -59,8 +59,8 @@ CopyNoSprites
                  lda   TileStore+TS_CODE_ADDR_HIGH,x  ; load the bank of the target code field line
                  pha                                  ; and put on the stack for later
 
-                 lda   TileStore+TS_BASE_ADDR+1,x     ; load the base address of the code field ($0000 or $8000)
-                 sta   _BASE_ADDR+1                   ; so we can get by just copying the high byte
+;                 lda   TileStore+TS_BASE_ADDR+1,x     ; load the base address of the code field ($0000 or $8000)
+;                 sta   _BASE_ADDR+1                   ; so we can get by just copying the high byte
                  rep   #$20
 
                  lda   TileStore+TS_BASE_TILE_DISP,x  ; Get the address of the renderer for this tile

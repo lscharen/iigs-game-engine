@@ -12,13 +12,14 @@ TS_TILE_ADDR          equ  {TILE_STORE_SIZE*3}      ; cached value, the address 
 TS_CODE_ADDR_LOW      equ  {TILE_STORE_SIZE*4}      ; const value, address of this tile in the code fields
 TS_CODE_ADDR_HIGH     equ  {TILE_STORE_SIZE*5}
 TS_WORD_OFFSET        equ  {TILE_STORE_SIZE*6}      ; const value, word offset value for this tile if LDA (dp),y instructions re used
-TS_BASE_ADDR          equ  {TILE_STORE_SIZE*7}      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
+;TS_BASE_ADDR          equ  {TILE_STORE_SIZE*7}      ; const value, because there are two rows of tiles per bank, this is set to $0000 or $8000.
+TS_JMP_ADDR           equ  {TILE_STORE_SIZE*7}      ; const value, address of the 32-byte snippet space for this tile
 TS_SCREEN_ADDR        equ  {TILE_STORE_SIZE*8}      ; cached value of on-screen location of tile. Used for DirtyRender.
 
 ; TODO: Move these arrays into the K bank to support direct dispatch via jmp (abs,x)
-TS_BASE_TILE_COPY     equ  {TILE_STORE_SIZE*9}      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
+; TS_BASE_TILE_COPY     equ  {TILE_STORE_SIZE*9}      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
 ; TS_BASE_TILE_DISP     equ  {TILE_STORE_SIZE*10}     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
-TS_DIRTY_TILE_DISP    equ  {TILE_STORE_SIZE*11}     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
+; TS_DIRTY_TILE_DISP    equ  {TILE_STORE_SIZE*11}     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
 
 TILE_STORE_NUM        equ  12                     ; Need this many parallel arrays
 
