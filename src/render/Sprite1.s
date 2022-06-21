@@ -128,11 +128,11 @@ _FillPEAOpcode
 
 ; Drawing under the zero tile is the same as not drawing a sprite fo both the fast and slow cases
 _OneSpriteFastUnderA
-            jsr   _CopyTileDataAndMaskToDP
+            jsr   FastCopyTileDataAndMaskA
             bra   _OneSpriteFastUnder
 
 _OneSpriteFastUnderV
-            jsr   _CopyTileDataAndMaskToDPV
+            jsr   FastCopyTileDataAndMaskV
 
 _OneSpriteFastUnder
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
@@ -144,12 +144,12 @@ _OneSpriteFastUnder
 ]line       equ   0
             lup   8
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            ora   tmp_tile_mask+{]line*4}
+            and   tmp_tile_mask+{]line*4}
             ora   tmp_tile_data+{]line*4}
             sta:  $0004+{]line*$1000},y
 
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            ora   tmp_tile_mask+{]line*4}+2
+            and   tmp_tile_mask+{]line*4}+2
             ora   tmp_tile_data+{]line*4}+2
             sta:  $0001+{]line*$1000},y
 ]line       equ   ]line+1

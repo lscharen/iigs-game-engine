@@ -188,3 +188,49 @@ FastCopyTileDataV
             
             plb
             rts
+
+FastCopyTileDataAndMaskA
+            ldy   TileStore+TS_TILE_ADDR,x         ; load the tile address
+            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
+            plb                                    ; set to the tiledata bank
+
+]line       equ   0
+            lup   8
+            lda   tiledata+{]line*4},y
+            sta   tmp_tile_data+{]line*4}
+            lda   tiledata+{]line*4}+32,y
+            sta   tmp_tile_mask+{]line*4}
+
+            lda   tiledata+{]line*4}+2,y
+            sta   tmp_tile_data+{]line*4}+2
+            lda   tiledata+{]line*4}+32+2,y
+            sta   tmp_tile_mask+{]line*4}+2
+]line       equ   ]line+1
+            --^
+
+            plb
+            rts
+
+FastCopyTileDataAndMaskV
+            ldy   TileStore+TS_TILE_ADDR,x         ; load the tile address
+            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
+            plb                                    ; set to the tiledata bank
+
+]src        equ   7
+]dest       equ   0
+            lup   8
+            lda   tiledata+{]src*4},y
+            sta   tmp_tile_data+{]dest*4}
+            lda   tiledata+{]src*4}+32,y
+            sta   tmp_tile_mask+{]dest*4}
+
+            lda   tiledata+{]src*4}+2,y
+            sta   tmp_tile_data+{]dest*4}+2
+            lda   tiledata+{]src*4}+32+2,y
+            sta   tmp_tile_mask+{]dest*4}+2
+]src        equ   ]src-1
+]dest       equ   ]dest+1
+            --^
+            
+            plb
+            rts

@@ -358,7 +358,7 @@ FastOverNV   dw   _TBCopyDataVFast,GenericOverZero,_OneSpriteFastOverV
 ;FastOverNV   dw   _TBCopyDataVFast,GenericOverVFast,_OneSpriteFastOverV
 FastUnderZA  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
 FastUnderZV  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
-FastUnderNA  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
+FastUnderNA  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastUnderA
 FastUnderNV  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
 ;FastUnderNA  dw   _TBCopyDataFast,GenericUnderAFast,_OneSpriteFastUnderA
 ;FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
