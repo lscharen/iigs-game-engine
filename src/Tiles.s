@@ -197,7 +197,10 @@ _SetTile
                  jsr  _GetTileAddr
                  sta  TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
 
-; Set the standard renderer procs for this tile.
+; Set the renderer procs for this tile.
+;
+; NOTE: Later on, optimize this to just take the Tile ID & TILE_CTRL_MASK and lookup the right proc
+;       table address from a lookup table....
 ;
 ;  1. The dirty render proc is always set the same.
 ;  2. If BG1 and DYN_TILES are disabled, then the TS_BASE_TILE_DISP is selected from the Fast Renderers, otherwise
@@ -243,23 +246,10 @@ _SetTile
                  brl  :setTileDyn
 
 :not_dyn
-                 lda  TileStore+TS_TILE_ID,x
-                 and  #TILE_VFLIP_BIT+TILE_HFLIP_BIT ; get the lookup value
-                 xba
-                 tay
-;                 ldal DirtyTileProcs,x
-;                 sta  TileStore+TS_DIRTY_TILE_DISP,y
-
-;                 ldal CopyTileProcs,x
-;                 sta  TileStore+TS_DIRTY_TILE_COPY,y
-
-                 lda  TileStore+TS_TILE_ID,x        ; Get the non-sprite dispatch address
-                 and  #TILE_CTRL_MASK
-                 xba
-                 tay
-;                 ldal TileProcs,y
-;                 sta  TileStore+TS_BASE_TILE_DISP,y
-                 jmp  _PushDirtyTileX               ; on the next call to _ApplyTiles
+                 ldy  #SlowProcs            ; safe for now....
+                 lda  procIdx
+                 jsr  _SetTileProcs
+                 jmp  _PushDirtyTileX
 
 ; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
 ; the tile priority bit is set, and whether this is the special tile 0 or not.
@@ -270,12 +260,22 @@ _SetTile
                  jmp  _PushDirtyTileX
 
 ; Specialized check for when the engine has enabled dynamic tiles. In this case we are no longer
-; guaranteed that the opcodes in a tile are PEA instructions.  If the old tile and the new tile
-; are both Dynamic tiles or both Basic tiles, then  we can use an optimized routine.  Otherwise
-; we must set the opcodes as well as the operands
+; guaranteed that the opcodes in a tile are PEA instructions.  
 :setTileDyn
+                 lda  #TILE_DYN_BIT
+                 bit  newTileId
+                 beq  :pickSlowProc            ; If the Dynamic bit is not set, select a tile proc that sets opcodes
 
-;                 ldy  #DynProcs
+                 lda  newTileId                ; Otherwise chose one of the two dynamic tuples
+                 and  #TILE_PRIORITY_BIT
+                 beq  :pickDynProc             ; If the Priority bit is not set, pick the first entry
+                 lda  #1                       ; If the Priority bit is set, pick the other one
+
+:pickDynProc     ldy  #DynProcs
+                 jsr  _SetTileProcs
+                 jmp  _PushDirtyTileX
+
+:pickSlowProc    ldy  #SlowProcs
                  lda  procIdx
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX
@@ -375,14 +375,20 @@ SlowUnderNV  dw   CopyTileVSlow,SpriteUnderVSlow,OneSpriteSlowUnderV
 ; that does not need to worry about a second background.  Because dynamic
 ; tiles don't support horizontal or vertical flipping, there are only two 
 ; sets of procedures: one for Over and one for Under.
-;DynOver      dw   _TBDynamicTile,DynamicOver,_OneSpriteDynamicOver
-;DynUnder     dw   _TBDynamicTile,DynamicUnder,_OneSpriteDynamicUnder
+DynProcs
+DynOver      dw   CopyDynamicTile,DynamicOver,OneSpriteDynamicOver
+DynUnder     dw   CopyDynamicTile,DynamicUnder,OneSpriteDynamicUnder
 
 ; "Two Layer" procs. These are the most complex procs.  Generally,
 ; all of these methods are implemented by building up the data
 ; and mask into the direct page space and then calling a common
 ; function to create the complex code fragments in the code field.
 ; There is not a lot of opportuinity to optimize these routines.
+;
+; To improve the performance when two-layer rendering is enabled,
+; the TILE_SOLID_BIT hint bit can be set to indicate that a tile
+; has no transparency.  This allows one of the faster routines
+; to be selected.
 
 
 

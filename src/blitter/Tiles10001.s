@@ -29,7 +29,7 @@ _TBDynamicSpriteTile
                  sta     _JTBL_CACHE                  ; within one tile, the second column is consecutive
 
                  lda     _OP_CACHE
-                 adc     #$0200
+                 adc     #$0200                       ; Advance to the next word
                  sta     _OP_CACHE
 
                  CopyDynWord  2;$0000

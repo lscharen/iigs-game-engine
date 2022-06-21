@@ -190,7 +190,7 @@ PAD_KEY_DOWN           equ   $04
 ; TILE_RESERVED_BIT      equ   $8000
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
 TILE_FRINGE_BIT        equ   $2000                  ; Unused
-TILE_MASK_BIT          equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
+TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
 TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
