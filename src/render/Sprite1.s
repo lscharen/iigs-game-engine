@@ -27,11 +27,8 @@ _OneSpriteFastOver0
             plb                                    ; Restore the TileStore bank
             rts
 
-; Next implementation; drawing a sprite onto a regular tile.  In this case we need to make
-; use of the K_TS_COPY_TILE_DATA function because that takes care of copying the correct
-; tile data into the direct page buffer.
-
-; The 1-sprite dispatch prserves the X-register, so it already points to the TileStore
+; Next implementation; drawing a sprite onto a regular tile. The 1-sprite dispatch preerves the
+; X-register, so it already points to the TileStore
 
 _OneSpriteFastOverV
             jsr   FastCopyTileDataV

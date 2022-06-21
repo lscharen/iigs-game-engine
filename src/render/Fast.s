@@ -90,12 +90,12 @@ GenericUnderAFast
             lup   8
             lda   tmp_sprite_data+{]line*4}
             andl  tiledata+{]line*4}+32,x
-            oral  tiledata+{]line*4}+32,x
+            oral  tiledata+{]line*4},x
             sta:  $0004+{]line*$1000},y
 
             lda   tmp_sprite_data+{]line*4}+2
             andl  tiledata+{]line*4}+32+2,x
-            oral  tiledata+{]line*4}+32+2,x
+            oral  tiledata+{]line*4}+2,x
             sta:  $0001+{]line*$1000},y
 ]line       equ   ]line+1
             --^
@@ -116,12 +116,12 @@ GenericUnderVFast
             lup   8
             lda   tmp_sprite_data+{]line*4}
             andl  tiledata+{]src*4}+32,x
-            oral  tiledata+{]src*4}+32,x
+            oral  tiledata+{]src*4},x
             sta:  $0004+{]line*$1000},y
 
             lda   tmp_sprite_data+{]line*4}+2
             andl  tiledata+{]src*4}+32+2,x
-            oral  tiledata+{]src*4}+32+2,x
+            oral  tiledata+{]src*4}+2,x
             sta:  $0001+{]line*$1000},y
 ]src        equ   ]src-1
 ]dest       equ   ]dest+1

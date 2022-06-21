@@ -22,17 +22,17 @@ _RenderTile
 ; flatten the sprite data into the direct page workspace and then pass control
 ; to the configurable routine which is set in SetTile and knows what to do
 ; based on the tile properties (over/under, engine mode, etc.)
+;
+; NOTE: Could pull the CopyXXXSprites function inline and same the 3 cycles for the JMP,
+;       - or - put the TYX into the macro and jump directly from there.
 TwoSprites  tyx
-            jsr   CopyTwoSpritesDataAndMaskToDP
-            jmp   (K_TS_SPRITE_TILE_DISP,x)
+            jmp   CopyTwoSpritesDataAndMaskToDP
 
 ThreeSprites tyx
-            jsr   CopyThreeSpritesDataAndMaskToDP
-            jmp   (K_TS_SPRITE_TILE_DISP,x)
+            jmp   CopyThreeSpritesDataAndMaskToDP
 
 FourSprites tyx
-            jsr   CopyFourSpritesDataAndMaskToDP
-            jmp   (K_TS_SPRITE_TILE_DISP,x)
+            jmp   CopyFourSpritesDataAndMaskToDP
 
 ; Helper functions (and macros)
 

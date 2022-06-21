@@ -352,14 +352,12 @@ _SetTileProcs
 FastProcs
 FastOverZA   dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
 FastOverZV   dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
-FastOverNA   dw   _TBCopyDataAFast,GenericOverZero,_OneSpriteFastOverA
-FastOverNV   dw   _TBCopyDataVFast,GenericOverZero,_OneSpriteFastOverV
-;FastOverNA   dw   _TBCopyDataAFast,GenericOverAFast,_OneSpriteFastOverA
-;FastOverNV   dw   _TBCopyDataVFast,GenericOverVFast,_OneSpriteFastOverV
+FastOverNA   dw   _TBCopyDataAFast,GenericOverAFast,_OneSpriteFastOverA
+FastOverNV   dw   _TBCopyDataVFast,GenericOverVFast,_OneSpriteFastOverV
 FastUnderZA  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
 FastUnderZV  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
-FastUnderNA  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastUnderA
-FastUnderNV  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
+FastUnderNA  dw   _TBCopyDataAFast,GenericUnderAFast,_OneSpriteFastUnderA
+FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
 ;FastUnderNA  dw   _TBCopyDataFast,GenericUnderAFast,_OneSpriteFastUnderA
 ;FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
 

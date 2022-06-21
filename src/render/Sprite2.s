@@ -80,9 +80,13 @@ CopyTwoSpritesDataToDP
 ]line       equ   ]line+1
             --^
             rts
+
 CopyFourSpritesDataAndMaskToDP
 CopyThreeSpritesDataAndMaskToDP
 CopyTwoSpritesDataAndMaskToDP
+            pei   DP2_SPRITEDATA_AND_TILESTORE_BANKS
+            plb
+
 ]line       equ   0
             lup   8
             ldy   #{]line*SPRITE_PLANE_SPAN}
@@ -98,5 +102,7 @@ CopyTwoSpritesDataAndMaskToDP
             sta   tmp_sprite_mask+{]line*4}+2
 ]line       equ   ]line+1
             --^
+
+            plb
             jmp   (K_TS_SPRITE_TILE_DISP,x)
 
