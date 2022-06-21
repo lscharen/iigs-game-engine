@@ -65,7 +65,7 @@ CopyTileToDPSprite
 ; must be set to the TileData bank in entry.
 ;
 ; Preserves the X-register
-CopyTileDataToDP
+CopyTileDataToDPA
 ]line       equ   0
             lup   8
             lda   tiledata+{]line*4},y

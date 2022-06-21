@@ -34,11 +34,11 @@ _OneSpriteFastOver0
 ; The 1-sprite dispatch prserves the X-register, so it already points to the TileStore
 
 _OneSpriteFastOverV
-            jsr   CopyTileDataToDPV
+            jsr   FastCopyTileDataV
             bra   _OneSpriteFastOver
 
 _OneSpriteFastOverA
-            jsr   CopyTileDataToDP
+            jsr   FastCopyTileDataA
 
 _OneSpriteFastOver
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
@@ -86,7 +86,7 @@ _OneSpriteSlowOver0
 ; Slow variant for regular tile.
 
 _OneSpriteSlowOver
-            jsr   CopyTileDataToDP
+            jsr   CopyTileDataToDPA
 
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.

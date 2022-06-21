@@ -41,6 +41,7 @@ _TBSolidTile_VH
 ; This is called via a JMP (abs,x) with an extra byte on the stack that holds the bank
 ; register value.  This must be restored prior to returning
 _TBCopyDataFast
+_TBCopyDataAFast
                  tax
 _TBCopyDataFastX
 ]line            equ             0

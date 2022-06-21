@@ -38,8 +38,6 @@ Flips           equ   12
 
                 pea   #256
                 pea   #160
-;                pea   #176
-;                pea   #144
                 _GTESetScreenMode
 
 ; Load a tileset
@@ -95,58 +93,57 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 cpx   #MAX_SPRITES*2
                 bcc   :sloop
 
-; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees 
-;
-;   Tile 65 Tile 66
-;   Tile 97 Tile 98
-                stz   0            ; X
-                stz   2            ; Y
+; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees
 
-:tloop
-                ldx   0
-                ldy   2
+                jsr   _fillTileStore
 
-                phx
-                phy
-                pea   #65
-                
-                inx
-                phx
-                phy
-                pea   #66
+                ldx   #0
+                ldy   #0
+                jsr   _drawTree
 
-                cpy   #24
-                beq   :skip_last
-                iny
-                phx
-                phy
-                pea   #98
+                ldx   #3
+                ldy   #0
+                jsr   _drawTreeH
 
-                dex
-                phx
-                phy
-                pea   #97
+                ldx   #0
+                ldy   #3
+                jsr   _drawTreeV
 
-                _GTESetTile
-                _GTESetTile
-:skip_last
-                _GTESetTile
-                _GTESetTile
+                ldx   #3
+                ldy   #3
+                jsr   _drawTreeHV
 
-                lda   0
-                inc
-                inc
-                sta   0
-                cmp   #40
-                bcc   :tloop
+                ldx   #9
+                ldy   #0
+                jsr   _drawTree
 
-                stz   0
-                lda   2
-                inc
-                inc
-                sta   2
-                cmp   #25
-                bcc   :tloop
+                ldx   #9
+                ldy   #3
+                jsr   _drawTree
+
+                ldx   #12
+                ldy   #0
+                jsr   _drawTree
+
+                ldx   #12
+                ldy   #3
+                jsr   _drawTree
+
+                ldx   #6
+                ldy   #0
+                jsr   _drawTreeFront
+                ldx   #6
+                ldy   #3
+                jsr   _drawTreeFront
+                ldx   #6
+                ldy   #6
+                jsr   _drawTreeFront
+                ldx   #3
+                ldy   #6
+                jsr   _drawTreeFront
+                ldx   #0
+                ldy   #6
+                jsr   _drawTreeFront
 
 ; Initialize the frame counter
 
@@ -448,6 +445,162 @@ GTEStartUp
                 brk    $03
 
 :ok3
+                rts
+
+_fillTileStore
+                stz    Tmp0
+:oloop
+                stz    Tmp1
+:iloop
+                pei    Tmp1
+                pei    Tmp0
+                pea    #129
+                _GTESetTile
+
+                lda    Tmp1
+                inc
+                sta    Tmp1
+                cmp    #41
+                bcc    :iloop
+
+                lda    Tmp0
+                inc
+                sta    Tmp0
+                cmp    #26
+                bcc    :oloop
+                rts
+
+;   Tile 65 Tile 66
+;   Tile 97 Tile 98
+
+_drawTreeFront
+                phx
+                phy
+                pea   #65+TILE_PRIORITY_BIT
+                
+                inx
+                phx
+                phy
+                pea   #66+TILE_PRIORITY_BIT
+
+                iny
+                phx
+                phy
+                pea   #98+TILE_PRIORITY_BIT
+
+                dex
+                phx
+                phy
+                pea   #97+TILE_PRIORITY_BIT
+
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                rts
+
+_drawTree
+                phx
+                phy
+                pea   #65
+                
+                inx
+                phx
+                phy
+                pea   #66
+
+                iny
+                phx
+                phy
+                pea   #98
+
+                dex
+                phx
+                phy
+                pea   #97
+
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                rts
+
+_drawTreeH
+                phx
+                phy
+                pea   #66+TILE_HFLIP_BIT
+
+                inx
+                phx
+                phy
+                pea   #65+TILE_HFLIP_BIT
+
+                iny
+                phx
+                phy
+                pea   #97+TILE_HFLIP_BIT
+
+                dex
+                phx
+                phy
+                pea   #98+TILE_HFLIP_BIT
+
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                rts
+
+_drawTreeV
+                phx
+                phy
+                pea   #97+TILE_VFLIP_BIT
+                
+                inx
+                phx
+                phy
+                pea   #98+TILE_VFLIP_BIT
+
+                iny
+                phx
+                phy
+                pea   #66+TILE_VFLIP_BIT
+
+                dex
+                phx
+                phy
+                pea   #65+TILE_VFLIP_BIT
+
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                rts
+
+_drawTreeHV
+                phx
+                phy
+                pea   #98+TILE_VFLIP_BIT+TILE_HFLIP_BIT
+                
+                inx
+                phx
+                phy
+                pea   #97+TILE_VFLIP_BIT+TILE_HFLIP_BIT
+
+                iny
+                phx
+                phy
+                pea   #65+TILE_VFLIP_BIT+TILE_HFLIP_BIT
+
+                dex
+                phx
+                phy
+                pea   #66+TILE_VFLIP_BIT+TILE_HFLIP_BIT
+
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
+                _GTESetTile
                 rts
 
 MyUserId        ds    2

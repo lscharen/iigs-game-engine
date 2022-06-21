@@ -217,27 +217,19 @@ _SetTile
                  lda  #4
                  sta  procIdx
 :low_priority
-
                  lda  #TILE_ID_MASK
                  bit  newTileId
-                 bne  :not_zero
+                 beq  :is_zero
                  lda  #2
                  tsb  procIdx
-:not_zero
+:is_zero
 
                  lda  #TILE_VFLIP_BIT
+                 bit  newTileId
                  beq  :no_vflip
                  lda  #1
                  tsb  procIdx
 :no_vflip
-
-; Multiple by 6 to get the correct table entry index
-
-                 asl  procIdx
-                 lda  procIdx
-                 asl
-                 adc  procIdx
-                 sta  procIdx
 
 ; Now integrate with the engine mode indicator
 
@@ -296,11 +288,21 @@ _SetTile
 tblPtr  equ  blttmp
 _SetTileProcs
 
-; Set a long pointer to this bank
-                 sty  tblPtr
-                 clc
+; Multiple the proc index by 6 to get the correct table entry offset
+
+                 asl
+                 sta  tblPtr
+                 asl
                  adc  tblPtr
                  sta  tblPtr
+
+; Add this offset to the base table address
+
+                 tya
+                 adc  tblPtr
+                 sta  tblPtr
+
+; Set the pointer to this bank
 
                  phk
                  phk
@@ -350,12 +352,16 @@ _SetTileProcs
 FastProcs
 FastOverZA   dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
 FastOverZV   dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
-FastOverNA   dw   _TBCopyDataFast,GenericOverAFast,_OneSpriteFastOverA
-FastOverNV   dw   _TBCopyDataVFast,GenericOverVFast,_OneSpriteFastOverV
+FastOverNA   dw   _TBCopyDataAFast,GenericOverZero,_OneSpriteFastOverA
+FastOverNV   dw   _TBCopyDataVFast,GenericOverZero,_OneSpriteFastOverV
+;FastOverNA   dw   _TBCopyDataAFast,GenericOverAFast,_OneSpriteFastOverA
+;FastOverNV   dw   _TBCopyDataVFast,GenericOverVFast,_OneSpriteFastOverV
 FastUnderZA  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
 FastUnderZV  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
-FastUnderNA  dw   _TBCopyDataFast,GenericUnderAFast,_OneSpriteFastUnderA
-FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
+FastUnderNA  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
+FastUnderNV  dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
+;FastUnderNA  dw   _TBCopyDataFast,GenericUnderAFast,_OneSpriteFastUnderA
+;FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
 
 DynProcs
 DynOverZA
@@ -483,7 +489,7 @@ endbit1     mac
 
 ; OPTIMIZATION:
 ;
-;           bit     #$00FF                    ; Optimization to skip the first 8 bits if they are all zeros
+;           bit     #$00FF                    ; Skip the first 8 bits if they are all zeros
 ;           bne     norm_entry
 ;           xba
 ;           jmp     skip_entry
