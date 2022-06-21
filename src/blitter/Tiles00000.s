@@ -40,10 +40,9 @@ _TBSolidTile_VH
 
 ; This is called via a JMP (abs,x) with an extra byte on the stack that holds the bank
 ; register value.  This must be restored prior to returning
-_TBCopyDataFast
-_TBCopyDataAFast
+CopyTileAFast
                  tax
-_TBCopyDataFastX
+_CopyTileAFast
 ]line            equ             0
                  lup             8
                  ldal            tiledata+{]line*4},x
@@ -55,25 +54,14 @@ _TBCopyDataFastX
                  plb
                  rts
 
-_TBCopyDataSlow
+CopyTileASlow
                  tax
-                 jsr   _TBFillPEAOpcode
-                 jmp   _TBCopyDataFastX
+                 jsr   FillPEAOpcode
+                 jmp   _CopyTileAFast
 
-_TBCopyData
-]line            equ             0
-                 lup             8
-                 ldal            tiledata+{]line*4},x
-                 sta:            $0004+{]line*$1000},y
-                 ldal            tiledata+{]line*4}+2,x
-                 sta:            $0001+{]line*$1000},y
-]line            equ             ]line+1
-                 --^
-                 rts
-
-_TBCopyDataVFast
+CopyTileVFast
                  tax
-_TBCopyDataVFastX
+_CopyTileVFast
 ]src             equ             7
 ]dest            equ             0
                  lup             8
@@ -87,10 +75,24 @@ _TBCopyDataVFastX
                  plb
                  rts
 
-_TBCopyDataVSlow
+CopyTileVSlow
                  tax
-                 jsr   _TBFillPEAOpcode
-                 jmp   _TBCopyDataVFastX
+                 jsr   FillPEAOpcode
+                 jmp   _CopyTileVFast
+
+
+
+; Old routines
+_TBCopyData
+]line            equ             0
+                 lup             8
+                 ldal            tiledata+{]line*4},x
+                 sta:            $0004+{]line*$1000},y
+                 ldal            tiledata+{]line*4}+2,x
+                 sta:            $0001+{]line*$1000},y
+]line            equ             ]line+1
+                 --^
+                 rts
 
 _TBCopyDataV
 ]src             equ             7

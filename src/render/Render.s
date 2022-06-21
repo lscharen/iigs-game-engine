@@ -34,32 +34,6 @@ ThreeSprites tyx
 FourSprites tyx
             jmp   CopyFourSpritesDataAndMaskToDP
 
-; Helper functions (and macros)
-
-; CopyTileToDP -- executes the K_TS_COPY_TILE_DATA routine.  This may copy just data or data+mask
-;                 information to the direct page
-_CopyTileToDP mac
-            ldy   TileStore+TS_TILE_ADDR,x         ; load the tile address
-            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
-            plb                                    ; set to the tiledata bank
-            jsr   (K_TS_COPY_TILE_DATA,x)          ; preserves X-reg
-            plb
-            <<<
-CopyTileToDP
-            _CopyTileToDP
-            rts
-
-; CopyTileToDPSprite -- same as above, but returns with the Data BAnk set to the sprite data bank
-_CopyTileToDPSprite mac
-            ldy   TileStore+TS_TILE_ADDR,x         ; load the tile address
-            pei   DP2_TILEDATA_AND_SPRITEDATA_BANKS
-            plb                                    ; set to the tiledata bank
-            jsr   (K_TS_COPY_TILE_DATA,x)          ; preserves X-reg
-            plb
-            <<<
-CopyTileToDPSprite
-            _CopyTileToDPSprite
-            rts
 
 ; Simple pair of routines that copies just the tile data to the direct page workspace.  Data Bank
 ; must be set to the TileData bank in entry.
@@ -77,54 +51,6 @@ CopyTileDataToDPA
             --^
             rts
 
-CopyTileDataToDPV
-]src        equ   7
-]dest       equ   0
-            lup   8
-            lda   tiledata+{]src*4},y
-            sta   tmp_tile_data+{]dest*4}
-
-            lda   tiledata+{]src*4}+2,y
-            sta   tmp_tile_data+{]dest*4}+2
-]src        equ   ]src-1
-]dest       equ   ]dest+1
-            --^
-            rts
-
-; Copy both the tile and mask data to the driect page space
-_CopyTileDataAndMaskToDP
-]line       equ   0
-            lup   8
-            lda   tiledata+{]line*4},y
-            sta   tmp_tile_data+{]line*4}
-            lda   tiledata+{]line*4}+32,y
-            sta   tmp_tile_mask+{]line*4}
-
-            lda   tiledata+{]line*4}+2,y
-            sta   tmp_tile_data+{]line*4}+2
-            lda   tiledata+{]line*4}+32+2,y
-            sta   tmp_tile_mask+{]line*4}+2
-]line       equ   ]line+1
-            --^
-            rts
-
-_CopyTileDataAndMaskToDPV
-]src        equ   7
-]dest       equ   0
-            lup   8
-            lda   tiledata+{]src*4},y
-            sta   tmp_tile_data+{]dest*4}
-            lda   tiledata+{]src*4}+32,y
-            sta   tmp_tile_mask+{]dest*4}
-
-            lda   tiledata+{]src*4}+2,y
-            sta   tmp_tile_data+{]dest*4}+2
-            lda   tiledata+{]src*4}+32+2,y
-            sta   tmp_tile_mask+{]dest*4}+2
-]src        equ   ]src-1
-]dest       equ   ]dest+1
-            --^
-            rts
 
 ; Given a populate tmp_sprite_data buffer to use as a base, merge it with a tile and write to the 
 ; code field

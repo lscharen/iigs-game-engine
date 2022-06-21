@@ -84,8 +84,7 @@ _TBCopyTileMaskToCBuffV
 ; _TBConstTile
 ;
 ; A specialized routine that fills in a tile with a single constant value.  It's intended to be used to
-; fill in solid colors, so there are no specialized horizontal or verical flipped variantsConstUnderZero   
-_TBConstTile0
+; fill in solid colors, so there are no specialized horizontal or verical flipped variants
 _TBConstTileX
                  lda             #0
                  sta:            $0001,y

@@ -119,7 +119,7 @@ InitTiles
                  bra  :out
 
 :dyn             lda  #0                                 ; Initialize with Tile 0
-                 ldy  #DynOverZA
+                 ldy  #FastProcs
                  jsr  _SetTileProcs
 
 :out
@@ -274,8 +274,8 @@ _SetTile
 ; are both Dynamic tiles or both Basic tiles, then  we can use an optimized routine.  Otherwise
 ; we must set the opcodes as well as the operands
 :setTileDyn
-                 brk  $55
-                 ldy  #DynProcs
+
+;                 ldy  #DynProcs
                  lda  procIdx
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX
@@ -350,26 +350,42 @@ _SetTileProcs
 ;
 ; <MODE><Over|Under><Z|N><A|V>
 FastProcs
-FastOverZA   dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
-FastOverZV   dw   _TBConstTile0,GenericOverZero,_OneSpriteFastOver0
-FastOverNA   dw   _TBCopyDataAFast,GenericOverAFast,_OneSpriteFastOverA
-FastOverNV   dw   _TBCopyDataVFast,GenericOverVFast,_OneSpriteFastOverV
-FastUnderZA  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
-FastUnderZV  dw   _TBConstTile0,GenericUnderZero,GenericUnderZero
-FastUnderNA  dw   _TBCopyDataAFast,GenericUnderAFast,_OneSpriteFastUnderA
-FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
-;FastUnderNA  dw   _TBCopyDataFast,GenericUnderAFast,_OneSpriteFastUnderA
-;FastUnderNV  dw   _TBCopyDataVFast,GenericUnderVFast,_OneSpriteFastUnderV
+FastOverZA   dw   ConstTile0Fast,SpriteOver0Fast,OneSpriteFastOver0
+FastOverZV   dw   ConstTile0Fast,SpriteOver0Fast,OneSpriteFastOver0
+FastOverNA   dw   CopyTileAFast,SpriteOverAFast,OneSpriteFastOverA
+FastOverNV   dw   CopyTileVFast,SpriteOverVFast,OneSpriteFastOverV
+FastUnderZA  dw   ConstTile0Fast,SpriteUnder0Fast,SpriteUnder0Fast
+FastUnderZV  dw   ConstTile0Fast,SpriteUnder0Fast,SpriteUnder0Fast
+FastUnderNA  dw   CopyTileAFast,SpriteUnderAFast,OneSpriteFastUnderA
+FastUnderNV  dw   CopyTileVFast,SpriteUnderVFast,OneSpriteFastUnderV
 
-DynProcs
-DynOverZA
-DynOverZV
-DynOverNA
-DynOverNV
-DynUnderZA
-DynUnderZV
-DynUnderNA
-DynUnderNV
+; "Slow" procs.  These are duplicates of the "Fast" functions, but also
+; set the PEA opcode in all cases.
+SlowProcs
+SlowOverZA   dw   ConstTile0Slow,SpriteOver0Slow,OneSpriteSlowOver0
+SlowOverZV   dw   ConstTile0Slow,SpriteOver0Slow,OneSpriteSlowOver0
+SlowOverNA   dw   CopyTileASlow,SpriteOverASlow,OneSpriteSlowOverA
+SlowOverNV   dw   CopyTileVSlow,SpriteOverVSlow,OneSpriteSlowOverV
+SlowUnderZA  dw   ConstTile0Slow,SpriteUnder0Slow,SpriteUnder0Slow
+SlowUnderZV  dw   ConstTile0Slow,SpriteUnder0Slow,SpriteUnder0Slow
+SlowUnderNA  dw   CopyTileASlow,SpriteUnderASlow,OneSpriteSlowUnderA
+SlowUnderNV  dw   CopyTileVSlow,SpriteUnderVSlow,OneSpriteSlowUnderV
+
+; "Dynamic" procs. These are the specialized routines for a dynamic tiles
+; that does not need to worry about a second background.  Because dynamic
+; tiles don't support horizontal or vertical flipping, there are only two 
+; sets of procedures: one for Over and one for Under.
+;DynOver      dw   _TBDynamicTile,DynamicOver,_OneSpriteDynamicOver
+;DynUnder     dw   _TBDynamicTile,DynamicUnder,_OneSpriteDynamicUnder
+
+; "Two Layer" procs. These are the most complex procs.  Generally,
+; all of these methods are implemented by building up the data
+; and mask into the direct page space and then calling a common
+; function to create the complex code fragments in the code field.
+; There is not a lot of opportuinity to optimize these routines.
+
+
+
 
 ; SetBG0XPos
 ;

@@ -365,6 +365,7 @@ _TSGetSeconds
                 put     Render.s
                 put     render/Render.s
                 put     render/Fast.s
+                put     render/Slow.s
                 put     render/Sprite1.s
                 put     render/Sprite2.s
                 put     tiles/DirtyTileQueue.s

@@ -2,13 +2,29 @@
 ; there are no dynamic tile or two layer tiles enabled, so all of the tiles are comprised
 ; of PEA opcodes.  These functions take advantage of this as the fact that masks are
 ; not needed to improve rendering speed.
-;
-; The following functions are defined here
-;
-; GenericOverAFast  : Places data from tmp_sprite_data on top of the TileStore's tile
-; GenericUnderAFast : Places the TileStore's tile on top of tmp_sprite_data
 
-GenericOverAFast
+ConstTile0Fast
+            lda   #0
+            sta:  $0001,y
+            sta:  $0004,y
+            sta   $1001,y
+            sta   $1004,y
+            sta   $2001,y
+            sta   $2004,y
+            sta   $3001,y
+            sta   $3004,y
+            sta   $4001,y
+            sta   $4004,y
+            sta   $5001,y
+            sta   $5004,y
+            sta   $6001,y
+            sta   $6004,y
+            sta   $7001,y
+            sta   $7004,y
+            plb
+            rts
+
+SpriteOverAFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
@@ -16,6 +32,7 @@ GenericOverAFast
             tax
             plb
 
+_SpriteOverAFast                                   ; Alternate entry point for the "Slow" routines
 ]line       equ   0
             lup   8
             ldal  tiledata+{]line*4},x
@@ -33,7 +50,7 @@ GenericOverAFast
             plb
             rts
 
-GenericOverVFast
+SpriteOverVFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
@@ -41,6 +58,7 @@ GenericOverVFast
             tax
             plb
 
+_SpriteOverVFast
 ]src        equ   7
 ]dest       equ   0
             lup   8
@@ -59,12 +77,13 @@ GenericOverVFast
             plb
             rts
 
-GenericOverZero
+SpriteOver0Fast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
             plb
 
+_SpriteOver0Fast
 ]line       equ   0
             lup   8
             lda   tmp_sprite_data+{]line*4}
@@ -78,7 +97,7 @@ GenericOverZero
             plb
             rts
 
-GenericUnderAFast
+SpriteUnderAFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
@@ -86,6 +105,7 @@ GenericUnderAFast
             tax
             plb
 
+_SpriteUnderAFast
 ]line       equ   0
             lup   8
             lda   tmp_sprite_data+{]line*4}
@@ -103,7 +123,7 @@ GenericUnderAFast
             plb
             rts
 
-GenericUnderVFast
+SpriteUnderVFast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
@@ -111,6 +131,7 @@ GenericUnderVFast
             tax
             plb
 
+_SpriteUnderVFast
 ]src        equ   7
 ]dest       equ   0
             lup   8
@@ -130,13 +151,14 @@ GenericUnderVFast
             plb
             rts
 
-GenericUnderZero
+SpriteUnder0Fast
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
             pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
             ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
             plb
-            lda   #0
 
+_SpriteUnder0Fast
+            lda   #0
 ]line       equ   0
             lup   8
             sta:  $0004+{]line*$1000},y
