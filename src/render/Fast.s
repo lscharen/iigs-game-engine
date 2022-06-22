@@ -63,14 +63,14 @@ _SpriteOverVFast
 ]dest       equ   0
             lup   8
             ldal  tiledata+{]src*4},x
-            and   tmp_sprite_mask+{]line*4}
-            ora   tmp_sprite_data+{]line*4}
-            sta:  $0004+{]line*$1000},y
+            and   tmp_sprite_mask+{]dest*4}
+            ora   tmp_sprite_data+{]dest*4}
+            sta:  $0004+{]dest*$1000},y
 
             ldal  tiledata+{]src*4}+2,x
-            and   tmp_sprite_mask+{]line*4}+2
-            ora   tmp_sprite_data+{]line*4}+2
-            sta:  $0001+{]line*$1000},y
+            and   tmp_sprite_mask+{]dest*4}+2
+            ora   tmp_sprite_data+{]dest*4}+2
+            sta:  $0001+{]dest*$1000},y
 ]src        equ   ]src-1
 ]dest       equ   ]dest+1
             --^
@@ -135,15 +135,15 @@ _SpriteUnderVFast
 ]src        equ   7
 ]dest       equ   0
             lup   8
-            lda   tmp_sprite_data+{]line*4}
+            lda   tmp_sprite_data+{]dest*4}
             andl  tiledata+{]src*4}+32,x
             oral  tiledata+{]src*4},x
-            sta:  $0004+{]line*$1000},y
+            sta:  $0004+{]dest*$1000},y
 
-            lda   tmp_sprite_data+{]line*4}+2
+            lda   tmp_sprite_data+{]dest*4}+2
             andl  tiledata+{]src*4}+32+2,x
             oral  tiledata+{]src*4}+2,x
-            sta:  $0001+{]line*$1000},y
+            sta:  $0001+{]dest*$1000},y
 ]src        equ   ]src-1
 ]dest       equ   ]dest+1
             --^

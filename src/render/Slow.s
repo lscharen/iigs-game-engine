@@ -76,7 +76,7 @@ FillPEAOpcode
             sta:  $0003+{]line*$1000},y
 ]line       equ   ]line+1
             --^
-            rep             #$20
+            rep   #$20
             rts
 
 ; This is a dtub; will be removed eventually
