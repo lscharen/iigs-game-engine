@@ -15,7 +15,7 @@
 
 TSZelda         EXT                           ; tileset buffer
 
-MAX_SPRITES     equ   1
+MAX_SPRITES     equ   16
 
 ScreenX         equ   0
 ScreenY         equ   2
@@ -38,8 +38,8 @@ Tmp2            equ   16
 
 ; Initialize the graphics screen to a 256x160 playfield
 
-                pea   #256
-                pea   #160
+                pea   #320
+                pea   #200
                 _GTESetScreenMode
 
 ; Load a tileset
@@ -97,9 +97,10 @@ HERO_SPRITE     equ   SPRITE_16X16+1
 
 ; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees
 
-;                lda   #TILE_DYN_BIT+TILE_PRIORITY_BIT+0                ; fill the screen the the dynamic tile slot 0
+;               lda   #TILE_DYN_BIT+TILE_PRIORITY_BIT+0                ; fill the screen the the dynamic tile slot 0
                 lda   #TILE_DYN_BIT+0                ; fill the screen the the dynamic tile slot 0
                 jsr   _fillTileStore
+;                brl   :no_trees
 
                 ldx   #0
                 ldy   #0
@@ -136,19 +137,23 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 ldx   #6
                 ldy   #0
                 jsr   _drawTreeFront
+
                 ldx   #6
                 ldy   #3
                 jsr   _drawTreeFront
+
                 ldx   #6
                 ldy   #6
                 jsr   _drawTreeFront
+
                 ldx   #3
                 ldy   #6
                 jsr   _drawTreeFront
+
                 ldx   #0
                 ldy   #6
                 jsr   _drawTreeFront
-
+:no_trees
 ; Set up the dynamic tile
                 lda   #65
                 sta   DTile
@@ -305,7 +310,7 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 pei   ScreenY
                 _GTESetBG0Origin
 
-                brl   no_animate
+;                brl   no_animate
 
                 stz   Tmp0
                 stz   Tmp1
