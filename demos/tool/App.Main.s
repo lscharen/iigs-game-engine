@@ -15,7 +15,7 @@
 
 TSZelda         EXT                           ; tileset buffer
 
-MAX_SPRITES     equ   16
+MAX_SPRITES     equ   1
 
 ScreenX         equ   0
 ScreenY         equ   2
@@ -24,6 +24,8 @@ Tmp1            equ   6
 KeyState        equ   8
 Selected        equ   10
 Flips           equ   12
+DTile           equ   14
+Tmp2            equ   16
 
 ; Typical init
                 phk
@@ -95,6 +97,8 @@ HERO_SPRITE     equ   SPRITE_16X16+1
 
 ; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees
 
+;                lda   #TILE_DYN_BIT+TILE_PRIORITY_BIT+0                ; fill the screen the the dynamic tile slot 0
+                lda   #TILE_DYN_BIT+0                ; fill the screen the the dynamic tile slot 0
                 jsr   _fillTileStore
 
                 ldx   #0
@@ -144,6 +148,14 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 ldx   #0
                 ldy   #6
                 jsr   _drawTreeFront
+
+; Set up the dynamic tile
+                lda   #65
+                sta   DTile
+
+                pei   DTile
+                pea   $0000
+                _GTECopyTileToDynamic                ; Copy DTile into the first dynamic tile slot
 
 ; Initialize the frame counter
 
@@ -273,8 +285,18 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 brl   :next
 
 :10             cmp   #$0A
-                bne   :next
+                bne   :11
                 dec   ScreenY
+
+:11             cmp   #'y'
+                bne   :next
+                lda   DTile
+                inc
+                and   #$007F
+                sta   DTile
+                pha
+                pea   $0000
+                _GTECopyTileToDynamic
 
 :next
 ;                inc   ScreenX
@@ -283,7 +305,7 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 pei   ScreenY
                 _GTESetBG0Origin
 
-;                brl   no_animate
+                brl   no_animate
 
                 stz   Tmp0
                 stz   Tmp1
@@ -433,11 +455,11 @@ GTEStartUp
                 brk    $02
 
 :ok2
-                clc                           ; Give GTE a page of direct page memory
+                clc                             ; Give GTE a page of direct page memory
                 tdc
                 adc   #$0100
                 pha
-                pea   $0000                   ; No extra capabilities
+                pea   #ENGINE_MODE_DYN_TILES    ; Enable Dynamic Tiles
                 lda   MyUserId                  ; Pass the userId for memory allocation
                 pha
                 _GTEStartUp
@@ -448,14 +470,19 @@ GTEStartUp
                 rts
 
 _fillTileStore
+                sta    Tmp2
                 stz    Tmp0
 :oloop
                 stz    Tmp1
 :iloop
                 pei    Tmp1
                 pei    Tmp0
-                pea    #129
+                pei    Tmp2
                 _GTESetTile
+
+                lda    Tmp2
+                eor    #TILE_PRIORITY_BIT
+                sta    Tmp2
 
                 lda    Tmp1
                 inc

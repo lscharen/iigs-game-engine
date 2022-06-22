@@ -69,8 +69,8 @@ DynamicOver
 
             sec
             lda     _JTBL_CACHE
-            sbc     #32                          ; All the snippets are 32 bytes wide and, since we're
-            sta     _JTBL_CACHE                  ; within one tile, the second column is consecutive
+            sbc     #SNIPPET_SIZE                ; Advance to the next snippet (Reverse indexing)
+            sta     _JTBL_CACHE
 
             clc
             lda     _OP_CACHE
@@ -95,7 +95,7 @@ DynamicUnder
 
             lda     TileStore+TS_TILE_ID,x       ; Get the original tile descriptor
             and     #$007F                       ; clamp to < (32 * 4)
-            ora     #$B500
+            ora     #$3580                       ; Pre-calc the AND $80,x opcode + operand            
             xba
             sta     _OP_CACHE                    ; This is the 2-byte opcode for to load the data
 
@@ -115,8 +115,8 @@ DynamicUnder
 
             sec
             lda     _JTBL_CACHE
-            sbc     #32                          ; All the snippets are 32 bytes wide and, since we're
-            sta     _JTBL_CACHE                  ; within one tile, the second column is consecutive
+            sbc     #SNIPPET_SIZE
+            sta     _JTBL_CACHE
 
             clc
             lda     _OP_CACHE
@@ -181,7 +181,7 @@ mixed           cmp   #$FFFF                   ; All 1's in the mask is a fully 
                 lda   #$004C                   ; JMP to handler
                 sta:  {]2},y
                 lda   _JTBL_CACHE              ; Get the offset to the exception handler for this column
-                ora   #{]2&$F000}              ; adjust for the current row offset
+                ora   #{]2&$7000}              ; adjust for the current row offset
                 sta:  {]2}+1,y
                 tax                            ; This becomes the new address that we use to patch in
 
@@ -228,22 +228,138 @@ CopyDynUnder MAC
 ;            bra  *+16
 
                 lda   _JTBL_CACHE     ; Get the offset to the exception handler for this column
-                ora   #{]2&$F000}     ; adjust for the current row offset
-                sta:  ]2+1,y
-                tay                   ; This becomes the new address that we use to patch in
+                ora   #{]2&$7000}     ; adjust for the current row offset
+                sta:  {]2}+1,y
+                tax                   ; This becomes the new address that we use to patch in
 
                 lda   #$00A9          ; LDA #DATA
-                sta:  $0000,y
-                ldal  tmp_sprite_data+{]1},x
-                sta:  $0001,y
+                sta:  $0000,x
+                lda   tmp_sprite_data+{]1}
+                sta:  $0001,x
 
                 lda   _OP_CACHE
-                sta:  $0003,y         ; AND $80,x
+                sta:  $0003,x         ; AND $80,x
                 eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
-                sta:  $0005,y         ; ORA $00,x
+                sta:  $0005,x         ; ORA $00,x
 
                 lda   #$0E80          ; branch to the prologue (BRA *+16)
-                sta:  $0007,y
-
-                ldy   _Y_REG          ; restore original y-register value and move on
+                sta:  $0007,x
                 eom
+
+; Helper functions to move tile data into the dynamic tile space
+
+; Helper functions to copy tile data to the appropriate location in Bank 0
+;  X = tile ID
+;  Y = dynamic tile ID
+CopyTileToDyn 
+            txa
+            jsr             _GetTileAddr
+            tax
+
+            tya
+            and             #$001F                            ; Maximum of 32 dynamic tiles
+            asl
+            asl                                               ; 4 bytes per page
+            adc             BlitterDP                         ; Add to the bank 00 base address
+            adc             #$0100                            ; Go to the next page
+            tay
+            jsr             CopyTileDToDyn                    ; Copy the tile data
+            jmp             CopyTileMToDyn                    ; Copy the tile mask
+
+;  X = address of tile
+;  Y = tile address in bank 0
+CopyTileDToDyn
+            phb
+            pea             $0000
+            plb
+            plb
+
+            ldal            tiledata+0,x
+            sta:            $0000,y
+            ldal            tiledata+2,x
+            sta:            $0002,y
+            ldal            tiledata+4,x
+            sta             $0100,y
+            ldal            tiledata+6,x
+            sta             $0102,y
+            ldal            tiledata+8,x
+            sta             $0200,y
+            ldal            tiledata+10,x
+            sta             $0202,y
+            ldal            tiledata+12,x
+            sta             $0300,y
+            ldal            tiledata+14,x
+            sta             $0302,y
+            ldal            tiledata+16,x
+            sta             $0400,y
+            ldal            tiledata+18,x
+            sta             $0402,y
+            ldal            tiledata+20,x
+            sta             $0500,y
+            ldal            tiledata+22,x
+            sta             $0502,y
+            ldal            tiledata+24,x
+            sta             $0600,y
+            ldal            tiledata+26,x
+            sta             $0602,y
+            ldal            tiledata+28,x
+            sta             $0700,y
+            ldal            tiledata+30,x
+            sta             $0702,y
+
+            plb
+            rts
+
+; Helper function to copy tile mask to the appropriate location in Bank 0
+;
+;  X = address of tile
+;  Y = tile address in bank 0
+;
+; Argument are the same as CopyTileDToDyn, the code takes care of adjust offsets.
+; This make is possible to call the two functions back-to-back
+;
+;   ldx tileAddr
+;   ldy dynTileAddr
+;   jsr CopyTileDToDyn
+;   jsr CopyTileMToDyn
+CopyTileMToDyn
+            phb
+            pea             $0000
+            plb
+            plb
+
+            ldal            tiledata+32+0,x
+            sta:            $0080,y
+            ldal            tiledata+32+2,x
+            sta:            $0082,y
+            ldal            tiledata+32+4,x
+            sta             $0180,y
+            ldal            tiledata+32+6,x
+            sta             $0182,y
+            ldal            tiledata+32+8,x
+            sta             $0280,y
+            ldal            tiledata+32+10,x
+            sta             $0282,y
+            ldal            tiledata+32+12,x
+            sta             $0380,y
+            ldal            tiledata+32+14,x
+            sta             $0382,y
+            ldal            tiledata+32+16,x
+            sta             $0480,y
+            ldal            tiledata+32+18,x
+            sta             $0482,y
+            ldal            tiledata+32+20,x
+            sta             $0580,y
+            ldal            tiledata+32+22,x
+            sta             $0582,y
+            ldal            tiledata+32+24,x
+            sta             $0680,y
+            ldal            tiledata+32+26,x
+            sta             $0682,y
+            ldal            tiledata+32+28,x
+            sta             $0780,y
+            ldal            tiledata+32+30,x
+            sta             $0782,y
+
+            plb
+            rts

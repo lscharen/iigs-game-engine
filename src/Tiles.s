@@ -150,13 +150,18 @@ InitTiles
                  asl                                    ; of this tile
                  asl
                  sta  TileStore+TS_WORD_OFFSET,x        ; This is the offset from 0 to 82, used in LDA (dp),y instruction
-                 
+
                  tay
                  lda  Col2CodeOffset+2,y
                  clc
                  adc  :base
 ;                 adc  TileStore+TS_BASE_ADDR,x
                  sta  TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
+
+                 lda  JTableOffset,y
+                 clc
+                 adc  :base
+                 sta  TileStore+TS_JMP_ADDR,x           ; Address of the snippet handler for this tile
 
                  dec  :col
                  bpl  :hop
@@ -269,7 +274,7 @@ _SetTile
                  lda  newTileId                ; Otherwise chose one of the two dynamic tuples
                  and  #TILE_PRIORITY_BIT
                  beq  :pickDynProc             ; If the Priority bit is not set, pick the first entry
-                 lda  #1                       ; If the Priority bit is set, pick the other one
+                 lda  #1                      ; If the Priority bit is set, pick the other one
 
 :pickDynProc     ldy  #DynProcs
                  jsr  _SetTileProcs

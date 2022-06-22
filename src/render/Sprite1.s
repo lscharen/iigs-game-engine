@@ -156,7 +156,8 @@ OneSpriteSlowUnderV
 ; Dynamic tiles with one sprite.
 
 OneSpriteDynamicUnder
-            ldx   sprite_ptr0
+            txy
+            tax
 ]line       equ   0
             lup   8
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
@@ -165,10 +166,12 @@ OneSpriteDynamicUnder
             sta   tmp_sprite_data+{]line*4}+2
 ]line       equ   ]line+1
             --^
+            tyx
             jmp   DynamicUnder
 
 OneSpriteDynamicOver
-            ldx   sprite_ptr0
+            txy
+            tax
 ]line       equ   0
             lup   8
             ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
@@ -178,9 +181,10 @@ OneSpriteDynamicOver
 
             ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
             sta   tmp_sprite_mask+{]line*4}
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
             sta   tmp_sprite_mask+{]line*4}+2
 ]line       equ   ]line+1
             --^
+            tyx
             jmp   DynamicOver
 

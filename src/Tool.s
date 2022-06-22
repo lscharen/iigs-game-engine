@@ -58,6 +58,8 @@ _CallTable
                 adrl  _TSRemoveSprite-1
 
                 adrl  _TSGetSeconds-1
+
+                adrl  _TSCopyTileToDynamic-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -350,6 +352,24 @@ _TSGetSeconds
                 sta     :output,s
 
                 _TSExit  #0;#0
+
+_TSCopyTileToDynamic
+:dynId          equ    FirstParam+0
+:tileId         equ    FirstParam+2
+                _TSEntry
+
+                lda     EngineMode
+                bit     #ENGINE_MODE_DYN_TILES
+                beq     :notEnabled
+
+                lda     :tileId,s
+                tax
+                lda     :dynId,s
+                tay
+                jsr     CopyTileToDyn
+
+:notEnabled
+                _TSExit  #0;#4
 
 ; Insert the GTE code
 
