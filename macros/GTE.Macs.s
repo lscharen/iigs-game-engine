@@ -57,3 +57,6 @@ _GTERemoveSprite     MAC
 _GTEGetSeconds       MAC
                      UserTool  $1400+GTEToolNum
                      <<<
+_GTECopyTileToDynamic MAC
+                      UserTool  $1500+GTEToolNum
+                      <<<
