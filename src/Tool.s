@@ -387,6 +387,7 @@ _TSCopyTileToDynamic
                 put     render/Fast.s
                 put     render/Slow.s
                 put     render/Dynamic.s
+                put     render/TwoLayer.s
                 put     render/Sprite1.s
                 put     render/Sprite2.s
                 put     tiles/DirtyTileQueue.s

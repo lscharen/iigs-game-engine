@@ -393,10 +393,16 @@ DynUnder     dw   CopyDynamicTile,DynamicUnder,OneSpriteDynamicUnder
 ; To improve the performance when two-layer rendering is enabled,
 ; the TILE_SOLID_BIT hint bit can be set to indicate that a tile
 ; has no transparency.  This allows one of the faster routines
-; to be selected.
-
-
-
+; to be selected from the other Proc tables
+TwoLyrProcs
+TwoLyrOverZA   dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr
+TwoLyrOverZV   dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr
+TwoLyrOverNA   dw   CopyTileATwoLyr,SpriteOverATwoLyr,OneSpriteTwoLyrOverA
+TwoLyrOverNV   dw   CopyTileVTwoLyr,SpriteOverVTwoLyr,OneSpriteTwoLyrOverV
+TwoLyrUnderZA  dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr   ; if sprites are over or under the transparent tile, same rendering code
+TwoLyrUnderZV  dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr
+TwoLyrUnderNA  dw   CopyTileATwoLyr,SpriteUnderATwoLyr,OneSpriteTwoLyrUnderA
+TwoLyrUnderNV  dw   CopyTileVTwoLyr,SpriteUnderVTwoLyr,OneSpriteTwoLyrUnderV
 
 ; SetBG0XPos
 ;

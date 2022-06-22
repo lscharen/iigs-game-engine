@@ -188,3 +188,56 @@ OneSpriteDynamicOver
             tyx
             jmp   DynamicOver
 
+
+;-------------------------------
+; Two Layer tiles with one sprite. Just copy the data and go through the generic sprite path
+_CopySpriteDataAndMaskToDP
+]line       equ   0
+            lup   8
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+            sta   tmp_sprite_data+{]line*4}
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+            sta   tmp_sprite_data+{]line*4}+2
+
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            sta   tmp_sprite_mask+{]line*4}
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            sta   tmp_sprite_mask+{]line*4}+2
+]line       equ   ]line+1
+            --^
+            rts
+
+OneSpriteOver0TwoLyr
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   SpriteOver0TwoLyr
+
+OneSpriteTwoLyrOverA
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   SpriteOverATwoLyr
+
+OneSpriteTwoLyrOverV
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   SpriteOverVTwoLyr
+
+OneSpriteTwoLyrUnderA
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   SpriteUnderATwoLyr
+
+OneSpriteTwoLyrUnderV
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   SpriteUnderVTwoLyr
