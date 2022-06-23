@@ -28,7 +28,7 @@ _OneSpriteFastOver0
             plb                                    ; Restore the TileStore bank
             rts
 
-; Next implementation; drawing a sprite onto a regular tile. The 1-sprite dispatch preerves the
+; Next implementation; drawing a sprite onto a regular tile. The 1-sprite dispatch preserves the
 ; X-register, so it already points to the TileStore
 
 OneSpriteFastOverV
@@ -158,55 +158,20 @@ OneSpriteSlowUnderV
 OneSpriteDynamicUnder
             txy
             tax
-]line       equ   0
-            lup   8
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta   tmp_sprite_data+{]line*4}
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   tmp_sprite_data+{]line*4}+2
-]line       equ   ]line+1
-            --^
+            jsr   _CopySpriteDataToDP
             tyx
             jmp   DynamicUnder
 
 OneSpriteDynamicOver
             txy
             tax
-]line       equ   0
-            lup   8
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta   tmp_sprite_data+{]line*4}
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   tmp_sprite_data+{]line*4}+2
-
-            ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            sta   tmp_sprite_mask+{]line*4}
-            ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   tmp_sprite_mask+{]line*4}+2
-]line       equ   ]line+1
-            --^
+            jsr   _CopySpriteDataAndMaskToDP
             tyx
             jmp   DynamicOver
 
 
 ;-------------------------------
 ; Two Layer tiles with one sprite. Just copy the data and go through the generic sprite path
-_CopySpriteDataAndMaskToDP
-]line       equ   0
-            lup   8
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
-            sta   tmp_sprite_data+{]line*4}
-            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   tmp_sprite_data+{]line*4}+2
-
-            ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
-            sta   tmp_sprite_mask+{]line*4}
-            ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
-            sta   tmp_sprite_mask+{]line*4}+2
-]line       equ   ]line+1
-            --^
-            rts
-
 OneSpriteOver0TwoLyr
             txy
             tax
@@ -241,3 +206,60 @@ OneSpriteTwoLyrUnderV
             jsr   _CopySpriteDataAndMaskToDP
             tyx
             jmp   SpriteUnderVTwoLyr
+
+;-----------------------------------------
+; Dynamic two-layer tiles with one sprite.
+
+OneSpriteDynamicOverTwoLyr
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   DynamicOverTwoLyr
+
+OneSpriteDynamicUnderTwoLyr
+            txy
+            tax
+            jsr   _CopySpriteDataAndMaskToDP
+            tyx
+            jmp   DynamicUnderTwoLyr
+
+;-------------------------------------
+; Generic helpers
+_CopySpriteDataToDP
+]line       equ   0
+            lup   8
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+            sta   tmp_sprite_data+{]line*4}
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+            sta   tmp_sprite_data+{]line*4}+2
+]line       equ   ]line+1
+            --^
+            rts
+
+_CopySpriteMaskToDP
+]line       equ   0
+            lup   8
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            sta   tmp_sprite_mask+{]line*4}
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            sta   tmp_sprite_mask+{]line*4}+2
+]line       equ   ]line+1
+            --^
+            rts
+
+_CopySpriteDataAndMaskToDP
+]line       equ   0
+            lup   8
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN},x
+            sta   tmp_sprite_data+{]line*4}
+            ldal  spritedata+{]line*SPRITE_PLANE_SPAN}+2,x
+            sta   tmp_sprite_data+{]line*4}+2
+
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN},x
+            sta   tmp_sprite_mask+{]line*4}
+            ldal  spritemask+{]line*SPRITE_PLANE_SPAN}+2,x
+            sta   tmp_sprite_mask+{]line*4}+2
+]line       equ   ]line+1
+            --^
+            rts

@@ -243,15 +243,21 @@ _SetTile
 
                  lda  EngineMode
                  bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
-                 bne  :not_fast
-                 brl  :setTileFast
+                 beq  :setTileFast
 
-:not_fast        bit  #ENGINE_MODE_TWO_LAYER
+                 bit  #ENGINE_MODE_TWO_LAYER
                  bne  :not_dyn
                  brl  :setTileDyn
 
 :not_dyn
-                 ldy  #SlowProcs            ; safe for now....
+                 lda  #TILE_DYN_BIT
+                 bit  newTileId
+                 beq  :pickTwoLyrProc
+
+                 ldy  #TwoLyrDynProcs
+                 brl  :pickDynProc
+
+:pickTwoLyrProc  ldy  #SlowProcs                 ; #TwoLyrProcs
                  lda  procIdx
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX
@@ -271,12 +277,12 @@ _SetTile
                  bit  newTileId
                  beq  :pickSlowProc            ; If the Dynamic bit is not set, select a tile proc that sets opcodes
 
+                 ldy  #DynProcs                ; use this table
+:pickDynProc
                  lda  newTileId                ; Otherwise chose one of the two dynamic tuples
                  and  #TILE_PRIORITY_BIT
-                 beq  :pickDynProc             ; If the Priority bit is not set, pick the first entry
+                 beq  *+5                     ; If the Priority bit is not set, pick the first entry
                  lda  #1                      ; If the Priority bit is set, pick the other one
-
-:pickDynProc     ldy  #DynProcs
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX
 
@@ -403,6 +409,11 @@ TwoLyrUnderZA  dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr   ; if sp
 TwoLyrUnderZV  dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr
 TwoLyrUnderNA  dw   CopyTileATwoLyr,SpriteUnderATwoLyr,OneSpriteTwoLyrUnderA
 TwoLyrUnderNV  dw   CopyTileVTwoLyr,SpriteUnderVTwoLyr,OneSpriteTwoLyrUnderV
+
+; "Dynamic" procs that can handle the second background.
+TwoLyrDynProcs
+TwoLyrDynOver  dw   CopyDynamicTileTwoLyr,DynamicOverTwoLyr,OneSpriteDynamicOverTwoLyr
+TwoLyrDynUnder dw   CopyDynamicTileTwoLyr,DynamicUnderTwoLyr,OneSpriteDynamicUnderTwoLyr
 
 ; SetBG0XPos
 ;

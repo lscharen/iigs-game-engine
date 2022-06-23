@@ -139,6 +139,7 @@ tmp_tile_mask          equ   112         ; 32 byte temporary buffer to build up 
 _X_REG                 equ   144
 _Y_REG                 equ   146
 _T_PTR                 equ   148         ; Copy of the tile address pointer
+_OP_CACHE2             equ   148         ; CAche of second opcode
 _BASE_ADDR             equ   150         ; Copy of BTableLow for this tile
 _SPR_X_REG             equ   152         ; Cache address of sprite plane source for a tile
 _JTBL_CACHE            equ   154         ; Cache the offset to the exception handler for a column

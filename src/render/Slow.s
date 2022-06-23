@@ -79,7 +79,7 @@ FillPEAOpcode
             rep   #$20
             rts
 
-; This is a dtub; will be removed eventually
+; This is a stub; will be removed eventually
 _FillPEAOpcode
             jsr   FillPEAOpcode
             plb                                    ; Restore the TileStore bank
