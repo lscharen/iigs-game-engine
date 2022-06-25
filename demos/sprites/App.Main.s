@@ -1,305 +1,360 @@
 ; Test driver to exercise graphics routines.
 
-                    REL
-                    DSK        MAINSEG
+                REL
+                DSK        MAINSEG
 
-                    use        Locator.Macs.s
-                    use        Misc.Macs.s
-                    use        EDS.GSOS.MACS.s
-                    use        Tool222.Macs.s
-                    use        Util.Macs.s
-                    use        CORE.MACS.s
-                    use        ../../src/GTE.s
-                    use        ../../src/Defs.s
+                use   Locator.Macs
+                use   Load.Macs
+                use   Mem.Macs
+                use   Misc.Macs
+                use   Tool222.Macs.s
+                use   Util.Macs
+                use   EDS.GSOS.Macs
+                use   GTE.Macs
 
-                    mx         %00
+;                use   ../../src/Defs.s
 
-; Feature flags
-NO_INTERRUPTS       equ        0                       ; turn off for crossrunner debugging
-NO_MUSIC            equ        1                       ; turn music + tool loading off
+                mx         %00
+
+TSet            EXT                           ; tileset buffer
 
 ; Keycodes
-LEFT_ARROW          equ        $08
-RIGHT_ARROW         equ        $15
-UP_ARROW            equ        $0B
-DOWN_ARROW          equ        $0A
+LEFT_ARROW      equ        $08
+RIGHT_ARROW     equ        $15
+UP_ARROW        equ        $0B
+DOWN_ARROW      equ        $0A
 
-; Typical init
-                    phk
-                    plb
+; Direct page space
+appTmp0         equ        0
+BankLoad        equ        2
+StartX          equ        4
+StartY          equ        6
+TileMapWidth    equ        8
+TileMapHeight   equ        10
+ScreenWidth     equ        12
+ScreenHeight    equ        14
 
-                    jsl        EngineStartUp
+                phk
+                plb
 
-                    lda        #^MyPalette               ; Fill Palette #0 with our colors
-                    ldx        #MyPalette
-                    ldy        #0
-                    jsl        SetPalette
+                sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
+                _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                    ldx        #5                        ; Mode 0 is full-screen, mode 5 is 256x160
-                    ldx        #320
-                    ldy        #200
-                    jsl        SetScreenMode
+                jsr   GTEStartUp              ; Load and install the GTE User Tool
+
+; Initialize local variables
+
+                stz   appTmp0
+                stz   BankLoad
+                stz   StartX
+                stz   StartY
+
+; Initialize the graphics screen to a 256x160 playfield
+
+                pea   #320
+                pea   #200
+                _GTESetScreenMode
+
+; Load a tileset
+
+                pea   #^TSet
+                pea   #TSet
+                _GTELoadTileSet
+
+                pea   $0000
+                pea   #^MyPalette
+                pea   #MyPalette
+                _GTESetPalette
 
 ; Set up our level data
-                    jsr        BG0SetUp
-                    jsr        TileAnimInit
-                    jsr        SetLimits
+                jsr        BG0SetUp
+;                jsr        TileAnimInit
+                jsr        SetLimits
 
-                    jsr        InitOverlay             ; Initialize the status bar
-                    stz        frameCount
-                    ldal       OneSecondCounter
-                    sta        oldOneSecondCounter
-                    jsr        UdtOverlay
+;                jsr        InitOverlay             ; Initialize the status bar
+                stz        frameCount
+                pha
+                _GTEGetSeconds
+                pla
+                sta        oldOneSecondCounter
+;                jsr        UdtOverlay
 
 ; Allocate a buffer for loading files
-                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
-                    sta        BankLoad                ; Store "Bank Pointer"
+                jsl        AllocBank               ; Alloc 64KB for Load/Unpack
+                sta        BankLoad                ; Store "Bank Pointer"
 
 ; Load in the 256 color background into BG1 buffer
-                    brl        :nobackground
+                brl        :nobackground
 DoLoadBG1
-                    lda        BankLoad
-                    ldx        #BG1DataFile
-                    jsr        LoadFile
+                lda        BankLoad
+                ldx        #BG1DataFile
+                jsr        LoadFile
 
-                    ldx        BankLoad
-                    lda        #0
-                    ldy        BG1DataBank
-                    jsl        CopyPicToBG1
+                lda        BankLoad
+                pha
+                pea        $0000
+                _GTECopyPicToBG1
 
 ; Copy the palettes into place
 
-                    stz        tmp0
+                stz        appTmp0
 :ploop
-                    lda        tmp0
-                    tay
-                    asl
-                    asl
-                    asl
-                    asl
-                    asl
-                    clc
-                    adc        #$7E00
-                    tax
+                lda        appTmp0
+                pha                        ; Palette number
+                ldy        BankLoad
+                phy                        ; High word pointer to palette
 
-                    lda        BankLoad
-                    jsl        SetPalette
+                asl
+                asl
+                asl
+                asl
+                asl
+                clc
+                adc        #$7E00
+                pha                        ; Low word pointer to palette
+                _GTESetPalette
 
-                    inc        tmp0
-                    lda        tmp0
-                    cmp        #16
-                    bcc        :ploop
+                inc        appTmp0
+                lda        appTmp0
+                cmp        #16
+                bcc        :ploop
 
 ; Bind the SCBs
 
-                    lda        BankLoad
-                    ora        #$8000                     ; set high bit to bind to BG1 Y-position
-                    ldx        #$7D00
-                    jsl        SetSCBArray
+                lda        BankLoad
+                ora        #$8000                     ; set high bit to bind to BG1 Y-position
+                pha
+                pea        $7D00
+                _GTEBindSCBArray
 :nobackground
 
 ; Initialize the sprite's global position (this is tracked outside of the tile engine)
-                    lda        #16
-                    sta        PlayerGlobalX
-                    lda        MaxGlobalY
-                    sec
-                    lda        #40                     ; 32 for tiles, 8 for sprite
-                    sta        PlayerGlobalY
+                lda        #16
+                sta        PlayerGlobalX
+                lda        MaxGlobalY
+                sec
+                lda        #40                     ; 32 for tiles, 8 for sprite
+                sta        PlayerGlobalY
 
-                    stz        PlayerXVel
-                    stz        PlayerYVel
+                stz        PlayerXVel
+                stz        PlayerYVel
 
-; Add a sprite to the engine and save it's sprite ID
-SPRITE_ID           equ        {SPRITE_16X16+145}
-MUSHROOM_ID         equ        {SPRITE_16X16+255}
+; Create the sprites
+HERO_ID         equ        {SPRITE_16X16+145}
+HERO_VBUFF      equ        VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
+HERO_SLOT       equ        1
+MUSHROOM_ID     equ        {SPRITE_16X16+255}
+MUSHROOM_VBUFF  equ        VBUFF_SPRITE_START+1*VBUFF_SPRITE_STEP
 
-                    lda        #MUSHROOM_ID              ; 16x16 sprite, tile ID = 145
-                    ldx        #80
-                    ldy        #152
-                    jsl        AddSprite
+                pea   HERO_ID                     ; sprint id
+                pea   HERO_VBUFF                  ; vbuff address
+                _GTECreateSpriteStamp
 
-                    jsr        UpdatePlayerLocal
-                    lda        #SPRITE_ID              ; 16x16 sprite, tile ID = 145
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        AddSprite
-                    bcc        :sprite_ok
-                    brl        Exit                    ; If we could not allocate a sprite, exit
-:sprite_ok
-                    sta        PlayerID
+                pea   MUSHROOM_ID                 ; sprint id
+                pea   MUSHROOM_VBUFF              ; vbuff address
+                _GTECreateSpriteStamp
+                
+                pea   MUSHROOM_ID                 ; Put the mushroom in Slot 0
+                pea   #80                         ; at x=80, y=152
+                pea   #152
+                pea   $0000
+                _GTEAddSprite
 
-; Draw the initial screen
+                pea   $0000
+                pea   $0000                       ; with these flags (h/v flip)
+                pea   MUSHROOM_VBUFF             ; and use this stamp
+                _GTEUpdateSprite
 
-                    lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
-                    tsb        DirtyBits
-                    jsl        Render
+                jsr        UpdatePlayerLocal
+
+                pea   HERO_ID
+                lda   PlayerX
+                pha
+                lda   PlayerY
+                pha
+                pea   HERO_SLOT                    ; Put the player in slot 1
+                _GTEAddSprite
+
+                pea   HERO_SLOT
+                pea   $0000
+                pea   HERO_VBUFF                   ; and use this stamp
+                _GTEUpdateSprite
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
 ; the play field tiles.
 EvtLoop
-                    jsl        ReadControl
+                pha
+                _GTEReadControl
 
 ; Check the buttons first
-                    pha
+                lda   1,s
 
-                    bit        #$0100
-                    beq        :no_jump
-                    lda        PlayerStanding
-                    beq        :no_jump
-                    lda        #$FFF8
-                    sta        PlayerYVel
+                bit        #$0100
+                beq        :no_jump
+                lda        PlayerStanding
+                beq        :no_jump
+                lda        #$FFF8
+                sta        PlayerYVel
 :no_jump
 
-
 ; Enable/disable v-sync
-                    lda        1,s
-                    bit        #$0400
-                    beq        :no_key_down
-                    and        #$007F
-                    cmp        #'v'
-                    bne        :not_v
-                    lda        #$0001
-                    eor        vsync
-                    sta        vsync
+                lda        1,s
+                bit        #$0400
+                beq        :no_key_down
+                and        #$007F
+                cmp        #'v'
+                bne        :not_v
+                lda        #$0001
+                eor        vsync
+                sta        vsync
 :not_v
-                    cmp        #'f'
-                    bne        :not_f
-                    lda        SpriteToggle
-                    eor        #SPRITE_HIDE
-                    sta        SpriteToggle
-                    bne        :not_f
-                    stz        SpriteCount
+                cmp        #'f'
+                bne        :not_f
+                lda        SpriteToggle
+                eor        #SPRITE_HIDE
+                sta        SpriteToggle
+                bne        :not_f
+                stz        SpriteCount
 
 :not_f
 :no_key_down
+                pla
+                and        #$007F                  ; Ignore the buttons for now
 
+                cmp        #'q'
+                bne        :not_q
+                brl        Exit
 
-                    pla
-                    and        #$007F                  ; Ignore the buttons for now
-
-                    cmp        #'q'
-                    bne        :not_q
-                    brl        Exit
 :not_q
-
-                    cmp        #'d'
-                    bne        :not_d
-                    lda        StartX
-                    cmp        MaxBG0X
-                    bcs        :do_render
-                    inc
-                    jsl        SetBG0XPos
-                    bra        :do_render
+                cmp        #'d'
+                bne        :not_d
+                lda        StartX
+                cmp        MaxBG0X
+                bcc        *+5
+                brl        :do_render
+                inc        StartX
+                pei        StartX
+                pei        StartY
+                _GTESetBG0Origin
+                brl        :do_render
 :not_d
 
-                    cmp        #'a'
-                    bne        :not_a
-                    lda        StartX
-                    beq        :do_render
-                    dec
-                    jsl        SetBG0XPos
-                    bra        :do_render
+                cmp        #'a'
+                bne        :not_a
+                lda        StartX
+                bne        *+5
+                brl        :do_render
+                dec        StartX
+                pei        StartX
+                pei        StartY
+                _GTESetBG0Origin
+                brl        :do_render
 :not_a
 
-                    cmp        #'s'
-                    bne        :not_s
-                    lda        StartY
-                    cmp        MaxBG0Y
-                    bcs        :do_render
-                    inc
-                    jsl        SetBG0YPos
-                    bra        :do_render
+                cmp        #'s'
+                bne        :not_s
+                lda        StartY
+                cmp        MaxBG0Y
+                bcs        :do_render
+                inc        StartY
+                pei        StartX
+                pei        StartY
+                _GTESetBG0Origin
+                bra        :do_render
 :not_s
 
-                    cmp        #'w'
-                    bne        :not_w
-                    lda        StartY
-                    beq        :do_render
-                    dec
-                    jsl        SetBG0YPos
-                    bra        :do_render
+                cmp        #'w'
+                bne        :not_w
+                lda        StartY
+                beq        :do_render
+                dec        StartY
+                pei        StartX
+                pei        StartY
+                _GTESetBG0Origin
+                bra        :do_render
 :not_w
 
 ; Do j,l to move the character left/right
-                    cmp        #'j'
-                    bne        :not_j
-                    lda        PlayerXVel
-                    bpl        :pos_xvel
-                    cmp        #$FFFA
-                    bcc        :not_j
-:pos_xvel           dec
-                    dec
-                    sta        PlayerXVel
-                    bra        :do_render
+                cmp        #'j'
+                bne        :not_j
+                lda        PlayerXVel
+                bpl        :pos_xvel
+                cmp        #$FFFA
+                bcc        :not_j
+:pos_xvel       dec
+                dec
+                sta        PlayerXVel
+                bra        :do_render
 :not_j
 
-                    cmp        #'l'
-                    bne        :not_l
-                    lda        PlayerXVel
-                    bmi        :neg_xvel
-                    cmp        #6
-                    bcs        :not_l
-:neg_xvel           inc
-                    inc
-                    sta        PlayerXVel
-                    bra        :do_render
+                cmp        #'l'
+                bne        :not_l
+                lda        PlayerXVel
+                bmi        :neg_xvel
+                cmp        #6
+                bcs        :not_l
+:neg_xvel       inc
+                inc
+                sta        PlayerXVel
+                bra        :do_render
 :not_l
 
-
 ; Update the camera position
-
 :do_render
-                    jsr        UpdatePlayerPos        ; Moves in global cordinates
-                    jsr        UpdateCameraPos        ; Moves the screen
-                    jsr        UpdatePlayerLocal      ; Gets local sprite coordinates
+                jsr        UpdatePlayerPos        ; Moves in global cordinates
+                jsr        UpdateCameraPos        ; Moves the screen
+                jsr        UpdatePlayerLocal      ; Gets local sprite coordinates
 
-                    lda        PlayerID
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        MoveSprite             ; Move the sprite to this local position
+                pea        HERO_SLOT
+                lda        PlayerX
+                pha
+                lda        PlayerY
+                pha
+                _GTEMoveSprite                    ; Move the sprite to this local position
 
 ; Update the timers
-                    jsl        DoTimers
+;                jsl        DoTimers
 
 ; Let's see what it looks like!
 
-                    lda        vsync
-                    beq        :no_vsync
-:vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
-                    cmp        ScreenY0
-                    bcc        :vsyncloop
-                    sec
-                    sbc        ScreenY0
-                    cmp        #8
-                    bcs        :vsyncloop
-                    lda        #1
-                    jsl        SetBorderColor
-:no_vsync
-                    jsl        Render
+;                    lda        vsync
+;                    beq        :no_vsync
+;:vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
+;                    cmp        ScreenY0
+;                    bcc        :vsyncloop
+;                    sec
+;                    sbc        ScreenY0
+;                    cmp        #8
+;                    bcs        :vsyncloop
+;                    lda        #1
+;                    jsl        SetBorderColor
+;:no_vsync
+                    _GTERender
     
-                    lda        vsync
-                    beq        :no_vsync2
-                    lda        #0
-                    jsl        SetBorderColor
-:no_vsync2
+;                    lda        vsync
+;                    beq        :no_vsync2
+;                    lda        #0
+;                    jsl        SetBorderColor
+;:no_vsync2
 
 ; Update the performance counters
 
                     inc        frameCount
-                    ldal       OneSecondCounter
+                    pha
+                    _GTEGetSeconds
+                    pla
                     cmp        oldOneSecondCounter
                     beq        :noudt
                     sta        oldOneSecondCounter
-                    jsr        UdtOverlay
+;                    jsr        UdtOverlay
                     stz        frameCount
 :noudt
                     brl        EvtLoop
 
 ; Exit code
 Exit
-                    jsl        EngineShutDown
-
+                    _GTEShutDown
                     _QuitGS    qtRec
 
                     bcs        Fatal
@@ -331,6 +386,7 @@ MaxBG0Y             ds         2
 
 oldOneSecondCounter  ds    2
 frameCount           ds    2
+MyUserId             ds    2
 
 PLAYER_X_MIN        equ   0
 PLAYER_X_MAX        equ   160-4
@@ -339,22 +395,33 @@ PLAYER_Y_MAX        equ   200-8
 
 EMPTY_TILE          equ   33              ; the tile that makes up the background
 
-AdjustLocalX
-                    clc
-                    adc        StartXMod164
-                    cmp        #164
-                    bcc        *+5
-                    sbc        #164
-                    rts
-AdjustLocalY
-                    clc
-                    adc        StartYMod208
-                    cmp        #208
-                    bcc        *+5
-                    sbc        #208
-                    rts
-
 SetLimits
+                    pha                       ; Allocate space for width (in tiles), height (in tiles), pointer
+                    pha
+                    pha
+                    pha
+                    _GTEGetBG0TileMapInfo
+                    pla
+                    sta        TileMapWidth
+                    pla
+                    sta        TileMapHeight
+                    pla
+                    pla                       ; discard the pointer
+
+                    pha                       ; Allocate space for x, y, width, height
+                    pha
+                    pha
+                    pha
+                    _GTEGetScreenInfo
+                    pla
+                    pla                       ; Discard screen corner
+                    pla
+                    sta        ScreenWidth
+                    pla
+                    sta        ScreenHeight
+
+
+
                     lda        TileMapWidth
                     asl
                     asl
@@ -373,38 +440,41 @@ SetLimits
                     sta        MaxBG0Y
                     rts
 
-; Set the scroll position based on the global cooridinate of the player
+; Set the scroll position based on the global coordinates of the player
 ; Try to center the player on the screen
 UpdateCameraPos
                     lda        ScreenWidth
                     lsr
-                    sta        tmp0
+                    sta        appTmp0
                     lda        PlayerGlobalX
                     sec
-                    sbc        tmp0
+                    sbc        appTmp0
                     bpl        :x_pos
                     lda        #0
 :x_pos              cmp        MaxBG0X
                     bcc        :x_ok
                     lda        MaxBG0X
-:x_ok               jsl        SetBG0XPos
+:x_ok               pha                                ; Push the x-position
 
                     lda        ScreenHeight
                     lsr
-                    sta        tmp0
+                    sta        appTmp0
                     lda        PlayerGlobalY
                     sec
-                    sbc        tmp0
+                    sbc        appTmp0
                     bpl        :y_pos
                     lda        #0
 :y_pos              cmp        MaxBG0Y
                     bcc        :y_ok
                     lda        MaxBG0Y
-:y_ok               jsl        SetBG0YPos
+:y_ok               pha                                ; Push the y-position
+                    _GTESetBG0Origin
 
+                    pea        $0000
                     lda        StartY
                     lsr
-                    jsl        SetBG1YPos
+                    pha
+                    _GTESetBG1Origin
                     rts
 
 ; Convert the global coordinates to adjusted local coordinated (compensating for wrap-around)
@@ -412,13 +482,11 @@ UpdatePlayerLocal
             lda  PlayerGlobalX
             sec
             sbc  StartX
-;            jsr  AdjustLocalX
             sta  PlayerX
 
             lda  PlayerGlobalY
             sec
             sbc  StartY
-;            jsr  AdjustLocalY
             sta  PlayerY
             rts
 
@@ -431,13 +499,15 @@ UpdatePlayerPos
 
 ; Check if the player is standing on the ground at their current local position
 
-            ldx  PlayerX
+            lda  PlayerX
+            pha
             lda  PlayerY
             clc
             adc  #16
-            tay
-            jsr  GetTileAt
-            and  #$1FF
+            pha
+            _GTEGetTileAt
+            pla
+            and  #TILE_ID_MASK
             cmp  #EMPTY_TILE
             beq  :no_ground_check
 
@@ -501,7 +571,7 @@ UpdatePlayerPos
 
             txa
             ora  LastHFlip
-            ora  #SPRITE_ID
+            ora  #HERO_ID
             sta  SpriteFrame
 
             lda  SpriteCount
@@ -514,7 +584,7 @@ UpdatePlayerPos
             lda  PlayerXVel
             beq  :frame
 
-            jsl  GetVBLTicks
+            jsr  _GetVBLTicks
             and  #$0003
             inc
             and  #$0003
@@ -527,65 +597,21 @@ UpdatePlayerPos
             tax
 
             lda  PlayerID
-            jsl  UpdateSprite                          ; Change the tile ID and / or flags
+;            jsl  UpdateSprite                          ; Change the tile ID and / or flags
 
+;            pea   HERO_SLOT
+;            pei   Flips                         ; with these flags (h/v flip)
+;            pea   VBUFF_SPRITE_START            ; and use this stamp
+;            _GTEUpdateSprite
+            
             rts
 
+ToolPath        str   '1/Tool160'
 LastHFlip       dw   0
 SpriteFrame     ds   2
 SpriteCount     dw   0
 SpriteToggle    dw   0
 
-; X = coordinate
-; Y = coordinate
-GetTileAt
-                txa
-                bmi  :out
-                clc
-                adc  StartXMod164
-                cmp  #164
-                bcc  *+5
-                sbc  #164
-                
-                lsr
-                lsr
-                tax
-
-                tya
-                bmi  :out
-                clc
-                adc  StartYMod208
-                cmp  #208
-                bcc  *+5
-                sbc  #208
-
-                lsr
-                lsr
-                lsr
-                tay
-
-                jsl   GetTileStoreOffset
-                tax
-                ldal  TileStore+TS_TILE_ID,x
-                rts
-
-:out
-                lda  #EMPTY_TILE
-                rts
-
-; Position the screen with the botom-left corner of the tilemap visible
-MovePlayerToOrigin
-                    lda        #0                      ; Set the player's position
-                    jsl        SetBG0XPos
-
-                    lda        TileMapHeight
-                    asl
-                    asl
-                    asl
-                    sec
-                    sbc        ScreenHeight
-                    jsl        SetBG0YPos
-                    rts
 
 openRec             dw         2                       ; pCount
                     ds         2                       ; refNum
@@ -657,8 +683,91 @@ msgLine2            str        'Press a key :'
 msgLine3            str        ' -> Return to Try Again'
 msgLine4            str        ' -> Esc to Quit'
 
-                    PUT        ../shell/Overlay.s
-                    PUT        gen/App.TileMapBG0.s
-                    PUT        gen/App.TileSetAnim.s
 
-ANGLEBNK            ENT
+; Load the GTE User Tool and install it
+GTEStartUp
+                pea   $0000
+                _LoaderStatus
+                pla
+
+                pea   $0000
+                pea   $0000
+                pea   $0000
+                pea   $0000
+                pea   $0000                   ; result space
+
+                lda   MyUserId
+                pha
+
+                pea   #^ToolPath
+                pea   #ToolPath
+                pea   $0001                   ; do not load into special memory
+                _InitialLoad
+                bcc    :ok1
+                brk    $01
+
+:ok1
+                ply
+                pla                           ; Address of the loaded tool
+                plx
+                ply
+                ply
+
+                pea   $8000                   ; User toolset
+                pea   $00A0                   ; Set the tool set number
+                phx
+                pha                           ; Address of function pointer table
+                _SetTSPtr
+                bcc    :ok2
+                brk    $02
+
+:ok2
+                clc                             ; Give GTE a page of direct page memory
+                tdc
+                adc   #$0100
+                pha
+                pea   #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER   ; Enable Dynamic Tiles and Two Layer
+                lda   MyUserId                  ; Pass the userId for memory allocation
+                pha
+                _GTEStartUp
+                bcc    :ok3
+                brk    $03
+
+:ok3
+                rts
+
+_Deref          MAC
+                phb                   ; save caller's data bank register
+                pha                   ; push high word of handle on stack
+                plb                   ; sets B to the bank byte of the pointer
+                lda   |$0002,x        ; load the high word of the master pointer
+                pha                   ; and save it on the stack
+                lda   |$0000,x        ; load the low word of the master pointer
+                tax                   ; and return it in X
+                pla                   ; restore the high word in A
+                plb                   ; pull the handle's high word high byte off the
+                                      ; stack
+                plb                   ; restore the caller's data bank register    
+                <<<
+
+AllocBank      PushLong  #0
+               PushLong  #$10000
+               PushWord  MyUserId
+               PushWord  #%11000000_00011100
+               PushLong  #0
+               _NewHandle
+               plx                                   ; base address of the new handle
+               pla                                   ; high address 00XX of the new handle (bank)
+               _Deref
+               rts
+
+_GetVBLTicks
+                PushLong  #0
+                _GetTick
+                pla
+                plx
+                rts
+
+;                    PUT        ../shell/Overlay.s
+                    PUT        gen/App.TileMapBG0.s
+;                    PUT        gen/App.TileSetAnim.s
