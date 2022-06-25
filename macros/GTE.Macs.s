@@ -60,3 +60,77 @@ _GTEGetSeconds       MAC
 _GTECopyTileToDynamic MAC
                       UserTool  $1500+GTEToolNum
                       <<<
+_GTESetPalette       MAC
+                     UserTool  $1600+GTEToolNum
+                     <<<
+_GTECopyPicToBG1     MAC
+                     UserTool  $1700+GTEToolNum
+                     <<<
+_GTEBindSCBArray     MAC
+                     UserTool  $1800+GTEToolNum
+                     <<<
+_GTEGetBG0TileMapInfo MAC
+                     UserTool  $1900+GTEToolNum
+                     <<<
+_GTEGetScreenInfo    MAC
+                     UserTool  $1A00+GTEToolNum
+                     <<<
+_GTESetBG1Origin     MAC
+                     UserTool  $1B00+GTEToolNum
+                     <<<
+_GTEGetTileAt        MAC
+                     UserTool  $1C00+GTEToolNum
+                     <<<                     
+_GTESetBG0TileMapInfo MAC
+                     UserTool  $1D00+GTEToolNum
+                     <<<
+_GTESetBG1TileMapInfo MAC
+                     UserTool  $1E00+GTEToolNum
+                     <<<
+
+; EngineMode definitions
+; Script definition
+YIELD                  equ   $8000
+JUMP                   equ   $4000
+
+SET_PALETTE_ENTRY      equ   $0002
+SWAP_PALETTE_ENTRY     equ   $0004
+SET_DYN_TILE           equ   $0006
+CALLBACK               equ   $0010
+
+; ReadControl return value bits
+PAD_BUTTON_B           equ   $01
+PAD_BUTTON_A           equ   $02
+PAD_KEY_DOWN           equ   $04
+ENGINE_MODE_TWO_LAYER  equ   $0001
+ENGINE_MODE_DYN_TILES  equ   $0002
+ENGINE_MODE_BNK0_BUFF  equ   $0004
+
+; Tile constants
+; TILE_RESERVED_BIT      equ   $8000
+TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
+TILE_FRINGE_BIT        equ   $2000                  ; Unused
+TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
+TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
+TILE_VFLIP_BIT         equ   $0400
+TILE_HFLIP_BIT         equ   $0200
+TILE_ID_MASK           equ   $01FF
+TILE_CTRL_MASK         equ   $FE00
+
+
+; Sprite constants
+SPRITE_HIDE            equ   $2000
+SPRITE_16X16           equ   $1800
+SPRITE_16X8            equ   $1000
+SPRITE_8X16            equ   $0800
+SPRITE_8X8             equ   $0000
+SPRITE_VFLIP           equ   $0400
+SPRITE_HFLIP           equ   $0200
+
+; Stamp storage parameters
+VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
+VBUFF_TILE_ROW_BYTES   equ {8*VBUFF_STRIDE_BYTES}        ; Each row is comprised of 8 lines
+VBUFF_TILE_COL_BYTES   equ 4
+VBUFF_SPRITE_STEP      equ {VBUFF_TILE_ROW_BYTES*3}      ; Allocate space for 16 rows + 8 rows of buffer
+VBUFF_SPRITE_START     equ {VBUFF_TILE_ROW_BYTES+4}      ; Start at an offset so $0000 can be used as an empty value
+VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps

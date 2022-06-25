@@ -25,7 +25,7 @@ Render             EXT
 
 ; SCB/Palette binding (high bit of array point indicates whether to bind to BG0 Y position (0)
 ; or BG1 Y position (1).
-SetSCBArray        EXT
+; SetSCBArray        EXT
 BltSCB             EXT
 
 ; Rotation

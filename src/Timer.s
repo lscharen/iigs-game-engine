@@ -107,33 +107,48 @@ RemoveTimer     ENT
                 rtl
 
 ; Execute the timer functions
-DoTimers        ENT
-                phb
-                jsr       _SetDataBank
+;DoTimers        ENT
+;                phb
+;                jsr       _SetDataBank
+;
+;                jsr       _GetVBLTicks
+;
+;                cmp       LastTick                            ; Throttle to 60 fps
+;                beq       :exit
+;                tax                                           ; Calculate the increment
+;                sec
+;                sbc       LastTick
+;                stx       LastTick
 
+; We don't want times to fire excessively.  If the timer hasn't been evaluated for over 
+; one second, then just skip processing and wait for the next call.
+;                cmp       #60
+;                bcs       :exit
+
+;                jsr       _DoTimers
+
+;:exit           plb
+;                rtl
+
+; Countdown the timers
+_DoTimers
                 jsr       _GetVBLTicks
 
                 cmp       LastTick                            ; Throttle to 60 fps
                 beq       :exit
+
                 tax                                           ; Calculate the increment
                 sec
                 sbc       LastTick
                 stx       LastTick
 
-; We don't want times to fire excessively.  If the timer has nt been evaluated for over 
+; We don't want times to fire excessively.  If the timer hasn't been evaluated for over 
 ; one second, then just skip processing and wait for the next call.
                 cmp       #60
-                bcs       :exit
+                bcc       :do_timer
+:exit           rts
 
-                jsr       _DoTimers
-
-:exit           plb
-                rtl
-
-; Countdown the timers
-;
-; A = number of elapsed ticks
-_DoTimers
+:do_timer
                 pha
                 ldx       #0
 :loop

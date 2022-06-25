@@ -20,6 +20,8 @@
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
 _Render
+            jsr   _DoTimers            ; Run any pending timer tasks
+
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen

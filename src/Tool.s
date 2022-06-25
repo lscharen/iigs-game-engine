@@ -60,6 +60,17 @@ _CallTable
                 adrl  _TSGetSeconds-1
 
                 adrl  _TSCopyTileToDynamic-1
+
+                adrl  _TSSetPalette-1
+                adrl  _TSCopyPicToBG1-1
+                adrl  _TSBindSCBArray-1
+                adrl  _TSGetBG0TileMapInfo-1
+                adrl  _TSGetScreenInfo-1
+                adrl  _TSSetBG1Origin-1
+                adrl  _TSGetTileAt-1
+
+                adrl  _TSSetBG0TileMapInfo-1
+                adrl  _TSSetBG1TileMapInfo-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -371,6 +382,171 @@ _TSCopyTileToDynamic
 :notEnabled
                 _TSExit  #0;#4
 
+
+_TSSetPalette
+:ptr            equ    FirstParam+0
+:palNum         equ    FirstParam+4
+
+                _TSEntry
+
+                phb
+                lda     :ptr+2
+                pha
+                plb
+                plb
+
+                lda     :ptr
+                tax
+                lda     :palNum
+                jsr     _SetPalette
+                plb
+
+                _TSExit  #0;#6
+
+_TSCopyPicToBG1
+:ptr            equ    FirstParam+0
+
+                _TSEntry
+
+                lda     BG1DataBank
+                tay
+                lda     :ptr+2,s
+                tax
+                lda     :ptr,s
+                jsr     _CopyPicToBG1
+
+                _TSExit  #0;#4
+
+_TSBindSCBArray
+:ptr            equ    FirstParam+0
+
+                _TSEntry
+
+                lda     :ptr,s
+                tax
+                lda     :ptr+2,s
+                jsr     _BindSCBArray
+
+                _TSExit  #0;#4
+
+_TSGetBG0TileMapInfo
+:ptr            equ     FirstParam+4
+:height         equ     FirstParam+2
+:width          equ     FirstParam+0
+                _TSEntry
+
+                lda     TileMapWidth
+                sta     :width,s
+                lda     TileMapHeight
+                sta     :height,s
+                lda     TileMapPtr
+                sta     :ptr,s
+                lda     TileMapPtr+2
+                sta     :ptr+2,s
+
+                _TSExit  #0;#0
+
+
+_TSGetScreenInfo
+:height         equ     FirstParam+4
+:width          equ     FirstParam+4
+:y              equ     FirstParam+2
+:x              equ     FirstParam+0
+                _TSEntry
+
+                lda     ScreenX0
+                sta     :x,s
+                lda     ScreenY0
+                sta     :y,s
+                sta     :width,s
+                lda     ScreenWidth
+                sta     :width,s
+                lda     ScreenHeight
+                sta     :height,s
+
+                _TSExit  #0;#0
+
+; SetBG1Origin(x, y)
+_TSSetBG1Origin
+:y              equ     FirstParam
+:x              equ     FirstParam+2
+
+                _TSEntry
+
+                lda     :x,s
+                jsr     _SetBG1XPos
+                lda     :y,s
+                jsr     _SetBG1YPos
+
+                _TSExit #0;#4
+
+; GetTileAt(x, y)
+_TSGetTileAt
+:y            equ     FirstParam
+:x            equ     FirstParam+2
+:output       equ     FirstParam+4
+
+                _TSEntry
+
+; Convert the x, y coordinated to tile store block coordinates
+                lda  :x,s
+                tax
+                lda  :y,s
+                tay
+                jsr  _GetTileAt
+                bcc  :ok
+                lda  #0
+                bra  :out
+
+; Load the tile at that tile store location
+
+:ok
+                jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
+                tax
+                lda  TileStore+TS_TILE_ID,x
+:out
+                sta  :output,s
+
+                _TSExit #0;#4
+
+; SetBG0TileMapInfo(width, height, ptr)
+_TSSetBG0TileMapInfo
+:ptr            equ     FirstParam+0
+:height         equ     FirstParam+4
+:width          equ     FirstParam+6
+
+                _TSEntry
+
+                lda     :width,s
+                sta     TileMapWidth
+                lda     :height,s
+                sta     TileMapHeight
+                lda     :ptr,s
+                sta     TileMapPtr
+                lda     :ptr+2,s
+                sta     TileMapPtr+2
+
+                _TSExit #0;#8
+
+; SetBG1TileMapInfo(width, height, ptr)
+_TSSetBG1TileMapInfo
+:ptr            equ     FirstParam+0
+:height         equ     FirstParam+4
+:width          equ     FirstParam+6
+
+                _TSEntry
+
+                lda     :width,s
+                sta     BG1TileMapWidth
+                lda     :height,s
+                sta     BG1TileMapHeight
+                lda     :ptr,s
+                sta     BG1TileMapPtr
+                lda     :ptr+2,s
+                sta     TileMapPtr+2
+
+                _TSExit #0;#8
+    
 ; Insert the GTE code
 
                 put     Math.s
@@ -391,6 +567,7 @@ _TSCopyTileToDynamic
                 put     render/Sprite1.s
                 put     render/Sprite2.s
                 put     tiles/DirtyTileQueue.s
+                put     blitter/SCB.s
                 put     blitter/Horz.s
                 put     blitter/Vert.s
                 put     blitter/BG0.s

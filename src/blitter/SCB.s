@@ -76,11 +76,11 @@ _BltSCB
 
 
 ; Quick helper to set the pointer (X = low word, A = high work)
-SetSCBArray ENT
-        jsr   _SetSCBArray
-        rtl
+;SetSCBArray ENT
+;        jsr   _SetSCBArray
+;        rtl
 
-_SetSCBArray
+_BindSCBArray
         stx  SCBArrayPtr
         sta  SCBArrayPtr+2
         rts
