@@ -383,6 +383,7 @@ _TSCopyTileToDynamic
                 _TSExit  #0;#4
 
 
+; SetPalette(palNum, Pointer)
 _TSSetPalette
 :ptr            equ    FirstParam+0
 :palNum         equ    FirstParam+4
@@ -390,14 +391,15 @@ _TSSetPalette
                 _TSEntry
 
                 phb
-                lda     :ptr+2
+                lda     :ptr+3,s                ; add one extra byte for the phb
+                xba
                 pha
                 plb
                 plb
 
-                lda     :ptr
+                lda     :ptr+1,s
                 tax
-                lda     :palNum
+                lda     :palNum+1,s
                 jsr     _SetPalette
                 plb
 
@@ -526,6 +528,9 @@ _TSSetBG0TileMapInfo
                 lda     :ptr+2,s
                 sta     TileMapPtr+2
 
+                lda     #DIRTY_BIT_BG0_REFRESH     ; force a refresh of the BG0 on the next Render
+                tsb     DirtyBits
+
                 _TSExit #0;#8
 
 ; SetBG1TileMapInfo(width, height, ptr)
@@ -553,6 +558,7 @@ _TSSetBG1TileMapInfo
                 put     CoreImpl.s
                 put     Memory.s
                 put     Timer.s
+                put     TileMap.s
                 put     Graphics.s
                 put     Tiles.s
                 put     Sprite.s
