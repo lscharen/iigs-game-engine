@@ -211,3 +211,4 @@ GTE provides the following capabilities
 * [A Guide to the Graphics of the Sega Mega Drive / Genesis](https://rasterscroll.com/mdgraphics/)
 * [Jon Burton / Traveller's Tales / Coding Secrets](https://ttjontt.wixsite.com/gamehut/coding-secrets)
 * [Lou's Pseudo 3d Page](http://www.extentofthejam.com/pseudo/)
+* [A Great Old-Timey Game-Programming Hack](https://blog.moertel.com/posts/2013-12-14-great-old-timey-game-programming-hack.html)
