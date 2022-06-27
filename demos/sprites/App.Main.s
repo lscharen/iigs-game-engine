@@ -68,7 +68,8 @@ ScreenHeight    equ        14
 
 ; Set up our level data
                 jsr        BG0SetUp
-;                jsr        TileAnimInit
+
+                jsr        TileAnimInit
                 jsr        SetLimits
 
 ;                jsr        InitOverlay             ; Initialize the status bar
@@ -145,6 +146,7 @@ HERO_VBUFF      equ        VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
 HERO_SLOT       equ        1
 MUSHROOM_ID     equ        {SPRITE_16X16+255}
 MUSHROOM_VBUFF  equ        VBUFF_SPRITE_START+1*VBUFF_SPRITE_STEP
+MUSHROOM_SLOT   equ        0
 
                 pea   HERO_ID                     ; sprint id
                 pea   HERO_VBUFF                  ; vbuff address
@@ -153,19 +155,19 @@ MUSHROOM_VBUFF  equ        VBUFF_SPRITE_START+1*VBUFF_SPRITE_STEP
                 pea   MUSHROOM_ID                 ; sprint id
                 pea   MUSHROOM_VBUFF              ; vbuff address
                 _GTECreateSpriteStamp
-                
+
                 pea   MUSHROOM_ID                 ; Put the mushroom in Slot 0
                 pea   #80                         ; at x=80, y=152
                 pea   #152
-                pea   $0000
+                pea   MUSHROOM_SLOT
                 _GTEAddSprite
 
-                pea   $0000
+                pea   MUSHROOM_SLOT
                 pea   $0000                       ; with these flags (h/v flip)
                 pea   MUSHROOM_VBUFF             ; and use this stamp
                 _GTEUpdateSprite
 
-                jsr        UpdatePlayerLocal
+                jsr   UpdatePlayerLocal
 
                 pea   HERO_ID
                 lda   PlayerX
@@ -360,12 +362,23 @@ Exit
                     bcs        Fatal
 Fatal               brk        $00
 
+Hold
+                _GTERender
+:busy
+                pha
+                _GTEReadControl
+                pla
+                and   #$00FF
+                cmp   #'q'
+                bne   :busy
+                jmp   Exit
+
 BG1DataFile         strl       '1/sunset.c1'
 
 ; Color palette
 MyPalette           dw         $068F,$0EDA,$0000,$0000,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
 ; B&W Palette
-;MyPalette           dw         $0000,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FFF
+; MyPalette           dw         $0000,$0EDA,$0000,$0E51,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FFF
 PlayerGlobalX       ds         2
 PlayerGlobalY       ds         2
 
@@ -499,6 +512,7 @@ UpdatePlayerPos
 
 ; Check if the player is standing on the ground at their current local position
 
+            pha                         ; space for result
             lda  PlayerX
             pha
             lda  PlayerY
@@ -770,4 +784,4 @@ _GetVBLTicks
 
 ;                    PUT        ../shell/Overlay.s
                     PUT        gen/App.TileMapBG0.s
-;                    PUT        gen/App.TileSetAnim.s
+                    PUT        gen/App.TileSetAnim.s

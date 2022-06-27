@@ -31,15 +31,11 @@ InitTimers
 ; Return
 ;  C = 0 if success, 1 if no timer slots are available
 ;  A = timer slot ID if C = 0
-AddTimer        ENT
-                phb
-
+_AddTimer
                 php                                           ; Save the input parameters
                 phx
                 pha
                 phy
-
-                jsr       _SetDataBank
 
                 ldx       #0
 :loop           lda       Timers,x                            ; If the counter is zero, timer is free
@@ -72,8 +68,7 @@ AddTimer        ENT
                 lda       Timers+0,x                          ; if not a one-shot, put the counter
                 sta       Timers+2,x                          ; value into the reset field
 
-:oneshot        plb
-                txa                                           ; return the slot ID and a success status
+:oneshot        txa                                           ; return the slot ID and a success status
                 clc
                 rtl
 
@@ -81,18 +76,15 @@ AddTimer        ENT
                 pla
                 plx
                 plp
-                plb
 
                 sec                                           ; Return an error status
                 lda       #0
-                rtl
+                rts
 
 ; Small function to remove a timer
 ;
 ; A = Timer ID
-RemoveTimer     ENT
-                phb
-                jsr       _SetDataBank
+_RemoveTimer
                 cmp       #{TIMER_REC_SIZE*{MAX_TIMERS-1}}+1
                 bcs       :exit
 
@@ -103,8 +95,7 @@ RemoveTimer     ENT
                 stz       Timers+6,x
 
 :exit
-                plb
-                rtl
+                rts
 
 ; Execute the timer functions
 ;DoTimers        ENT

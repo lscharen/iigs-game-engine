@@ -33,17 +33,13 @@
 ;
 ; A pointer to the current command instruction is stored in the first 4 bytes of the 
 ; timer's user data section.
-StartScript    ENT
-               phb
-               jsr   _SetDataBank
-
-               phx                      ; Save the script array address
+_StartScript   phx                      ; Save the script array address
                pha
 
                lda   #_DoScriptSeq      ; Try to create a timer for this script
                ldx   #^_DoScriptSeq
                clc
-               jsl   AddTimer
+               jsr   _AddTimer
                bcs   :err               ; No timer slots available :(
 
                tax                      ; Initialize the UserData with the command pointer
@@ -52,14 +48,12 @@ StartScript    ENT
                pla
                sta   Timers+10,x
 
-               plb
-               rtl
+               rts
 
 :err
                pla                      ; Pop the values and return with the carry flag set
                pla
-               plb
-               rtl
+               rts
 
 ; This routine executes script command until it encounters one with the STOP bit set.  In some
 ; sense, the stop bit acts like a "yield" in high-level languages.
@@ -107,18 +101,20 @@ _dss_cmd_rtn
 ; to the next entry.
                bit   #JUMP              ; Just do a fall through and set the jump offset to
                bne   :move_addr         ; a hard-coded value of 1 if the jump bit is not set
-:retry         lda   #$0100
-:move_addr     and   #$0F00             ; mask out the number of commands to move
+:retry         lda   #$0040
+:move_addr     and   #$0FC0             ; mask out the number of commands to move
                beq   :retry             ; Don't allow zeros; will cause infinite loop.  Just advance by one.
 
-               xba                      ; put it in the low byte
-               cmp   #$0008             ; Sign-extend the 4-bit value
+               cmp   #$0800             ; Sign-extend the 6-bit value
                bcc   *+5
-               ora   #$FFF0
+               ora   #$F000
 
-               asl                      ; multiply by 8
-               asl
-               asl
+               cmp   #$8000             ; make it a multiple of 8 (preserve sign)
+               ror
+               cmp   #$8000
+               ror
+               cmp   #$8000
+               ror
                clc
                adc   3,s                ; add it to the saved command address
                sta   3,s

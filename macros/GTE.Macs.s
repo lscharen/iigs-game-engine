@@ -87,6 +87,15 @@ _GTESetBG0TileMapInfo MAC
 _GTESetBG1TileMapInfo MAC
                      UserTool  $1E00+GTEToolNum
                      <<<
+_GTEAddTimer         MAC
+                     UserTool  $1F00+GTEToolNum
+                     <<<
+_GTERemoveTimer      MAC
+                     UserTool  $2000+GTEToolNum
+                     <<<
+_GTEStartScript      MAC
+                     UserTool  $2100+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition

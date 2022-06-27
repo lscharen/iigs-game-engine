@@ -30,6 +30,14 @@ _TSExit         mac
                 jml     ToStrip
                 <<<
 
+_TSExit1        mac
+                plb
+                pld
+;                ldx     ]1                 ; Error code already in X
+                ldy     ]1                 ; Number of stack bytes to remove
+                jml     ToStrip
+                <<<
+
 FirstParam      equ     10                  ; When using the _TSEntry macro, the first parameter is at 10,s
 
                 mx    %00
@@ -71,6 +79,10 @@ _CallTable
 
                 adrl  _TSSetBG0TileMapInfo-1
                 adrl  _TSSetBG1TileMapInfo-1
+
+                adrl  _TSAddTimer-1
+                adrl  _TSRemoveTimer-1
+                adrl  _TSStartScript-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -551,13 +563,66 @@ _TSSetBG1TileMapInfo
                 sta     TileMapPtr+2
 
                 _TSExit #0;#8
-    
+
+; AddTimer(numTicks, callback, flags)
+_TSAddTimer
+:flags          equ     FirstParam+0
+:callback       equ     FirstParam+2
+:numTicks       equ     FirstParam+6
+:output         equ     FirstParam+8
+
+                _TSEntry
+
+                lda     :callback+2,s
+                tax
+                lda     :callback,s
+                tay
+                lda     :flags,s
+                lsr                        ; put low bit into carry
+                lda     :numTicks,s
+                jsr     _AddTimer
+                sta     :output,s
+                ldx     #0
+                bcc     :no_err
+                ldx     #NO_TIMERS_AVAILABLE
+:no_err
+                _TSExit1 #8
+
+; RemoveTimer(timerId)
+_TSRemoveTimer
+:timerId        equ     FirstParam+0
+
+                _TSEntry
+
+                lda     :timerId,s
+                jsr     _RemoveTimer
+
+                _TSExit #0;#2
+
+
+; StartScript(timerId)
+_TSStartScript
+:scriptAddr     equ     FirstParam+0
+:numTicks       equ     FirstParam+4
+
+                _TSEntry
+
+                lda     :numTicks,s
+                tay
+                lda     :scriptAddr+2,s
+                tax
+                lda     :scriptAddr,s
+                jsr     _StartScript
+
+                _TSExit #0;#6
+
 ; Insert the GTE code
 
                 put     Math.s
                 put     CoreImpl.s
                 put     Memory.s
                 put     Timer.s
+                put     Script.s
                 put     TileMap.s
                 put     Graphics.s
                 put     Tiles.s
