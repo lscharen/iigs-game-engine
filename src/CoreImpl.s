@@ -71,9 +71,6 @@ TileStore         EXT
 spritedata        EXT
 spritemask        EXT
 
-; If there are overlays, they are provided as an external
-Overlay           EXT
-
 ; Core engine functionality.  The idea is that that source file can be PUT into
 ; a main source file and all of the functionality will be available.
 ;

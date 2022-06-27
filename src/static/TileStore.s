@@ -388,6 +388,9 @@ OldOneSecVec      ENT
                   ds        4
 Timers            ENT
                   ds        TIMER_REC_SIZE*MAX_TIMERS
+Overlays          ENT
+                  dw        0     ; count
+                  ds        8     ; only support one or now (start_line, end_line, function call)
 
 ; From the IIgs ref 
 DefaultPalette   ENT

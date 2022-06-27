@@ -83,6 +83,11 @@ _CallTable
                 adrl  _TSAddTimer-1
                 adrl  _TSRemoveTimer-1
                 adrl  _TSStartScript-1
+
+                adrl  _TSSetOverlay-1
+                adrl  _TSClearOverlay-1
+
+                adrl  _TSGetTileDataAddr-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -472,7 +477,6 @@ _TSGetScreenInfo
                 sta     :x,s
                 lda     ScreenY0
                 sta     :y,s
-                sta     :width,s
                 lda     ScreenWidth
                 sta     :width,s
                 lda     ScreenHeight
@@ -615,6 +619,49 @@ _TSStartScript
                 jsr     _StartScript
 
                 _TSExit #0;#6
+; SetOverlay(top, bottom, proc)
+_TSSetOverlay
+:proc           equ     FirstParam+0
+:bottom         equ     FirstParam+4
+:top            equ     FirstParam+6
+
+                _TSEntry
+
+                lda     #1
+                sta     Overlays
+                lda     :top,s
+                sta     Overlays+2
+                lda     :bottom,s
+                sta     Overlays+4
+                lda     :proc,s
+                sta     Overlays+6
+                lda     :proc+2,s
+                sta     Overlays+8
+
+                _TSExit #0;#8
+
+; ClearOverlay()
+_TSClearOverlay
+
+                _TSEntry
+
+                lda     #0
+                sta     Overlays
+
+                _TSExit #0;#0
+
+; GetTileDataAddr()
+_TSGetTileDataAddr
+:output         equ     FirstParam+0
+
+                 _TSEntry
+
+                lda     #tiledata
+                sta     :output,s
+                lda     #^tiledata
+                sta     :output+2,s
+
+                _TSExit #0;#0
 
 ; Insert the GTE code
 

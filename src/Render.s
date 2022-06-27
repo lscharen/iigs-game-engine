@@ -42,37 +42,47 @@ _Render
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
             jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
 
-; The code fields are locked in now and ready to be rendered
+; The code fields are locked in now and ready to be rendered. See if there is an overlay or any
+; other reason to render with shadowing off.  Otherwise, just do things quickly.
 
-;            jsr   _ShadowOff
+            lda   Overlays
+            beq   :no_ovrly
+
+            jsr   _ShadowOff
 
 ; Shadowing is turned off. Render all of the scan lines that need a second pass. One
 ; optimization that can be done here is that the lines can be rendered in any order
 ; since it is not shown on-screen yet.
 
-;            ldx   #0                  ; Blit the full virtual buffer to the screen
-;            ldy   #8
-;            jsr   _BltRange
+            ldx   Overlays+2                  ; Blit the full virtual buffer to the screen
+            ldy   Overlays+4
+            jsr   _BltRange
 
 ; Turn shadowing back on
 
-;            jsr   _ShadowOn
+            jsr   _ShadowOn
 
 ; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
 
-;            lda   ScreenY0             ; pass the address of the first line of the overlay
-;            clc
-;            adc   #0
-;            asl
-;            tax
-;            lda   ScreenAddr,x
-;            clc
-;            adc   ScreenX0
-;            jsl   Overlay
+            ldx   #0
+            ldy   Overlays+2
+            beq   :skip
+            jsr   _BltRange
+:skip
+            jsr   _DoOverlay
 
+            ldx   Overlays+4
+            cpx   ScreenHeight
+            beq   :done
+            ldy   ScreenHeight
+            jsr   _BltRange
+            bra   :done
+
+:no_ovrly
             ldx   #0                  ; Blit the full virtual buffer to the screen
             ldy   ScreenHeight
             jsr   _BltRange
+:done
 
             ldx   #0
             ldy   ScreenHeight
@@ -100,6 +110,23 @@ _Render
             lda   #DIRTY_BIT_SPRITE_ARRAY
             sta   DirtyBits
 :no_removal
+            rts
+
+_DoOverlay
+            lda   Overlays+6
+            stal  :disp+1
+            lda   Overlays+7
+            stal  :disp+2
+
+            lda   ScreenY0             ; pass the address of the first line of the overlay
+            clc
+            adc   Overlays+2
+            asl
+            tax
+            lda   ScreenAddr,x
+            clc
+            adc   ScreenX0
+:disp       jsl   $000000
             rts
 
 ; The _ApplyTilesFast is the same as _ApplyTiles, but we use the _RenderTileFast subroutine

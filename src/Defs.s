@@ -254,6 +254,7 @@ VBuffArray        EXT
 _stamp_step       EXT
 VBuffVertTableSelect EXT
 VBuffHorzTableSelect EXT
+Overlays          EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

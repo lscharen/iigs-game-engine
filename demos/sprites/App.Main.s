@@ -38,6 +38,9 @@ ScreenHeight    equ        14
                 plb
 
                 sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
+                tdc
+                sta   MyDirectPage            ; Keep a copy for the overlay callback
+
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
@@ -68,17 +71,16 @@ ScreenHeight    equ        14
 
 ; Set up our level data
                 jsr        BG0SetUp
-
                 jsr        TileAnimInit
                 jsr        SetLimits
 
-;                jsr        InitOverlay             ; Initialize the status bar
+                jsr        InitOverlay             ; Initialize the status bar
                 stz        frameCount
                 pha
                 _GTEGetSeconds
                 pla
                 sta        oldOneSecondCounter
-;                jsr        UdtOverlay
+                jsr        UdtOverlay
 
 ; Allocate a buffer for loading files
                 jsl        AllocBank               ; Alloc 64KB for Load/Unpack
@@ -349,7 +351,7 @@ EvtLoop
                     cmp        oldOneSecondCounter
                     beq        :noudt
                     sta        oldOneSecondCounter
-;                    jsr        UdtOverlay
+                    jsr        UdtOverlay
                     stz        frameCount
 :noudt
                     brl        EvtLoop
@@ -400,6 +402,7 @@ MaxBG0Y             ds         2
 oldOneSecondCounter  ds    2
 frameCount           ds    2
 MyUserId             ds    2
+MyDirectPage         ds    2
 
 PLAYER_X_MIN        equ   0
 PLAYER_X_MAX        equ   160-4
@@ -783,6 +786,6 @@ _GetVBLTicks
                 plx
                 rts
 
-;                    PUT        ../shell/Overlay.s
-                    PUT        gen/App.TileMapBG0.s
-                    PUT        gen/App.TileSetAnim.s
+                PUT        ../shell/Overlay.s
+                PUT        gen/App.TileMapBG0.s
+                PUT        gen/App.TileSetAnim.s
