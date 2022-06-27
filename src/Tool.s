@@ -88,6 +88,8 @@ _CallTable
                 adrl  _TSClearOverlay-1
 
                 adrl  _TSGetTileDataAddr-1
+                adrl  _TSFillTileStore-1
+                adrl  _TSRefresh-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -660,6 +662,47 @@ _TSGetTileDataAddr
                 sta     :output,s
                 lda     #^tiledata
                 sta     :output+2,s
+
+                _TSExit #0;#0
+
+; FillTileStore(tileId)
+_TSFillTileStore
+:tileId         equ     FirstParam+0
+
+                _TSEntry
+
+                stz    tmp0   
+:oloop
+                stz    tmp1
+:iloop
+                ldx    tmp1
+                ldy    tmp0
+                lda    :tileId,s
+                jsr    _SetTile
+                
+                lda    tmp1
+                inc
+                sta    tmp1
+                cmp    #TILE_STORE_WIDTH
+                bcc    :iloop
+
+                lda    tmp0
+                inc
+                sta    tmp0
+                cmp    #TILE_STORE_HEIGHT
+                bcc    :oloop
+
+                _TSExit #0;#2
+
+; _TSRefresh()
+_TSRefresh
+                _TSEntry
+
+                ldx  #TILE_STORE_SIZE-2
+:loop           jsr  _PushDirtyTileX
+                dex
+                dex
+                bpl  :loop
 
                 _TSExit #0;#0
 

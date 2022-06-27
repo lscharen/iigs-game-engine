@@ -105,6 +105,12 @@ _GTEClearOverlay     MAC
 _GTEGetTileDataAddr  MAC
                      UserTool  $2400+GTEToolNum
                      <<<
+_GTEFillTileStore    MAC
+                     UserTool  $2500+GTEToolNum
+                     <<<
+_GTERefresh          MAC
+                     UserTool  $2600+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
