@@ -433,8 +433,6 @@ SetLimits
                     pla
                     sta        ScreenHeight
 
-
-
                     lda        TileMapWidth
                     asl
                     asl
@@ -467,7 +465,7 @@ UpdateCameraPos
 :x_pos              cmp        MaxBG0X
                     bcc        :x_ok
                     lda        MaxBG0X
-:x_ok               pha                                ; Push the x-position
+:x_ok               sta        StartX
 
                     lda        ScreenHeight
                     lsr
@@ -480,7 +478,10 @@ UpdateCameraPos
 :y_pos              cmp        MaxBG0Y
                     bcc        :y_ok
                     lda        MaxBG0Y
-:y_ok               pha                                ; Push the y-position
+:y_ok               sta        StartY
+
+                    pei        StartX
+                    pei        StartY
                     _GTESetBG0Origin
 
                     pea        $0000
