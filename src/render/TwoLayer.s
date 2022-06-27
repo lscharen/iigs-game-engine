@@ -2,6 +2,7 @@
 ; routines, there's nothing in here that is particularly well optimized.
 
 Tile0TwoLyr
+            ldal  TileStore+TS_WORD_OFFSET,x
             and   #$00FF
             ora   #$4800
             sta:  $0004,y
@@ -42,6 +43,7 @@ Tile0TwoLyr
             sta   $7000,y
             sta   $7003,y
             rep   #$20
+            plb
             rts
 
 ; Draw from the sprite buffer into a fully transparent tile
@@ -140,20 +142,16 @@ _TmpTileDataToCodeField
 
 ; Copy a tile into the tile data buffer and then render to the code field
 CopyTileATwoLyr
-            lda   TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ldal  TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
             sta   _JTBL_CACHE
 
-            lda   TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
+            ldal  TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
             ora   #$B100                       ; Pre-calc the LDA (dp),y opcode + operand
             xba
             sta   _OP_CACHE
 
-            lda   TileStore+TS_CODE_ADDR_HIGH,x
-            pha
-            ldy   TileStore+TS_CODE_ADDR_LOW,x
-            lda   TileStore+TS_TILE_ADDR,x
+            ldal  TileStore+TS_TILE_ADDR,x
             tax
-            plb
 
 ]line       equ   0
             lup   8
@@ -171,20 +169,16 @@ CopyTileATwoLyr
             jmp   _TmpTileDataToCodeField
 
 CopyTileVTwoLyr
-            lda   TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ldal  TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
             sta   _JTBL_CACHE
 
-            lda   TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
+            ldal  TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
             ora   #$B100                       ; Pre-calc the LDA (dp),y opcode + operand
             xba
             sta   _OP_CACHE
 
-            lda   TileStore+TS_CODE_ADDR_HIGH,x
-            pha
-            ldy   TileStore+TS_CODE_ADDR_LOW,x
-            lda   TileStore+TS_TILE_ADDR,x
+            ldal  TileStore+TS_TILE_ADDR,x
             tax
-            plb
 
 ]src        equ   7
 ]dest       equ   0

@@ -85,7 +85,7 @@ ScreenHeight    equ        14
                 sta        BankLoad                ; Store "Bank Pointer"
 
 ; Load in the 256 color background into BG1 buffer
-                brl        :nobackground
+;                brl        :nobackground
 DoLoadBG1
                 lda        BankLoad
                 ldx        #BG1DataFile

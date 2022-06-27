@@ -257,7 +257,7 @@ _SetTile
                  ldy  #TwoLyrDynProcs
                  brl  :pickDynProc
 
-:pickTwoLyrProc  ldy  #SlowProcs                 ; #TwoLyrProcs
+:pickTwoLyrProc  ldy  #TwoLyrProcs
                  lda  procIdx
                  jsr  _SetTileProcs
                  jmp  _PushDirtyTileX

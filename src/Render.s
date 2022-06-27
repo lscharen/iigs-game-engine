@@ -25,12 +25,12 @@ _Render
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
-;            jsr   _ApplyBG1YPos
+            jsr   _ApplyBG1YPos
 
 ; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
 ; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
             jsr   _ApplyBG0XPosPre
-;            jsr   _ApplyBG1XPosPre
+            jsr   _ApplyBG1XPosPre
 
             jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
@@ -40,7 +40,7 @@ _Render
             jsr   _ApplyTilesFast      ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
-;            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
 
 ; The code fields are locked in now and ready to be rendered
 
