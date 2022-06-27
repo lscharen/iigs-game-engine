@@ -9,8 +9,6 @@
                 use   EDS.GSOS.Macs
                 use   GTE.Macs
 
-                use   ../../src/Defs.s
-
                 mx         %00
 
 TSZelda         EXT                           ; tileset buffer
