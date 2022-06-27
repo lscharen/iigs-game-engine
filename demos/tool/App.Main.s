@@ -464,7 +464,7 @@ GTEStartUp
                 tdc
                 adc   #$0100
                 pha
-                pea   #ENGINE_MODE_DYN_TILES    ; Enable Dynamic Tiles
+                pea   #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER   ; Enable Dynamic Tiles and Two Layer
                 lda   MyUserId                  ; Pass the userId for memory allocation
                 pha
                 _GTEStartUp
