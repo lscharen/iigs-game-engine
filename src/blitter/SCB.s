@@ -44,7 +44,7 @@ _BltSCB
             inc
             clc
             adc   #:scb_end
-            sta   :entry+1
+            stal  :entry+1
 
             lda   ScreenY1       ; Get the SCB address to put into the stack register
             dec
@@ -73,12 +73,6 @@ _BltSCB
 
             plb                  ; restore the bank
             rts
-
-
-; Quick helper to set the pointer (X = low word, A = high work)
-;SetSCBArray ENT
-;        jsr   _SetSCBArray
-;        rtl
 
 _BindSCBArray
         stx  SCBArrayPtr
