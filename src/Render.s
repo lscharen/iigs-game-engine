@@ -74,9 +74,9 @@ _Render
             ldy   ScreenHeight
             jsr   _BltRange
 
-;            ldx   #0
-;            ldy   ScreenHeight
-;            jsr   _BltSCB
+            ldx   #0
+            ldy   ScreenHeight
+            jsr   _BltSCB
 
             lda   StartYMod208              ; Restore the fields back to their original state
             ldx   ScreenHeight
