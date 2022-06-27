@@ -462,7 +462,7 @@ _TSGetBG0TileMapInfo
 
 
 _TSGetScreenInfo
-:height         equ     FirstParam+4
+:height         equ     FirstParam+6
 :width          equ     FirstParam+4
 :y              equ     FirstParam+2
 :x              equ     FirstParam+0
