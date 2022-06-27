@@ -96,6 +96,15 @@ _GTERemoveTimer      MAC
 _GTEStartScript      MAC
                      UserTool  $2100+GTEToolNum
                      <<<
+_GTESetOverlay       MAC
+                     UserTool  $2200+GTEToolNum
+                     <<<
+_GTEClearOverlay     MAC
+                     UserTool  $2300+GTEToolNum
+                     <<<
+_GTEGetTileDataAddr  MAC
+                     UserTool  $2400+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
