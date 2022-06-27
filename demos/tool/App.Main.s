@@ -290,9 +290,10 @@ HERO_SPRITE     equ   SPRITE_16X16+1
 :10             cmp   #$0A
                 bne   :11
                 dec   ScreenY
+                brl   :next
 
 :11             cmp   #'y'
-                bne   :next
+                bne   :12
                 lda   DTile
                 inc
                 and   #$007F
@@ -300,6 +301,17 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 pha
                 pea   $0000
                 _GTECopyTileToDynamic
+                brl   :next
+
+:12             cmp   #'f'
+                bne   :13
+                pea   $0000
+                _GTEFillTileStore
+                brl   :next
+
+:13             cmp   #'m'
+                bne   :next
+                _GTERefresh
 
 :next
 ;                inc   ScreenX
