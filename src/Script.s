@@ -47,7 +47,6 @@ _StartScript   phx                      ; Save the script array address
                sta   Timers+8,x
                pla
                sta   Timers+10,x
-
                rts
 
 :err
@@ -84,6 +83,7 @@ _dss_loop      phx                      ; Save the command address
                txy                      ; Cache in the y-register
 
                lda:  0,x                ; Load the command word
+
                pha                      ; Stash it
 
                and   #$001E             ; Only have 16 built-in commands.  Use the _UserCallback
@@ -162,7 +162,7 @@ _SetDTile
                ldx:  ARG1,y
                lda:  ARG2,y
                tay
-               jsl   CopyTileToDyn
+               jsr   CopyTileToDyn
                brl   _dss_cmd_rtn
 
 _UserCallback

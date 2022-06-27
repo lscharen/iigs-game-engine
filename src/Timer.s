@@ -70,7 +70,7 @@ _AddTimer
 
 :oneshot        txa                                           ; return the slot ID and a success status
                 clc
-                rtl
+                rts
 
 :notimers       ply
                 pla

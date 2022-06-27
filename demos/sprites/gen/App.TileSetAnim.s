@@ -12,7 +12,6 @@ TileAnimInit
             pea #170
             pea #3
             _GTECopyTileToDynamic
-            rts
 
             pea #15
             pea #^TileAnim

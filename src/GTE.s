@@ -20,8 +20,6 @@ SetBG1XPos         EXT
 SetBG1YPos         EXT
 CopyBG0Tile        EXT
 CopyBG1Tile        EXT
-CopyTileToDyn      EXT
-Render             EXT
 
 ; SCB/Palette binding (high bit of array point indicates whether to bind to BG0 Y position (0)
 ; or BG1 Y position (1).
