@@ -9,10 +9,13 @@
                     use        Tool222.Macs.s
                     use        Util.Macs.s
                     use        CORE.MACS.s
-                    use        ../../src/GTE.s
+                    use         GTE.Macs
+
                     use        ../../src/Defs.s
 
                     mx         %00
+
+TSet                EXT
 
 ; Feature flags
 NO_INTERRUPTS       equ        0                       ; turn off for crossrunner debugging
@@ -22,40 +25,39 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                     phk
                     plb
 
-                    jsl        EngineStartUp
+                    sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
+                    _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                    lda        #^MyPalette
-                    ldx        #MyPalette
-                    ldy        #0
-                    jsl        SetPalette
+                    jsr   GTEStartUp              ; Load and install the GTE User Tool
 
-                    ldx        #0
-                    jsl        SetScreenMode
+; Load a tileset
+
+                pea   #^TSet
+                pea   #TSet
+                _GTELoadTileSet
+
+
+                pea   $0000
+                pea   #^MyPalette
+                pea   #MyPalette
+                _GTESetPalette
+
+                pea   $0000
+                _GTESetScreenMode
 
 ; Set up our level data
-                    jsr        BG0SetUp
-                    jsr        BG1SetUp
-                    jsr        TileAnimInit
+                jsr        BG0SetUp
+                jsr        BG1SetUp
+                jsr        TileAnimInit
 
 ; Allocate room to load data
 
-                    jsl        AllocBank               ; Alloc 64KB for Load/Unpack
-                    sta        BankLoad                ; Store "Bank Pointer"
+                jsl        AllocBank               ; Alloc 64KB for Load/Unpack
+                sta        BankLoad                ; Store "Bank Pointer"
 
-                    jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
-                    
-                    jsr        InitOverlay             ; Initialize the status bar
+                jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
+                jsr        InitOverlay             ; Initialize the status bar
 
-                    lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
-                    ora        #DIRTY_BIT_BG1_REFRESH
-                    tsb        DirtyBits
-
-                    stz        frameCount
-                    ldal       OneSecondCounter
-                    sta        oldOneSecondCounter
-
-                    lda        #$FFFF
-                    jsl        Render
 EvtLoop
                     jsl        DoTimers
                     jsl        Render
@@ -438,6 +440,59 @@ closeRec            dw         1                       ; pCount
 
 qtRec               adrl       $0000
                     da         $00
+
+
+; Load the GTE User Tool and install it
+GTEStartUp
+                pea   $0000
+                _LoaderStatus
+                pla
+
+                pea   $0000
+                pea   $0000
+                pea   $0000
+                pea   $0000
+                pea   $0000                   ; result space
+
+                lda   MyUserId
+                pha
+
+                pea   #^ToolPath
+                pea   #ToolPath
+                pea   $0001                   ; do not load into special memory
+                _InitialLoad
+                bcc    :ok1
+                brk    $01
+
+:ok1
+                ply
+                pla                           ; Address of the loaded tool
+                plx
+                ply
+                ply
+
+                pea   $8000                   ; User toolset
+                pea   $00A0                   ; Set the tool set number
+                phx
+                pha                           ; Address of function pointer table
+                _SetTSPtr
+                bcc    :ok2
+                brk    $02
+
+:ok2
+                clc                             ; Give GTE a page of direct page memory
+                tdc
+                adc   #$0100
+                pha
+                pea   #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER   ; Enable Dynamic Tiles and Two Layer
+                lda   MyUserId                  ; Pass the userId for memory allocation
+                pha
+                _GTEStartUp
+                bcc    :ok3
+                brk    $03
+
+:ok3
+                rts
 
                     PUT        App.Msg.s
                     PUT        Actions.s

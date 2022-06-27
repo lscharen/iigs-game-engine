@@ -2,28 +2,6 @@
 ; of these routines are to adjust tables and patch in new values into the code field
 ; when the virtual Y-position of the play field changes.
 
-
-; SetBG0YPos
-;
-; Set the virtual position of the primary background layer.
-SetBG0YPos           ENT
-                     jsr   _SetBG0YPos
-                     rtl
-
-_SetBG0YPos
-                     cmp   StartY
-                     beq   :out                 ; Easy, if nothing changed, then nothing changes
-
-                     ldx   StartY               ; Load the old value (but don't save it yet)
-                     sta   StartY               ; Save the new position
-
-                     lda   #DIRTY_BIT_BG0_Y
-                     tsb   DirtyBits            ; Check if the value is already dirty, if so exit
-                     bne   :out                 ; without overwriting the original value
-
-                     stx   OldStartY            ; First change, so preserve the value
-:out                 rts
-
 ; Based on the current value of StartY in the direct page.  Set up the dispatch
 ; information so that the BltRange driver will render the correct code field
 ; lines in the correct order
@@ -67,6 +45,7 @@ _ApplyBG0YPos
 ; and ~2,500 per secord.  This is ~1% of our total CPU budget and is *just* enough cycles to be
 ; interesting.... Another 8 cycles could be removed by doing all calculatinos pre-multiplied by 2
 ; to avoid several 'asl' instructions
+                     phb
 :loop
                      lda   :virt_line
                      asl
@@ -112,9 +91,9 @@ _ApplyBG0YPos
                      sta   :lines_left
 
                      jne   :loop
-
-                     phk
                      plb
+
+:out
                      rts
 
 ; Unrolled copy routine to move RTable intries into STK_ADDR position.  
@@ -167,7 +146,7 @@ CopyRTableToStkAddr
 :x14                 ldal  RTable+26,x
                      sta   STK_ADDR+$D000,y
 :x13                 ldal  RTable+24,x
-                     sta:  STK_ADDR+$C000,y
+                     sta   STK_ADDR+$C000,y
 :x12                 ldal  RTable+22,x
                      sta   STK_ADDR+$B000,y
 :x11                 ldal  RTable+20,x
@@ -175,7 +154,7 @@ CopyRTableToStkAddr
 :x10                 ldal  RTable+18,x
                      sta   STK_ADDR+$9000,y
 :x09                 ldal  RTable+16,x
-                     sta:  STK_ADDR+$8000,y
+                     sta   STK_ADDR+$8000,y
 :x08                 ldal  RTable+14,x
                      sta   STK_ADDR+$7000,y
 :x07                 ldal  RTable+12,x
@@ -183,7 +162,7 @@ CopyRTableToStkAddr
 :x06                 ldal  RTable+10,x
                      sta   STK_ADDR+$5000,y
 :x05                 ldal  RTable+08,x
-                     sta:  STK_ADDR+$4000,y
+                     sta   STK_ADDR+$4000,y
 :x04                 ldal  RTable+06,x
                      sta   STK_ADDR+$3000,y
 :x03                 ldal  RTable+04,x

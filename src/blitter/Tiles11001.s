@@ -77,7 +77,7 @@ CopyDynPriSpriteWord MAC
 
                 lda   #$00A9          ; LDA #DATA
                 sta:  $0000,y
-                ldal  spritedata+]1,x
+                ldal  spritedata+{]1},x
                 sta:  $0001,y
 
                 lda   _OP_CACHE

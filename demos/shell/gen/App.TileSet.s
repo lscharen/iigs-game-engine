@@ -2,7 +2,7 @@
 ; Palette:
 ; $0000,$0777,$0F31,$0E51,$00A0,$02E3,$0BF1,$0FA4,$0FD7,$0EE6,$0F59,$068F,$01CE,$09B9,$0EDA,$0EEE
 ; Converting to BG0 format...
-tiledata    ENT
+TSet        ENT
 
 ; Reserved space (tile 0 is special...
             ds 128

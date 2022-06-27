@@ -14,6 +14,7 @@ REM Cadius does not overwrite files, so clear the root folder first
 
 REM Now copy files and folders as needed
 %CADIUS% ADDFILE %IMAGE% %FOLDER% .\GTETestSprites
+%CADIUS% ADDFILE %IMAGE% %FOLDER% ..\..\src\Tool160
 
 REM Copy in the image assets
 %CADIUS% ADDFILE %IMAGE% %FOLDER% .\assets\mario1.c1

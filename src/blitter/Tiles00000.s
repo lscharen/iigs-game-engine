@@ -36,6 +36,53 @@ _TBSolidTile_VH
 ;
 ; This does not increase the FPS by 37% because only a small number of tiles are drawn each frame, but it
 ; has an impact and can significantly help out when sprites trigger more dirty tile updates than normal.
+
+
+; This is called via a JMP (abs,x) with an extra byte on the stack that holds the bank
+; register value.  This must be restored prior to returning
+CopyTileAFast
+                 tax
+_CopyTileAFast
+]line            equ             0
+                 lup             8
+                 ldal            tiledata+{]line*4},x
+                 sta:            $0004+{]line*$1000},y
+                 ldal            tiledata+{]line*4}+2,x
+                 sta:            $0001+{]line*$1000},y
+]line            equ             ]line+1
+                 --^
+                 plb
+                 rts
+
+CopyTileASlow
+                 tax
+                 jsr   FillPEAOpcode
+                 jmp   _CopyTileAFast
+
+CopyTileVFast
+                 tax
+_CopyTileVFast
+]src             equ             7
+]dest            equ             0
+                 lup             8
+                 ldal            tiledata+{]src*4},x
+                 sta:            $0004+{]dest*$1000},y
+                 ldal            tiledata+{]src*4}+2,x
+                 sta:            $0001+{]dest*$1000},y
+]src             equ             ]src-1
+]dest            equ             ]dest+1
+                 --^
+                 plb
+                 rts
+
+CopyTileVSlow
+                 tax
+                 jsr   FillPEAOpcode
+                 jmp   _CopyTileVFast
+
+
+
+; Old routines
 _TBCopyData
 ]line            equ             0
                  lup             8
@@ -46,17 +93,6 @@ _TBCopyData
 ]line            equ             ]line+1
                  --^
                  rts
-
-;_TBCopyDataH
-;]line            equ             0
-;                 lup             8
-;                 ldal            tiledata+{]line*4}+64,x
-;                 sta:            $0004+{]line*$1000},y
-;                 ldal            tiledata+{]line*4}+66,x
-;                 sta:            $0001+{]line*$1000},y
-;]line            equ             ]line+1
-;                 --^
-;                 rts
 
 _TBCopyDataV
 ]src             equ             7
@@ -71,40 +107,3 @@ _TBCopyDataV
                  --^
                  rts
 
-;_TBCopyDataVH
-;]src             equ             7
-;]dest            equ             0
-;                 lup             8
-;                 ldal            tiledata+{]src*4}+64,x
-;                 sta:            $0004+{]dest*$1000},y
-;                 ldal            tiledata+{]src*4}+66,x
-;                 sta:            $0001+{]dest*$1000},y
-;]src             equ             ]src-1
-;]dest            equ             ]dest+1
-;                 --^
-;                 rts
-
-; A simple helper function that fill in all of the opcodes of a tile with the PEA opcode.  This is
-; a common function since a tile must be explicitly flagged to use a mask, so this routine is used
-; quite frequently in a well-designed tile map.
-_TBFillPEAOpcode
-                 sep             #$20
-                 lda             #$F4
-                 sta:            $0000,y
-                 sta:            $0003,y
-                 sta             $1000,y
-                 sta             $1003,y
-                 sta             $2000,y
-                 sta             $2003,y
-                 sta             $3000,y
-                 sta             $3003,y
-                 sta             $4000,y
-                 sta             $4003,y
-                 sta             $5000,y
-                 sta             $5003,y
-                 sta             $6000,y
-                 sta             $6003,y
-                 sta             $7000,y
-                 sta             $7003,y
-                 rep             #$20
-                 rts

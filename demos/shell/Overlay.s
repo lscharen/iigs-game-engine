@@ -10,7 +10,27 @@
 ; There are two subroutines that need to be implemented -- one to update the overlay content and a 
 ; second to actually render to the screen
 
-; Initialize the overlay be drawin gin static content that will not change over time
+STATE_REG       equ   $E0C068
+
+_R0W0           mac                   ; Read Bank 0 / Write Bank 0
+                ldal  STATE_REG
+                and   #$FFCF
+                stal  STATE_REG
+                <<<
+
+_R0W1           mac                   ; Read Bank 0 / Write Bank 1
+                ldal  STATE_REG
+                ora   #$0010
+                stal  STATE_REG
+                <<<
+
+_R1W1           mac                   ; Read Bank 0 / Write Bank 1
+                ldal  STATE_REG
+                ora   #$0030
+                stal  STATE_REG
+                <<<
+
+; Initialize the overlay be drawing in static content that will not change over time
 
 CHAR_TILE_BASE equ 193     ; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
 
@@ -32,35 +52,57 @@ l_mask      equ   ovrly_mask
 
 MASK_OFFSET equ   {ovrly_mask-ovrly_buff}
 
+TileDataPtr equ   $FC
+TileMaskPtr equ   $F8
+
 InitOverlay
+
+             pha
+             pha
+             _GTEGetTileDataAddr
+             pla
+             sta    TileDataPtr
+             clc
+             adc    #32
+             sta    TileMaskPtr
+             pla
+             sta    TileDataPtr+2
+             sta    TileMaskPtr+2
+
              lda    #'F'
-             ldy    #l_line+{CHAR_WIDTH*0}
+             ldx    #l_line+{CHAR_WIDTH*0}
              jsr    _DrawChar
              lda    #'P'
-             ldy    #l_line+{CHAR_WIDTH*1}
+             ldx    #l_line+{CHAR_WIDTH*1}
              jsr    _DrawChar
              lda    #'S'
-             ldy    #l_line+{CHAR_WIDTH*2}
+             ldx    #l_line+{CHAR_WIDTH*2}
              jsr    _DrawChar
              lda    #':'
-             ldy    #l_line+{CHAR_WIDTH*3}
+             ldx    #l_line+{CHAR_WIDTH*3}
              jsr    _DrawChar
 
              lda    #'T'
-             ldy    #r_line+{CHAR_WIDTH*0}
+             ldx    #r_line+{CHAR_WIDTH*0}
              jsr    _DrawChar
              lda    #'I'
-             ldy    #r_line+{CHAR_WIDTH*1}
+             ldx    #r_line+{CHAR_WIDTH*1}
              jsr    _DrawChar
              lda    #'C'
-             ldy    #r_line+{CHAR_WIDTH*2}
+             ldx    #r_line+{CHAR_WIDTH*2}
              jsr    _DrawChar
              lda    #'K'
-             ldy    #r_line+{CHAR_WIDTH*3}
+             ldx    #r_line+{CHAR_WIDTH*3}
              jsr    _DrawChar
              lda    #':'
-             ldy    #r_line+{CHAR_WIDTH*4}
+             ldx    #r_line+{CHAR_WIDTH*4}
              jsr    _DrawChar
+
+             pea    $0000
+             pea    $0008
+             pea    #^StatusBar
+             pea    #StatusBar
+             _GTESetOverlay
              rts
 
 ; Update the dynamic content of the overlay
@@ -79,8 +121,8 @@ UdtOverlay
              lda   frameCount                       ; render the FPS value
              xba
              jsr   _num2ascii
-             ldy   #l_line+{CHAR_WIDTH*4}
-             jsr    _DrawChar
+             ldx   #l_line+{CHAR_WIDTH*4}
+             jsr   _DrawChar
 
              lda   frameCount
              lsr
@@ -88,44 +130,52 @@ UdtOverlay
              lsr
              lsr
              jsr   _num2ascii
-             ldy   #l_line+{CHAR_WIDTH*5}
+             ldx   #l_line+{CHAR_WIDTH*5}
              jsr    _DrawChar
 
              lda   frameCount
              jsr   _num2ascii
-             ldy   #l_line+{CHAR_WIDTH*6}
+             ldx   #l_line+{CHAR_WIDTH*6}
              jsr    _DrawChar
 
-             ldal  OneSecondCounter                   ; reder the number of remaining seconds
+             pha
+             _GTEGetSeconds
+             pla
+             sta   oneSecondCounter                   ; render the number of remaining seconds
              xba
              jsr   _num2ascii
-             ldy   #r_line+{CHAR_WIDTH*5}
+             ldx   #r_line+{CHAR_WIDTH*5}
              jsr    _DrawChar
 
-             ldal  OneSecondCounter
+             lda   oneSecondCounter
              lsr
              lsr
              lsr
              lsr
              jsr   _num2ascii
-             ldy   #r_line+{CHAR_WIDTH*6}
+             ldx   #r_line+{CHAR_WIDTH*6}
              jsr    _DrawChar
 
-             ldal  OneSecondCounter
+             lda   oneSecondCounter
              jsr   _num2ascii
-             ldy   #r_line+{CHAR_WIDTH*7}
-             jsr    _DrawChar
+             ldx   #r_line+{CHAR_WIDTH*7}
+             jsr   _DrawChar
 
              rts
 
+oneSecondCounter ds 2
+
 ; Draw the overlay
 ;  A = address of the left edge of the screen
-Overlay      ENT
-             phb                                     ; Called via JSL
+StatusBar    phb                                     ; Called via JSL
+             phd                                     ; save the direct page register
+
              phk
              plb
 
-             phd                                     ; save the direct page register
+             ldx   MyDirectPage                      ; Preserve the accumulator
+             phx
+             pld
 
              sta   l_addr                            ; save this value (will go into D-reg later)
              clc
@@ -144,12 +194,12 @@ Overlay      ENT
              sec
              sbc   m_addr                            ; calculate the number of words between the two ends
              and   #$FFFE
-             pha
-             lda   #m_end
-             sec
-             sbc   1,s
+
+             eor   #$FFFF
+             inc
+             clc
+             adc   #m_end
              sta   m_patch+1
-             pla
 
              sei
              _R1W1
@@ -192,7 +242,7 @@ l_ovrly_rtn
              _R0W0
              cli
 
-:exit
+o_exit
              pld                                     ; restore the direct page and bank and return
              plb
              rtl
@@ -200,7 +250,6 @@ l_ovrly_rtn
 l_addr       ds    2
 m_addr       ds    2
 r_addr       ds    2
-
 
 r_ovrly
 ]idx        equ   0
@@ -247,10 +296,7 @@ m_end
 ;
 ; A = Tile ID
 ; Y = overlay address location
-tiledata     EXT
-
 _DCOut      rts
-
 _DrawChar
             cmp             #'0'
             bcc             _DCOut
@@ -261,19 +307,122 @@ _DrawChar
             sbc             #'0'
             clc
             adc             #CHAR_TILE_BASE
-            jsl             GetTileAddr
-            tax
+            jsr             _GetTileAddr
+            tay
 
-]idx        equ             0
-            lup             8
-            ldal            tiledata+32+{]idx*4},x
-            sta:            {]idx*OVRLY_SPAN}+MASK_OFFSET,y
-            ldal            tiledata+{]idx*4},x
-            sta:            {]idx*OVRLY_SPAN},y
-            ldal            tiledata+32+{]idx*4}+2,x
-            sta:            {]idx*OVRLY_SPAN}+MASK_OFFSET+2,y
-            ldal            tiledata+{]idx*4}+2,x
-            sta:            {]idx*OVRLY_SPAN}+2,y
-]idx        equ             ]idx+1
-            --^
+            lda             [TileMaskPtr],y
+            sta:            {0*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {0*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {0*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {0*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {1*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {1*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {1*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {1*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {2*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {2*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {2*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {2*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {3*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {3*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {3*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {3*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {4*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {4*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {4*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {4*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {5*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {5*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {5*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {5*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {6*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {6*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {6*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {6*OVRLY_SPAN}+2,x
+            iny
+            iny
+
+            lda             [TileMaskPtr],y
+            sta:            {7*OVRLY_SPAN}+MASK_OFFSET,x
+            lda             [TileDataPtr],y
+            sta:            {7*OVRLY_SPAN},x
+            iny
+            iny
+            lda             [TileMaskPtr],y
+            sta:            {7*OVRLY_SPAN}+MASK_OFFSET+2,x
+            lda             [TileDataPtr],y
+            sta:            {7*OVRLY_SPAN}+2,x
+
+            rts
+
+_GetTileAddr
+            asl                                               ; Multiply by 2
+            bit   #2*TILE_HFLIP_BIT                           ; Check if the horizontal flip bit is set
+            beq   :no_flip
+            inc                                               ; Set the LSB
+:no_flip    asl                                               ; x4
+            asl                                               ; x8
+            asl                                               ; x16
+            asl                                               ; x32
+            asl                                               ; x64
+            asl                                               ; x128
             rts

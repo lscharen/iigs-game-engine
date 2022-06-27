@@ -1,28 +1,27 @@
-; Function to render a sprite from a sprite definition into the internal data buffers
+; Alternate entry point that takes arguments in registers instead of using a _Sprite
+; record
 ;
-; X = sprite index
-_DrawSpriteSheet
+; Y = VBUFF address
+; X = Tile Data address
+; A = Sprite Flags
 DISP_VFLIP   equ    $0004      ; hard code these because they are internal values
 DISP_HFLIP   equ    $0002
-DISP_MASK    equ    $0018      ; Isolate the size bits
+DISP_MASK    equ    $0018      ; Preserve the size bits
 
-             phx
-
-             lda    _Sprites+VBUFF_ADDR,x
-             sta    tmp1
-
-             lda    _Sprites+TILE_DATA_OFFSET,x
-             sta    tmp2
-
-             lda    _Sprites+SPRITE_DISP,x
+_DrawSpriteStamp
+             sty    tmp1
+             stx    tmp2
+             xba
              and    #DISP_MASK                    ; dispatch to all of the different orientations
              sta    tmp3
 
-; Set bank
              phb
              pea   #^tiledata                     ; Set the bank to the tile data
              plb
 
+; X = sprite ID
+; Y = Tile Data
+; A = VBUFF address
              ldx    tmp3
              ldy    tmp2
              lda    tmp1
@@ -34,7 +33,7 @@ DISP_MASK    equ    $0018      ; Isolate the size bits
              ldy    tmp2
              lda    tmp1
              clc
-             adc    #4*3
+             adc    #3*4
              jsr    _DrawSprite
 
              lda    tmp3
@@ -43,7 +42,7 @@ DISP_MASK    equ    $0018      ; Isolate the size bits
              ldy    tmp2
              lda    tmp1
              clc
-             adc    #4*6
+             adc    #6*4
              jsr    _DrawSprite
 
              lda    tmp3
@@ -52,19 +51,16 @@ DISP_MASK    equ    $0018      ; Isolate the size bits
              ldy    tmp2
              lda    tmp1
              clc
-             adc    #4*9
+             adc    #9*4
              jsr    _DrawSprite
 
 ; Restore bank
              plb                                  ; pop extra byte
              plb
-
-             plx
              rts
 ; 
 ; X = _Sprites array offset
 _DrawSprite
-;             ldx   _Sprites+SPRITE_DISP,y        ; use bits 9, 10, 11, 12 and 13 to dispatch
              jmp   (draw_sprite,x)
 
 draw_sprite  dw    draw_8x8,draw_8x8h,draw_8x8v,draw_8x8hv
@@ -166,6 +162,9 @@ draw_16x8hv
              ply
              jmp   _DrawTile8x8V
 
+; X = sprite ID
+; Y = Tile Data
+; A = VBUFF address
 draw_16x16
              clc
              tax
@@ -262,7 +261,7 @@ draw_16x16hv
              tax
              tya
              pha
-             adc   #128+{128*32}                        ; Bottom-right source to top-left 
+             adc   #{128*{32+1}}+64                        ; Bottom-right source to top-left 
              tay
              jsr   _DrawTile8x8V
 
@@ -270,7 +269,7 @@ draw_16x16hv
              adc   #4
              tax
              lda   1,s
-             adc   #{128*32}
+             adc   #{128*32}+64
              tay
              jsr   _DrawTile8x8V
 
@@ -278,14 +277,16 @@ draw_16x16hv
              adc   #{8*SPRITE_PLANE_SPAN}-4
              tax
              lda    1,s
-             adc    #128
+             adc    #128+64
              tay
              jsr   _DrawTile8x8V
 
              txa
              adc   #4
              tax
-             ply
+             pla
+             adc   #64
+             tay
              jmp   _DrawTile8x8V
 
 

@@ -3,6 +3,48 @@
 ; This tile type does not explicitly support horizontal or vertical flipping.  An appropriate tile
 ; descriptor should be passed into CopyTileToDyn to put the horizontally or vertically flipped source
 ; data into the dynamic tile buffer
+_TBDynamicSpriteTile
+                 sta     _X_REG
+                 ldal    TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+                 sta     _JTBL_CACHE
+
+                 ldal    TileStore+TS_TILE_ID,x       ; Get the original tile descriptor
+                 and     #$007F                       ; clamp to < (32 * 4)
+                 ora     #$B500
+                 xba
+                 sta     _OP_CACHE                    ; This is the 2-byte opcode for to load the data
+
+                 CopyDynWord  0;$0003
+                 CopyDynWord  4;$1003
+                 CopyDynWord  8;$2003
+                 CopyDynWord  12;$3003
+                 CopyDynWord  16;$4003
+                 CopyDynWord  20;$5003
+                 CopyDynWord  24;$6003
+                 CopyDynWord  28;$7003
+
+                 clc
+                 lda     _JTBL_CACHE
+                 adc     #32                          ; All the snippets are 32 bytes wide and, since we're
+                 sta     _JTBL_CACHE                  ; within one tile, the second column is consecutive
+
+                 lda     _OP_CACHE
+                 adc     #$0200                       ; Advance to the next word
+                 sta     _OP_CACHE
+
+                 CopyDynWord  2;$0000
+                 CopyDynWord  6;$1000
+                 CopyDynWord  10;$2000
+                 CopyDynWord  14;$3000
+                 CopyDynWord  18;$4000
+                 CopyDynWord  22;$5000
+                 CopyDynWord  26;$6000
+                 CopyDynWord  30;$7000
+
+                 plb
+                 rts
+
+
 _TBDynamicSpriteTile_00
                  sty             _Y_REG               ; This is restored in the macro
 
@@ -53,6 +95,56 @@ _TBDynamicSpriteTile_00
 
                  rts
 
+; Create a masked render based on data in the direct page temporary buffer
+; 
+; ]1 : sprite buffer offset
+; ]2 : code field offset
+CopyDynWord     mac
+                lda   tmp_sprite_mask+{]1}     ; load the mask value
+                bne   mixed                    ; a non-zero value may be mixed
+
+; This is a solid word
+                lda   #$00F4                   ; PEA instruction
+                sta:  ]2,y
+                lda   tmp_sprite_data+{]1}     ; load the sprite data
+                sta:  ]2+1,y                   ; PEA operand
+                bra   next
+
+mixed           cmp   #$FFFF                   ; All 1's in the mask is a fully transparent sprite word
+                beq   transparent
+
+                lda   #$004C                   ; JMP to handler
+                sta:  {]2},y
+                lda   _JTBL_CACHE              ; Get the offset to the exception handler for this column
+                ora   #{]2&$F000}              ; adjust for the current row offset
+                sta:  {]2}+1,y
+                tax                            ; This becomes the new address that we use to patch in
+
+                lda   _OP_CACHE       ; Get the LDA dp,x instruction for this column
+                sta:  $0000,x
+
+                lda   #$0029          ; AND #SPRITE_MASK
+                sta:  $0002,x
+                lda   tmp_sprite_mask+{]1}
+                sta:  $0003,x
+
+                lda   #$0009          ; ORA #SPRITE_DATA
+                sta:  $0005,x
+                lda   tmp_sprite_data+{]1}
+                sta:  $0006,x
+
+                lda   #$0D80          ; branch to the prologue (BRA *+15)
+                sta:  $0008,x
+                bra   next
+
+; This is a transparent word, so just show the dynamic data
+transparent
+                lda   #$4800          ; Put the PHA in the third byte
+                sta:  {]2}+1,y
+                lda   _OP_CACHE       ; Store the LDA dp,x instruction with operand
+                sta:  {]2},y
+next
+                 <<<
 
 ; Masked renderer for a dynamic tile with sprite data overlaid.
 ;
@@ -70,13 +162,13 @@ CopyDynSpriteWord MAC
 ;
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Tile
 ; code.
-                ldal  spritemask+]1,x            ; load the mask value
-                bne   mixed                      ; a non-zero value may be mixed
+                ldal  spritemask+{]1},x            ; load the mask value
+                bne   mixed                        ; a non-zero value may be mixed
 
 ; This is a solid word
                 lda   #$00F4          ; PEA instruction
                 sta:  ]2,y
-                ldal  spritedata+]1,x ; load the sprite data
+                ldal  spritedata+{]1},x ; load the sprite data
                 sta:  ]2+1,y          ; PEA operand
                 bra   next
 
@@ -95,12 +187,12 @@ mixed           cmp   #$FFFF          ; All 1's in the mask is a fully transpare
 
                 lda   #$0029          ; AND #SPRITE_MASK
                 sta:  $0002,y
-                ldal  spritemask+]1,x 
+                ldal  spritemask+{]1},x 
                 sta:  $0003,y
 
                 lda   #$0009          ; ORA #SPRITE_DATA
                 sta:  $0005,y
-                ldal  spritedata+]1,x
+                ldal  spritedata+{]1},x
                 sta:  $0006,y
 
                 lda   #$0D80          ; branch to the prologue (BRA *+15)

@@ -1,0 +1,28 @@
+{
+  "name": "super-mario-bros-nes-demo",
+  "version": "1.0.0",
+  "description": "Wrapping the SMB 6502 ROM in GTE",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "C:\\Programs\\BrutalDeluxe\\Merlin32\\Library",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
+  },
+  "scripts": {
+    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+  }
+}

@@ -9,15 +9,7 @@
 ; on the SHR screen or the current value of StartY
 ;
 ; This could be made faster by forcing a SCB array to be copied into PEAs ahead of time, but this
-; is a bit more flexible            
-BltSCB      ENT
-            phb
-            phk
-            plb
-            jsr   _BltSCB
-            plb
-            rtl
-
+; is a bit more flexible
 _BltSCBOut
             rts
 _BltSCB
@@ -36,10 +28,10 @@ _BltSCB
 
             lda   SCBArrayPtr+2
             bpl   :bind_to_bg0
-            lda   BG1StartY
+            lda   BG1StartYMod208
             bra   :bind_to_bg1
 :bind_to_bg0 
-            lda   StartY
+            lda   StartYMod208
 :bind_to_bg1
             clc
             adc   SCBArrayPtr
@@ -52,7 +44,7 @@ _BltSCB
             inc
             clc
             adc   #:scb_end
-            sta   :entry+1
+            stal  :entry+1
 
             lda   ScreenY1       ; Get the SCB address to put into the stack register
             dec
@@ -82,13 +74,7 @@ _BltSCB
             plb                  ; restore the bank
             rts
 
-
-; Quick helper to set the pointer (X = low word, A = high work)
-SetSCBArray ENT
-        jsr   _SetSCBArray
-        rtl
-
-_SetSCBArray
+_BindSCBArray
         stx  SCBArrayPtr
         sta  SCBArrayPtr+2
         rts

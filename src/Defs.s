@@ -34,6 +34,8 @@ StartX                 equ   16          ; Which code buffer byte is the left ed
 StartY                 equ   18          ; Which code buffer line is the top of the screen. Range = 0 to 207
 EngineMode             equ   20          ; Defined the mode/capabilities that are enabled
                                          ;  bit 0: 0 = Single Background, 1 = Parallax
+                                         ;  bit 1: 0 = No Dynamic Tiles, 1 = Allocate Bank 00 space for dynamic tiles
+                                         ;  bit 2: 0 = No static buffer, 1 = Allocation Bank 00 space for a static screen buffer
 DirtyBits              equ   22          ; Identify values that have changed between frames
 
 BG1DataBank            equ   24          ; Data bank that holds BG1 layer data
@@ -80,18 +82,25 @@ BG1TileMapPtr          equ   86
 
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
-LastRender             equ   96          ; Record which reder function was last executed
+LastRender             equ   96          ; Record which render function was last executed
 ; gap
 SpriteMap              equ   100         ; Bitmap of open sprite slots.
 ActiveSpriteCount      equ   102
 BankLoad               equ   104
 TileStoreBankAndBank01 equ   106
 TileStoreBankAndTileDataBank equ 108
-Next                   equ   110
+TileStoreBankDoubled   equ   110
+UserId                 equ   112         ; Memory manager user Id to use
+ToolNum                equ   114         ; Tool number assigned to us
+LastKey                equ   116
+LastTick               equ   118
+ForceSpriteFlag        equ   120
+SpriteRemovedFlag      equ   122         ; Indicate if any sprites were removed this frame
+
+
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
-AppSpace               equ   160         ; 16 bytes of space reserved for application use
-tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
+; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 
 tmp8                   equ   224         ; another 16 bytes of temporary space to be used as scratch 
@@ -112,6 +121,50 @@ tmp5                   equ   250
 tmp6                   equ   252
 tmp7                   equ   254
 
+; Defines for the second direct page (used in the tile blitters)
+
+sprite_ptr0            equ   0           ; Each tile can render up to 4 sprite blocks.  The sprite
+sprite_ptr1            equ   4           ; data and mask values live in different banks, but have a
+sprite_ptr2            equ   8           ; parallel structure.  The high word of each point is set to
+sprite_ptr3            equ   12          ; the mask bank.  With the Bank register set, both data and mask
+;                                        ; can be accessed through the same pointer, e.g. lda (sprite_ptr0)
+;                                        ; and [sprite_ptr0]
+
+tmp_sprite_data        equ   16          ; 32 byte temporary buffer to build up sprite data values
+tmp_sprite_mask        equ   48          ; 32 byte temporary buffer to build up sprite mask values
+tmp_tile_data          equ   80          ; 32 byte temporary buffer to build up tile data values
+tmp_tile_mask          equ   112         ; 32 byte temporary buffer to build up tile mask values
+
+; Temporary direct page locations used by some of the complex tile renderers
+_X_REG                 equ   144
+_Y_REG                 equ   146
+_T_PTR                 equ   148         ; Copy of the tile address pointer
+_OP_CACHE2             equ   148         ; CAche of second opcode
+_BASE_ADDR             equ   150         ; Copy of BTableLow for this tile
+_SPR_X_REG             equ   152         ; Cache address of sprite plane source for a tile
+_JTBL_CACHE            equ   154         ; Cache the offset to the exception handler for a column
+_OP_CACHE              equ   156         ; Cache of a relevant operand / oeprator
+_TILE_ID               equ   158         ; Copy of the tile descriptor
+
+; Define free space the the application to use
+; FREE_SPACE_DP2         equ   160
+DP2_DIRTY_TILE_COUNT    equ  160         ; Local copy of dirty tile count to avoid banking
+DP2_DIRTY_TILE_CALLBACK equ  162
+
+; Some pre-defined bank values
+DP2_TILEDATA_AND_TILESTORE_BANKS equ 164
+DP2_SPRITEDATA_AND_TILESTORE_BANKS equ 166
+DP2_TILEDATA_AND_SPRITEDATA_BANKS equ 168
+
+SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuffArray addresses
+; End direct page values
+
+; EngineMode definitions
+ENGINE_MODE_TWO_LAYER  equ   $0001
+ENGINE_MODE_DYN_TILES  equ   $0002
+ENGINE_MODE_BNK0_BUFF  equ   $0004
+
+; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
 DIRTY_BIT_BG0_Y        equ   $0002
 DIRTY_BIT_BG1_X        equ   $0004
@@ -135,14 +188,16 @@ PAD_BUTTON_A           equ   $02
 PAD_KEY_DOWN           equ   $04
 
 ; Tile constants
-TILE_ID_MASK           equ   $01FF
-TILE_SPRITE_BIT        equ   $8000                  ; Set if this tile intersects an active sprite
+; TILE_RESERVED_BIT      equ   $8000
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
-TILE_FRINGE_BIT        equ   $2000
-TILE_MASK_BIT          equ   $1000
-TILE_DYN_BIT           equ   $0800
+TILE_FRINGE_BIT        equ   $2000                  ; Unused
+TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
+TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
+TILE_ID_MASK           equ   $01FF
+TILE_CTRL_MASK         equ   $FE00
+; TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
 
 ; Sprite constants
 SPRITE_HIDE            equ   $2000
@@ -153,17 +208,53 @@ SPRITE_8X8             equ   $0000
 SPRITE_VFLIP           equ   $0400
 SPRITE_HFLIP           equ   $0200
 
-MAX_TILES             equ  {26*41}            ; Number of tiles in the code field (41 columns * 26 rows)
-TILE_STORE_SIZE       equ  {MAX_TILES*2}      ; The tile store contains a tile descriptor in each slot
+; Stamp storage parameters
+VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
+VBUFF_TILE_ROW_BYTES   equ {8*VBUFF_STRIDE_BYTES}        ; Each row is comprised of 8 lines
+VBUFF_TILE_COL_BYTES   equ 4
+VBUFF_SPRITE_STEP      equ {VBUFF_TILE_ROW_BYTES*3}      ; Allocate space for 16 rows + 8 rows of buffer
+VBUFF_SPRITE_START     equ {VBUFF_TILE_ROW_BYTES+4}      ; Start at an offset so $0000 can be used as an empty value
+VBUFF_SLOT_COUNT       equ 48                            ; Have space for this many stamps
 
-TS_TILE_ID            equ  TILE_STORE_SIZE*0      ; tile descriptor for this location
-TS_DIRTY              equ  TILE_STORE_SIZE*1      ; Flag. Used to prevent a tile from being queued multiple times per frame
-TS_SPRITE_FLAG        equ  TILE_STORE_SIZE*2      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
-TS_TILE_ADDR          equ  TILE_STORE_SIZE*3      ; cached value, the address of the tiledata for this tile
-TS_CODE_ADDR_LOW      equ  TILE_STORE_SIZE*4      ; const value, address of this tile in the code fields
-TS_CODE_ADDR_HIGH     equ  TILE_STORE_SIZE*5      ; const value
-TS_WORD_OFFSET        equ  TILE_STORE_SIZE*6      ; const value, word offset value for this tile if LDA (dp),y instructions re used
-TS_BASE_ADDR          equ  TILE_STORE_SIZE*7      ; const value, because there are two rows of tiles per bank, this is set to $0000 ot $8000.
-TS_SCREEN_ADDR        equ  TILE_STORE_SIZE*8      ; cached value of on-screen location of tile. Used for DirtyRender.
-TS_VBUFF_ARRAY_ADDR   equ  TILE_STORE_SIZE*9      ; const value to an aligned 32-byte array starting at $8000 in TileStore bank
-TS_TILE_DISP          equ  TILE_STORE_SIZE*10     ; derived from TS_TILE_ID to optimize tile dispatch in the Render function
+; This is 13 blocks wide
+SPRITE_PLANE_SPAN      equ VBUFF_STRIDE_BYTES
+
+; External references to data bank
+TileStore         EXT
+DirtyTileCount    EXT
+DirtyTiles        EXT
+_Sprites          EXT
+TileStore         EXT
+TileStoreLookupYTable EXT
+TileStoreLookup   EXT
+Col2CodeOffset    EXT
+JTableOffset      EXT
+CodeFieldEvenBRA  EXT
+CodeFieldOddBRA   EXT
+ScreenAddr        EXT
+TileStoreYTable   EXT
+NextCol           EXT
+RTable            EXT
+BlitBuff          EXT
+BTableHigh        EXT
+BTableLow         EXT
+BRowTableHigh     EXT
+BRowTableLow      EXT
+BG1YTable         EXT
+BG1YOffsetTable   EXT
+OldOneSecVec      EXT
+OneSecondCounter  EXT
+Timers            EXT
+DefaultPalette    EXT
+ScreenModeWidth   EXT
+ScreenModeHeight  EXT
+_SpriteBits       EXT
+_SpriteBitsNot    EXT
+VBuffArray        EXT
+_stamp_step       EXT
+VBuffVertTableSelect EXT
+VBuffHorzTableSelect EXT
+Overlays          EXT
+
+; Tool error codes
+NO_TIMERS_AVAILABLE  equ  10

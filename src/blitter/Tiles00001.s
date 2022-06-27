@@ -12,6 +12,48 @@ _TBDynamicTile_00
                  jsr             _TBDynamicData
                  jmp             _TBFillLdaDpOpcode
 
+_TBDynamic
+                 ldal   TileStore+TS_TILE_ID,x
+                 and    #$007F
+                 ora    #$4800
+
+]line            equ             0                                 ; render the first column
+                 lup             8
+                 sta:            $0004+{]line*$1000},y
+]line            equ             ]line+1
+                 --^
+
+                 inc                                               ; advance to the next word
+                 inc
+
+]line            equ             0                                 ; render the second column
+                 lup             8
+                 sta:            $0001+{]line*$1000},y
+]line            equ             ]line+1
+                 --^
+
+                 sep             #$20
+                 lda             #$B5
+                 sta:            $0000,y
+                 sta:            $0003,y
+                 sta             $1000,y
+                 sta             $1003,y
+                 sta             $2000,y
+                 sta             $2003,y
+                 sta             $3000,y
+                 sta             $3003,y
+                 sta             $4000,y
+                 sta             $4003,y
+                 sta             $5000,y
+                 sta             $5003,y
+                 sta             $6000,y
+                 sta             $6003,y
+                 sta             $7000,y
+                 sta             $7003,y
+                 rep             #$20
+
+                 plb
+                 rts
 ; Primitive to render a dynamic tile
 ;
 ; LDA 00,x / PHA where the operand is fixed when the tile is rendered

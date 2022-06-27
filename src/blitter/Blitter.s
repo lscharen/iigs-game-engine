@@ -18,7 +18,7 @@ _BltRange
 
                 dey
                 tya                  ; Get the address of the line that we want to return from
-                adc   StartY         ; and create a pointer to it
+                adc   StartYMod208   ; and create a pointer to it
                 asl
                 tay
                 lda   BTableLow,y
@@ -27,16 +27,16 @@ _BltRange
                 sta   :exit_ptr+2
 
                 txa                  ; get the first line (0 - 199)
-                adc   StartY         ; add in the virtual offset (0, 207) -- max value of 406
+                adc   StartYMod208   ; add in the virtual offset (0, 207) -- max value of 406
                 asl
                 tax                  ; this is the offset into the blitter table
 
                 sep   #$20           ; 8-bit Acc
                 lda   BTableHigh,x   ; patch in the bank
-                sta   blt_entry+3
+                stal  blt_entry+3
 
                 lda   BTableLow+1,x  ; patch in the page
-                sta   blt_entry+2
+                stal  blt_entry+2
 
 ; The way we patch the exit code is subtle, but very fast.  The CODE_EXIT offset points to
 ; an JMP/JML instruction that transitions to the next line after all of the code has been
@@ -51,6 +51,11 @@ _BltRange
                 lda   #FULL_RETURN   ; this is the offset of the return code
                 sta   [:exit_ptr],y  ; patch out the low byte of the JMP/JML
 
+;                lda   StartYMod208
+;                cmp   #63
+;                bne   *+4
+;                brk   $40
+
 ; Now we need to set up the Bank, Stack Pointer and Direct Page registers for calling into 
 ; the code field
 
@@ -59,7 +64,7 @@ _BltRange
 ;                beq   :primary
 ;                lda   BG1AltBank
 ;                bra   :alt
-:primary        lda   BG1DataBank
+:primary        lda   BG1DataBank    ; This is $00 if the TWO_LAYER bit of EngineMode is not set
 :alt
                 pha
                 plb
