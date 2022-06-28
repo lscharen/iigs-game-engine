@@ -2,10 +2,9 @@
 layout: page
 title: Toolbox Reference
 style: toolref
-permalink: /tool-ref/
 ---
 
-<link rel="stylesheet" href="/assets/css/toolref.css">
+<link rel="stylesheet" href="assets/css/toolref.css">
 <div id="content">
 
  <ul>
