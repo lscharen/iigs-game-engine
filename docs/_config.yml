@@ -22,8 +22,9 @@ title: Generic Tile Engine for the Apple IIgs
 email: lscharen@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
    A high-performance library for writing tile-based games for the Apple IIgs personal computer in 65816 assembly langugage. Unlock the full, 16-bit potential of the last machine of the Apple ][ line.
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+baseurl: "/iigs-game-engine" # the subpath of your site, e.g. /blog
+url: "https://lscharen.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+
 twitter_username: lscharen
 github_username:  lscharen
 
