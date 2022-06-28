@@ -20,12 +20,10 @@ SetBG1XPos         EXT
 SetBG1YPos         EXT
 CopyBG0Tile        EXT
 CopyBG1Tile        EXT
-CopyTileToDyn      EXT
-Render             EXT
 
 ; SCB/Palette binding (high bit of array point indicates whether to bind to BG0 Y position (0)
 ; or BG1 Y position (1).
-SetSCBArray        EXT
+; SetSCBArray        EXT
 BltSCB             EXT
 
 ; Rotation
@@ -73,21 +71,3 @@ AllocBank          EXT
 ScreenAddr         EXT
 OneSecondCounter   EXT
 BlitBuff           EXT
-
-;; Helper function to load the GTE User Toolset
-;GTEInstall
-;                   php
-;                   ~InitialLoad userId;localToolPath;#0
-
-;                   pea       $8000                ; User tool
-;                   pea       $00A5                ; Tool 165
-;                   PushLong  toolPtr
-;                   _SetTSPtr
-                   
-;                   plp
-;                   rtl
-
-; Look for the tool set in the System Tools folder and then next to the application
-;sysToolPath        strl       '*:System:Tools:ToolGTE'
-;localToolPath      strl       '9:ToolGTE'
-;toolPtr            adrl       0

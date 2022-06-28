@@ -16,7 +16,11 @@
 
                mx        %00
 
-InitMemory     PushLong  #0                          ; space for result
+InitMemory     lda       EngineMode
+               bit       #ENGINE_MODE_BNK0_BUFF
+               beq       :no_bnk0_buff
+
+               PushLong  #0                          ; space for result
                PushLong  #$008000                    ; size (32k)
                PushWord  UserId
                PushWord  #%11000000_00010111         ; Fixed location
@@ -24,9 +28,10 @@ InitMemory     PushLong  #0                          ; space for result
                _NewHandle                            ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
-               _Deref
-               stx       Buff00
-               sta       Buff00+2
+;               _Deref
+;               stx       Buff00
+;               sta       Buff00+2
+:no_bnk0_buff
 
                PushLong  #0                          ; space for result
                PushLong  #$008000                    ; size (32k)
@@ -36,12 +41,20 @@ InitMemory     PushLong  #0                          ; space for result
                _NewHandle                            ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
-               _Deref
-               stx       Buff01
-               sta       Buff01+2
+;               _Deref
+;               stx       Buff01
+;               sta       Buff01+2
 
                PushLong  #0                          ; space for result
-               PushLong  #$000A00                    ; size (10 pages)
+
+               pea       #0000                       ; size (2 or 10 pages)
+               lda       EngineMode
+               bit       #ENGINE_MODE_DYN_TILES
+               beq       :no_dyn_tiles
+               pea       #$0A00                      ; 10 pages if dynamic tiles are enabled
+               bra       :dyn_done
+:no_dyn_tiles  pea       #$0200                      ; 2 pages if dynamic tiles are disabled
+:dyn_done
                PushWord  UserId
                PushWord  #%11000000_00010101         ; Page-aligned, fixed bank
                PushLong  #$000000
@@ -52,11 +65,15 @@ InitMemory     PushLong  #0                          ; space for result
                stx       BlitterDP
 
 ; Allocate banks of memory for BG1
+               lda       EngineMode
+               bit       #ENGINE_MODE_TWO_LAYER
+               beq       :no_bg1
                jsr       AllocOneBank2
                sta       BG1DataBank
 
                jsr       AllocOneBank2
                sta       BG1AltBank
+:no_bg1
 
 ; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0
@@ -80,6 +97,7 @@ InitMemory     PushLong  #0                          ; space for result
                sta       BTableHigh+]step+{208*2},x  ; 16 lines per bank
 ]step          equ       ]step+2
                --^
+
                lda       BlitBuff,y
                sta       BTableLow,x
                sta       BTableLow+{208*2},x
@@ -93,16 +111,19 @@ InitMemory     PushLong  #0                          ; space for result
                --^
 
                txa
+               clc
                adc       #16*2                       ; move to the next chunk of BTableHigh and BTableLow
                tax
 
                tya
+               clc
                adc       #4                          ; move to the next bank address
                tay
                cmp       #4*13
                bcs       :exit1
                brl       :bloop
 :exit1
+
 
                ldx       #0
                ldy       #0
@@ -135,9 +156,6 @@ InitMemory     PushLong  #0                          ; space for result
 :exit
                rts
 
-Buff00         ds        4
-Buff01         ds        4
-
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
 
 AllocOneBank   PushLong  #0
@@ -149,19 +167,11 @@ AllocOneBank   PushLong  #0
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                xba                                   ; swap accumulator bytes to XX00	
-               sta       :bank+2                     ; store as bank for next op (overwrite $XX00)
+               stal      :bank+2                     ; store as bank for next op (overwrite $XX00)
 :bank          ldal      $000001,X                   ; recover the bank address in A=XX/00	
                rts
 
 ; Variation that returns the pointer in the X/A registers (X = low, A = high)
-AllocBank      ENT
-               phb
-               phk
-               plb
-               jsr       AllocOneBank2
-               plb
-               rtl
-
 AllocOneBank2  PushLong  #0
                PushLong  #$10000
                PushWord  UserId
@@ -172,5 +182,3 @@ AllocOneBank2  PushLong  #0
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
                rts
-
-

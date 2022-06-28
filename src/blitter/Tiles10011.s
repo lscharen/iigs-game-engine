@@ -82,13 +82,13 @@ CopyDynMaskedSpriteWord MAC
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Tile
 ; code and eliminate the constanct AND/ORA instructions.
 
-                ldal  spritemask+]1,x            ; load the mask value
+                ldal  spritemask+{]1},x            ; load the mask value
                 bne   mixed                      ; a non-zero value may be mixed
 
 ; This is a solid word
                 lda   #$00F4          ; PEA instruction
                 sta:  ]2,y
-                ldal  spritedata+]1,x ; load the sprite data
+                ldal  spritedata+{]1},x ; load the sprite data
                 sta:  ]2+1,y          ; PEA operand
                 bra   next
 
@@ -99,7 +99,7 @@ mixed
                 sta:  ]2,y
                 lda   _JTBL_CACHE     ; Get the offset to the exception handler for this column
                 ora   #{]2&$F000}     ; adjust for the current row offset
-                sta:  ]2+1,y
+                sta:  {]2}+1,y
                 tay                   ; This becomes the new address that we use to patch in
 
                 lda   _OP_CACHE
@@ -111,14 +111,14 @@ mixed
 
                 lda   #$0029          ; AND #SPRITE_MASK
                 sta:  $0006,y
-                ldal  spritemask+]1,x 
+                ldal  spritemask+{]1},x 
                 cmp   #$FFFF          ; All 1's in the mask is a fully transparent sprite word
                 beq   transparent     ; so we can use the Tile00011 method
                 sta:  $0007,y
 
                 lda   #$0009          ; ORA #SPRITE_DATA
                 sta:  $0009,y
-                ldal  spritedata+]1,x
+                ldal  spritedata+{]1},x
                 sta:  $000A,y
 
                 lda   #$0980          ; branch to the prologue (BRA *+11)

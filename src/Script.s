@@ -33,18 +33,13 @@
 ;
 ; A pointer to the current command instruction is stored in the first 4 bytes of the 
 ; timer's user data section.
-StartScript    ENT
-               phb
-               phk
-               plb
-
-               phx                      ; Save the script array address
+_StartScript   phx                      ; Save the script array address
                pha
 
                lda   #_DoScriptSeq      ; Try to create a timer for this script
                ldx   #^_DoScriptSeq
                clc
-               jsl   AddTimer
+               jsr   _AddTimer
                bcs   :err               ; No timer slots available :(
 
                tax                      ; Initialize the UserData with the command pointer
@@ -52,15 +47,12 @@ StartScript    ENT
                sta   Timers+8,x
                pla
                sta   Timers+10,x
-
-               plb
-               rtl
+               rts
 
 :err
                pla                      ; Pop the values and return with the carry flag set
                pla
-               plb
-               rtl
+               rts
 
 ; This routine executes script command until it encounters one with the STOP bit set.  In some
 ; sense, the stop bit acts like a "yield" in high-level languages.
@@ -68,14 +60,6 @@ StartScript    ENT
 ARG1           equ   2
 ARG2           equ   4
 ARG3           equ   6
-
-DoScriptSeq    ENT
-               phb
-               phk
-               plb
-               jsl   _DoScriptSeq       ; Yes, this is a special JSL, because _DoScriptSeq is a time callback
-               plb
-               rtl
 
 _DoScriptSeq
                phx                      ; save the timer index; will need to update user data at the end
@@ -99,6 +83,7 @@ _dss_loop      phx                      ; Save the command address
                txy                      ; Cache in the y-register
 
                lda:  0,x                ; Load the command word
+
                pha                      ; Stash it
 
                and   #$001E             ; Only have 16 built-in commands.  Use the _UserCallback
@@ -116,18 +101,20 @@ _dss_cmd_rtn
 ; to the next entry.
                bit   #JUMP              ; Just do a fall through and set the jump offset to
                bne   :move_addr         ; a hard-coded value of 1 if the jump bit is not set
-:retry         lda   #$0100
-:move_addr     and   #$0F00             ; mask out the number of commands to move
+:retry         lda   #$0040
+:move_addr     and   #$0FC0             ; mask out the number of commands to move
                beq   :retry             ; Don't allow zeros; will cause infinite loop.  Just advance by one.
 
-               xba                      ; put it in the low byte
-               cmp   #$0008             ; Sign-extend the 4-bit value
+               cmp   #$0800             ; Sign-extend the 6-bit value
                bcc   *+5
-               ora   #$FFF0
+               ora   #$F000
 
-               asl                      ; multiply by 8
-               asl
-               asl
+               cmp   #$8000             ; make it a multiple of 8 (preserve sign)
+               ror
+               cmp   #$8000
+               ror
+               cmp   #$8000
+               ror
                clc
                adc   3,s                ; add it to the saved command address
                sta   3,s
@@ -175,14 +162,14 @@ _SetDTile
                ldx:  ARG1,y
                lda:  ARG2,y
                tay
-               jsl   CopyTileToDyn
+               jsr   CopyTileToDyn
                brl   _dss_cmd_rtn
 
 _UserCallback
                lda:  ARG1,y
-               sta   :dispatch+1
+               stal  :dispatch+1
                lda:  ARG1+1,y
-               sta   :dispatch+2
+               stal  :dispatch+2
                lda:  ARG3,y
 :dispatch      jsl   $000000
                brl   _dss_cmd_rtn

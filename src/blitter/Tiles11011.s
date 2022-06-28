@@ -90,14 +90,14 @@ CopyDynPrioMaskedSpriteWord MAC
                 lda   #$0029          ; AND #SPRITE_MASK
                 sta:  $0002,y
 
-                ldal  spritemask+]1,x
+                ldal  spritemask+{]1},x
                 cmp   #$FFFF          ; All 1's in the mask is a fully transparent sprite word
                 beq   transparent     ; so we can use the Tile00011 method
                 sta:  $0003,y
 
                 lda   #$0009          ; ORA #SPRITE_DATA
                 sta:  $0005,y
-                ldal  spritedata+]1,x
+                ldal  spritedata+{]1},x
                 sta:  $0006,y
 
                 lda   _T_PTR

@@ -15,13 +15,13 @@
 _PEISlam
                  lda   ScreenWidth
                  dec
-                 sta   :screen_width_1  ; save the width-1 outside of the direct page
+                 stal  :screen_width_1  ; save the width-1 outside of the direct page
 
                  lda   #:pei_end        ; patch the PEI entry address
                  and   #$FFFE           ; should always be even, but....
                  sec
                  sbc   ScreenWidth
-                 sta   :inner+1
+                 stal  :inner+1
 
                  phx
                  tya
@@ -43,7 +43,7 @@ _PEISlam
                  tcd                    ; screen address to the direct page register
 
                  tsc
-                 sta   :stk_save        ; save the stack pointer to restore later
+                 stal  :stk_save        ; save the stack pointer to restore later
 
                  clc                    ; clear before the loop -- nothing in the loop affect the carry bit
                  brl   :outer           ; hop into the entry point.
@@ -57,7 +57,7 @@ _PEISlam
                  tdc                    ; Move to the next line
                  adc   #160
                  tcd
-                 adc   :screen_width_1
+                 adcl  :screen_width_1
                  tcs
 
                  dey                    ; decrement the total counter, if zero then we're done
@@ -79,7 +79,7 @@ _PEISlam
 :restore
                  tsx                    ; save the current stack
                  _R0W0                  ; restore the execution environment and
-                 lda   :stk_save        ; give a few cycles to catch some interrupts
+                 ldal  :stk_save        ; give a few cycles to catch some interrupts
                  tcs
                  cli                    ; fall through here -- saves a BRA instruction
 
@@ -92,7 +92,7 @@ _PEISlam
 
 :exit
                  _R0W0
-                 lda   :stk_save
+                 ldal  :stk_save
                  tcs
                  cli
 

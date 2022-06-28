@@ -10,12 +10,6 @@
 ; in actual games since the primary background is often large empty areas, or runs
 ; of repeating tiles.
 
-; Debug locations
-LastTop            ds    2
-LastBottom         ds    2
-LastLeft           ds    2
-LastRight          ds    2
-
 ; The ranges are [:Left, :Right] and [:Top, :Bottom], so :Right can be, at most, 40
 ; if we are drawing all 41 tiles (Index 0 through 40).  The :Bottom value can be
 ; at most 25.
@@ -221,17 +215,6 @@ _UpdateBG0TileMap
 
 :NoXUpdate
                    rts
-
-;:Debug
-;                   lda   :Top                    ; Debugging
-;                   sta   LastTop
-;                   lda   :Bottom
-;                   sta   LastBottom
-;                   lda   :Left
-;                   sta   LastLeft
-;                   lda   :Right
-;                   sta   LastRight
-;                   rts
 
 ; This is a private subroutine that draws in tiles into the code fields using the
 ; data from the tilemap and the local :Top, :Left, :Bottom and :Right parameters.
@@ -639,7 +622,7 @@ _DrawRectBG1
 
                    ldx   :BlkX
                    ldy   :BlkY
-                   jsr   _CopyBG1Tile
+;                   jsr   _CopyBG1Tile
 
                    lda   :BlkX
                    inc
@@ -676,4 +659,3 @@ _DrawRectBG1
                    pla
 
                    rts
-

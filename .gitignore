@@ -1,4 +1,7 @@
 node_modules
 emu
+.vscode
 *_Output.txt
 src/GTETestApp
+*.2mg
+Tool160.SHK

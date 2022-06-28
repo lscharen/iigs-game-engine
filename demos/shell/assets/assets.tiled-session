@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "tiled/world_1-1.tmx",
+    "activeFile": "C:/checkout/iigs-game-engine/demos/zelda/assets/overworld.tmx",
     "expandedProjectPaths": [
         "tiled"
     ],
@@ -26,46 +26,145 @@
             "scaleInDock": 2,
             "scaleInEditor": 4
         },
+        "C:/checkout/iigs-game-engine/demos/sprites/assets/tiled/Overworld.tsx": {
+            "scaleInDock": 2,
+            "scaleInEditor": 4
+        },
+        "C:/checkout/iigs-game-engine/demos/sprites/assets/tiled/world_1-1.tmx": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 412,
+                "y": 309
+            }
+        },
+        "C:/checkout/iigs-game-engine/demos/zelda/assets/Zelda.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 1
+        },
+        "C:/checkout/iigs-game-engine/demos/zelda/assets/overworld.tmx": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 222.75,
+                "y": 192.5
+            }
+        },
+        "C:/checkout/tiled/examples/desert.tmx": {
+            "scale": 0.5462499999999999,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 716.704805491991,
+                "y": 793.5926773455379
+            }
+        },
+        "C:/checkout/tiled/examples/desert.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/checkout/tiled/examples/hexagonal-mini.tmx": {
+            "scale": 3.0067010309278346,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 159.14452254414542,
+                "y": 116.90553745928342
+            }
+        },
+        "C:/checkout/tiled/examples/hexagonal-mini.tmx#hex mini": {
+            "scaleInDock": 1
+        },
+        "C:/checkout/tiled/examples/isometric_grass_and_water.tmx": {
+            "scale": 0.4643125,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1039.1708170682462,
+                "y": 573.9668865257775
+            }
+        },
+        "C:/checkout/tiled/examples/isometric_grass_and_water.tmx#isometric_grass_and_water": {
+            "scaleInDock": 1
+        },
+        "C:/checkout/tiled/examples/perspective_walls.tmx": {
+            "scale": 0.8369268292682926,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 497.65401876784983,
+                "y": 479.7313050067028
+            }
+        },
+        "C:/checkout/tiled/examples/perspective_walls.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/checkout/tiled/examples/rpg/beach_tileset.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/checkout/tiled/examples/rpg/island.tmx": {
+            "scale": 1.0267780172413792,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 464.0730440258173,
+                "y": 376.42021304507534
+            }
+        },
+        "C:/checkout/tiled/examples/sewers.tmx": {
+            "scale": 0.7148749999999999,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 600.8043364224515,
+                "y": 600.8043364224516
+            }
+        },
+        "C:/checkout/tiled/examples/sewers.tmx#sewer_tileset": {
+            "scaleInDock": 1
+        },
         "tiled/Overworld.tsx": {
             "scaleInDock": 2,
-            "scaleInEditor": 1
+            "scaleInEditor": 8
         },
         "tiled/world_1-1.tmx": {
             "scale": 2,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 210.5,
-                "y": 107.75
+                "x": 212.75,
+                "y": 211.25
             }
         }
     },
-    "last.exportedFilePath": "C:/checkout/iigs-game-engine/assets/tiled",
-    "last.imagePath": "C:/checkout/iigs-game-engine/assets/tilesets",
-    "map.height": 30,
+    "frame.defaultDuration": 256,
+    "last.exportedFilePath": "C:/checkout/iigs-game-engine/demos/zelda/assets",
+    "last.imagePath": "C:/checkout/iigs-game-engine/demos/zelda/assets",
+    "map.height": 44,
     "map.lastUsedExportFilter": "JSON map files (*.json)",
     "map.lastUsedFormat": "tmx",
     "map.renderOrder": null,
     "map.tileHeight": 8,
     "map.tileWidth": 8,
-    "map.width": 256,
+    "map.width": 64,
     "openFiles": [
-        "tiled/world_1-1.tmx",
-        "tiled/Overworld.tsx"
+        "C:/checkout/iigs-game-engine/demos/zelda/assets/overworld.tmx",
+        "C:/checkout/iigs-game-engine/demos/zelda/assets/Zelda.tsx"
     ],
     "project": "assets.tiled-project",
-    "property.type": "int",
+    "property.type": "bool",
     "recentFiles": [
-        "tiled/Overworld.tsx",
+        "C:/checkout/iigs-game-engine/demos/zelda/assets/Zelda.tsx",
+        "C:/checkout/iigs-game-engine/demos/zelda/assets/overworld.tmx",
+        "C:/checkout/iigs-game-engine/demos/sprites/assets/tiled/Overworld.tsx",
+        "C:/checkout/iigs-game-engine/demos/sprites/assets/tiled/world_1-1.tmx",
         "tiled/world_1-1.tmx",
-        "C:/Users/lscharen/SNES - Final Fantasy 6 - South Figaro Exterior.tsx",
-        "C:/Users/lscharen/Overworld.tmx",
-        "C:/Users/lscharen/EUm-lfFWkAEb5fJ.tsx"
+        "tiled/Overworld.tsx",
+        "C:/checkout/tiled/examples/desert.tmx",
+        "C:/checkout/tiled/examples/hexagonal-mini.tmx",
+        "C:/checkout/tiled/examples/isometric_grass_and_water.tmx",
+        "C:/checkout/tiled/examples/perspective_walls.tmx",
+        "C:/checkout/tiled/examples/sewers.tmx",
+        "C:/checkout/tiled/examples/rpg/island.tmx"
     ],
+    "resizeMap.removeObjects": true,
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
         "height": 8,
         "width": 8
     },
-    "tileset.transparentColor": "#6b8cff",
-    "tileset.useTransparentColor": false
+    "tileset.transparentColor": "#ff00ff",
+    "tileset.useTransparentColor": true
 }
