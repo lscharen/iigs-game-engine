@@ -4,7 +4,7 @@ title: Toolbox Reference
 style: toolref
 ---
 
-<link rel="stylesheet" href="assets/css/toolref.css">
+<link rel="stylesheet" href="{{ 'assets/css/toolref.css' | relative_url }}">
 <div id="content">
 
  <ul>
