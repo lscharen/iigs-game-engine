@@ -69,14 +69,39 @@ permalink: /tool-ref/
 
   <tr><th colspan="2">Tile Routines</th></tr>
   <tr><td>GTELoadTileSet</td><td>Copies a tileset into the GTE tileset memory</td></tr>
-  <tr><td>GTESetTile</td><td>Assigns a tile to a tile map index</td></tr>
+  <tr><td>GTESetTile</td><td>Assigns a tile to a tile store</td></tr>
+  <tr><td>GTEGetTileAt</td><td>Retrieves the tile ID stored in the tile store</td></tr>
+  <tr><td>GTECopyTileToDynamic</td><td>Copies a tile from the tileset memory into the managed dynamic tile memory.  Changing the dynamic tile data will result in all of the tiles updating
+  on the next call the <tt>GTERender()</tt></td></tr>
+  <tr><td>GTEGetTileDataAddr</td><td>Returns the base address of the tiledata memory</td></tr>
+  <tr><td>GTEFillTileStore</td><td>Fills the entire tile store with a tile ID.</td></tr>
 
   <tr><th colspan="2">Primary Background Routines</th></tr>
   <tr><td>GTESetBG0Origin</td><td>Sets the upper-left origin point in the primary background</td></tr>
   <tr><td>GTERender</td><td>Draws the current scene to the graphics screen</td></tr>
+  <tr><td>GTEGetBG0TileMapInfo</td><td>Returns a record describing the number of tiles in the primary tilemap and a pointer to the tilemap data.</td></tr>
+  <tr><td>GTESetBG0TileMapInfo</td><td>Defines a tile map for the primary background</td></tr>
+  <tr><td>GTERefresh</td><td>Forces all of the tiles in the tile store to be refreshed on the next render.</td></tr>
+
+  <tr><th colspan="2">Secondary Background Routines</th></tr>
+  <tr><td>GTESetBG1Origin</td><td>Sets the upper-left origin point in the secondary background</td></tr>
+  <tr><td>GTECopyPicToBG1</td><td>Copies an uncompressed pixel image into the secondard background buffer</td></tr>
+  <tr><td>GTESetBG1TileMapInfo</td><td>Defines a tile map for the secondary background</td></tr>
+
+  <tr><th colspan="2">Timer Routines</th></tr>
+  <tr><td>GTEAddTimer</td><td>Add a timer callback that is fired after a designated number of VBL ticks</td></tr>
+  <tr><td>GTERemoveTimer</td><td>Removes an active timer</td></tr>
+  <tr><td>GTEStartScript</td><td>Registers a GTE script to be handled in the background</td></tr>
+
+  <tr><th colspan="2">Overlay Routines</th></tr>
+  <tr><td>GTESetOverlay</td><td>Registers an overlay routine to be integrated into the renderer.  Typically used for status bars or messages.</td></tr>
+  <tr><td>GTEClearOverlay</td><td>Removes the current overlay from the renderer</td></tr>
 
   <tr><th colspan="2">Functions affecting the global state</th></tr>
   <tr><td>GTESetScreenMode</td><td>Sets the playing field's port rectangle to a pre-defined size, or a specified width and height</td></tr>
+  <tr><td>GTESetPalette</td><td>Copies a palette to the Super HiRes palette memory</td></tr>
+  <tr><td>GTEBindSCBArray</td><td>Takes an array of SCB bytes and binds them to either the Primary or Secondary background's vertical position</td></tr>
+  <tr><td>GTEGetScreenInfo</td><td>Returns a records describing the origin, width and height of the playfield on the physical graphics screen.</td></tr>
 
   <tr><th colspan="2">Misc. Functions</th></tr>
   <tr><td>GTEReadControl</td><td>Reads the keyboard and returns key events in a gamepad structure</td></tr>
@@ -363,7 +388,7 @@ GTE Tool Set routines
  <h4>GTEGetAddress</h4>
   
  <p>
- Returns the address of an internal GTE Tool Set array.  
+ Returns the address of an internal GTE Tool Set array.
  </p>
 
  <div class="section">
