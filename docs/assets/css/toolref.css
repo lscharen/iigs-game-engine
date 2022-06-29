@@ -19,32 +19,43 @@ div.api_intro h1, h2, h3, h4, h5 {
  
  div.api
  {
-   padding-left: 100px;
+  clear: both;
    border-top: 3px double red;
    margin: 1em 0;
  }
+
+ div.api > p
+ {
+  margin-left: 100px;
+ }
+
  
  div.api h4
  {
    margin: 0.5em 0px 0px 0px;
+   padding-left: 100px;
  }
  
  div.api .tn
  {
-   clear: both;
-   float: left;
-   margin-left: -100px;
+    float: left;
+    margin-left: -100px;
  }
  
  div.section 
  {
+  clear: both;
    margin-top: 2em;
+ }
+
+ div.section > p
+ {
+  margin-left: 100px;
  }
  
  div.transition {
-   width: 90%;  
    height:2em; 
-   text:  black; 
+   color:  black; 
    font-weight: bold; 
    background-color: red; 
    padding-left: 100px; 
@@ -55,11 +66,10 @@ div.api_intro h1, h2, h3, h4, h5 {
  
  div.api div.section h5
  {
-   clear: both;
-   float: left;
-   margin: 0px 0px 0px -100px;
+   /* margin: 0px 0px 0px -100px; */
    color: red;
    font-size: 0.9em;
+   float: left;
  }
  
  table.bits
@@ -146,9 +156,23 @@ div.api_intro h1, h2, h3, h4, h5 {
  table.stack
  {
    border: none;
-   background-color: none;
    border-spacing: 0;
    margin: 1em 0;
+   clear: both;
+ }
+
+ .sc {
+  font-variant: small-caps;
+ }
+
+ table.stack col.col-1
+ {
+  width: 15em;
+ }
+
+ table.stack col.col-2
+ {
+  width: 2em;
  }
 
  table.stack tr
@@ -160,8 +184,9 @@ div.api_intro h1, h2, h3, h4, h5 {
  {
     background-color: transparent;
     border: none;
-   text-align: left;
-   height: 2em;
+    text-align: left;
+    height: 2em;
+    padding-left: 0;
  }
 
  table.stack th:first-child,
@@ -176,6 +201,12 @@ div.api_intro h1, h2, h3, h4, h5 {
    border: none;
    background-color: transparent;
    padding: 0.25em 1em;
+ }
+
+ table.stack td + td + td
+ {
+  padding-left: 5em;
+  text-indent: -5em;
  }
  
  table.stack em
