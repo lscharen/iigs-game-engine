@@ -326,7 +326,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$02XX</h4>
-    <h4>GTEStartUp</h4>
+    <h4 id="GTEStartUp">GTEStartUp</h4>
     <p>
       Starts up the GTE Tool Set for use by an application.
     </p>
@@ -733,9 +733,36 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTEReadControl()</tt></p>
+    </div>
+    <div class="example">
+      <h5>Returned value</h5>
+      <p>
+        The value returned in <em>userInput</em> bitfield are show below.
+      </p>
+      <table class="bits bitfield">
+        <colgroup span="6" style="background-color: #999;"></colgroup>
+        <colgroup span="10" style="background-color: #fff;"></colgroup>
+        <tbody>
+          <tr>
+            <td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td>
+        </tr>
+       </tbody>
+      </table>
+      <table class="bitfield-definitions">
+        <tbody>
+          <tr><td>Bits 0-7</td><td><em>keyCode</em></td><td>Keyboard code read from the Keyboard register. If no key is currently pressed, this value is zero.</td></tr>
+          <tr><td>Bit 8</td><td>Reserved</td><td>Must be zero.</td></tr>
+          <tr><td>Bit 9</td><td>fPadButtonB</td><td>Set to 1 if the <tt>B</tt> button of the gamepad is pressed.  Mapped to the option key by default.</td></tr>
+          <tr><td>Bit 10</td><td>fPadButtonA</td><td>Set to 1 if the <tt>A</tt> button of the gamepad is pressed.  Mapped to the command key by default.</td></tr>
+          <tr><td>Bit 11</td><td>fKeyDown</td><td>Set to 1 on the initial press of a key.  If a key is held down, the <tt>keyCode</tt> will be set and this bit will be zero.</tt></td></tr>
+          <tr><td>Bits 12-15</td><td>Reserved</td><td>Must be zero.</td></tr>
+       </tbody>
+      </table>
     </div>
   </div>
 
@@ -759,6 +786,16 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">width</td>
+            <td><em></em></td>
+            <td><em>Word</em>&mdash;Width of the playfield in pixels. Must be even.</td>
+          </tr>
+          <tr>
+            <td class="bot">height</td>
+            <td><em></em></td>
+            <td><em>Word</em>&mdash;Height of the playfield in pixels.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -792,6 +829,103 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetScreenMode(width, height)</tt></p>
+      <p><tt>Word     width;</tt></p>
+      <p><tt>Word     height;</tt></p>
+    </div>
+    <div class="example">
+      <h5>Predefined Screen Sizes</h5>
+      <p>
+        If the <em>width</em> value is set to a small number, then one of  the pre-defined screen sizes will be selected. Set
+        the <em>width</em> to the index number of the screen sizes in the table below to set the screen size to
+        those dimension.  The <em>height</em> value must still be passed, but is ignored.
+      </p>
+      <table>
+        <thead>
+        <tr style="white-space: nowrap;">
+        <th>Play Field Id</th>
+        <th>Width</th>
+        <th>Height</th>
+        <th></th>
+        <th>Size (bytes)</th>
+        <th>Percent of Full Screen</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+        <td>0</td>
+        <td>320</td>
+        <td>200</td>
+        <td>Full Screen</td>
+        <td>32,000</td>
+        <td>100%</td>
+        </tr>
+        <tr>
+        <td>1</td>
+        <td>272</td>
+        <td>192</td>
+        <td>Sword of Sodan</td>
+        <td>26,112</td>
+        <td>81.6%</td>
+        </tr>
+        <tr>
+        <td>2</td>
+        <td>256</td>
+        <td>200</td>
+        <td>NES (approx.)</td>
+        <td>25,600</td>
+        <td>80.0%</td>
+        </tr>
+        <tr>
+        <td>3</td>
+        <td>256</td>
+        <td>176</td>
+        <td>Task Force</td>
+        <td>22,528</td>
+        <td>70.4%</td>
+        </tr>
+        <tr>
+        <td>4</td>
+        <td>280</td>
+        <td>160</td>
+        <td>Defender of the World</td>
+        <td>22,400</td>
+        <td>70.0%</td>
+        </tr>
+        <tr>
+        <td>5</td>
+        <td>256</td>
+        <td>160</td>
+        <td>Rastan</td>
+        <td>20,480</td>
+        <td>64.0%</td>
+        </tr>
+        <tr>
+        <td>6</td>
+        <td>240</td>
+        <td>160</td>
+        <td>Game Boy Advanced</td>
+        <td>19,200</td>
+        <td>60.0%</td>
+        </tr>
+        <tr>
+        <td>7</td>
+        <td>288</td>
+        <td>128</td>
+        <td>Ancient Land of Y's</td>
+        <td>18,432</td>
+        <td>57.6%</td>
+        </tr>
+        <tr>
+        <td>8</td>
+        <td>160</td>
+        <td>144</td>
+        <td>Game Boy Color</td>
+        <td>11,520</td>
+        <td>36.0%</td>
+        </tr>
+        </tbody>
+        </table>
     </div>
   </div>
 
@@ -815,6 +949,21 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">x</td>
+            <td><em></em></td>
+            <td><em>Word</em>&mdash;Horizontal index of the TileStore tile to set.  Must be in the range of 0 to 40.</td>
+          </tr>
+          <tr>
+            <td class="bot">y</td>
+            <td><em></em></td>
+            <td><em>Word</em>&mdash;Vertical index of the TileStore tile to set. Must be in the range of 0 to 25.</td>
+          </tr>
+          <tr>
+            <td class="bot">tileID</td>
+            <td><em></em></td>
+            <td><em>Word</em>&mdash;Tile ID to place in the TileStore.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -848,6 +997,38 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetTile(x, y, tileID)</tt></p>
+      <p><tt>Word     width;</tt></p>
+      <p><tt>Word     height;</tt></p>
+      <p><tt>Word     tileID;</tt></p>
+    </div>
+    <div class="example">
+      <h5>Tile Identifiers</h5>
+      <p>
+        The tile ID word is defined as follows
+      </p>
+      <table class="bits bitfield">
+        <colgroup span="1" style="background-color: #999;"></colgroup>
+        <colgroup span="6" style="background-color: lightblue;"></colgroup>
+        <colgroup span="9" style="background-color: white;"></colgroup>
+        <tbody>
+          <tr>
+            <td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td>
+        </tr>
+       </tbody>
+      </table>
+      <table class="bitfield-definitions">
+        <tbody>
+          <tr><td>Bits 0-8</td><td>tileIndex</td><td>The index of the tile in the current Tile Set.  A Tile Set can be defined by calling the <tt>GTELoadTileSet</tt> function</td></tr>
+          <tr><td>Bit 9</td><td>fTileHFlip</td><td>Flips the tile horizontally when set.</td></tr>
+          <tr><td>Bit 10</td><td>fTileVFlip</td><td>Flips the tile vertically when set.</td></tr>
+          <tr><td>Bit 11</td><td>fTileDynamic</td><td>Identifies this tile as a dynamic tile.  The <tt>tileIndex</tt> is used to identify the dynamic tile data slow and must be in the range 0 to 31.</td></tr>
+          <tr><td>Bit 12</td><td>fTileSolid</td><td>Hint bit that marks a tile as having no mask.  Can improve performance when ENGINE_MODE_TWO_LAYER is set.</td></tr>
+          <tr><td>Bit 13</td><td>fTileFringe</td><td>Unused. Must be zero.</td></tr>
+          <tr><td>Bit 14</td><td>fTilePriority</td><td>Sets the tile to high priority. Sprites will render under this tile, if supported.</td></tr>
+          <tr><td>Bit 15</td><td>Reserved</td><td>Must be zero.</td></tr>
+       </tbody>
+      </table>
     </div>
   </div>
 

@@ -1,4 +1,14 @@
 /* Style for the fancy API documentation */
+div.example {
+  border-top: 1px solid red;
+}
+
+div.example > h5 {
+ font-weight: bold;
+ font-size: larger;
+ color: #111;
+}
+
 div.api_intro h1, h2, h3, h4, h5 {
     font-family: helvetica, sans-serif;
  }
@@ -22,6 +32,14 @@ div.api_intro h1, h2, h3, h4, h5 {
   clear: both;
    border-top: 3px double red;
    margin: 1em 0;
+ }
+
+ div.api:before {
+  border-bottom: 1px solid red;
+  content:"";
+  height: 1px;
+  width: 100%;
+  float: left;
  }
 
  div.api > p
@@ -79,6 +97,11 @@ div.api_intro h1, h2, h3, h4, h5 {
    border-collapse: collapse;
  }
  
+ table.bitfield-definitions tr > td:first-child
+ {
+  white-space: nowrap;
+ }
+
  table.bits td
  {
    padding: 5px;
@@ -114,7 +137,9 @@ div.api_intro h1, h2, h3, h4, h5 {
    border-bottom: 1px solid black;
    font-family: helvetica;
    font-size: small;
-   margin-top: 2em;
+   /* margin-top: 2em; */
+   margin-left: 100px;
+   margin-bottom: 15px;
  }
  
  div.warning:before 
