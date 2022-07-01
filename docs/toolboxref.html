@@ -1014,8 +1014,8 @@ style: toolref
     <div class="section">
       <h5>C</h5>
       <p><tt>extern pascal void GTESetTile(x, y, tileID)</tt></p>
-      <p><tt>Word     width;</tt></p>
-      <p><tt>Word     height;</tt></p>
+      <p><tt>Word     x;</tt></p>
+      <p><tt>Word     y;</tt></p>
       <p><tt>Word     tileID;</tt></p>
     </div>
     <div class="example">
@@ -1051,7 +1051,10 @@ style: toolref
   <div class="api">
     <h4 class="tn">$0CXX</h4>
     <h4>GTESetBG0Origin</h4>
-    <p></p>
+    <p>
+      Sets the coordinate of the upper-left corner of the playfield within the primary background buffer. The coordiate values
+      are <em>unsigned</em>, so transitioning from 0 to -1 will result in a discontinuous jump in the background position.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1066,6 +1069,18 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            xpos
+            <td></td>
+            <td><em>Word</em>&mdash;Unsigned horizontal position</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            ypos
+            <td></td>
+            <td><em>Word</em>&mdash;Unsigned vertical position</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1101,69 +1116,43 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetBG0Origin(x, y)</tt></p>
+      <p><tt>Word     x;</tt></p>
+      <p><tt>Word     y;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$0DXX</h4>
     <h4>GTERender</h4>
-    <p></p>
+    <p>Renders the current playfield to the graphics screen.</p>
     <div class="section">
       <h5>Parameters</h5>
-      <table class="stack">
-        <colgroup>
-          <col class="col-1">
-          <col class="col-2">
-          <col class="col-3">
-        </colgroup>
-        <tbody>
-          <tr>
-            <th>Stack before call</th>
-          </tr>
-          <tr>
-            <td class="top">previous contents</td>
-          </tr>
-          <tr>
-            <td class="bot"></td>
-            <td><em>←</em></td>
-            <td><em>SP</em></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <table class="stack">
-        <colgroup>
-          <col class="col-1">
-          <col class="col-2">
-          <col class="col-3">
-        </colgroup>
-        <tbody>
-          <tr>
-            <th>Stack after call</th>
-          </tr>
-          <tr>
-            <td class="top">previous contents</td>
-          </tr>
-          <tr>
-            <td class="bot"></td>
-            <td><em>←</em></td>
-            <td><em>SP</em></td>
-          </tr>
-        </tbody>
-      </table>
+      <p>
+        The stack is not affected by this call. There are no input or output parameters.
+      </p>
     </div>
     <div class="section">
       <h5>Errors</h5>
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTERender()</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$0EXX</h4>
     <h4>GTELoadTileSet</h4>
-    <p></p>
+    <p>
+      Loads a tileset into the internal GTE memory buffer.  The <span class="sc">pointer</span> must point to 
+      tiles that are already in GTE tile format.
+    </p>
+    <p>
+      A tile set is an array of (up to) 512 tile definitions and each tile definition is 128 bytes.  The tile definition
+      is comprised of four, 32-byte tiles; a normal tile, its mask, a horizontally flipped versio of the tile and its mask.
+      The first 128 bytes of a tileset must be set to zero.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1178,6 +1167,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">tileSetPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the tile set data.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1213,13 +1207,20 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTELoadTileSet(tileSetPtr)</tt></p>
+      <p><tt>Pointer  tileSetPtr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$0FXX</h4>
     <h4>GTECreateSpriteStamp</h4>
-    <p></p>
+    <p>
+      Creates a sprite stamp (cache sprite pixel data copy) from a sprite identifier and the current
+      tile set.  The <em>vBuffAddr</em> points to a location in the internal virtual buffer area.  In
+      most cases, an address for a sprite can be calculated from the <tt>VBUFF_SPRITE_START</tt> and
+      <tt>VBUFF_SPRITE_STEP</tt> constants as <tt>ADDR(n) = VBUFF_SPRITE_START + n*VBUFF_SPRITE_STEP</tt>.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1234,6 +1235,16 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;sprite descriptor word</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Location in the sprite vitual buffer to allocate the stamp.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1269,13 +1280,23 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTECreateSpriteStamp(spriteID, vBuffAddr)</tt></p>
+      <p><tt>Word     spriteID;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$10XX</h4>
     <h4>GTEAddSprite</h4>
-    <p></p>
+    <p>
+      Adds a new sprite to the current scene.  If a sprite is already assigned to the sprite slot, then
+      that sprite is removed and replaced with the new sprite.
+    </p>
+    <p>
+      A sprite can have negative coordinates and be placed off-screen.  A sprite's coordinates are local
+      coordinates on the playfield; a sprite will not move automatically when <tt>GTESetBG0Origin</tt> is changed.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1290,6 +1311,26 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteSlot</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite slot assigned to this new sprite.</td>
+          </tr>
+          <tr>
+            <td class="bot">x</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Signed horizontal sprite position on the playfield.</td>
+          </tr>
+          <tr>
+            <td class="bot">y</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Signed vertical sprite position on the playfield.</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Address of the stamp to use for this sprite.  A stamp can be shared by multiple sprites.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1325,13 +1366,18 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTEAddSprite(spriteSlot, x, y, vBuffAddr)</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
+      <p><tt>Word     x;</tt></p>
+      <p><tt>Word     y;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$11XX</h4>
     <h4>GTEMoveSprite</h4>
-    <p></p>
+    <p>Repositions a sprite on the play field.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1346,6 +1392,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteSlot</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Slot where the target sprite is located.</td>
+          </tr>
+          <tr>
+            <td class="bot">x</td>
+            <td></td>
+            <td><em>Word</em>&mdash;New horizontal position.</td>
+          </tr>
+          <tr>
+            <td class="bot">y</td>
+            <td></td>
+            <td><em>Word</em>&mdash;New vertical position</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1381,13 +1442,21 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTEMoveSprite(spriteSlot, x, y)</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
+      <p><tt>Word     x;</tt></p>
+      <p><tt>Word     y;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$12XX</h4>
     <h4>GTEUpdateSprite</h4>
-    <p></p>
+    <p>
+      Changes the stamp or the status flags of a sprite.  The size of the sprite cannot be changed.
+      Typically, an application will call <tt>GTEUpdateSprite</tt> immediately after <tt>GTEAddSprite</tt> to
+      set all of th desired sprite properties.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1402,6 +1471,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteSlot</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite slot of the target sprite to update.</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteFlags</td>
+            <td></td>
+            <td><em>Word</em>&mdash;A new set of sprite flags.</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite stamp virtual buffer address.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1437,13 +1521,17 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTEUpdateSprite(spriteSlot, spriteFlags, vBuffAddr)</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
+      <p><tt>Word     spriteFlags;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$13XX</h4>
     <h4>GTERemoveSprite</h4>
-    <p></p>
+    <p>Removes a sprite from the play field.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1458,6 +1546,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteSlot</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite slot of the target sprite to update.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1493,6 +1586,8 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTERemoveSprite(spriteSlot)</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
     </div>
   </div>
 
