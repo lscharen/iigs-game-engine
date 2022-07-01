@@ -1594,7 +1594,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$14XX</h4>
     <h4>GTEGetSeconds</h4>
-    <p></p>
+    <p>Returns the number of seconds that have elapsed since the engine was started. This is a 16-bit value and will wrap around after 65536 seconds (~18 hours)</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1609,6 +1609,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1632,6 +1637,11 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">numSeconds</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Number of elapsed seconds.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -1644,13 +1654,20 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTEGetSeconds()</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$15XX</h4>
     <h4>GTECopyTileToDynamic</h4>
-    <p></p>
+    <p>
+      Copies a tile by ID into one of the dynamic tile slots.  If a dynamic tile associated with the
+      slot is visible, it will show the new data after the next call to <tt>GETRender</tt>.
+    </p>
+    <p>
+      The <tt>ENGINE_MODE_DYN_TILES</tt> flag must be set, otherwise this function does nothing.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1665,6 +1682,16 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">tileID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;ID of the tile (0 to 511)</td>
+          </tr>
+          <tr>
+            <td class="bot">dynID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;ID of the dynamic tile slot (0 to 31)</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1700,13 +1727,19 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTECopyTileToDynamic(tileID, dynID)</tt></p>
+      <p><tt>Word     tileID;</tt></p>
+      <p><tt>Word     dynID;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$16XX</h4>
     <h4>GTESetPalette</h4>
-    <p></p>
+    <p>
+      Sets one of the 16 palettes to the RGB values in the passed array.  This is a convenience function that
+      immediately updated the visible palette.  The palette change is <em>not</em> deferred.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1721,6 +1754,16 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">palNum</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Palette number to changes (0 - 15)</td>
+          </tr>
+          <tr>
+            <td class="bot">palettePtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the 32 bytes of RGB values.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1756,13 +1799,19 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetPalette(palNum, palettePtr)</tt></p>
+      <p><tt>Word     palNum;</tt></p>
+      <p><tt>Pointer  palettePtr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$17XX</h4>
     <h4>GTECopyPicToBG1</h4>
-    <p></p>
+    <p>
+      Copies an uncompressed SHR image into the secondard background pixel buffer.  This is an easy way to load a
+      background image into the secondary layer.  SCB values and palettes are <em>not</em> copied.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1777,6 +1826,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">picPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the uncompressed SHR data</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1812,13 +1866,23 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTECopyPicToBG1(picPtr)</tt></p>
+      <p><tt>Pointer  picPtr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$18XX</h4>
     <h4>GTEBindSCBArray</h4>
-    <p></p>
+    <p>
+      Binds an array of SCB values to either the primary or secondard background layer.  This will automatically
+      update the SHR screen SCB values as the vertical offset of the designated background layer changes.
+    </p>
+    <p>
+      The SCB updates are not synchronized with the VBL, so care should be taken to select palette values that
+      minimize flicker when adjacent lines have different palette assignements and the page is scrolling
+      quickly.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -1833,6 +1897,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">scbPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to an array of SCB values. The size of the array is defined by the largest verical offset that the application expects to use.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1868,6 +1937,8 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTEBindSCBArray(scbPtr)</tt></p>
+      <p><tt>Pointer  scbPtr;</tt></p>
     </div>
   </div>
 
@@ -1877,6 +1948,7 @@ style: toolref
     <p></p>
     <div class="section">
       <h5>Parameters</h5>
+      
       <table class="stack">
         <colgroup>
           <col class="col-1">
@@ -1889,6 +1961,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr rowspan="2">
+            <td class="bot">longspace</td>
+            <td></td>
+            <td><em>Long</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1912,6 +1999,21 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">tileMapPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the tile map.</td>
+          </tr>
+          <tr>
+            <td class="bot">height</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Height of the tilemap in tiles.</td>
+          </tr>
+          <tr>
+            <td class="bot">width</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Width of the tilemap in tiles.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -1924,6 +2026,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal struct TileMapInfo GTEGetBG0TileMapInfo()</tt></p>
     </div>
   </div>
 
@@ -1933,6 +2036,7 @@ style: toolref
     <p></p>
     <div class="section">
       <h5>Parameters</h5>
+      
       <table class="stack">
         <colgroup>
           <col class="col-1">
@@ -1945,6 +2049,26 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1968,6 +2092,26 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">height</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Height of the playfield in lines.</td>
+          </tr>
+          <tr>
+            <td class="bot">width</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Width of the playfield in bytes.</td>
+          </tr>
+          <tr>
+            <td class="bot">y</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Vertical coordinate of the upper-left corner.</td>
+          </tr>
+          <tr>
+            <td class="bot">x</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Horizontal coordinate of the upper-left corner.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -1980,6 +2124,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal struct ScreenInfo GTEGetScreenInfo()</tt></p>
     </div>
   </div>
 
