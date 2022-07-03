@@ -346,9 +346,10 @@ _CreateSpriteStamp
 ;   01 - 8x16 (1x2 tiles)
 ;   10 - 16x8 (2x1 tiles)
 ;   11 - 16x16 (2x2 tiles)
-; Bit 13       : Reserved. Must be zero.
+; Bit 13       : Show/Hid sprite
 ; Bit 14       : Reserved. Must be zero.
-; Bit 15       : Low Sprite priority. Draws behind high priority tiles.
+; Bit 15       : Reserved. Must be zero.
+; TBD: Bit 15       : Low Sprite priority. Draws behind high priority tiles.
 ;
 ; When a sprite has a size > 8x8, the horizontal tiles are taken from the next tile index and
 ; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
