@@ -1272,6 +1272,37 @@ style: toolref
       <p><tt>Word     spriteID;</tt></p>
       <p><tt>Word     vBuffAddr;</tt></p>
     </div>
+    <div class="example">
+      <h5>Sprite Descriptor</h5>
+      <p>
+        The sprite descriptor is a subset of the full sprite bitfield.  Only the starting Tile Index and
+        the size bits are used.
+      </p>
+      <p>
+        When a sprite has a size greater than 8x8, the horizontal tiles are taken from the next tile index
+        and the vertical tiles are taken from <tt>tileID + 32</tt>.  This is why tile sheets should be saved
+        with a width of 256 pixels.
+      </p>
+      <table class="bits bitfield">
+        <colgroup span="3" style="background-color: #999;"></colgroup>
+        <colgroup span="2" style="background-color: lightblue;"></colgroup>
+        <colgroup span="2" style="background-color: #999;"></colgroup>
+        <colgroup span="9" style="background-color: white;"></colgroup>
+        <tbody>
+          <tr>
+            <td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td>
+        </tr>
+       </tbody>
+      </table>
+      <table class="bitfield-definitions">
+        <tbody>
+          <tr><td>Bits 0-8</td><td>tileIndex</td><td>The index of a tile in the current Tile Set that defines the top-left part of the sprite</td></tr>
+          <tr><td>Bit 9-10</td><td>Reserved</td><td>Must be zero.</td></tr>
+          <tr><td>Bits 11-12</td><td>fSpriteSize</td><td>Sets the size of the sprite<ul><li>00 - 8x8</li><li>01 - 8x16</li><li>10 - 16x8</li><li>11 - 16x16</li></ul></td></tr>
+          <tr><td>Bit 13-15</td><td>Reserved</td><td>Must be zero.</td></tr>
+       </tbody>
+      </table>
+    </div>
   </div>
 
   <div class="api">
@@ -1359,6 +1390,37 @@ style: toolref
       <p><tt>Word     x;</tt></p>
       <p><tt>Word     y;</tt></p>
       <p><tt>Word     vBuffAddr;</tt></p>
+    </div>
+    <div class="example">
+      <h5>Sprite Descriptor</h5>
+      <p>
+        The sprite descriptor defines the rendering properties of a sprite.
+      </p>
+      <p>
+        When a sprite has a size greater than 8x8, the horizontal tiles are taken from the next tile index
+        and the vertical tiles are taken from <tt>tileID + 32</tt>.  This is why tile sheets should be saved
+        with a width of 256 pixels.
+      </p>
+      <table class="bits bitfield">
+        <colgroup span="2" style="background-color: #999;"></colgroup>
+        <colgroup span="4" style="background-color: lightblue;"></colgroup>
+        <colgroup span="9" style="background-color: white;"></colgroup>
+        <tbody>
+          <tr>
+            <td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td>
+        </tr>
+       </tbody>
+      </table>
+      <table class="bitfield-definitions">
+        <tbody>
+          <tr><td>Bits 0-8</td><td>tileIndex</td><td>The index of a tile in the current Tile Set that defines the top-left part of the sprite</td></tr>
+          <tr><td>Bit 9</td><td>fSpriteHorzFlip</td><td>Flips the sprite horizontally.</td></tr>
+          <tr><td>Bit 10</td><td>fSpriteVertFlip</td><td>Flips the sprite vertically.</td></tr>
+          <tr><td>Bits 11-12</td><td>fSpriteSize</td><td>Sets the size of the sprite<ul><li>00 - 8x8</li><li>01 - 8x16</li><li>10 - 16x8</li><li>11 - 16x16</li></ul></td></tr>
+          <tr><td>Bit 13</td><td>fSpriteHide</td><td>When set, does not render the sprite.</td></tr>
+          <tr><td>Bit 14-15</td><td>Reserved</td><td>Must be zero.</td></tr>
+       </tbody>
+      </table>
     </div>
   </div>
 
@@ -1933,7 +1995,9 @@ style: toolref
   <div class="api">
     <h4 class="tn">$19XX</h4>
     <h4>GTEGetBG0TileMapInfo</h4>
-    <p></p>
+    <p>
+      Returns information about the current BG0 tile map.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       
@@ -2021,7 +2085,9 @@ style: toolref
   <div class="api">
     <h4 class="tn">$1AXX</h4>
     <h4>GTEGetScreenInfo</h4>
-    <p></p>
+    <p>
+      Returns information about the current position and size of the play field.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       
@@ -2119,7 +2185,10 @@ style: toolref
   <div class="api">
     <h4 class="tn">$1BXX</h4>
     <h4>GTESetBG1Origin</h4>
-    <p></p>
+    <p>
+      Sets the coordinate of the upper-left corner of the playfield within the secondary background buffer. The coordiate values
+      are <em>unsigned</em>, so transitioning from 0 to -1 will result in a discontinuous jump in the background position.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2134,6 +2203,18 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            xpos
+            <td></td>
+            <td><em>Word</em>&mdash;Unsigned horizontal position</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            ypos
+            <td></td>
+            <td><em>Word</em>&mdash;Unsigned vertical position</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2169,13 +2250,19 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetBG1Origin(x, y)</tt></p>
+      <p><tt>Word     x;</tt></p>
+      <p><tt>Word     y;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$1CXX</h4>
     <h4>GTEGetTileAt</h4>
-    <p></p>
+    <p>
+      Returns the tile at a local coordinate poiint.  The primary use of this function is to lookup
+      a Tile ID using a sprite's coordinates.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2190,6 +2277,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">x</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Local play field horizontal coordinate</td>
+          </tr>
+          <tr>
+            <td class="bot">y</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Local play field vertical coordinate</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2213,6 +2315,11 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">TileID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Tile ID at the play field coordinates.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -2225,6 +2332,9 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTEGetTileAt(x, y)</tt></p>
+      <p><tt>Word     x;</tt></p>
+      <p><tt>Word     y;</tt></p>
     </div>
   </div>
 
@@ -2679,7 +2789,9 @@ style: toolref
   <div class="api">
     <h4 class="tn">$25XX</h4>
     <h4>GTEFillTileStore</h4>
-    <p></p>
+    <p>
+      Fills the entire Tile Store with a specific Tile ID value.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2694,6 +2806,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">tileID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Tile ID to store into the tile store memory.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2729,62 +2846,30 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTEFillTileStore(tileID)</tt></p>
+      <p><tt>Word     tileID;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$26XX</h4>
     <h4>GTERefresh</h4>
-    <p></p>
+    <p>
+      Forces a refresh of the play field.  This is implemented by adding all of the visible tiles to the dirty tile
+      queue which will force them to be redrawn on the next call to <tt>GTERender()</tt>.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
-      <table class="stack">
-        <colgroup>
-          <col class="col-1">
-          <col class="col-2">
-          <col class="col-3">
-        </colgroup>
-        <tbody>
-          <tr>
-            <th>Stack before call</th>
-          </tr>
-          <tr>
-            <td class="top">previous contents</td>
-          </tr>
-          <tr>
-            <td class="bot"></td>
-            <td><em>←</em></td>
-            <td><em>SP</em></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <table class="stack">
-        <colgroup>
-          <col class="col-1">
-          <col class="col-2">
-          <col class="col-3">
-        </colgroup>
-        <tbody>
-          <tr>
-            <th>Stack after call</th>
-          </tr>
-          <tr>
-            <td class="top">previous contents</td>
-          </tr>
-          <tr>
-            <td class="bot"></td>
-            <td><em>←</em></td>
-            <td><em>SP</em></td>
-          </tr>
-        </tbody>
-      </table>
+      <p>
+        The stack is not affected by this call. There are no input or output parameters.
+      </p>
     </div>
     <div class="section">
       <h5>Errors</h5>
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTERefresh()</tt></p>
     </div>
   </div>
 
