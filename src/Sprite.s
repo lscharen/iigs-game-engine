@@ -605,6 +605,9 @@ _CacheSpriteBanks
             xba
             ldx    #$100
             sta    DP2_TILEDATA_AND_TILESTORE_BANKS,x     ; put a reversed copy in the second direct page
+            and    #$FF00
+            ora    #$0001
+            sta    DP2_BANK01_AND_TILESTORE_BANKS,x       ; put a value with bank 01 and the tile store
 
             lda    #>spritedata
             and    #$FF00
