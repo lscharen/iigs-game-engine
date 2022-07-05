@@ -2341,7 +2341,10 @@ style: toolref
   <div class="api">
     <h4 class="tn">$1DXX</h4>
     <h4>GTESetBG0TileMapInfo</h4>
-    <p></p>
+    <p>
+      Sets a tile map that will be used to automatically populate the primary background layer based on the current origin. Behavior is
+      undefined if the origin is set to a value that is outside the bounds of the tilemap.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2356,6 +2359,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">width</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Width of the tilemap in tiles.</td>
+          </tr>
+          <tr>
+            <td class="bot">height</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Height of the tilemap in tiles.</td>
+          </tr>
+          <tr>
+            <td class="bot">tileMapPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the tile map</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2391,13 +2409,20 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetBG0TileMapInfo(width, height, tileMapPtr)</tt></p>
+      <p><tt>Word     width;</tt></p>
+      <p><tt>Word     height;</tt></p>
+      <p><tt>Pointer  tileMapPtr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$1EXX</h4>
     <h4>GTESetBG1TileMapInfo</h4>
-    <p></p>
+    <p>
+      Sets a tile map that will be used to automatically populate the secondary background layer based on the current origin. Behavior is
+      undefined if the origin is set to a value that is outside the bounds of the tilemap.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2412,6 +2437,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">width</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Width of the tilemap in tiles.</td>
+          </tr>
+          <tr>
+            <td class="bot">height</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Height of the tilemap in tiles.</td>
+          </tr>
+          <tr>
+            <td class="bot">tileMapPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the tile map</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2447,13 +2487,28 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal void GTESetBG1TileMapInfo(width, height, tileMapPtr)</tt></p>
+      <p><tt>Word     width;</tt></p>
+      <p><tt>Word     height;</tt></p>
+      <p><tt>Pointer  tileMapPtr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$1FXX</h4>
     <h4>GTEAddTimer</h4>
-    <p></p>
+    <p>
+      Adds a timer with a callback function and a delay in VBL ticks.  Timers may be repeated or one-shot timers. A one-shot
+      timer will remove itself after firing.  Timers are handled on a best-effort basis.  It is possible that a timer
+      callback could be invoked multiple times in a single frame and the callback functions should account for this possibility.
+    </p>
+    <p>
+      The intended use for timers is to provide a way to perform animations and game physics at a consistent rate,
+      regardless of the speed of the machine.  If a timer has not been invoked for over one second, then it will
+      <em>not</em> fire multiple times, but treat the current timestamp as its starting point.  This is to avoid a
+      "callback storm" if timers are added then a long period of time elapses.  It is recommended that timers be 
+      removed if they are not expected to be fired on a regular basis.
+    </p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2468,6 +2523,26 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result.</td>
+          </tr>
+          <tr>
+            <td class="bot">numTicks</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Number of VBL ticks to wait before firing.  </td>
+          </tr>
+          <tr>
+            <td class="bot">callback</td>
+            <td></td>
+            <td><em>Long</em>&mdash;A pointer to a user function.</td>
+          </tr>
+          <tr>
+            <td class="bot">flags</td>
+            <td></td>
+            <td><em>Word</em>&mdash;The only valid values are <tt>$0001</tt> for a one-shot timer or <tt>$0000</tt> for a timer that resets.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2491,6 +2566,11 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">timerID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;An opaque identifier of the timer.  This value must be passed to the <tt>GTERemoveTimer()</tt> function.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -2503,13 +2583,17 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTEAddTimer(numTicks, callback, flags)</tt></p>
+      <p><tt>Word     numticks;</tt></p>
+      <p><tt>Pointer  callback;</tt></p>
+      <p><tt>Word     flags;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$20XX</h4>
     <h4>GTERemoveTimer</h4>
-    <p></p>
+    <p>Removed a timer that had been added to the system.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2524,6 +2608,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">timerID</td>
+            <td></td>
+            <td><em>Word</em>&mdash;ID of the timer.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -2559,13 +2648,15 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTERemoveTimer(timerID)</tt></p>
+      <p><tt>Word     timerID;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$21XX</h4>
     <h4>GTEStartScript</h4>
-    <p></p>
+    <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2621,7 +2712,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$22XX</h4>
     <h4>GTESetOverlay</h4>
-    <p></p>
+    <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2677,7 +2768,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$23XX</h4>
     <h4>GTEClearOverlay</h4>
-    <p></p>
+    <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2733,7 +2824,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$24XX</h4>
     <h4>GTEGetTileDataAddr</h4>
-    <p></p>
+    <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
