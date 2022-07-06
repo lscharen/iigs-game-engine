@@ -90,6 +90,7 @@ _CallTable
                 adrl  _TSGetTileDataAddr-1
                 adrl  _TSFillTileStore-1
                 adrl  _TSRefresh-1
+                adrl  _TSRenderDirty-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -280,6 +281,13 @@ xPos            equ     FirstParam+2
 _TSRender
                 _TSEntry
                  jsr     _Render
+                _TSExit #0;#0
+
+
+; RenderDirty()
+_TSRenderDirty
+                _TSEntry
+                 jsr     _RenderDirty
                 _TSExit #0;#0
 
 ; LoadTileSet(Pointer)

@@ -111,6 +111,9 @@ _GTEFillTileStore    MAC
 _GTERefresh          MAC
                      UserTool  $2600+GTEToolNum
                      <<<
+_GTERenderDirty      MAC
+                     UserTool  $2700+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition

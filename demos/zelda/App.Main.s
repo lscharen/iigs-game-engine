@@ -3,15 +3,14 @@
                     REL
                     DSK        MAINSEG
 
-                    use        Load.Macs.s
-                    use        Locator.Macs.s
-                    use        Misc.Macs.s
-                    use        EDS.GSOS.MACS.s
-                    use        Tool222.Macs.s
-                    use        Util.Macs.s
-                    use        CORE.MACS.s
-                    use        ../../src/GTE.s
-                    use        ../../src/Defs.s
+                    use   Locator.Macs
+                    use   Load.Macs
+                    use   Mem.Macs
+                    use   Misc.Macs
+                    use   Tool222.Macs.s
+                    use   Util.Macs
+                    use   EDS.GSOS.Macs
+                    use   GTE.Macs
 
                     mx         %00
 
@@ -25,20 +24,37 @@ RIGHT_ARROW         equ        $15
 UP_ARROW            equ        $0B
 DOWN_ARROW          equ        $0A
 
+StartX          equ        4
+StartY          equ        6
+
+TSet EXT
 ; Typical init
                     phk
                     plb
 
-                    jsl        EngineStartUp
+                    stz   StartX
+                    stz   StartY
 
-                    lda        #^MyPalette               ; Fill Palette #0 with our colors
-                    ldx        #MyPalette
-                    ldy        #0
-                    jsl        SetPalette
+                    sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
+                    _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                    ldx        #256                      ; 32 x 22 playfield (704 tiles, $580 tiles)
-                    ldy        #176
-                    jsl        SetScreenMode
+                    jsr   GTEStartUp              ; Load and install the GTE User Tool
+
+; Load a tileset
+
+                pea   #^TSet
+                pea   #TSet
+                _GTELoadTileSet
+
+
+                pea   $0000
+                pea   #^MyPalette
+                pea   #MyPalette
+                _GTESetPalette
+
+                pea   #256
+                pea   #176
+                _GTESetScreenMode
 
 ; Set up our level data
                     jsr        BG0SetUp
@@ -51,90 +67,105 @@ DOWN_ARROW          equ        $0A
                     stz        MapScreenY
 
 ; Add a sprite to the engine and save its sprite
-SPRITE_ID           equ        {SPRITE_16X16+1}
-OKTOROK             equ        {SPRITE_16X16+79}
+HERO_DOWN_ID        equ        {SPRITE_16X16+1}
+HERO_DOWN_VBUFF     equ        VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
+HERO_SIDE_ID        equ        {SPRITE_16X16+5}
+HERO_SIDE_VBUFF     equ        VBUFF_SPRITE_START+1*VBUFF_SPRITE_STEP
+HERO_UP_ID          equ        {SPRITE_16X16+9}
+HERO_UP_VBUFF       equ        VBUFF_SPRITE_START+2*VBUFF_SPRITE_STEP
 
-                    lda        PlayerX
-                    xba
-                    ora        PlayerY
-                    tay                                ; (x, y) position
-                    ldx        #0
-                    lda        #SPRITE_ID              ; 16x16 sprite
-                    jsl        AddSprite
-                    sta        PlayerID
+HERO_SLOT           equ        0
+OKTOROK_ID          equ        {SPRITE_16X16+79}
+OKTOROK_VBUFF       equ        VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
+OKTOROK_SLOT_1      equ        1
+OKTOROK_SLOT_2      equ        2
+OKTOROK_SLOT_3      equ        3
+OKTOROK_SLOT_4      equ        4
+
+; Create the sprite stamps for this scene
+
+                pea   HERO_DOWN_ID                     ; sprint id
+                pea   HERO_DOWN_VBUFF                  ; vbuff address
+                _GTECreateSpriteStamp
+
+                pea   HERO_SIDE_ID                     ; sprint id
+                pea   HERO_SIDE_VBUFF                  ; vbuff address
+                _GTECreateSpriteStamp
+
+                pea   HERO_UP_ID                     ; sprint id
+                pea   HERO_UP_VBUFF                  ; vbuff address
+                _GTECreateSpriteStamp
+
+                pea   OKTOROK_ID                 ; sprint id
+                pea   OKTOROK_VBUFF              ; vbuff address
+                _GTECreateSpriteStamp
+
+                pea   HERO_DOWN_ID
+                lda   PlayerX
+                pha
+                lda   PlayerY
+                pha
+                pea  HERO_SLOT
+                _GTEAddSprite
 
 ; Add 4 octoroks 
-                    lda        #OKTOROK
-                    ldx        #1
-                    ldy        #{32*256}+48
-                    jsl        AddSprite
-
-                    lda        #OKTOROK
-                    ldx        #2
-                    ldy        #{32*256}+96
-                    jsl        AddSprite
-
-                    lda        #OKTOROK
-                    ldx        #3
-                    ldy        #{96*256}+56
-                    jsl        AddSprite
-
-                    lda        #OKTOROK
-                    ldx        #4
-                    ldy        #{96*256}+72
-                    jsl        AddSprite
+                pea   OKTOROK_ID
+                pea   #0
+                pea   #{32*256}+48
+                pea   OKTOROK_SLOT_1
+                _GTEAddSprite
 
 ; Draw the initial screen
 
-                    lda        #DIRTY_BIT_BG0_REFRESH  ; Redraw all of the tiles on the next Render
-                    tsb        DirtyBits
-                    jsl        Render
-
+                _GTERender
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
 ; the play field tiles.
 EvtLoop
-                    jsl        ReadControl
+                pha
+                _GTEReadControl
+                pla
 
 ; Check the buttons first
-                    pha
+                pha
 
-                    bit        #$0100
-                    beq        :no_sword
+                bit        #$0100
+                beq        :no_sword
 :no_sword
 
 ; Enable/disable v-sync
-                    lda        1,s
-                    bit        #$0400
-                    beq        :no_key_down
-                    and        #$007F
-                    cmp        #'v'
-                    bne        :not_v
-                    lda        #$0001
-                    eor        vsync
-                    sta        vsync
+                lda        1,s
+                bit        #$0400
+                beq        :no_key_down
+                and        #$007F
+                cmp        #'v'
+                bne        :not_v
+                lda        #$0001
+                eor        vsync
+                sta        vsync
 :not_v
 :no_key_down
-                    pla
-                    and        #$007F                  ; Ignore the buttons for now
+                pla
+                and        #$007F                  ; Ignore the buttons for now
 
-                    cmp        #'q'
-                    bne        :not_q
-                    brl        Exit
+                cmp        #'q'
+                bne        :not_q
+                brl        Exit
 :not_q
 
-                    cmp        #'d'
-                    bne        :not_d
-                    inc        PlayerX
-                    lda        PlayerX
-                    cmp        #128-8
-                    bcc        *+5
-                    jsr        TransitionRight
+                cmp        #'d'
+                bne        :not_d
+                inc        PlayerX
+                lda        PlayerX
+                cmp        #128-8
+                bcc        *+5
+                jsr        TransitionRight
 
-                    lda        PlayerID
-                    ldx        #SPRITE_16X16+5
-                    jsl        UpdateSprite
+                pea   HERO_SLOT
+                pea   $0000                             ; no flags
+                pea   HERO_SIDE_VBUFF                   ; and use this stamp
+                _GTEUpdateSprite
 
                     bra        :do_render
 :not_d
@@ -145,9 +176,10 @@ EvtLoop
                     bpl        *+5
                     jsr        TransitionLeft
 
-                    lda        PlayerID
-                    ldx        #SPRITE_16X16+SPRITE_HFLIP+5
-                    jsl        UpdateSprite
+                pea   HERO_SLOT
+                pea   SPRITE_HFLIP
+                pea   HERO_SIDE_VBUFF
+                _GTEUpdateSprite
                     
                     bra        :do_render
 :not_a
@@ -155,33 +187,39 @@ EvtLoop
                     cmp        #'s'
                     bne        :not_s
                     inc        PlayerY
-                    lda        PlayerID
-                    ldx        #SPRITE_16X16+1
-                    jsl        UpdateSprite
+
+                pea   HERO_SLOT
+                pea   $0000
+                pea   HERO_DOWN_VBUFF
+                _GTEUpdateSprite
                     bra        :do_render
 :not_s
 
                     cmp        #'w'
                     bne        :not_w
                     dec        PlayerY
-                    lda        PlayerID
-                    ldx        #SPRITE_16X16+9
-                    jsl        UpdateSprite
+                pea   HERO_SLOT
+                pea   $0000
+                pea   HERO_UP_VBUFF
+                _GTEUpdateSprite
                     bra        :do_render
 :not_w
 
 :do_render
-                    lda        PlayerID
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        MoveSprite             ; Move the sprite to the current position
+                pea        HERO_SLOT
+                lda        PlayerX
+                pha
+                lda        PlayerY
+                pha
+                _GTEMoveSprite 
 
 ; Based on the frame count, move an oktorok
-                    jsl        GetVBLTicks
-                    pha
-                    and        #$0003
-                    asl
-                    tax
+
+                jsr        _GetVBLTicks
+                pha
+                and        #$0003
+                asl
+                tax
 
                     pla
                     and        #$007C
@@ -199,35 +237,35 @@ EvtLoop
                     pla
                     inc
                     inc
-                    jsl        MoveSprite
+;                    jsl        MoveSprite
 
 
 ; Let's see what it looks like!
 
-                    lda        vsync
-                    beq        :no_vsync
-:vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
-                    cmp        ScreenY0
-                    bcc        :vsyncloop
-                    sec
-                    sbc        ScreenY0
-                    cmp        #4
-                    bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
-                    lda        #1
-                    jsl        SetBorderColor
-:no_vsync
-                    jsl        RenderDirty
+;                    lda        vsync
+;                    beq        :no_vsync
+;:vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
+;                    cmp        ScreenY0
+;                    bcc        :vsyncloop
+;                    sec
+;                    sbc        ScreenY0
+;                    cmp        #4
+;                    bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
+;                    lda        #1
+;                    jsl        SetBorderColor
+;:no_vsync
+                    _GTERenderDirty
     
-                    lda        vsync
-                    beq        :no_vsync2
-                    lda        #0
-                    jsl        SetBorderColor
+;                    lda        vsync
+;                    beq        :no_vsync2
+;                    lda        #0
+;                    jsl        SetBorderColor
 :no_vsync2
                     brl        EvtLoop
 
 ; Exit code
 Exit
-                    jsl        EngineShutDown
+                    _GTEShutDown
 
                     _QuitGS    qtRec
 
@@ -249,7 +287,10 @@ TransitionRight
                     bcs        :out
                     clc
                     adc        #4
-                    jsl        SetBG0XPos
+                    pha
+                    lda        StartY
+                    pha
+                    _GTESetBG0Origin
 
                     lda        PlayerX
                     sec
@@ -257,13 +298,15 @@ TransitionRight
                     bmi        :nosprite
                     sta        PlayerX
 
-                    lda        PlayerID
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        MoveSprite
+                    pea        HERO_SLOT
+                    lda        PlayerX
+                    pha
+                    lda        PlayerY
+                    pha
+                    _GTEMoveSprite
 :nosprite
 
-                    jsl        Render               ; Do full renders since the playfield is scrolling
+                    _GTERender                      ; Do full renders since the playfield is scrolling
                     bra        :loop
 :out
 
@@ -289,7 +332,9 @@ TransitionLeft
                     beq        :out
                     sec
                     sbc        #4
-                    jsl        SetBG0XPos
+                    pha
+                    pei        StartY
+                    _GTESetBG0Origin
 
                     lda        PlayerX
                     clc
@@ -298,20 +343,25 @@ TransitionLeft
                     bcs        :nosprite
                     sta        PlayerX
 
-                    lda        PlayerID
-                    ldx        PlayerX
-                    ldy        PlayerY
-                    jsl        MoveSprite
+                    pea        HERO_SLOT
+                    lda        PlayerX
+                    pha
+                    lda        PlayerY
+                    pha
+                    _GTEMoveSprite
 :nosprite
 
-                    jsl        Render
+                    _GTERender
                     bra        :loop
 :out
 ;                    lda        #128-8                   ; Move the player back to the right edge
 ;                    sta        PlayerX
                     dec        MapScreenX           ; Move the index to the next screen
 :done
-                    rts
+                    rts 
+
+ToolPath        str   '1/Tool160'
+MyUserId            ds         2
 ; Color palette
 ;MyPalette           dw         $068F,$0EDA,$0000,$0000,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
 MyPalette           dw         $0FDA,$08C1,$0C41,$0F93,$0777,$0FDA,$00A0,$0000,$0D20,$0FFF,$023E,$01CE,$02E3,$0870,$0F93,$0FD7
@@ -337,6 +387,65 @@ qtRec               adrl       $0000
 
 vsync               dw         $8000
 
+_GetVBLTicks
+                PushLong  #0
+                _GetTick
+                pla
+                plx
+                rts
+
+; Load the GTE User Tool and install it
+GTEStartUp
+                pea   $0000
+                _LoaderStatus
+                pla
+
+                pea   $0000
+                pea   $0000
+                pea   $0000
+                pea   $0000
+                pea   $0000                   ; result space
+
+                lda   MyUserId
+                pha
+
+                pea   #^ToolPath
+                pea   #ToolPath
+                pea   $0001                   ; do not load into special memory
+                _InitialLoad
+                bcc    :ok1
+                brk    $01
+
+:ok1
+                ply
+                pla                           ; Address of the loaded tool
+                plx
+                ply
+                ply
+
+                pea   $8000                   ; User toolset
+                pea   $00A0                   ; Set the tool set number
+                phx
+                pha                           ; Address of function pointer table
+                _SetTSPtr
+                bcc    :ok2
+                brk    $02
+
+:ok2
+                clc                             ; Give GTE a page of direct page memory
+                tdc
+                adc   #$0100
+                pha
+                pea   #0                        ; Fast Mode
+                lda   MyUserId                  ; Pass the userId for memory allocation
+                pha
+                _GTEStartUp
+                bcc    :ok3
+                brk    $03
+
+:ok3
+                rts
+    
                     PUT        gen/App.TileMapBG0.s
 
 ANGLEBNK            ENT
