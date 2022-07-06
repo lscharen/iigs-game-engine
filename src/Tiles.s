@@ -124,13 +124,6 @@ InitTiles
 
 :out
 
-;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
-;                 stal TileStore+TS_DIRTY_TILE_DISP,x
-;
-;                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
-;                 stal TileStore+TS_BASE_TILE_DISP,x     
-
-
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering
 
@@ -144,7 +137,6 @@ InitTiles
 
                  lda  BRowTableLow,y
                  sta  :base
-;                 sta  TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
 
                  lda  :col                              ; Set the offset values based on the column
                  asl                                    ; of this tile
@@ -155,7 +147,6 @@ InitTiles
                  lda  Col2CodeOffset+2,y
                  clc
                  adc  :base
-;                 adc  TileStore+TS_BASE_ADDR,x
                  sta  TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
 
                  lda  JTableOffset,y
@@ -167,6 +158,52 @@ InitTiles
                  bpl  :hop
                  dec  :row
                  lda  #40
+                 sta  :col
+:hop
+
+                 dex
+                 dex
+                 bpl  :loop
+                 rts
+
+; Reset all of the tile proc values in the playfield.
+ResetVisibleTiles
+:col             equ  tmp0
+:row             equ  tmp1
+
+                 lda  ScreenTileHeight
+                 sta  :row
+                 lda  ScreenTileWidth
+                 sta  :col
+
+:loop
+                 lda  EngineMode
+                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
+                 beq  :fast
+                 bit  #ENGINE_MODE_TWO_LAYER
+                 beq  :dyn
+;                 ldal TileProcs
+;                 sta  TileStore+TS_BASE_TILE_DISP,x
+                 bra  :out
+:fast
+                 lda  #0                                 ; Initialize with Tile 0
+                 ldy  #FastProcs
+                 jsr  _SetTileProcs
+                 bra  :out
+
+:dyn             lda  #0                                 ; Initialize with Tile 0
+                 ldy  #FastProcs
+                 jsr  _SetTileProcs
+
+:out
+
+; The next set of values are constants that are simply used as cached parameters to avoid needing to
+; calculate any of these values during tile rendering
+
+                 dec  :col
+                 bpl  :hop
+                 dec  :row
+                 lda  ScreenTileWidth
                  sta  :col
 :hop
 
