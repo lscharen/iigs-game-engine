@@ -415,6 +415,17 @@ TwoLyrDynProcs
 TwoLyrDynOver  dw   CopyDynamicTileTwoLyr,DynamicOverTwoLyr,OneSpriteDynamicOverTwoLyr
 TwoLyrDynUnder dw   CopyDynamicTileTwoLyr,DynamicUnderTwoLyr,OneSpriteDynamicUnderTwoLyr
 
+; "Dirty" procs that are for dirty tile direct rendering.  No moving background.
+DirtyProcs
+DirtyOverZA   dw   ConstTile0Dirty,SpriteOver0Dirty,OneSpriteDirtyOver0
+DirtyOverZV   dw   ConstTile0Dirty,SpriteOver0Dirty,OneSpriteDirtyOver0
+DirtyOverNA   dw   CopyTileADirty,SpriteOverADirty,OneSpriteDirtyOverA
+DirtyOverNV   dw   CopyTileVDirty,SpriteOverVDirty,OneSpriteDirtyOverV
+DirtyUnderZA  dw   ConstTile0Dirty,SpriteUnder0Dirty,SpriteUnder0Dirty
+DirtyUnderZV  dw   ConstTile0Dirty,SpriteUnder0Dirty,SpriteUnder0Dirty
+DirtyUnderNA  dw   CopyTileADirty,SpriteUnderADirty,OneSpriteDirtyUnderA
+DirtyUnderNV  dw   CopyTileVDirty,SpriteUnderVDirty,OneSpriteDirtyUnderV
+
 ; SetBG0XPos
 ;
 ; Set the virtual horizontal position of the primary background layer.  In addition to 

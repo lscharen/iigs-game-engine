@@ -725,6 +725,7 @@ _TSRefresh
                 put     render/Slow.s
                 put     render/Dynamic.s
                 put     render/TwoLayer.s
+                put     render/Dirty.s
                 put     render/Sprite1.s
                 put     render/Sprite2.s
                 put     tiles/DirtyTileQueue.s

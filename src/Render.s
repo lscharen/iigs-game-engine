@@ -20,6 +20,8 @@
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
 _Render
+;            lda   LastRender          ; Check to see what kind of rendering was done on the last frame. If
+;            beq   :no_change          ; it was not this renderer, 
             jsr   _DoTimers           ; Run any pending timer tasks
 
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
@@ -37,7 +39,7 @@ _Render
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
 ;            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
-            jsr   _ApplyTilesFast      ; This function actually draws the new tiles into the code field
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
             jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
@@ -129,10 +131,11 @@ _DoOverlay
 :disp       jsl   $000000
             rts
 
-; The _ApplyTilesFast is the same as _ApplyTiles, but we use the _RenderTileFast subroutine
-_ApplyTilesFast
+; Run through all of the tiles on the DirtyTile list and render them
+_ApplyTiles
             ldx  DirtyTileCount
 
+            phd                         ; sve the current direct page
             tdc
             clc
             adc  #$100                  ; move to the next page
@@ -141,46 +144,8 @@ _ApplyTilesFast
             stx  DP2_DIRTY_TILE_COUNT   ; Cache the dirty tile count
             jsr  _PopDirtyTilesFast
 
-            tdc                         ; Move back to the original direct page
-            sec
-            sbc  #$100
-            tcd
-
+            pld                         ; Move back to the original direct page
             stz  DirtyTileCount         ; Reset the dirty tile count
-            rts
-
-; The _ApplyTiles function is responsible for rendering all of the dirty tiles into the code
-; field.  In this function we switch to the second direct page which holds the temporary
-; working buffers for tile rendering.
-;
-_ApplyTiles
-            tdc
-            clc
-            adc  #$100                  ; move to the next page
-            tcd
-
-            bra  :begin
-
-:loop
-; Retrieve the offset of the next dirty Tile Store items in the X-register
-
-            jsr  _PopDirtyTile2
-
-; Call the generic dispatch with the Tile Store record pointer at by the X-register.
-
-            phb
-;            jsr  _RenderTile2
-            plb
-
-; Loop again until the list of dirty tiles is empty
-
-:begin      ldy  DirtyTileCount
-            bne  :loop
-
-            tdc                         ; Move back to the original direct page
-            sec
-            sbc  #$100
-            tcd
             rts
 
 ; This is a specialized render function that only updates the dirty tiles *and* draws them

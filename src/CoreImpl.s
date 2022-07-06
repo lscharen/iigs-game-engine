@@ -190,7 +190,7 @@ EngineReset
 
 ;                  stz       EngineMode
                   stz       DirtyBits
-                  stz       LastRender
+                  stz       LastRender             ; Initialize as is a full render was performed
                   stz       LastPatchOffset
                   stz       BG1StartX
                   stz       BG1StartXMod164
