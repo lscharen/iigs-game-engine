@@ -145,14 +145,14 @@ _SetSCBs
 ; Turn SHR screen On/Off
 _GrafOn
                  sep   #$20
-                 lda   #$81
+                 lda   #$C1              ; SHR On, Linear Memory Map On, Ignore Bank Latch
                  stal  NEW_VIDEO_REG
                  rep   #$20
                  rts
 
 _GrafOff
                  sep   #$20
-                 lda   #$01
+                 lda   #$01              ; SHR Off, Linear Memory Map Off
                  stal  NEW_VIDEO_REG
                  rep   #$20
                  rts
