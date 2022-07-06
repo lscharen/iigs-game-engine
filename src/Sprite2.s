@@ -218,10 +218,6 @@ tmp_out
 
 mdsOut  rts
 
-
-; NOTE: The VBuffArray table is set up so that each sprite's vbuff address is stored in a
-;       parallel structure to the Tile Store.  This allows up to use the same TileStoreLookup
-;       offset to index into the array of 16 sprite VBUFF addresses that are bound to a given tile
 _MarkDirtySpriteTiles
         lda    _SpriteBits,y
         sta    SpriteBit

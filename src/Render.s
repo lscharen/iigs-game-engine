@@ -157,20 +157,27 @@ _ApplyTiles
 ; In this renderer, we assume that there is no scrolling, so no need to update any information about
 ; the BG0/BG1 positions
 _RenderDirty
-            lda   LastRender                    ; If the full renderer was last called, we assume that
-            bne   :norecalc                     ; the scroll positions have likely changed, so recalculate
-            jsr   _RecalcTileScreenAddrs        ; them to make sure sprites draw at the correct screen address
+            lda   LastRender                     ; If the full renderer was last called, we assume that
+            bne   :norecalc                      ; the scroll positions have likely changed, so recalculate
+            jsr   _RecalcTileScreenAddrs         ; them to make sure sprites draw at the correct screen address
+            jsr   _ResetVisibleTiles             ; Switch the tile procs to the dirty tile rendering functions
 ;            jsr   _ClearSpritesFromCodeField    ; Restore the tiles to their non-sprite versions
 :norecalc
 
-;            jsr   _RenderSprites
-;            jsr   _ApplyDirtyTiles
+            jsr   _RenderSprites
+            jsr   _ApplyDirtyTiles
 
             lda   #1
             sta   LastRender
             rts
 
 _ApplyDirtyTiles
+            phd                         ; save the current direct page
+            tdc
+            clc
+            adc  #$100                  ; move to the next page
+            tcd
+
             bra  :begin
 
 :loop
@@ -180,13 +187,14 @@ _ApplyDirtyTiles
 
 ; Call the generic dispatch with the Tile Store record pointer at by the Y-register.  
 
-            phb
             jsr  _RenderDirtyTile
-            plb
 
 ; Loop again until the list of dirty tiles is empty
 
 :begin      ldy  DirtyTileCount
             bne  :loop
+
+            pld                         ; Move back to the original direct page
+            stz  DirtyTileCount         ; Reset the dirty tile count
             rts
 

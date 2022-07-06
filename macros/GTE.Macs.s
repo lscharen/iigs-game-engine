@@ -126,9 +126,9 @@ SET_DYN_TILE           equ   $0006
 CALLBACK               equ   $0010
 
 ; ReadControl return value bits
-PAD_BUTTON_B           equ   $01
-PAD_BUTTON_A           equ   $02
-PAD_KEY_DOWN           equ   $04
+PAD_BUTTON_B           equ   $0100
+PAD_BUTTON_A           equ   $0200
+PAD_KEY_DOWN           equ   $0400
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004

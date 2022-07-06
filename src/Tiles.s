@@ -167,9 +167,17 @@ InitTiles
                  rts
 
 ; Reset all of the tile proc values in the playfield.
-ResetVisibleTiles
+_ResetVisibleTiles
 :col             equ  tmp0
 :row             equ  tmp1
+
+                 jsr   _OriginToTileStore          ; Get the (col,row) of the tile in the upper-left corner of the playfield
+
+                 clc
+                 txa
+                 adc   TileStoreLookupYTable,y     ; Get the offset into the Tile Store lookup table
+                 tay
+                 pha                               ; Save for later
 
                  lda  ScreenTileHeight
                  sta  :row
@@ -177,39 +185,80 @@ ResetVisibleTiles
                  sta  :col
 
 :loop
-                 lda  EngineMode
-                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
-                 beq  :fast
-                 bit  #ENGINE_MODE_TWO_LAYER
-                 beq  :dyn
-;                 ldal TileProcs
-;                 sta  TileStore+TS_BASE_TILE_DISP,x
-                 bra  :out
-:fast
-                 lda  #0                                 ; Initialize with Tile 0
-                 ldy  #FastProcs
+                 phy
+                 ldx  TileStoreLookup,y
+                 lda  TileStore+TS_TILE_ID,x
+                 jsr  _CalcTileProcIndex
+                 ldy  #DirtyProcs
                  jsr  _SetTileProcs
-                 bra  :out
+                 ply
 
-:dyn             lda  #0                                 ; Initialize with Tile 0
-                 ldy  #FastProcs
-                 jsr  _SetTileProcs
-
-:out
-
-; The next set of values are constants that are simply used as cached parameters to avoid needing to
-; calculate any of these values during tile rendering
-
+                 iny
+                 iny
                  dec  :col
-                 bpl  :hop
-                 dec  :row
+                 bpl  :loop
+
                  lda  ScreenTileWidth
                  sta  :col
-:hop
 
-                 dex
-                 dex
+                 lda  1,s                              ; Move to the next row
+                 clc
+                 adc  #2*TS_LOOKUP_SPAN
+                 sta  1,s
+                 tay
+
+                 dec  :row
                  bpl  :loop
+
+                 pla                           ; pop the saved value
+                 rts
+
+; Helper method to calculate the index into the tile proc table given a TileID
+; Calculate the base tile proc selector from the tile Id
+_CalcTileProcIndex                 
+                 bit  #TILE_PRIORITY_BIT             ; 4 if !0, 0 otherwise
+                 beq  :low_priority
+
+                 bit  #TILE_ID_MASK                  ; 2 if !0, 0 otherwise
+                 beq  :is_zero_a
+
+                 bit  #TILE_VFLIP_BIT                ; 1 if !0, 0 otherwise
+                 beq  :no_flip_a
+
+                 lda  #7
+                 rts
+
+:no_flip_a       lda  #6
+                 rts
+
+:is_zero_a       bit  #TILE_VFLIP_BIT
+                 beq  :no_flip_b
+
+                 lda  #5
+                 rts
+
+:no_flip_b       lda  #4
+                 rts
+
+:low_priority    bit  #TILE_ID_MASK                  ; 2 if !0, 0 otherwise
+                 beq  :is_zero_b
+
+                 bit  #TILE_VFLIP_BIT                ; 1 if !0, 0 otherwise
+                 beq  :no_flip_c
+
+                 lda  #3
+                 rts
+
+:no_flip_c       lda  #2
+                 rts
+
+:is_zero_b       bit  #TILE_VFLIP_BIT
+                 beq  :no_flip_d
+
+                 lda  #1
+                 rts
+
+:no_flip_d       lda  #0
                  rts
 
 ; Set a tile value in the tile backing store.  Mark dirty if the value changes
@@ -254,27 +303,10 @@ _SetTile
 ; it can be more involved.
 
 ; Calculate the base tile proc selector from the tile Id
-                 stz  procIdx
 
-                 lda  #TILE_PRIORITY_BIT
-                 bit  newTileId
-                 beq  :low_priority
-                 lda  #4
+                 lda  newTileId
+                 jsr  _CalcTileProcIndex
                  sta  procIdx
-:low_priority
-                 lda  #TILE_ID_MASK
-                 bit  newTileId
-                 beq  :is_zero
-                 lda  #2
-                 tsb  procIdx
-:is_zero
-
-                 lda  #TILE_VFLIP_BIT
-                 bit  newTileId
-                 beq  :no_vflip
-                 lda  #1
-                 tsb  procIdx
-:no_vflip
 
 ; Now integrate with the engine mode indicator
 

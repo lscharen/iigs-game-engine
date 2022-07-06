@@ -271,7 +271,7 @@ _ReadControl      pea       $0000               ; low byte = key code, high byte
                   and       #$80
                   beq       :BNotDown
 
-                  lda       #PAD_BUTTON_B
+                  lda       #>PAD_BUTTON_B
                   ora       2,s
                   sta       2,s
 
@@ -280,7 +280,7 @@ _ReadControl      pea       $0000               ; low byte = key code, high byte
                   and       #$80
                   beq       :ANotDown
 
-                  lda       #PAD_BUTTON_A
+                  lda       #>PAD_BUTTON_A
                   ora       2,s
                   sta       2,s
 
@@ -296,7 +296,7 @@ _ReadControl      pea       $0000               ; low byte = key code, high byte
                   beq       :KbdDown
                   sta       LastKey
 
-                  lda       #PAD_KEY_DOWN       ; set the keydown flag
+                  lda       #>PAD_KEY_DOWN       ; set the keydown flag
                   ora       2,s
                   sta       2,s
                   bra       :KbdDown

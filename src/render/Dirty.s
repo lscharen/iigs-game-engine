@@ -116,6 +116,7 @@ DirtySpriteUnder mac
 
 ; Special routine for a single sprite
 OneSpriteDirtyOverA
+
             ldy   TileStore+TS_TILE_ADDR,x
             lda   TileStore+TS_SCREEN_ADDR,x
             ldx   sprite_ptr0

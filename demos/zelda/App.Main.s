@@ -115,18 +115,18 @@ OKTOROK_SLOT_4      equ        4
                 _GTEUpdateSprite
 
 ; Add 4 octoroks 
-                pea   OKTOROK_ID
-                lda   OktorokX
-                pha
-                lda   OktorokY
-                pha
-                pea   OKTOROK_SLOT_1
-                _GTEAddSprite
+;                pea   OKTOROK_ID
+;                lda   OktorokX
+;                pha
+;                lda   OktorokY
+;                pha
+;                pea   OKTOROK_SLOT_1
+;                _GTEAddSprite
 
-                pea   OKTOROK_SLOT_1
-                pea   $0000                       ; with these flags (h/v flip)
-                pea   OKTOROK_VBUFF               ; and use this stamp
-                _GTEUpdateSprite
+;                pea   OKTOROK_SLOT_1
+;                pea   $0000                       ; with these flags (h/v flip)
+;                pea   OKTOROK_VBUFF               ; and use this stamp
+;                _GTEUpdateSprite
 
 ; Draw the initial screen
 
@@ -166,7 +166,6 @@ EvtLoop
                 bne        :not_q
                 brl        Exit
 :not_q
-                brl        EvtLoop
 
                 cmp        #'d'
                 bne        :not_d
@@ -229,28 +228,28 @@ EvtLoop
 
 ; Based on the frame count, move an oktorok
 
-                jsr        _GetVBLTicks
-                pha
-                and        #$0003
-                asl
-                tax
+;                jsr        _GetVBLTicks
+;                pha
+;                and        #$0003
+;                asl
+;                tax
 
-                    pla
-                    and        #$007C
-                    lsr
-                    tay
+;                    pla
+;                    and        #$007C
+;                    lsr
+;                    tay
 
-                    lda        OktorokX,x
-                    clc
-                    adc        OktorokDelta,y
+;                    lda        OktorokX,x
+;                    clc
+;                    adc        OktorokDelta,y
 
-                    phx
+;                    phx
 
-                    ldy        OktorokY,x
-                    tax
-                    pla
-                    inc
-                    inc
+;                    ldy        OktorokY,x
+;                    tax
+;                    pla
+;                    inc
+;                    inc
 ;                    jsl        MoveSprite
 
 
