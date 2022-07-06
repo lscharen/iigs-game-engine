@@ -35,6 +35,7 @@ TSet EXT
                     stz   StartX
                     stz   StartY
 
+
                     sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
                     _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
@@ -105,15 +106,27 @@ OKTOROK_SLOT_4      equ        4
                 pha
                 lda   PlayerY
                 pha
-                pea  HERO_SLOT
+                pea   HERO_SLOT
                 _GTEAddSprite
+
+                pea   HERO_SLOT
+                pea   $0000                       ; with these flags (h/v flip)
+                pea   HERO_DOWN_VBUFF             ; and use this stamp
+                _GTEUpdateSprite
 
 ; Add 4 octoroks 
                 pea   OKTOROK_ID
-                pea   #0
-                pea   #{32*256}+48
+                lda   OktorokX
+                pha
+                lda   OktorokY
+                pha
                 pea   OKTOROK_SLOT_1
                 _GTEAddSprite
+
+                pea   OKTOROK_SLOT_1
+                pea   $0000                       ; with these flags (h/v flip)
+                pea   OKTOROK_VBUFF               ; and use this stamp
+                _GTEUpdateSprite
 
 ; Draw the initial screen
 
@@ -136,7 +149,7 @@ EvtLoop
 
 ; Enable/disable v-sync
                 lda        1,s
-                bit        #$0400
+                bit        #PAD_KEY_DOWN
                 beq        :no_key_down
                 and        #$007F
                 cmp        #'v'
@@ -153,6 +166,7 @@ EvtLoop
                 bne        :not_q
                 brl        Exit
 :not_q
+                brl        EvtLoop
 
                 cmp        #'d'
                 bne        :not_d
