@@ -335,7 +335,7 @@ SpriteOverADirty
             lda   TileStore+TS_TILE_ADDR,x
             tax
 
-            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
+            pei   DP2_BANK01_AND_TILESTORE_BANKS
             plb
 
 ]line       equ   0
@@ -344,6 +344,7 @@ SpriteOverADirty
             and   tmp_sprite_mask+{]line*4}+0
             ora   tmp_sprite_data+{]line*4}+0
             sta:  {]line*SHR_LINE_WIDTH}+0,y
+;            brk   $00
 
             ldal  tiledata+{]line*TILE_DATA_SPAN}+2,x
             and   tmp_sprite_mask+{]line*4}+2
@@ -360,7 +361,7 @@ SpriteUnderADirty
             lda   TileStore+TS_TILE_ADDR,x
             tax
 
-            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
+            pei   DP2_BANK01_AND_TILESTORE_BANKS
             plb
 
 ]line       equ   0
@@ -385,7 +386,7 @@ SpriteOverVDirty
             lda   TileStore+TS_TILE_ADDR,x
             tax
 
-            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
+            pei   DP2_BANK01_AND_TILESTORE_BANKS
             plb
 
 ]src        equ   7
@@ -412,7 +413,7 @@ SpriteUnderVDirty
             lda   TileStore+TS_TILE_ADDR,x
             tax
 
-            pei   DP2_TILEDATA_AND_TILESTORE_BANKS
+            pei   DP2_BANK01_AND_TILESTORE_BANKS
             plb
 
 ]src        equ   7
