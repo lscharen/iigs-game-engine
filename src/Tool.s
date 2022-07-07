@@ -705,13 +705,7 @@ _TSFillTileStore
 ; _TSRefresh()
 _TSRefresh
                 _TSEntry
-
-                ldx  #TILE_STORE_SIZE-2
-:loop           jsr  _PushDirtyTileX
-                dex
-                dex
-                bpl  :loop
-
+                jsr     _Refresh
                 _TSExit #0;#0
 
 ; Insert the GTE code

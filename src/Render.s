@@ -20,8 +20,12 @@
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
 _Render
-;            lda   LastRender          ; Check to see what kind of rendering was done on the last frame. If
-;            beq   :no_change          ; it was not this renderer, 
+            lda   LastRender          ; Check to see what kind of rendering was done on the last frame. If
+            beq   :no_change          ; it was not this renderer, 
+            jsr   _ResetToNormalTileProcs
+            jsr   _Refresh
+:no_change
+
             jsr   _DoTimers           ; Run any pending timer tasks
 
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
@@ -160,10 +164,9 @@ _RenderDirty
             lda   LastRender                     ; If the full renderer was last called, we assume that
             bne   :norecalc                      ; the scroll positions have likely changed, so recalculate
             jsr   _RecalcTileScreenAddrs         ; them to make sure sprites draw at the correct screen address
-            jsr   _ResetVisibleTiles             ; Switch the tile procs to the dirty tile rendering functions
+            jsr   _ResetToDirtyTileProcs         ; Switch the tile procs to the dirty tile rendering functions
 ;            jsr   _ClearSpritesFromCodeField    ; Restore the tiles to their non-sprite versions
 :norecalc
-
             jsr   _RenderSprites
             jsr   _ApplyDirtyTiles
 

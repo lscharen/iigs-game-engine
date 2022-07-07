@@ -115,18 +115,18 @@ OKTOROK_SLOT_4      equ        4
                 _GTEUpdateSprite
 
 ; Add 4 octoroks 
-;                pea   OKTOROK_ID
-;                lda   OktorokX
-;                pha
-;                lda   OktorokY
-;                pha
-;                pea   OKTOROK_SLOT_1
-;                _GTEAddSprite
+                pea   OKTOROK_ID
+                lda   OktorokX
+                pha
+                lda   OktorokY
+                pha
+                pea   OKTOROK_SLOT_1
+                _GTEAddSprite
 
-;                pea   OKTOROK_SLOT_1
-;                pea   $0000                       ; with these flags (h/v flip)
-;                pea   OKTOROK_VBUFF               ; and use this stamp
-;                _GTEUpdateSprite
+                pea   OKTOROK_SLOT_1
+                pea   $0000                       ; with these flags (h/v flip)
+                pea   OKTOROK_VBUFF               ; and use this stamp
+                _GTEUpdateSprite
 
 ; Draw the initial screen
 
@@ -255,24 +255,23 @@ EvtLoop
 
 ; Let's see what it looks like!
 
-;                    lda        vsync
-;                    beq        :no_vsync
-;:vsyncloop          jsl        GetVerticalCounter     ; 8-bit value
-;                    cmp        ScreenY0
-;                    bcc        :vsyncloop
-;                    sec
-;                    sbc        ScreenY0
-;                    cmp        #4
-;                    bcs        :vsyncloop             ; Wait until we're within the top 8 scanlines
-;                    lda        #1
-;                    jsl        SetBorderColor
-;:no_vsync
+                    lda        vsync
+                    beq        :no_vsync
+:vsyncloop          jsr        _GetVBL     ; 8-bit value
+                    cmp        #12
+                    bcc        :vsyncloop
+                    cmp        #16
+                    bcs        :vsyncloop             ; Wait until we're within the top 4 scanlines
+                    lda        #1
+                    jsr        _SetBorderColor
+:no_vsync
                     _GTERenderDirty
-    
-;                    lda        vsync
-;                    beq        :no_vsync2
-;                    lda        #0
-;                    jsl        SetBorderColor
+
+                    lda        vsync
+                    beq        :no_vsync2
+                    lda        #0
+                    jsr        _SetBorderColor
+
 :no_vsync2
                     brl        EvtLoop
 
@@ -300,9 +299,9 @@ TransitionRight
                     bcs        :out
                     clc
                     adc        #4
+                    sta        StartX
                     pha
-                    lda        StartY
-                    pha
+                    pei        StartY
                     _GTESetBG0Origin
 
                     lda        PlayerX
@@ -323,8 +322,6 @@ TransitionRight
                     bra        :loop
 :out
 
-                    lda        #0                   ; Move the player back to the left edge
-                    sta        PlayerX
                     inc        MapScreenX           ; Move the index to the next screen
 :done
                     rts
@@ -345,6 +342,7 @@ TransitionLeft
                     beq        :out
                     sec
                     sbc        #4
+                    sta        StartX
                     pha
                     pei        StartY
                     _GTESetBG0Origin
@@ -367,8 +365,6 @@ TransitionLeft
                     _GTERender
                     bra        :loop
 :out
-;                    lda        #128-8                   ; Move the player back to the right edge
-;                    sta        PlayerX
                     dec        MapScreenX           ; Move the index to the next screen
 :done
                     rts 
@@ -376,7 +372,6 @@ TransitionLeft
 ToolPath        str   '1/Tool160'
 MyUserId            ds         2
 ; Color palette
-;MyPalette           dw         $068F,$0EDA,$0000,$0000,$0BF1,$00A0,$0EEE,$0456,$0FA4,$0F59,$0E30,$01CE,$02E3,$0870,$0F93,$0FD7
 MyPalette           dw         $0FDA,$08C1,$0C41,$0F93,$0777,$0FDA,$00A0,$0000,$0D20,$0FFF,$023E,$01CE,$02E3,$0870,$0F93,$0FD7
 
 MapScreenX          ds         2
@@ -458,7 +453,26 @@ GTEStartUp
 
 :ok3
                 rts
-    
-                    PUT        gen/App.TileMapBG0.s
 
-ANGLEBNK            ENT
+BORDER_REG             equ   $E0C034     ; 0-3 = border, 4-7 Text color
+VBL_VERT_REG           equ   $E0C02E
+VBL_HORZ_REG           equ   $E0C02F
+
+_GetVBL
+                 sep   #$20
+                 ldal  VBL_HORZ_REG
+                 asl
+                 ldal  VBL_VERT_REG
+                 rol                        ; put V5 into carry bit, if needed. See TN #39 for details.
+                 rep   #$20
+                 and   #$00FF
+                 rts
+
+_SetBorderColor  sep   #$20                 ; ACC = $X_Y, REG = $W_Z
+                 eorl  BORDER_REG           ; ACC = $(X^Y)_(Y^Z)
+                 and   #$0F                 ; ACC = $0_(Y^Z)
+                 eorl  BORDER_REG           ; ACC = $W_(Y^Z^Z) = $W_Y
+                 stal  BORDER_REG
+                 rep   #$20
+                 rts
+                    PUT        gen/App.TileMapBG0.s
