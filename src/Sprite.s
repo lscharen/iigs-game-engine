@@ -223,32 +223,44 @@ _DoPhase1
             trb   SpriteMap
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
             sta   _Sprites+SPRITE_STATUS,y
-
+:hidden
             jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
-; Need to calculate new VBUFF information.  The could be required for UPDATED, ADDED or MOVED
-; sprites, so we do it unconditionally, but we do need to mark the current sprite for erasure if
-; needed
 :no_clear
+
+; If the sprite is hidden, then treat it like it's offscreen and clear it from the tile store.  Because
+; the hidden flag must be changed via the UpdateSprite function, if it's toggled, the SPRITE_STATUS_UPDATED
+; flag will be set, too.
+
+            bit   #SPRITE_STATUS_HIDDEN
+            bne   :hidden
 
 ; If the sprite is marked as ADDED, then it does not need to have its old tile locations cleared
 
             bit   #SPRITE_STATUS_ADDED
-            bne   :no_move
+            bne   :added
 
 ; If the sprite was not ADDED and also not MOVED, then there is no reason to erase the old tiles
 ; because they will be overwritten anyway.
 
             bit   #SPRITE_STATUS_MOVED
-            beq   :no_move
+            bne   :moved
 
+; Finally, see if it was updated.  If not, return early
+
+            bit   #SPRITE_STATUS_UPDATED
+            bne   :updated
+            rts
+
+:moved
             phy
             jsr   _ClearSpriteFromTileStore
             ply
 
 ; Anything else (MOVED, UPDATED, ADDED) will need to have the VBUFF information updated and the 
 ; current tiles marked for update
-:no_move
+:added
+:updated
             jsr   _CalcDirtySprite                     ; This function preserves Y
 
             lda   #SPRITE_STATUS_OCCUPIED              ; Clear the dirty bits (ADDED, UPDATED, MOVED)

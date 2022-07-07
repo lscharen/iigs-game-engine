@@ -40,6 +40,7 @@ SPRITE_STATUS_ADDED    equ $0001         ; Sprite was just added (new sprite)
 SPRITE_STATUS_MOVED    equ $0002         ; Sprite's position was changed
 SPRITE_STATUS_UPDATED  equ $0004         ; Sprite's non-position attributes were changed
 SPRITE_STATUS_REMOVED  equ $0008         ; Sprite has been removed.
+SPRITE_STATUS_HIDDEN   equ $0010         ; Sprite is in a hidden state
 
 ; These values are set by the user
 SPRITE_STATUS        equ {MAX_SPRITES*0}
