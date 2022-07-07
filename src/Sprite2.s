@@ -129,7 +129,7 @@ _CalcDirtySprite
         adc   StartYMod208
         bpl   :y_ok
         clc
-        adc   #208                               ; Wrap the actual coordinat around
+        adc   #208                               ; Wrap the actual coordinate around
 :y_ok   and   #$FFF8                             ; mask first to ensure LSR will clear the carry
         lsr
         lsr
