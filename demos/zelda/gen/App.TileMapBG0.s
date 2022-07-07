@@ -5,14 +5,19 @@
 
 
 BG0SetUp
-        lda #64
-        sta TileMapWidth
-        lda #44
-        sta TileMapHeight
-        lda #Tile_Layer_1
-        sta TileMapPtr
-        lda #^Tile_Layer_1
-        sta TileMapPtr+2
+         pea  #64
+         pea  #44
+         pea  #^Tile_Layer_1
+         pea  #Tile_Layer_1
+         _GTESetBG0TileMapInfo
+;        lda #64
+;        sta TileMapWidth
+;        lda #44
+;        sta TileMapHeight
+;        lda #Tile_Layer_1
+;        sta TileMapPtr
+;        lda #^Tile_Layer_1
+;        sta TileMapPtr+2
         rts
     
 Tile_Layer_1

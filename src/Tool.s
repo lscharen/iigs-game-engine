@@ -90,6 +90,7 @@ _CallTable
                 adrl  _TSGetTileDataAddr-1
                 adrl  _TSFillTileStore-1
                 adrl  _TSRefresh-1
+                adrl  _TSRenderDirty-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -280,6 +281,13 @@ xPos            equ     FirstParam+2
 _TSRender
                 _TSEntry
                  jsr     _Render
+                _TSExit #0;#0
+
+
+; RenderDirty()
+_TSRenderDirty
+                _TSEntry
+                 jsr     _RenderDirty
                 _TSExit #0;#0
 
 ; LoadTileSet(Pointer)
@@ -697,13 +705,7 @@ _TSFillTileStore
 ; _TSRefresh()
 _TSRefresh
                 _TSEntry
-
-                ldx  #TILE_STORE_SIZE-2
-:loop           jsr  _PushDirtyTileX
-                dex
-                dex
-                bpl  :loop
-
+                jsr     _Refresh
                 _TSExit #0;#0
 
 ; Insert the GTE code
@@ -725,6 +727,7 @@ _TSRefresh
                 put     render/Slow.s
                 put     render/Dynamic.s
                 put     render/TwoLayer.s
+                put     render/Dirty.s
                 put     render/Sprite1.s
                 put     render/Sprite2.s
                 put     tiles/DirtyTileQueue.s

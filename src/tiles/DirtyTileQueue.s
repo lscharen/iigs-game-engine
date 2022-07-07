@@ -70,8 +70,7 @@ _PopDirtyTile2                                       ; alternate entry point
                  sty  DirtyTileCount                 ; remove last item from the list
 
                  ldx  DirtyTiles,y                   ; load the offset into the Tile Store
-                 lda  #$FFFF
-                 stal TileStore+TS_DIRTY,x           ; clear the occupied backlink
+                 stz  TileStore+TS_DIRTY,x           ; clear the occupied backlink
                  rts
 
 ; An optimized subroutine that runs through the dirty tile list and executes a callback function

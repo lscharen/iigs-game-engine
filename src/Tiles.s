@@ -124,13 +124,6 @@ InitTiles
 
 :out
 
-;                 lda  DirtyTileProcs                    ; Fill in with the first dispatch address
-;                 stal TileStore+TS_DIRTY_TILE_DISP,x
-;
-;                 lda  TileProcs                         ; Same for non-dirty, non-sprite base case
-;                 stal TileStore+TS_BASE_TILE_DISP,x     
-
-
 ; The next set of values are constants that are simply used as cached parameters to avoid needing to
 ; calculate any of these values during tile rendering
 
@@ -144,7 +137,6 @@ InitTiles
 
                  lda  BRowTableLow,y
                  sta  :base
-;                 sta  TileStore+TS_BASE_ADDR,x          ; May not be needed later if we can figure out the right constant...
 
                  lda  :col                              ; Set the offset values based on the column
                  asl                                    ; of this tile
@@ -155,7 +147,6 @@ InitTiles
                  lda  Col2CodeOffset+2,y
                  clc
                  adc  :base
-;                 adc  TileStore+TS_BASE_ADDR,x
                  sta  TileStore+TS_CODE_ADDR_LOW,x      ; Low word of the tile address in the code field
 
                  lda  JTableOffset,y
@@ -173,6 +164,148 @@ InitTiles
                  dex
                  dex
                  bpl  :loop
+                 rts
+
+; Put everything on the dirty tile list
+_Refresh
+                ldx  #TILE_STORE_SIZE-2
+:loop           jsr  _PushDirtyTileX
+                dex
+                dex
+                bpl  :loop
+                rts
+
+; Reset all of the tile proc values in the playfield.
+_ResetToDirtyTileProcs
+                 ldx  #TILE_STORE_SIZE-2
+:loop
+                 lda  TileStore+TS_TILE_ID,x
+                 jsr  _SetDirtyTileProcs
+                 dex
+                 dex
+                 bpl  :loop
+                 rts
+
+_ResetToNormalTileProcs
+                 ldx  #TILE_STORE_SIZE-2
+:loop
+                 lda  TileStore+TS_TILE_ID,x
+                 jsr  _SetNormalTileProcs
+                 dex
+                 dex
+                 bpl  :loop
+                 rts
+
+; A = tileID
+; X = tile store index
+_SetDirtyTileProcs
+                 jsr  _CalcTileProcIndex
+                 ldy  #DirtyProcs
+                 jmp  _SetTileProcs
+
+; A = tileID
+; X = tile store index
+_SetNormalTileProcs
+                 pha                           ; extra space
+                 pha                           ; save the tile ID
+                 jsr  _CalcTileProcIndex
+                 sta  3,s                      ; save for later
+
+                 lda  EngineMode
+                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
+                 beq  :setTileFast
+
+                 bit  #ENGINE_MODE_TWO_LAYER
+                 beq  :setTileDyn
+
+                 pla                           ; restore newTileID
+                 bit  #TILE_DYN_BIT
+                 beq  :pickTwoLyrProc
+
+                 ldy  #TwoLyrDynProcs
+                 brl  :pickDynProc
+
+:pickTwoLyrProc  ldy  #TwoLyrProcs
+                 pla                          ; pull of the proc index
+                 jmp  _SetTileProcs
+
+; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
+; the tile priority bit is set, and whether this is the special tile 0 or not.
+:setTileFast
+                 pla                         ; Throw away tile ID copy
+                 ldy  #FastProcs
+                 pla
+                 jmp  _SetTileProcs
+
+; Specialized check for when the engine has enabled dynamic tiles. In this case we are no longer
+; guaranteed that the opcodes in a tile are PEA instructions.  
+:setTileDyn
+                 pla                           ; get the cached tile ID
+                 bit  #TILE_DYN_BIT
+                 beq  :pickSlowProc            ; If the Dynamic bit is not set, select a tile proc that sets opcodes
+
+                 ldy  #DynProcs                ; use this table
+:pickDynProc
+                 and  #TILE_PRIORITY_BIT
+                 beq  :pickZeroDynProc         ; If the Priority bit is not set, pick the first entry
+                 pla
+                 lda  #1                       ; If the Priority bit is set, pick the other one
+                 jmp  _SetTileProcs
+
+:pickZeroDynProc pla
+                 lda  #0
+                 jmp  _SetTileProcs
+
+:pickSlowProc    ldy  #SlowProcs
+                 pla
+                 jmp  _SetTileProcs
+
+; Helper method to calculate the index into the tile proc table given a TileID
+; Calculate the base tile proc selector from the tile Id
+_CalcTileProcIndex                 
+                 bit  #TILE_PRIORITY_BIT             ; 4 if !0, 0 otherwise
+                 beq  :low_priority
+
+                 bit  #TILE_ID_MASK                  ; 2 if !0, 0 otherwise
+                 beq  :is_zero_a
+
+                 bit  #TILE_VFLIP_BIT                ; 1 if !0, 0 otherwise
+                 beq  :no_flip_a
+
+                 lda  #7
+                 rts
+
+:no_flip_a       lda  #6
+                 rts
+
+:is_zero_a       bit  #TILE_VFLIP_BIT
+                 beq  :no_flip_b
+
+                 lda  #5
+                 rts
+
+:no_flip_b       lda  #4
+                 rts
+
+:low_priority    bit  #TILE_ID_MASK                  ; 2 if !0, 0 otherwise
+                 beq  :is_zero_b
+
+                 bit  #TILE_VFLIP_BIT                ; 1 if !0, 0 otherwise
+                 beq  :no_flip_c
+
+                 lda  #3
+                 rts
+
+:no_flip_c       lda  #2
+                 rts
+
+:is_zero_b       bit  #TILE_VFLIP_BIT
+                 beq  :no_flip_d
+
+                 lda  #1
+                 rts
+
+:no_flip_d       lda  #0
                  rts
 
 ; Set a tile value in the tile backing store.  Mark dirty if the value changes
@@ -216,79 +349,10 @@ _SetTile
 ; functionality.  Sometimes it is simple, but in cases of the sprites overlapping Dynamic Tiles and other cases
 ; it can be more involved.
 
-; Calculate the base tile proc selector from the tile Id
-                 stz  procIdx
+; Calculate the base tile proc selector from the tile Id (need X-register set to tile store index)
 
-                 lda  #TILE_PRIORITY_BIT
-                 bit  newTileId
-                 beq  :low_priority
-                 lda  #4
-                 sta  procIdx
-:low_priority
-                 lda  #TILE_ID_MASK
-                 bit  newTileId
-                 beq  :is_zero
-                 lda  #2
-                 tsb  procIdx
-:is_zero
-
-                 lda  #TILE_VFLIP_BIT
-                 bit  newTileId
-                 beq  :no_vflip
-                 lda  #1
-                 tsb  procIdx
-:no_vflip
-
-; Now integrate with the engine mode indicator
-
-                 lda  EngineMode
-                 bit  #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
-                 beq  :setTileFast
-
-                 bit  #ENGINE_MODE_TWO_LAYER
-                 bne  :not_dyn
-                 brl  :setTileDyn
-
-:not_dyn
-                 lda  #TILE_DYN_BIT
-                 bit  newTileId
-                 beq  :pickTwoLyrProc
-
-                 ldy  #TwoLyrDynProcs
-                 brl  :pickDynProc
-
-:pickTwoLyrProc  ldy  #TwoLyrProcs
-                 lda  procIdx
-                 jsr  _SetTileProcs
-                 jmp  _PushDirtyTileX
-
-; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
-; the tile priority bit is set, and whether this is the special tile 0 or not.
-:setTileFast
-                 ldy  #FastProcs
-                 lda  procIdx
-                 jsr  _SetTileProcs
-                 jmp  _PushDirtyTileX
-
-; Specialized check for when the engine has enabled dynamic tiles. In this case we are no longer
-; guaranteed that the opcodes in a tile are PEA instructions.  
-:setTileDyn
-                 lda  #TILE_DYN_BIT
-                 bit  newTileId
-                 beq  :pickSlowProc            ; If the Dynamic bit is not set, select a tile proc that sets opcodes
-
-                 ldy  #DynProcs                ; use this table
-:pickDynProc
-                 lda  newTileId                ; Otherwise chose one of the two dynamic tuples
-                 and  #TILE_PRIORITY_BIT
-                 beq  *+5                     ; If the Priority bit is not set, pick the first entry
-                 lda  #1                      ; If the Priority bit is set, pick the other one
-                 jsr  _SetTileProcs
-                 jmp  _PushDirtyTileX
-
-:pickSlowProc    ldy  #SlowProcs
-                 lda  procIdx
-                 jsr  _SetTileProcs
+                 lda  newTileId
+                 jsr  _SetNormalTileProcs
                  jmp  _PushDirtyTileX
 
 ; X = Tile Store offset
@@ -414,6 +478,17 @@ TwoLyrUnderNV  dw   CopyTileVTwoLyr,SpriteUnderVTwoLyr,OneSpriteTwoLyrUnderV
 TwoLyrDynProcs
 TwoLyrDynOver  dw   CopyDynamicTileTwoLyr,DynamicOverTwoLyr,OneSpriteDynamicOverTwoLyr
 TwoLyrDynUnder dw   CopyDynamicTileTwoLyr,DynamicUnderTwoLyr,OneSpriteDynamicUnderTwoLyr
+
+; "Dirty" procs that are for dirty tile direct rendering.  No moving background.
+DirtyProcs
+DirtyOverZA   dw   ConstTile0Dirty,SpriteOver0Dirty,OneSpriteDirtyOver0
+DirtyOverZV   dw   ConstTile0Dirty,SpriteOver0Dirty,OneSpriteDirtyOver0
+DirtyOverNA   dw   CopyTileADirty,SpriteOverADirty,OneSpriteDirtyOverA
+DirtyOverNV   dw   CopyTileVDirty,SpriteOverVDirty,OneSpriteDirtyOverV
+DirtyUnderZA  dw   ConstTile0Dirty,SpriteUnder0Dirty,SpriteUnder0Dirty
+DirtyUnderZV  dw   ConstTile0Dirty,SpriteUnder0Dirty,SpriteUnder0Dirty
+DirtyUnderNA  dw   CopyTileADirty,SpriteUnderADirty,OneSpriteDirtyUnderA
+DirtyUnderNV  dw   CopyTileVDirty,SpriteUnderVDirty,OneSpriteDirtyUnderV
 
 ; SetBG0XPos
 ;

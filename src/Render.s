@@ -20,7 +20,13 @@
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
 _Render
-            jsr   _DoTimers            ; Run any pending timer tasks
+            lda   LastRender          ; Check to see what kind of rendering was done on the last frame. If
+            beq   :no_change          ; it was not this renderer, 
+            jsr   _ResetToNormalTileProcs
+            jsr   _Refresh
+:no_change
+
+            jsr   _DoTimers           ; Run any pending timer tasks
 
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
 
@@ -37,7 +43,7 @@ _Render
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
 ;            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
-            jsr   _ApplyTilesFast      ; This function actually draws the new tiles into the code field
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
             jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
@@ -129,10 +135,11 @@ _DoOverlay
 :disp       jsl   $000000
             rts
 
-; The _ApplyTilesFast is the same as _ApplyTiles, but we use the _RenderTileFast subroutine
-_ApplyTilesFast
+; Run through all of the tiles on the DirtyTile list and render them
+_ApplyTiles
             ldx  DirtyTileCount
 
+            phd                         ; sve the current direct page
             tdc
             clc
             adc  #$100                  ; move to the next page
@@ -141,46 +148,8 @@ _ApplyTilesFast
             stx  DP2_DIRTY_TILE_COUNT   ; Cache the dirty tile count
             jsr  _PopDirtyTilesFast
 
-            tdc                         ; Move back to the original direct page
-            sec
-            sbc  #$100
-            tcd
-
+            pld                         ; Move back to the original direct page
             stz  DirtyTileCount         ; Reset the dirty tile count
-            rts
-
-; The _ApplyTiles function is responsible for rendering all of the dirty tiles into the code
-; field.  In this function we switch to the second direct page which holds the temporary
-; working buffers for tile rendering.
-;
-_ApplyTiles
-            tdc
-            clc
-            adc  #$100                  ; move to the next page
-            tcd
-
-            bra  :begin
-
-:loop
-; Retrieve the offset of the next dirty Tile Store items in the X-register
-
-            jsr  _PopDirtyTile2
-
-; Call the generic dispatch with the Tile Store record pointer at by the X-register.
-
-            phb
-;            jsr  _RenderTile2
-            plb
-
-; Loop again until the list of dirty tiles is empty
-
-:begin      ldy  DirtyTileCount
-            bne  :loop
-
-            tdc                         ; Move back to the original direct page
-            sec
-            sbc  #$100
-            tcd
             rts
 
 ; This is a specialized render function that only updates the dirty tiles *and* draws them
@@ -192,20 +161,26 @@ _ApplyTiles
 ; In this renderer, we assume that there is no scrolling, so no need to update any information about
 ; the BG0/BG1 positions
 _RenderDirty
-            lda   LastRender                    ; If the full renderer was last called, we assume that
-            bne   :norecalc                     ; the scroll positions have likely changed, so recalculate
-            jsr   _RecalcTileScreenAddrs        ; them to make sure sprites draw at the correct screen address
+            lda   LastRender                     ; If the full renderer was last called, we assume that
+            bne   :norecalc                      ; the scroll positions have likely changed, so recalculate
+            jsr   _RecalcTileScreenAddrs         ; them to make sure sprites draw at the correct screen address
+            jsr   _ResetToDirtyTileProcs         ; Switch the tile procs to the dirty tile rendering functions
 ;            jsr   _ClearSpritesFromCodeField    ; Restore the tiles to their non-sprite versions
 :norecalc
-
-;            jsr   _RenderSprites
-;            jsr   _ApplyDirtyTiles
+            jsr   _RenderSprites
+            jsr   _ApplyDirtyTiles
 
             lda   #1
             sta   LastRender
             rts
 
 _ApplyDirtyTiles
+            phd                         ; save the current direct page
+            tdc
+            clc
+            adc  #$100                  ; move to the next page
+            tcd
+
             bra  :begin
 
 :loop
@@ -215,341 +190,14 @@ _ApplyDirtyTiles
 
 ; Call the generic dispatch with the Tile Store record pointer at by the Y-register.  
 
-            phb
             jsr  _RenderDirtyTile
-            plb
 
 ; Loop again until the list of dirty tiles is empty
 
 :begin      ldy  DirtyTileCount
             bne  :loop
+
+            pld                         ; Move back to the original direct page
+            stz  DirtyTileCount         ; Reset the dirty tile count
             rts
 
-; Only render solid tiles and sprites
-_RenderDirtyTile
-            lda   TileStore+TS_SPRITE_FLAG,y
-            beq   NoSpritesDirty                    ; This is faster if there are no sprites
-
-;           TODO: handle sprite drawing
-
-; The rest of this function handles that non-sprite blit, which is super fast since it blits directly from the
-; tile data store to the graphics screen with no masking. The only extra work is selecting a blit function
-; based on the tile flip flags.
-;
-; B is set to Bank 01
-; Y is set to the top-left address of the tile in SHR screen
-; A is set to the address of the tile data
-NoSpritesDirty
-;            lda   TileStore+TS_DIRTY_TILE_DISP,y
-;            stal  :nsd+1
-            ldx   TileStore+TS_SCREEN_ADDR,y       ; Get the on-screen address of this tile
-            lda   TileStore+TS_TILE_ADDR,y         ; load the address of this tile's data (pre-calculated)
-            plb                                    ; set the code field bank
-:nsd        jmp   $0000
-; Use some temporary space for the spriteIdx array (maximum of 4 entries)
-
-stkSave     equ tmp9
-screenAddr  equ tmp10
-tileAddr    equ tmp11
-spriteIdx   equ tmp12
-
-; If there are two or more sprites at a tile, we can still be fast, but need to do extra work because
-; the VBUFF values need to be read from the direct page.  Thus, the direct page cannot be mapped onto
-; the graphics screen.  We use the stack instead, but have to do extra work to save and restore the
-; stack value.
-FourSpritesDirty
-ThreeSpritesDirty
-TwoSpritesDirty
-
-            sta  tileAddr
-            stx  screenAddr
-
-            plb
-            tsc
-            sta   stkSave                          ; Save the stack on the direct page
-                 
-            sei
-            clc
-
-            ldy   tileAddr
-            lda   screenAddr                     ; Saved in direct page locations
-            tcs
-
-            _R0W1
-
-            lda   tiledata+{0*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{0*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{0*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{0*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{0*SPRITE_PLANE_SPAN},x
-            sta   $00,s
-
-            lda   tiledata+{0*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{0*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{0*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{0*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{0*SPRITE_PLANE_SPAN}+2,x
-            sta   $02,s
-
-            lda   tiledata+{1*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{1*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{1*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{1*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{1*SPRITE_PLANE_SPAN},x
-            sta   $A0,s
-
-            lda   tiledata+{1*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{1*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{1*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{1*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{1*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2,s
-
-            tsc
-            adc   #320
-            tcs
-
-            lda   tiledata+{2*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{2*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{2*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{2*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{2*SPRITE_PLANE_SPAN},x
-            sta   $00,s
-
-            lda   tiledata+{2*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{2*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{2*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{2*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{2*SPRITE_PLANE_SPAN}+2,x
-            sta   $02,s
-
-            lda   tiledata+{3*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{3*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{3*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{3*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{3*SPRITE_PLANE_SPAN},x
-            sta   $A0,s
-
-            lda   tiledata+{3*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{3*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{3*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{3*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{3*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2,s
-
-            tsc
-            adc   #320
-            tcs
-
-            lda   tiledata+{4*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{4*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{4*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{4*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{4*SPRITE_PLANE_SPAN},x
-            sta   $00,s
-
-            lda   tiledata+{4*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{4*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{4*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{4*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{4*SPRITE_PLANE_SPAN}+2,x
-            sta   $02,s
-
-            lda   tiledata+{5*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{5*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{5*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{5*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{5*SPRITE_PLANE_SPAN},x
-            sta   $A0,s
-
-            lda   tiledata+{5*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{5*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{5*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{5*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{5*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2,s
-
-            tsc
-            adc   #320
-            tcs
-
-            lda   tiledata+{6*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{6*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{6*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{6*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{6*SPRITE_PLANE_SPAN},x
-            sta   $00,s
-
-            lda   tiledata+{6*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{6*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{6*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{6*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{6*SPRITE_PLANE_SPAN}+2,x
-            sta   $02,s
-
-            lda   tiledata+{7*TILE_DATA_SPAN},y
-            ldx   spriteIdx+2
-            andl  spritemask+{7*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{7*SPRITE_PLANE_SPAN},x
-            ldx   spriteIdx
-            andl  spritemask+{7*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{7*SPRITE_PLANE_SPAN},x
-            sta   $A0,s
-
-            lda   tiledata+{7*TILE_DATA_SPAN}+2,y
-            ldx   spriteIdx+2
-            andl  spritemask+{7*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{7*SPRITE_PLANE_SPAN}+2,x
-            ldx   spriteIdx
-            andl  spritemask+{7*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{7*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2,s
-
-            _R0W0
-
-            lda   stkSave
-            tcs
-            cli
-            rts
-
-; There is only one sprite at this tile, so do a fast blit that directly combines a tile with a single
-; sprite and renders directly to the screen
-;
-; NOTE: Expect X-register to already have been set to the correct VBUFF address
-OneSpriteDirty
-            ldy   tileAddr                               ; load the address of this tile's data
-            lda   screenAddr                             ; Get the on-screen address of this tile
-
-            plb
-
-            phd
-            sei
-            clc
-            tcd
-
-            _R0W1
-
-            lda   tiledata+{0*TILE_DATA_SPAN},y
-            andl  spritemask+{0*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{0*SPRITE_PLANE_SPAN},x
-            sta   $00
-
-            lda   tiledata+{0*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{0*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{0*SPRITE_PLANE_SPAN}+2,x
-            sta   $02
-
-            lda   tiledata+{1*TILE_DATA_SPAN},y
-            andl  spritemask+{1*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{1*SPRITE_PLANE_SPAN},x
-            sta   $A0
-
-            lda   tiledata+{1*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{1*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{1*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2
-
-            tdc
-            adc   #320
-            tcd
-
-            lda   tiledata+{2*TILE_DATA_SPAN},y
-            andl  spritemask+{2*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{2*SPRITE_PLANE_SPAN},x
-            sta   $00
-
-            lda   tiledata+{2*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{2*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{2*SPRITE_PLANE_SPAN}+2,x
-            sta   $02
-
-            lda   tiledata+{3*TILE_DATA_SPAN},y
-            andl  spritemask+{3*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{3*SPRITE_PLANE_SPAN},x
-            sta   $A0
-
-            lda   tiledata+{3*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{3*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{3*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2
-
-            tdc
-            adc   #320
-            tcd
-
-            lda   tiledata+{4*TILE_DATA_SPAN},y
-            andl  spritemask+{4*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{4*SPRITE_PLANE_SPAN},x
-            sta   $00
-
-            lda   tiledata+{4*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{4*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{4*SPRITE_PLANE_SPAN}+2,x
-            sta   $02
-
-            lda   tiledata+{5*TILE_DATA_SPAN},y
-            andl  spritemask+{5*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{5*SPRITE_PLANE_SPAN},x
-            sta   $A0
-
-            lda   tiledata+{5*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{5*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{5*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2
-
-            tdc
-            adc   #320
-            tcd
-
-            lda   tiledata+{6*TILE_DATA_SPAN},y
-            andl  spritemask+{6*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{6*SPRITE_PLANE_SPAN},x
-            sta   $00
-
-            lda   tiledata+{6*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{6*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{6*SPRITE_PLANE_SPAN}+2,x
-            sta   $02
-
-            lda   tiledata+{7*TILE_DATA_SPAN},y
-            andl  spritemask+{7*SPRITE_PLANE_SPAN},x
-            oral  spritedata+{7*SPRITE_PLANE_SPAN},x
-            sta   $A0
-
-            lda   tiledata+{7*TILE_DATA_SPAN}+2,y
-            andl  spritemask+{7*SPRITE_PLANE_SPAN}+2,x
-            oral  spritedata+{7*SPRITE_PLANE_SPAN}+2,x
-            sta   $A2
-
-            _R0W0
-            cli
-            pld
-            rts

@@ -46,10 +46,10 @@ Counter            equ   tmp3
                    lda   (NextColPtr),y             ; Need to recalculate each time since the wrap-around could
                    clc                              ; happen anywhere
                    adc   (RowAddrPtr)               ;
-                   tax                              ; NOTE: Try to rework to use new TileStore2DLookup array
+                   tax                              ; NOTE: Try to rework to use new TileStoreLookup array
 
                    lda   OnScreenAddr
-                   sta  TileStore+TS_SCREEN_ADDR,x
+                   sta   TileStore+TS_SCREEN_ADDR,x
 
                    clc
                    adc   #4                         ; Go to the next tile

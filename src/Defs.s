@@ -19,6 +19,7 @@ SHADOW_SCREEN_PALETTES equ   $019E00
 SHR_SCREEN             equ   $E12000
 SHR_SCB                equ   $E19D00
 SHR_PALETTES           equ   $E19E00
+SHR_LINE_WIDTH         equ   160
 
 ; Direct page locations used by the engine
 ScreenHeight           equ   0           ; Height of the playfield in scan lines
@@ -152,9 +153,10 @@ DP2_DIRTY_TILE_COUNT    equ  160         ; Local copy of dirty tile count to avo
 DP2_DIRTY_TILE_CALLBACK equ  162
 
 ; Some pre-defined bank values
-DP2_TILEDATA_AND_TILESTORE_BANKS equ 164
+DP2_TILEDATA_AND_TILESTORE_BANKS   equ 164
 DP2_SPRITEDATA_AND_TILESTORE_BANKS equ 166
-DP2_TILEDATA_AND_SPRITEDATA_BANKS equ 168
+DP2_TILEDATA_AND_SPRITEDATA_BANKS  equ 168
+DP2_BANK01_AND_TILESTORE_BANKS     equ 170
 
 SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuffArray addresses
 ; End direct page values
