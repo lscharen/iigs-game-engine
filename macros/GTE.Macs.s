@@ -129,6 +129,8 @@ CALLBACK               equ   $0010
 PAD_BUTTON_B           equ   $0100
 PAD_BUTTON_A           equ   $0200
 PAD_KEY_DOWN           equ   $0400
+
+; EngineMode definitions
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004

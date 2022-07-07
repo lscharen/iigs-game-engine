@@ -185,9 +185,9 @@ SET_DYN_TILE           equ   $0006
 CALLBACK               equ   $0010
 
 ; ReadControl return value bits
-PAD_BUTTON_B           equ   $01
-PAD_BUTTON_A           equ   $02
-PAD_KEY_DOWN           equ   $04
+PAD_BUTTON_B           equ   $0100
+PAD_BUTTON_A           equ   $0200
+PAD_KEY_DOWN           equ   $0400
 
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000
