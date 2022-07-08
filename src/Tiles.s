@@ -166,13 +166,44 @@ InitTiles
                  bpl  :loop
                  rts
 
-; Put everything on the dirty tile list
+; Put everything visible on the dirty tile list
 _Refresh
-                ldx  #TILE_STORE_SIZE-2
-:loop           jsr  _PushDirtyTileX
-                dex
-                dex
-                bpl  :loop
+:col            equ  tmp0
+:row            equ  tmp1
+:idx            equ  tmp2
+
+                jsr  _OriginToTileStore
+
+                clc
+                txa
+                adc  TileStoreLookupYTable,y
+                sta  :idx
+
+                lda  ScreenTileWidth
+                sta  :col
+
+                lda  ScreenTileHeight
+                sta  :row
+
+:oloop          ldy  :idx
+:iloop          ldx  TileStoreLookup,y
+                jsr  _PushDirtyTileX
+
+                iny
+                iny
+                dec  :col
+                bne  :iloop
+
+                lda  ScreenTileWidth
+                sta  :col
+
+                lda  :idx
+                clc
+                adc  #TS_LOOKUP_SPAN*2
+                sta  :idx
+
+                dec  :row
+                bne  :oloop
                 rts
 
 ; Reset all of the tile proc values in the playfield.
