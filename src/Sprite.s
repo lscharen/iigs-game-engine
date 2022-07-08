@@ -223,8 +223,10 @@ _DoPhase1
             trb   SpriteMap
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
             sta   _Sprites+SPRITE_STATUS,y
-:hidden
             jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
+
+:hidden
+            jmp   _ClearSpriteFromTileStore
 
 :no_clear
 
@@ -263,8 +265,9 @@ _DoPhase1
 :updated
             jsr   _CalcDirtySprite                     ; This function preserves Y
 
-            lda   #SPRITE_STATUS_OCCUPIED              ; Clear the dirty bits (ADDED, UPDATED, MOVED)
-            sta   _Sprites+SPRITE_STATUS,y
+            lda   #$FFFF!{SPRITE_STATUS_ADDED.SPRITE_STATUS_UPDATED.SPRITE_STATUS_MOVED}
+            and   _Sprites+SPRITE_STATUS,y
+            sta   _Sprites+SPRITE_STATUS,y             ; Clear the dirty bits (ADDED, UPDATED, MOVED)
 
             jmp   _MarkDirtySpriteTiles
 
@@ -380,7 +383,7 @@ _AddSprite
 
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
 
-            lda   #SPRITE_STATUS_OCCUPIED+SPRITE_STATUS_ADDED
+            lda   #SPRITE_STATUS_ADDED
             sta   _Sprites+SPRITE_STATUS,x
 
             stz   _Sprites+VBUFF_ADDR,x         ; Clear the VBUFF address, just to initialize it
@@ -779,20 +782,32 @@ _UpdateSprite
 ; Do some work to see if only the H or V bits have changed.  If so, merge them into the
 ; SPRITE_ID
             eor   _Sprites+SPRITE_ID,x          ; If either bit has changed, this will be non-zero
-            and   #SPRITE_VFLIP+SPRITE_HFLIP 
+            and   #SPRITE_VFLIP+SPRITE_HFLIP+SPRITE_HIDE
             bne   :sprite_flag_change
 
             tya
-            cmp   _Sprites+VBUFF_ADDR,x          ; Did the stamp change?
+            cmp   _Sprites+VBUFF_ADDR,x         ; Did the stamp change?
             bne   :sprite_stamp_change
             rts                                 ; Nothing changed, so just return
 
 :sprite_flag_change
             eor   _Sprites+SPRITE_ID,x          ; put the new bits into the value. ---HV--- ^ SPRITE_ID & 00011000 ^ SPRITE_ID = SSSHVSSS
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
+
+            bit   #SPRITE_HIDE                  ; Sync the SPRITE_HIDE bit into the SPRITE_STATUS_HIDDEN flag
+            beq   :not_hidden
+            lda   #SPRITE_STATUS_HIDDEN
+            ora   _Sprites+SPRITE_STATUS,x
+            sta   _Sprites+SPRITE_STATUS,x
+            bra   :sync_complete
+:not_hidden lda   #$FFFF!SPRITE_STATUS_HIDDEN
+            and   _Sprites+SPRITE_STATUS,x
+            sta   _Sprites+SPRITE_STATUS,x
+:sync_complete
+
             tya
 :sprite_stamp_change
-            sta   _Sprites+VBUFF_ADDR,x          ; Just save this to stay in sync
+            sta   _Sprites+VBUFF_ADDR,x         ; Just save this to stay in sync
 
             lda   _Sprites+SPRITE_STATUS,x      ; Mark this sprite as updated
             ora   #SPRITE_STATUS_UPDATED
