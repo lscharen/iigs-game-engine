@@ -212,7 +212,7 @@ OneSpriteDirtyUnderA
 
             DirtySpriteUnder 6;6;$00;0
             DirtySpriteUnder 6;6;$00;2
-            DirtySpriteOver 7;7;$A0;0
+            DirtySpriteUnder 7;7;$A0;0
             DirtySpriteUnder 7;7;$A0;2
 
             _R0W0
