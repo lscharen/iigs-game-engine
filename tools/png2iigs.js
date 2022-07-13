@@ -124,6 +124,7 @@ function getOptions(argv) {
     const options = {};
     options.startIndex = getArg(argv, '--start-index', x => parseInt(x, 10), 0);
     options.asTileData = getArg(argv, '--as-tile-data', x => true, false);
+    options.verbose = getArg(argv, '--verbose', x => true, false);
     options.maxTiles = getArg(argv, '--max-tiles', x => parseInt(x, 10), 511);
     options.transparentIndex = getArg(argv, '--transparent-color-index', x => parseInt(x, 10), -1);
     options.transparentColor = getArg(argv, '--transparent-color', x => x, null);
@@ -133,16 +134,24 @@ function getOptions(argv) {
     return options;
 }
 
+// Two steps here.
+//   First, the transparent color always gets mapped to Index 0 in the target palette
+//   Second, if a target palette is not explicit, then we create one based on the source
+
 function getPaletteMap(options, png) {
     // Get the RGB triplets from the palette
     const sourcePalette = png.palette;
-    const targetPalette = options.targetPalette || sourcePalette;
     const paletteCSSTripplets = sourcePalette.map(c => paletteToHexString(c));
+
+    if (options.verbose) {
+        console.warn('Source palette: ', paletteCSSTripplets.join(', '));
+    }
 
     // Start with an identity map
     const paletteMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
-    // If there is a transparent color / color index, make sure it gets mapped to index 0
+    // If there is a transparent color / color index, make sure it gets swapped to index 0
+    // If no target palette was passed in, swap the palette from the source copy, too
     if (options.transparentIndex > 0) {
         paletteMap[options.transparentIndex] = 0;
     }
@@ -156,8 +165,25 @@ function getPaletteMap(options, png) {
         }
     }
 
+    // If a target palette is not provided, build one from the source and (optional) transparentIndex\
+    let targetPalette;
+    if (!options.targetPalette) {
+        targetPalette = [...sourcePalette];
+        if (options.transparentIndex > 0) {
+            const tmp = targetPalette[options.transparentIndex];
+            targetPalette[options.transparentIndex] = targetPalette[0];
+            targetPalette[0] = tmp;
+        }
+    } else {
+        targetPalette = options.targetPalette;
+    }
+
     // Match up the source palette with the target palette
     const targetTriplets = targetPalette.map(c => paletteToHexString(c));
+    if (options.verbose) {
+        console.warn('Target palette: ', targetTriplets.join(', '));
+    }
+
     paletteCSSTripplets.forEach((color, i) => {
         if (i !== options.transparentIndex) {
             const j = targetTriplets.findIndex(p => p === color);
