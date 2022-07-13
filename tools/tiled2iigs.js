@@ -99,16 +99,16 @@ function writeTileAnimations(filename, animations) {
     // First step is some initialization code that copies the first animated
     // tile data into the dynamic tile space
     const initLabel = 'TileAnimInit';
-    init.appendLine(`${initLabel}    ENT`);
+    init.appendLine(`${initLabel}`);
     init.appendLine();
     for (const animation of animations) {
         // Get the first tile of the animation
         const firstTileId = animation.frames[0].tileId;
 
         // Create code to copy it into the dynamic tile index location
-        init.appendLine('            ldx #' + firstTileId);
-        init.appendLine('            ldy #' + animation.dynTileId);
-        init.appendLine('            jsl CopyTileToDyn');
+        init.appendLine('            pea ' + firstTileId);
+        init.appendLine('            pea ' + animation.dynTileId);
+        init.appendLine('            _GTECopyTileToDynamic');
     }
 
     // Next, create the scripts to change the tile data based on the configured ticks delays. 
@@ -123,10 +123,10 @@ function writeTileAnimations(filename, animations) {
         }
 
         const label = `TileAnim_${animation.tileId}`;
-        init.appendLine(`            lda #${label}`);
-        init.appendLine(`            ldx #^${label}`);
-        init.appendLine(`            ldy #${numTicks}`);
-        init.appendLine(`            jsl StartScript`);
+        init.appendLine(`            pea ${numTicks}`);
+        init.appendLine(`            pea ^${label}`);
+        init.appendLine(`            pea ${label}`);
+        init.appendLine(`            _GTEStartScript`);
 
         //    bit 15     = 1 if the end of a sequence
         //    bit 14     = 0 proceed to next action, 1 jump
@@ -175,8 +175,13 @@ function findAnimatedTiles(tileset) {
                 continue;
             }
 
+            console.log(tile);
             const tileId = parseInt(tile.id, 10);
-            const frames = tile.animation.frame.map(f => {
+            let frame = tile.animation.frame;
+            if (!frame.length) {
+                frame = [frame];
+            }
+            const frames = frame.map(f => {
                 const millis = parseInt(f.duration, 10);
                 const ticksPerMillis = 60. / 1000.;
                 return {
@@ -474,7 +479,7 @@ function convertTileID(tileId, tileset) {
     // the tile ID
     if (tileset[tileIndex - 1].animation) {
         const animation = tileset[tileIndex - 1].animation;
-        tileId = animation.dynTileId;
+        tileId = animation.dynTileId * 4;   // pre-map the ID -> byte offset
         control_bits = GTE_DYN_BIT;
 
         console.warn('Dyanmic animation tile found!');
