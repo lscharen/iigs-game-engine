@@ -204,14 +204,15 @@ async function main(argv) {
         options.paletteMap = paletteMap;
 
         // Dump the palette in IIgs hex format
-        console.log('; Palette:');
+        console.log('; Palette');
         const hexCodes = targetPalette.map(c => '$' + paletteToIIgs(c));
 
         // The transparent color is always mapped into color 0, so if a background color is set it goes into index 0
         if (options.backgroundColor !== null) {
             hexCodes[0] = '$' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
         }
-        console.log(';', hexCodes.join(','));
+        console.log('TileSetPalette ENT');
+        console.log('               dw   ', hexCodes.join(','));
 
         // Just convert a paletted PNG to IIgs memory format.  We make sure that only a few widths
         // are supported

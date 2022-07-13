@@ -1,0 +1,44 @@
+{
+  "name": "kfest-demo-1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "../../../macros",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe",
+    "png2iigs": "../../../tools/png2iigs.js",
+    "tiled2iigs": "../../../tools/tiled2iigs.js"
+  },
+  "scripts": {
+    "test": "npm run build && npm run build:image && npm run gsport",
+    "gsport": "%npm_package_config_gsport%",
+    "debug": "%npm_package_config_crossrunner% GTETestSprites -Source GTETestSprites_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
+    "build:all": "npm run build:tiles && npm run build:map && npm run build:tool && npm run build:sys16 && npm run build:image",
+    "build:map": "node %npm_package_config_tiled2iigs% ./assets/tiled/world_1-1.json --empty-tile 33 --no-gen-tiles --output-dir ./gen",
+    "build:map:masked": "node %npm_package_config_tiled2iigs% ./assets/tiled/world_1-1.json --force-masked --empty-tile 33 --no-gen-tiles --output-dir ./gen",
+    "build:tiles": "node %npm_package_config_png2iigs% ./assets/tilesets/smb-256-128-4bpp.png --max-tiles 360 --as-tile-data --transparent-color FF00FF --background-color 6B8CFF > ./gen/App.TileSet.s",
+    "build:sys16": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
+    "build": "npm run build:tool && npm run build:sys16",
+    "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% ../../../src/Master.s",
+    "build:image": "build-image.bat %npm_package_config_cadius%"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+    "pngjs": "^6.0.0",
+    "string-builder": "^0.1.8",
+    "watch": "latest",
+    "xml2json": "^0.12.0"
+  }
+}

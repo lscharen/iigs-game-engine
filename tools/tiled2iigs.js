@@ -373,14 +373,11 @@ function emitBG0Layer(layer, tileset) {
     const label = layer.name.split(' ').join('_').split('.').join('_');
     const initCode = `
 BG0SetUp
-        lda #${layer.width}
-        sta TileMapWidth
-        lda #${layer.height}
-        sta TileMapHeight
-        lda #${label}
-        sta TileMapPtr
-        lda #^${label}
-        sta TileMapPtr+2
+        pea   ${layer.width}
+        pea   ${layer.height}
+        pea   ^${label}
+        pea   ${label}
+        _GTESetBG0TileMapInfo
         rts
     `;
     sb.appendLine(initCode);
