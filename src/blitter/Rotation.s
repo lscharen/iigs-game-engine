@@ -2,38 +2,15 @@
 ; into an addition of two function parametertized by the angle of rotation: pixel = *(f(x, a) + f(y, a))
 ;
 ; The pre-build a number of rotation tables and then populate the direct page values and Y-register values
-; for each line of the blitter, such that a single lda (00),y instruction fetched the appropriate data
+; for each line of the blitter, such that a single lda (00),y instruction fetches the appropriate data
 ; 
 ; This is about as fast of a rotation as we can do.
 ;
 ; When possible, off-screen locations are calculate to produce an address of $FFFE, so that the last two bytes
 ; of the BG1 data buffer provides the "fill value".
 
-ANGLEBNK                  ext
+ANGLEBNK                   EXT
 _ApplyBG1XPosAngle
-;                          phy
-
-;                          lda   BG1StartX
-;                          jsr   Mod164
-;                          sta   BG1StartXMod164
-
-;                          lda   #162
-;                          sec
-;                          sbc   StartXMod164
-;                          bpl   *+6
-;                          clc
-;                          adc   #164
-;                          clc
-;                          adc   BG1StartXMod164
-;                          cmp   #164
-;                          bcc   *+5
-;                          sbc   #164
-
-;                          clc
-;                          adc   1,s
-;                          tay                             ; cache the value
-
-;                          pla                             ; pop the value
                           phd                             ; save the direct page because we are going to switch to the
                           lda   BlitterDP                 ; blitter direct page space and fill in the addresses
                           tcd
@@ -63,9 +40,7 @@ _ApplyBG1YPosAngle
 
                           sty   :angle_tbl
 
-                          lda   BG1StartY
-                          jsr   Mod208
-                          sta   BG1StartYMod208
+                          lda   BG1StartYMod208
                           sta   :ytbl_idx                 ; Start copying from the first entry in the table
 
                           lda   StartYMod208              ; This is the base line of the virtual screen
@@ -136,14 +111,12 @@ _ApplyBG1YPosAngle
 ; Y = starting line * $1000
 ; X = number of lines (x2)
 CopyAngleYTableToBG1Addr
+
+; tax
+; ldal ANGLEBNK+XX,x
+; sta  BG1_ADDR+$F000,y
                           phx
-                          phb
-
-                        
-                          jsr   _SetDataBank              ; restore access to this bank
                           jsr   SaveBG1AngleValues
-
-                          plb
                           plx                             ; x is used directly in this routine
                           jmp   ApplyBG1OffsetValues
 
@@ -172,37 +145,37 @@ SaveBG1AngleValues
                           bra   :x08
 :do16                     tax
                           ldal  ANGLEBNK+06,x
-                          sta   BG1YCache+30
+                          stal  BG1YCache+30
 :x15                      ldal  ANGLEBNK+06,x
-                          sta   BG1YCache+28
+                          stal   BG1YCache+28
 :x14                      ldal  ANGLEBNK+06,x
-                          sta   BG1YCache+26
+                          stal   BG1YCache+26
 :x13                      ldal  ANGLEBNK+06,x
-                          sta   BG1YCache+24
+                          stal   BG1YCache+24
 :x12                      ldal  ANGLEBNK+04,x
-                          sta   BG1YCache+22
+                          stal   BG1YCache+22
 :x11                      ldal  ANGLEBNK+04,x
-                          sta   BG1YCache+20
+                          stal   BG1YCache+20
 :x10                      ldal  ANGLEBNK+04,x
-                          sta   BG1YCache+18
+                          stal   BG1YCache+18
 :x09                      ldal  ANGLEBNK+04,x
-                          sta   BG1YCache+16
+                          stal   BG1YCache+16
 :x08                      ldal  ANGLEBNK+02,x
-                          sta   BG1YCache+14
+                          stal   BG1YCache+14
 :x07                      ldal  ANGLEBNK+02,x
-                          sta   BG1YCache+12
+                          stal   BG1YCache+12
 :x06                      ldal  ANGLEBNK+02,x
-                          sta   BG1YCache+10
+                          stal   BG1YCache+10
 :x05                      ldal  ANGLEBNK+02,x
-                          sta   BG1YCache+08
+                          stal   BG1YCache+08
 :x04                      ldal  ANGLEBNK+00,x
-                          sta   BG1YCache+06
+                          stal   BG1YCache+06
 :x03                      ldal  ANGLEBNK+00,x
-                          sta   BG1YCache+04
+                          stal   BG1YCache+04
 :x02                      ldal  ANGLEBNK+00,x
-                          sta   BG1YCache+02
+                          stal   BG1YCache+02
 :x01                      ldal  ANGLEBNK+00,x
-                          sta   BG1YCache+00
+                          stal   BG1YCache+00
 :none                     rts
 :do07                     tax
                           bra   :x07

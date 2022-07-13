@@ -506,5 +506,7 @@ _SpriteBitsNot   ENT
 _stamp_step      ENT
                  dw  0,12,24,36
 
+BG1YCache        ENT
+                 ds  32
 blt_return
 stk_save

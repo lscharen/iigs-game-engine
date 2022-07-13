@@ -91,6 +91,8 @@ _CallTable
                 adrl  _TSFillTileStore-1
                 adrl  _TSRefresh-1
                 adrl  _TSRenderDirty-1
+
+                adrl  _TSSetBG1Rotation-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -708,6 +710,31 @@ _TSRefresh
                 jsr     _Refresh
                 _TSExit #0;#0
 
+; SetBG1Rotation(rotIndex)
+_TSSetBG1Rotation
+:rotIndex       equ     FirstParam+0
+x_angles        EXT
+y_angles        EXT
+
+                _TSEntry
+
+                lda     :rotIndex,s
+                and     #$003F               ; only 64 angles to choose from
+
+                asl
+                tax
+                ldal    x_angles,x           ; load the address of addresses for this angle
+                tay
+                phx
+                jsr     _ApplyBG1XPosAngle
+                plx
+
+                ldal     y_angles,x           ; load the address of addresses for this angle
+                tay
+                jsr     _ApplyBG1YPosAngle
+
+                _TSExit #0;#2
+
 ; Insert the GTE code
 
                 put     Math.s
@@ -736,9 +763,7 @@ _TSRefresh
                 put     blitter/Vert.s
                 put     blitter/BG0.s
                 put     blitter/BG1.s
+                put     blitter/Rotation.s
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
                 put     blitter/Blitter.s
-                put     blitter/TileProcs.s
-                put     blitter/Tiles00000.s
-;                put     blitter/Tiles.s

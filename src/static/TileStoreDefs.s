@@ -35,7 +35,6 @@ SPRITE_REC_SIZE        equ 42
 ; available to the AddSprite function until the next frame.
 
 SPRITE_STATUS_EMPTY    equ $0000         ; If the status value is zero, this sprite slot is available
-SPRITE_STATUS_OCCUPIED equ $8000         ; Set the MSB to flag it as occupied
 SPRITE_STATUS_ADDED    equ $0001         ; Sprite was just added (new sprite)
 SPRITE_STATUS_MOVED    equ $0002         ; Sprite's position was changed
 SPRITE_STATUS_UPDATED  equ $0004         ; Sprite's non-position attributes were changed

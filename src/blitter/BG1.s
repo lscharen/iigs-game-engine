@@ -492,5 +492,3 @@ ApplyBG1OffsetValues
 :do01                     ldal  BG1YCache+00
                           sta:  BG1_ADDR+$0000,y
 :none                     rts
-
-BG1YCache                 ds    32

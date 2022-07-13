@@ -114,6 +114,9 @@ _GTERefresh          MAC
 _GTERenderDirty      MAC
                      UserTool  $2700+GTEToolNum
                      <<<
+_GTESetBG1Rotation   MAC
+                     UserTool  $2800+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
