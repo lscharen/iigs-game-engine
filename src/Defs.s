@@ -168,6 +168,8 @@ ENGINE_MODE_BNK0_BUFF  equ   $0004
 
 ; Render flags
 RENDER_ALT_BG1         equ   $0001
+RENDER_BG1_HORZ_OFFSET equ   $0002
+RENDER_BG1_VERT_OFFSET equ   $0004
 
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
@@ -260,6 +262,7 @@ _stamp_step       EXT
 VBuffVertTableSelect EXT
 VBuffHorzTableSelect EXT
 Overlays          EXT
+BG1YCache         EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

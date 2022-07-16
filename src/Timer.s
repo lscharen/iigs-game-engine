@@ -133,8 +133,9 @@ _DoTimers
                 sbc       LastTick
                 stx       LastTick
 
-; We don't want times to fire excessively.  If the timer hasn't been evaluated for over 
+; We don't want timers to fire excessively.  If the timer hasn't been evaluated for over 
 ; one second, then just skip processing and wait for the next call.
+
                 cmp       #60
                 bcc       :do_timer
 :exit           rts

@@ -375,10 +375,14 @@ BG1YTable         ENT
 ]step             =     ]step+256
                   --^
 
+BG1YCache         ENT
+                  ds    32
+
 ; Repeat
 BG1YOffsetTable   ENT
-                  lup   26
+                  lup   2
                   dw    1,1,1,2,2,2,2,2,1,1,1,0,0,0,0,0
+;                  dw     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
                   --^
 
 ; Other Toolset variables

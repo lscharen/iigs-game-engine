@@ -91,6 +91,7 @@ _CallTable
                 adrl  _TSFillTileStore-1
                 adrl  _TSRefresh-1
                 adrl  _TSRenderDirty-1
+                adrl  _TSSetBG1Displacement-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -616,11 +617,11 @@ _TSAddTimer
 
                 lda     :callback+2,s
                 tax
-                lda     :callback,s
+                lda     :numTicks,s
                 tay
                 lda     :flags,s
-                lsr                        ; put low bit into carry
-                lda     :numTicks,s
+                ror                        ; put low bit into carry
+                lda     :callback,s
                 jsr     _AddTimer
                 sta     :output,s
                 ldx     #0
@@ -735,6 +736,18 @@ _TSRefresh
                 jsr     _Refresh
                 _TSExit #0;#0
 
+
+; SetBG1Displacement(offset)
+_TSSetBG1Displacement
+:offset          equ     FirstParam+0
+
+                _TSEntry
+
+                lda     :offset,s
+                and     #$001E
+                sta     BG1OffsetIndex
+
+                _TSExit #0;#2
 ; Insert the GTE code
 
                 put     Math.s

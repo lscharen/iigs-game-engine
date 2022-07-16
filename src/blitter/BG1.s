@@ -80,7 +80,12 @@ _CopyToBG1
                           bcc   :cloop
 
                           ldy   #164
-                          lda   [:srcptr]                 ; Duplicate the last byte in the extra space at the end of the line
+                          lda   [:srcptr]                 ; Duplicate the last couple of words in the extra space at the end of the line
+                          sta   [:dstptr],y
+
+                          ldy   #2
+                          lda   [:srcptr],y
+                          ldy   #166
                           sta   [:dstptr],y
 
                           lda   :srcptr
@@ -237,10 +242,21 @@ _ApplyBG1YPos
                           asl
                           tax
 
+                          lda   RenderFlags
+                          bit   #RENDER_BG1_HORZ_OFFSET   ; Are we using horizontal displacement?
+                          beq   :no_displacement
+
+                          lda   :ytbl_idx                 ; Read from this location in the BG1YTable
+                          asl
+                          jsr   CopyBG1YTableToBG1Addr2
+                          bra   :next_step
+
+:no_displacement
                           lda   :ytbl_idx                 ; Read from this location in the BG1YTable
                           asl
                           jsr   CopyBG1YTableToBG1Addr    ; or CopyBG1YTableToBG1Addr2
 
+:next_step
                           lda   :virt_line                ; advance to the virtual line after the segment we just
                           clc                             ; filled in
                           adc   :draw_count
@@ -347,8 +363,10 @@ CopyBG1YTableToBG1Addr2
                           phy                             ; save the registers
                           phx
                           phb
+                          pha
+                          jsr   _SetDataBank              ; Set to toolbox data bank
 
-                          jsr   _SetDataBank              ; restore access to this bank
+                          pla
                           ldy   BG1OffsetIndex            ; Get the offset and save the values
                           jsr   SaveBG1OffsetValues
 
@@ -486,5 +504,3 @@ ApplyBG1OffsetValues
 :do01                     ldal  BG1YCache+00
                           sta:  BG1_ADDR+$0000,y
 :none                     rts
-
-BG1YCache                 ds    32
