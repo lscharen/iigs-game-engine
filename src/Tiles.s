@@ -109,8 +109,10 @@ InitTiles
                  beq  :fast
                  bit  #ENGINE_MODE_TWO_LAYER
                  beq  :dyn
-;                 ldal TileProcs
-;                 sta  TileStore+TS_BASE_TILE_DISP,x
+
+                 lda  #0
+                 ldy  #TwoLyrProcs
+                 jsr  _SetTileProcs
                  bra  :out
 :fast
                  lda  #0                                 ; Initialize with Tile 0
@@ -356,9 +358,9 @@ _SetTile
                  tax
 
                  lda  TileStore+TS_TILE_ID,x
-                 cmp  newTileId
-                 bne  :changed
-                 rts
+;                 cmp  newTileId                    ; Lift this up to the caller
+;                 bne  :changed
+;                 rts
 
 :changed         sta  oldTileId
                  lda  newTileId

@@ -34,10 +34,12 @@ _CopyBinToBG1
 _CopyPicToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
+:src_stride               equ   tmp8
 
                           pha
                           lda    #160
                           sta    :src_width
+                          sta    :src_stride
                           lda    #200
                           sta    :src_height
                           pla
@@ -51,6 +53,7 @@ _CopyToBG1
 :col_cnt                  equ   tmp5
 :src_width                equ   tmp6
 :src_height               equ   tmp7
+:src_stride               equ   tmp8
 
                           sta   :srcptr
                           stx   :srcptr+2
@@ -82,7 +85,7 @@ _CopyToBG1
 
                           lda   :srcptr
                           clc
-                          adc   :src_width
+                          adc   :src_stride
                           sta   :srcptr
 
                           inc   :line_cnt
@@ -90,10 +93,6 @@ _CopyToBG1
                           cmp   :src_height
                           bcc   :rloop
                           rts
-
-SetBG1XPos                ENT
-                          jsr   _SetBG1XPos
-                          rtl
 
 _SetBG1XPos
                           cmp   BG1StartX
@@ -108,11 +107,6 @@ _SetBG1XPos
 
                           stx   OldBG1StartX              ; First change, so preserve the value
 :out                      rts
-
-
-SetBG1YPos                ENT
-                          jsr   _SetBG1YPos
-                          rtl
 
 _SetBG1YPos
                           cmp   BG1StartY

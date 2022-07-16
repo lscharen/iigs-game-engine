@@ -20,6 +20,8 @@
 ; It's important to do _ApplyBG0YPos first because it calculates the value of StartY % 208 which is
 ; used in all of the other loops
 _Render
+            sta   RenderFlags
+
             lda   LastRender          ; Check to see what kind of rendering was done on the last frame. If
             beq   :no_change          ; it was not this renderer, 
             jsr   _ResetToNormalTileProcs

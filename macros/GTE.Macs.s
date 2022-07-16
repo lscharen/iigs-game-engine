@@ -135,6 +135,9 @@ ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004
 
+; Render flags
+RENDER_ALT_BG1         equ   $0001
+
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite

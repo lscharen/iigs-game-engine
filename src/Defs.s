@@ -97,7 +97,7 @@ LastKey                equ   116
 LastTick               equ   118
 ForceSpriteFlag        equ   120
 SpriteRemovedFlag      equ   122         ; Indicate if any sprites were removed this frame
-
+RenderFlags            equ   124         ; Flags passed to the Render() function
 
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
@@ -165,6 +165,9 @@ SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuf
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004
+
+; Render flags
+RENDER_ALT_BG1         equ   $0001
 
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001

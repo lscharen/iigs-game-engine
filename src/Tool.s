@@ -277,18 +277,24 @@ xPos            equ     FirstParam+2
 
                 _TSExit #0;#4
 
-; Render()
+; Render(flags)
 _TSRender
+:flags          equ     FirstParam+0
+
                 _TSEntry
-                 jsr     _Render
-                _TSExit #0;#0
+                lda     :flags,s
+                jsr     _Render
+                _TSExit #0;#2
 
 
-; RenderDirty()
+; RenderDirty(flags)
 _TSRenderDirty
+:flags          equ     FirstParam+0
+
                 _TSEntry
-                 jsr     _RenderDirty
-                _TSExit #0;#0
+                lda     :flags,s
+                jsr     _RenderDirty
+                _TSExit #0;#2
 
 ; LoadTileSet(Pointer)
 _TSLoadTileSet
@@ -432,19 +438,40 @@ _TSSetPalette
 
                 _TSExit  #0;#6
 
+; CopyPicToBG1(width, height, stride, ptr, flags)
 _TSCopyPicToBG1
-:ptr            equ    FirstParam+0
+:flags          equ    FirstParam+0
+:ptr            equ    FirstParam+2
+:stride         equ    FirstParam+6
+:height         equ    FirstParam+8
+:width          equ    FirstParam+10
 
                 _TSEntry
 
-                lda     BG1DataBank
-                tay
-                lda     :ptr+2,s
-                tax
-                lda     :ptr,s
-                jsr     _CopyPicToBG1
+; Lots of parameters for this function, so pass them on the direct page
+:src_width      equ    tmp6
+:src_height     equ    tmp7
+:src_stride     equ    tmp8
 
-                _TSExit  #0;#4
+                lda    :width,s
+                sta    :src_width
+                lda    :height,s
+                sta    :src_height
+                lda    :stride,s
+                sta    :src_stride
+
+                ldy    BG1DataBank              ; Pick the target data bank
+                lda    :flags,s
+                bit    #$0001
+                beq    *+4
+                ldy    BG1AltBank
+                
+                lda    :ptr+2,s
+                tax
+                lda    :ptr,s
+                jsr    _CopyToBG1
+
+                _TSExit  #0;#12
 
 _TSBindSCBArray
 :ptr            equ    FirstParam+0
