@@ -332,6 +332,7 @@ EvtLoop
 ;                    lda        #1
 ;                    jsl        SetBorderColor
 ;:no_vsync
+                    pea  $0000
                     _GTERender
     
 ;                    lda        vsync
