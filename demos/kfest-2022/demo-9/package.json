@@ -1,7 +1,7 @@
 {
   "name": "kfest-demo-4",
   "version": "1.0.0",
-  "description": "Two Layer scrilling with snippets and without",
+  "description": "Two Layer scrolling with BG1 scanline offsets and sprite",
   "main": "index.js",
   "config": {
     "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
