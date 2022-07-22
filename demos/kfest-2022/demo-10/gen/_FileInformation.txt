@@ -1,0 +1,1 @@
+bg1.bin=Type(06),AuxType(0000),Access(E3)
