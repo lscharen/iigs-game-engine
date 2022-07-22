@@ -120,6 +120,12 @@ _GTESetBG1Displacement MAC
 _GTESetBG1Rotation   MAC
                      UserTool  $2900+GTEToolNum
                      <<<
+_GTEClearBG1Buffer   MAC
+                     UserTool  $2A00+GTEToolNum
+                     <<<
+_GTESetBG1Scale      MAC
+                     UserTool  $2B00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -145,6 +151,7 @@ ENGINE_MODE_BNK0_BUFF  equ   $0004
 RENDER_ALT_BG1         equ   $0001
 RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
+RENDER_BG1_ROTATION    equ   $0008
 
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000

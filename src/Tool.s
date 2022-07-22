@@ -93,6 +93,9 @@ _CallTable
                 adrl  _TSRenderDirty-1
                 adrl  _TSSetBG1Displacement-1
                 adrl  _TSSetBG1Rotation-1
+
+                adrl  _TSClearBG1Buffer-1
+                adrl  _TSSetBG1Scale-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -773,6 +776,20 @@ y_angles        EXT
                 tay
                 jsr     _ApplyBG1YPosAngle
 
+                _TSExit #0;#2
+
+_TSClearBG1Buffer
+:value       equ     FirstParam+0
+                _TSEntry
+                lda     :value,s
+                jsr     _ClearBG1Buffer
+                _TSExit #0;#2
+
+_TSSetBG1Scale
+:sIndex         equ     FirstParam+0
+                _TSEntry
+                lda     :value,s
+                sta     BG1Scaling
                 _TSExit #0;#2
 
 ; Insert the GTE code

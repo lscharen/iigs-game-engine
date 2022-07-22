@@ -98,7 +98,7 @@ LastTick               equ   118
 ForceSpriteFlag        equ   120
 SpriteRemovedFlag      equ   122         ; Indicate if any sprites were removed this frame
 RenderFlags            equ   124         ; Flags passed to the Render() function
-
+BG1Scaling             equ   126
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 ; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
@@ -170,6 +170,7 @@ ENGINE_MODE_BNK0_BUFF  equ   $0004
 RENDER_ALT_BG1         equ   $0001
 RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
+RENDER_BG1_ROTATION    equ   $0008
 
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
@@ -263,6 +264,7 @@ VBuffVertTableSelect EXT
 VBuffHorzTableSelect EXT
 Overlays          EXT
 BG1YCache         EXT
+ScalingTables     EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

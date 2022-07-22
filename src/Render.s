@@ -33,10 +33,16 @@ _Render
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
-;            jsr   _ApplyBG1YPos
+
+            lda   #RENDER_BG1_ROTATION
+            bit   RenderFlags
+            bne   :skip_bg1_y
+            jsr   _ApplyBG1YPos       ; Set the y-register values of the blitter
+:skip_bg1_y
 
 ; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
 ; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
+
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
@@ -47,8 +53,12 @@ _Render
 
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
-            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
-;            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode            
+            lda   #RENDER_BG1_ROTATION
+            bit   RenderFlags
+            bne   :skip_bg1_x
+            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+:skip_bg1_x
 
 ; The code fields are locked in now and ready to be rendered. See if there is an overlay or any
 ; other reason to render with shadowing off.  Otherwise, just do things quickly.

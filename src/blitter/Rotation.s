@@ -11,20 +11,29 @@
 
 ANGLEBNK                   EXT
 _ApplyBG1XPosAngle
+:ptr  equ $FC
+:stbl equ $FA
                           phd                             ; save the direct page because we are going to switch to the
-                          lda   BlitterDP                 ; blitter direct page space and fill in the addresses
-                          tcd
+                          pei   BlitterDP                 ; blitter direct page space and fill in the addresses
+                          lda   BG1Scaling
+                          pld
+
+                          and   #$000F
+                          asl
+                          tax
+                          lda   ScalingTables,x
+                          sta   :stbl
 
                           lda   #^ANGLEBNK
-                          sta   $fe
-                          sty   $fc                       ; Store in the new direct page
-                          ldy   #162
-                          tyx
+                          sta   :ptr+2
+                          sty   :ptr                       ; Store in the new direct page
+                          ldx   #162
 :loop
-                          lda   [$fc],y
-                          sta   00,x                      ; store the value
-                          dey
-                          dey
+                          txy
+                          lda   (:stbl),y                  ; Map the through the scaling factor
+                          tay
+                          lda   [:ptr],y                   ; Load the underlying value
+                          sta   00,x                       ; store the value
                           dex
                           dex
                           bpl   :loop
@@ -37,8 +46,16 @@ _ApplyBG1YPosAngle
 :draw_count               equ   tmp2
 :ytbl_idx                 equ   tmp3
 :angle_tbl                equ   tmp4
+:scale_ptr                equ   tmp5
 
                           sty   :angle_tbl
+
+                          lda   BG1Scaling                ; Set the scaling table
+                          and   #$0007
+                          asl
+                          tax
+                          lda   ScalingTables,x
+                          sta   :scale_ptr
 
                           lda   BG1StartYMod208
                           sta   :ytbl_idx                 ; Start copying from the first entry in the table
@@ -48,6 +65,10 @@ _ApplyBG1YPosAngle
 
                           lda   ScreenHeight
                           sta   :lines_left
+
+; Copy out the y-values from the rotation table into a temporary buffer
+
+; Copy the rotation values into the code fields
 
                           phb
 :loop
@@ -111,13 +132,23 @@ _ApplyBG1YPosAngle
 ; Y = starting line * $1000
 ; X = number of lines (x2)
 CopyAngleYTableToBG1Addr
-
+:ptr  equ $FC
+:stbl equ $FA
 ; tax
 ; ldal ANGLEBNK+XX,x
 ; sta  BG1_ADDR+$F000,y
+                          phy                             ; save y; used when writing
                           phx
+
+; Scale the mapping
+                          tay
+                          
+                          
+
+
                           jsr   SaveBG1AngleValues
                           plx                             ; x is used directly in this routine
+                          ply
                           jmp   ApplyBG1OffsetValues
 
 SaveBG1AngleValues

@@ -50,6 +50,7 @@ LastHFlip       equ   48
 SpriteFrame     equ   50
 SpriteToggle    equ   52
 SpriteCount     equ   54
+Scale           equ   56
 
                 phk
                 plb
@@ -72,6 +73,7 @@ SpriteCount     equ   54
                 stz   LastHFlip
                 stz   SpriteCount
                 stz   SpriteToggle
+                stz   Scale
 
 ; Initialize the graphics screen playfield
 
@@ -205,6 +207,17 @@ EvtLoop
                 jsr   handle_a
                 pla
 :no_a
+                bit   #PAD_KEY_DOWN
+                beq   :reg_key
+                and   #$007F
+                cmp   #'s'
+                bne   :reg_key
+                inc   Scale
+                pei   Scale
+                _GTESetBG1Scale
+                jmp   do_render
+
+:reg_key
                 and   #$007F
                 cmp   #LEFT_ARROW
                 bne   *+5
