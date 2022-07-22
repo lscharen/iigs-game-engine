@@ -94,6 +94,7 @@ appTmp2         equ   32
                 pea   $0000                   ; default flags
                 _GTECopyPicToBG1
 
+                lda   #193                    ; Tile ID of '0'
                 jsr   InitOverlay             ; Initialize the status bar
                 pha
                 _GTEGetSeconds

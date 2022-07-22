@@ -13,26 +13,30 @@
 STATE_REG       equ   $E0C068
 
 _R0W0           mac                   ; Read Bank 0 / Write Bank 0
+                sep   #$20
                 ldal  STATE_REG
-                and   #$FFCF
+                and   #$CF
                 stal  STATE_REG
+                rep   #$20
                 <<<
 
 _R0W1           mac                   ; Read Bank 0 / Write Bank 1
+                sep   #$20
                 ldal  STATE_REG
-                ora   #$0010
+                ora   #$10
                 stal  STATE_REG
+                rep   #$20
                 <<<
 
-_R1W1           mac                   ; Read Bank 0 / Write Bank 1
+_R1W1           mac                   ; Read Bank 1 / Write Bank 1
+                sep   #$20
                 ldal  STATE_REG
-                ora   #$0030
+                ora   #$30
                 stal  STATE_REG
+                rep   #$20
                 <<<
 
 ; Initialize the overlay be drawing in static content that will not change over time
-
-CHAR_TILE_BASE equ 193     ; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
 
 ; Define the sizes of the left and right overlay buffers
 R_CHAR_COUNT equ   8       ; "TICK:XXX"
@@ -55,8 +59,11 @@ MASK_OFFSET equ   {ovrly_mask-ovrly_buff}
 TileDataPtr equ   $FC
 TileMaskPtr equ   $F8
 
-InitOverlay
+; set this to the real tile id that starts an ASCII run starting at '0' through 'Z'
+CHAR_TILE_BASE equ $F6
 
+InitOverlay
+             sta    CHAR_TILE_BASE
              pha
              pha
              _GTEGetTileDataAddr
@@ -306,7 +313,7 @@ _DrawChar
             sec
             sbc             #'0'
             clc
-            adc             #CHAR_TILE_BASE
+            adc             CHAR_TILE_BASE
             jsr             _GetTileAddr
             tay
 

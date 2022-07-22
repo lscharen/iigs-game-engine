@@ -96,4 +96,99 @@ HandleKeys
 :unhandled  pla
             sec
             rts
-            
+
+_Deref      MAC
+            phb                   ; save caller's data bank register
+            pha                   ; push high word of handle on stack
+            plb                   ; sets B to the bank byte of the pointer
+            lda   |$0002,x        ; load the high word of the master pointer
+            pha                   ; and save it on the stack
+            lda   |$0000,x        ; load the low word of the master pointer
+            tax                   ; and return it in X
+            pla                   ; restore the high word in A
+            plb                   ; pull the handle's high word high byte off the
+                                    ; stack
+            plb                   ; restore the caller's data bank register    
+            <<<
+
+AllocBank   PushLong  #0
+            PushLong  #$10000
+            PushWord  MyUserId
+            PushWord  #%11000000_00011100
+            PushLong  #0
+            _NewHandle
+            plx                                   ; base address of the new handle
+            pla                                   ; high address 00XX of the new handle (bank)
+            _Deref
+            rts
+
+; Shared I/O
+; Basic I/O function to load files
+LoadFile
+            stx        openRec+4               ; X=File, A=Bank (high word) assumed zero for low
+            stz        readRec+4
+            sta        readRec+6
+            phb
+            phb
+            pla
+            and        #$00FF
+            sta        openRec+6
+
+:openFile   _OpenGS    openRec
+            bcs        :openReadErr
+            lda        openRec+2
+            sta        eofRec+2
+            sta        readRec+2
+
+            _GetEOFGS  eofRec
+            lda        eofRec+4
+            sta        readRec+8
+            lda        eofRec+6
+            sta        readRec+10
+
+            _ReadGS    readRec
+            bcs        :openReadErr
+
+:closeFile  _CloseGS   closeRec
+            clc
+            lda        eofRec+4                ; File Size
+            rts
+
+:openReadErr jsr        :closeFile
+            nop
+            nop
+
+            PushWord   #0
+            PushLong   #msgLine1
+            PushLong   #msgLine2
+            PushLong   #msgLine3
+            PushLong   #msgLine4
+            _TLTextMountVolume
+            pla
+            cmp        #1
+            bne        :loadFileErr
+            brl        :openFile
+:loadFileErr sec
+            rts
+
+msgLine1   str        'Unable to load File'
+msgLine2   str        'Press a key :'
+msgLine3   str        ' -> Return to Try Again'
+msgLine4   str        ' -> Esc to Quit'
+
+openRec     dw         2                       ; pCount
+            ds         2                       ; refNum
+            ds         4                       ; pathname
+
+eofRec      dw         2                       ; pCount
+            ds         2                       ; refNum
+            ds         4                       ; eof
+
+readRec     dw         4                       ; pCount
+            ds         2                       ; refNum
+            ds         4                       ; dataBuffer
+            ds         4                       ; requestCount
+            ds         4                       ; transferCount
+
+closeRec    dw         1                       ; pCount
+            ds         2                       ; refNum

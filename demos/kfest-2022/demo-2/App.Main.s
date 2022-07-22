@@ -79,6 +79,7 @@ appTmp0         equ   28
                 jsr   TileAnimInit
                 jsr   SetLimits
 
+                lda   #193                    ; Tile ID of '0'
                 jsr   InitOverlay             ; Initialize the status bar
                 pha
                 _GTEGetSeconds
@@ -148,6 +149,7 @@ EvtLoop
 :not_w
 
 :do_render
+                pea  $0000
                 _GTERender
 
 ; Update the performance counters

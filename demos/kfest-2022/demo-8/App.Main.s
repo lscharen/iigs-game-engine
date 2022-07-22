@@ -107,6 +107,7 @@ appTmp2         equ   32
                 pea   $0001                   ; Copy to alternate BG1 buffer
                 _GTECopyPicToBG1
 
+                lda   #193                    ; Tile ID of '0'
                 jsr   InitOverlay             ; Initialize the status bar
                 pha
                 _GTEGetSeconds

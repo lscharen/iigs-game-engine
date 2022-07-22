@@ -39,6 +39,17 @@ OldOneSecondCounter equ 26
 appTmp0         equ   28
 appTmp1         equ   30
 appTmp2         equ   32
+PlayerX         equ   34
+PlayerY         equ   36
+PlayerXVel      equ   38
+PlayerYVel      equ   40
+PlayerStanding  equ   42
+PlayerGlobalX   equ   44
+PlayerGlobalY   equ   46
+LastHFlip       equ   48
+SpriteFrame     equ   50
+SpriteToggle    equ   52
+SpriteCount     equ   54
 
                 phk
                 plb
@@ -58,6 +69,9 @@ appTmp2         equ   32
                 stz   StartY
                 stz   frameCount
                 stz   bg1offset
+                stz   LastHFlip
+                stz   SpriteCount
+                stz   SpriteToggle
 
 ; Initialize the graphics screen playfield
 
@@ -111,6 +125,74 @@ appTmp2         equ   32
                 _GTEAddTimer
                 pla
 
+; Initialize the sprite's global position (this is tracked outside of the tile engine)
+
+                lda   #16
+                sta   PlayerGlobalX
+                sta   PlayerX
+                lda   MaxGlobalY
+                sec
+                sbc   #64                     ; 32 for tiles, 16 for sprite
+                sta   PlayerGlobalY
+                sta   PlayerY
+
+                stz   PlayerXVel
+                stz   PlayerYVel
+
+; Create the sprites
+
+HERO_FRAME_1    equ   {SPRITE_16X16+1}
+HERO_VBUFF_1    equ   VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
+HERO_FRAME_2    equ   {SPRITE_16X16+7}
+HERO_VBUFF_2    equ   VBUFF_SPRITE_START+1*VBUFF_SPRITE_STEP
+HERO_FRAME_3    equ   {SPRITE_16X8+65}
+HERO_VBUFF_3    equ   VBUFF_SPRITE_START+2*VBUFF_SPRITE_STEP
+HERO_FRAME_4    equ   {SPRITE_16X8+71}
+HERO_VBUFF_4    equ   VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
+HERO_SLOT_1     equ   1
+HERO_SLOT_2     equ   2
+
+                pea   HERO_FRAME_1
+                pea   HERO_VBUFF_1
+                _GTECreateSpriteStamp
+
+                pea   HERO_FRAME_2
+                pea   HERO_VBUFF_2
+                _GTECreateSpriteStamp
+
+                pea   HERO_FRAME_3
+                pea   HERO_VBUFF_3
+                _GTECreateSpriteStamp
+
+                pea   HERO_FRAME_4
+                pea   HERO_VBUFF_4
+                _GTECreateSpriteStamp
+
+                pea   HERO_FRAME_1
+                pei   PlayerX
+                pei   PlayerY
+                pea   HERO_SLOT_1                   ; Put the player in slot 1
+                _GTEAddSprite
+
+                pea   HERO_SLOT_1
+                pea   $0000
+                pea   HERO_VBUFF_1                 ; and use this stamp
+                _GTEUpdateSprite
+
+                pea   HERO_FRAME_2
+                pei   PlayerX
+                lda   PlayerY
+                clc
+                adc   #16
+                pha
+                pea   HERO_SLOT_2                   ; Put the player in slot 1
+                _GTEAddSprite
+
+                pea   HERO_SLOT_2
+                pea   $0000
+                pea   HERO_VBUFF_3                 ; and use this stamp
+                _GTEUpdateSprite
+
 EvtLoop
                 pha
                 _GTEReadControl
@@ -118,58 +200,96 @@ EvtLoop
 
                 jsr   HandleKeys                   ; Do the generic key handlers
                 bcs   :do_more
-                brl   :do_render
+                brl   do_render
 
 :do_more
+                bit   #PAD_BUTTON_A
+                beq   :no_a
+                pha
+                jsr   handle_a
+                pla
+:no_a
+                and   #$007F
+                cmp   #LEFT_ARROW
+                bne   *+5
+                jmp   handle_left
+
+                cmp   #RIGHT_ARROW
+                bne   *+5
+                jmp   handle_right
+
+                cmp   #' '
+                bne   :not_stop
+                stz   PlayerXVel
+                bra   do_render
+
+:not_stop
                 cmp        #'d'
                 bne        :not_d
                 lda        StartX
                 cmp        MaxBG0X
                 bcc        *+5
-                brl        :do_render
+                brl        do_render
                 inc        StartX
                 pei        StartX
                 pei        StartY
                 _GTESetBG0Origin
-                brl        :do_render
+                brl        do_render
 :not_d
 
                 cmp        #'a'
                 bne        :not_a
                 lda        StartX
                 bne        *+5
-                brl        :do_render
+                brl        do_render
                 dec        StartX
                 pei        StartX
                 pei        StartY
                 _GTESetBG0Origin
-                brl        :do_render
+                brl        do_render
 :not_a
 
                 cmp        #'s'
                 bne        :not_s
                 lda        StartY
                 cmp        MaxBG0Y
-                bcs        :do_render
+                bcs        do_render
                 inc        StartY
                 pei        StartX
                 pei        StartY
                 _GTESetBG0Origin
-                bra        :do_render
+                bra        do_render
 :not_s
 
                 cmp        #'w'
                 bne        :not_w
                 lda        StartY
-                beq        :do_render
+                beq        do_render
                 dec        StartY
                 pei        StartX
                 pei        StartY
                 _GTESetBG0Origin
-                bra   :do_render
+                bra   do_render
 :not_w
 
-:do_render
+do_render
+                jsr   UpdatePlayerPos        ; Apply forces
+                jsr   ApplyCollisions        ; Check if we run into things
+                jsr   UpdateCameraPos        ; Moves the screen
+
+                pea   HERO_SLOT_1
+                pei   PlayerX
+                pei   PlayerY
+                _GTEMoveSprite                    ; Move the sprite to this local position
+
+                pea   HERO_SLOT_2
+                pei   PlayerX
+                lda   PlayerY
+                clc
+                adc   #16
+                pha
+                _GTEMoveSprite
+
                 lda    StartX
                 lsr
                 pha
@@ -194,6 +314,197 @@ EvtLoop
                 stz   frameCount
 :noudt
                 brl   EvtLoop
+
+
+handle_a
+                lda   PlayerStanding
+                beq   :no_jump
+                lda   #-9
+                sta   PlayerYVel
+:no_jump        rts
+
+handle_left
+                lda   PlayerXVel
+                bpl   :ok
+                cmp   #-4
+                bcc   :out
+:ok
+                dec   PlayerXVel
+:out
+                jmp   do_render
+
+handle_right    lda   PlayerXVel
+                bmi   :ok
+                cmp   #6
+                bcs   :out
+:ok
+                inc   PlayerXVel
+:out
+                jmp   do_render
+
+
+; Simple updates with gravity and collisions.  It's important that eveything in this
+; subroutine be done against the VBL tick count
+UpdatePlayerPos
+            lda  PlayerGlobalY
+            clc
+            adc  PlayerYVel
+            bpl  :not_neg_y
+            lda  #0
+
+:not_neg_y
+            cmp  MaxGlobalY
+            bcc  *+4
+            lda  MaxGlobalY
+            sta  PlayerGlobalY
+
+            lda  PlayerGlobalX
+            clc
+            adc  PlayerXVel
+            bpl  :not_neg
+            lda  #0
+
+:not_neg
+            cmp  MaxGlobalX
+            bcc  *+4
+            lda  MaxGlobalX
+            sta  PlayerGlobalX
+            rts
+
+ApplyCollisions
+
+; Convert global to local coordinates
+
+            lda  PlayerGlobalX
+            sec
+            sbc  StartX
+            sta  PlayerX
+
+            lda  PlayerGlobalY
+            sec
+            sbc  StartY
+            sta  PlayerY
+
+; Collision testing
+
+            inc  PlayerYVel
+            stz  PlayerStanding
+
+; Check if the player is standing on the ground at their current local position
+
+            pha                         ; space for result
+            pei  PlayerX
+            lda  PlayerY
+            clc
+            adc  #24
+            pha
+            _GTEGetTileAt
+            pla
+
+; Decide if mario's feet are on a "ground" tile (blocks, pipes, etc.)
+            and  #TILE_ID_MASK
+            cmp  #64
+            bcc  :not_ground
+
+            lda  PlayerYVel
+            bmi  :not_ground
+
+            lda  PlayerGlobalY
+            and  #$fff8
+            sta  PlayerGlobalY
+            stz  PlayerYVel                     ; Stop falling when we hit the ground
+            lda  #1
+            sta  PlayerStanding
+            bra  :y_ok
+
+:not_ground
+            lda  PlayerYVel
+            bmi  :y_ok
+            cmp  #8
+            bcc  :y_ok
+            lda  #7
+            sta  PlayerYVel
+:y_ok
+
+            ldx  LastHFlip                     ; Update sprite frame based on actions
+            lda  PlayerXVel
+            beq  :no_dxv
+            bpl  :pos_dxv
+            ldx  #SPRITE_HFLIP
+            bra  :no_dxv
+:pos_dxv
+            ldx  #0
+:no_dxv
+            sta  PlayerXVel
+            stx  LastHFlip
+
+            lda  SpriteCount
+            eor  SpriteToggle
+            sta  SpriteCount
+
+; If the player is standing and XVel != 0, pick a frame
+
+            ldx  #2
+            lda  PlayerXVel
+            beq  :frame
+
+            jsr  _GetVBLTicks
+            and  #$0006
+            tax
+:frame
+            pea   HERO_SLOT_1
+            pei   LastHFlip
+            lda   HeroFrames1,x
+            pha
+
+            pea   HERO_SLOT_2
+            pei   LastHFlip
+            lda   HeroFrames2,x
+            pha
+
+            _GTEUpdateSprite
+            _GTEUpdateSprite
+            
+            rts
+
+HeroFrames1  dw    HERO_VBUFF_2,HERO_VBUFF_1,HERO_VBUFF_2,HERO_VBUFF_1
+HeroFrames2  dw    HERO_VBUFF_4,HERO_VBUFF_3,HERO_VBUFF_4,HERO_VBUFF_3
+
+; Set the scroll position based on the global coordinates of the player
+; Try to center the player on the screen
+
+UpdateCameraPos
+            lda        ScreenWidth
+            lsr
+            sta        appTmp0
+            lda        PlayerGlobalX
+            sec
+            sbc        appTmp0
+            bpl        :x_pos
+            lda        #0
+:x_pos      cmp        MaxBG0X
+            bcc        :x_ok
+            lda        MaxBG0X
+:x_ok       sta        StartX
+
+            lda        ScreenHeight
+            lsr
+            sta        appTmp0
+            lda        PlayerGlobalY
+            sec
+            sbc        appTmp0
+            bpl        :y_pos
+            lda        #0
+:y_pos      cmp        MaxBG0Y
+            bcc        :y_ok
+            lda        MaxBG0Y
+:y_ok       sta        StartY
+
+            pei        StartX
+            pei        StartY
+            _GTESetBG0Origin
+
+            rts
 
 ; Timer callback to animate the background
 UpdateBG1Offset
@@ -296,6 +607,13 @@ DoLoadBG1
                 pea   $0008                     ; skip header
                 _GTECopyPicToBG1
                 rts
+
+_GetVBLTicks
+            PushLong  #0
+            _GetTick
+            pla
+            plx
+            rts
 
 BG1DataFile     strl  '1/bg1.bin'
 
