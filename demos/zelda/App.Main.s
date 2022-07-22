@@ -26,6 +26,7 @@ DOWN_ARROW          equ        $0A
 
 StartX          equ        4
 StartY          equ        6
+tmp0            equ        8
 
 TSet EXT
 ; Typical init
@@ -114,28 +115,51 @@ OKTOROK_SLOT_4      equ        4
                 pea   HERO_DOWN_VBUFF             ; and use this stamp
                 _GTEUpdateSprite
 
-; Add 4 octoroks 
-                pea   OKTOROK_ID
-                lda   OktorokX
-                pha
-                lda   OktorokY
-                pha
-                pea   OKTOROK_SLOT_1
-                _GTEAddSprite
+; Add 4 octoroks
+                ldx   #0
+:oktorok_loop
+                phx                               ; save the index
 
-                pea   OKTOROK_SLOT_1
+                txa                               ; calculate the SLOT ID
+                lsr
+                inc
+                tay
+
+; _GTEUpdateSprite parameters
+
+                phy
                 pea   $0000                       ; with these flags (h/v flip)
                 pea   OKTOROK_VBUFF               ; and use this stamp
+
+; _GTEAddSprite parameters
+
+                pea   OKTOROK_ID
+                lda   OktorokX,x
+                pha
+                lda   OktorokY,x
+                pha
+                phy
+               
+                _GTEAddSprite
                 _GTEUpdateSprite
+
+                plx
+                dex
+                dex
+                bpl   :oktorok_loop
 
 ; Draw the initial screen
 
+                pea   $0000
                 _GTERender
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
 ; the play field tiles.
 EvtLoop
+                lda   #2
+                jsr   _SetBorderColor
+
                 pha
                 _GTEReadControl
                 pla
@@ -180,45 +204,48 @@ EvtLoop
                 pea   HERO_SIDE_VBUFF                   ; and use this stamp
                 _GTEUpdateSprite
 
-                    bra        :do_render
+                bra        :do_render
 :not_d
 
-                    cmp        #'a'
-                    bne        :not_a
-                    dec        PlayerX
-                    bpl        *+5
-                    jsr        TransitionLeft
+                cmp        #'a'
+                bne        :not_a
+                dec        PlayerX
+                bpl        *+5
+                jsr        TransitionLeft
 
                 pea   HERO_SLOT
                 pea   SPRITE_HFLIP
                 pea   HERO_SIDE_VBUFF
                 _GTEUpdateSprite
                     
-                    bra        :do_render
+                bra        :do_render
 :not_a
 
-                    cmp        #'s'
-                    bne        :not_s
-                    inc        PlayerY
+                cmp        #'s'
+                bne        :not_s
+                inc        PlayerY
 
                 pea   HERO_SLOT
                 pea   $0000
                 pea   HERO_DOWN_VBUFF
                 _GTEUpdateSprite
-                    bra        :do_render
+                bra        :do_render
 :not_s
 
-                    cmp        #'w'
-                    bne        :not_w
-                    dec        PlayerY
+                cmp        #'w'
+                bne        :not_w
+                dec        PlayerY
                 pea   HERO_SLOT
                 pea   $0000
                 pea   HERO_UP_VBUFF
                 _GTEUpdateSprite
-                    bra        :do_render
+                bra        :do_render
 :not_w
 
 :do_render
+                lda   #3
+                jsr   _SetBorderColor
+
                 pea        HERO_SLOT
                 lda        PlayerX
                 pha
@@ -228,49 +255,62 @@ EvtLoop
 
 ; Based on the frame count, move an oktorok
 
-;                jsr        _GetVBLTicks
-;                pha
-;                and        #$0003
-;                asl
-;                tax
+                jsr        _GetVBLTicks
+                pha
 
-;                    pla
-;                    and        #$007C
-;                    lsr
-;                    tay
+;                pha                               ; save the vbl value for a second
+;                and        #$0003                 ; pick which oktorok to move
+                lda   #4
+                jsr   _SetBorderColor
 
-;                    lda        OktorokX,x
-;                    clc
-;                    adc        OktorokDelta,y
+                plx
+                phx
+                lda        #0
+                jsr        MoveEnemy
 
-;                    phx
+                plx
+                phx
+                lda        #1
+;                jsr        MoveEnemy
 
-;                    ldy        OktorokY,x
-;                    tax
-;                    pla
-;                    inc
-;                    inc
-;                    jsl        MoveSprite
+                plx
+                phx
+                lda        #2
+;                jsr        MoveEnemy
+
+                plx
+                lda        #3
+;                jsr        MoveEnemy
 
 
 ; Let's see what it looks like!
 
-                    lda        vsync
-                    beq        :no_vsync
-:vsyncloop          jsr        _GetVBL     ; 8-bit value
-                    cmp        #12
-                    bcc        :vsyncloop
-                    cmp        #16
-                    bcs        :vsyncloop             ; Wait until we're within the top 4 scanlines
-                    lda        #1
-                    jsr        _SetBorderColor
-:no_vsync
-                    _GTERenderDirty
+;                    lda        vsync
+;                    beq        :no_vsync
 
-                    lda        vsync
-                    beq        :no_vsync2
-                    lda        #0
-                    jsr        _SetBorderColor
+;:vsyncloop          jsr        _GetVBL     ; 8-bit value
+;                    cmp        #12
+;                    bcc        :vsyncloop
+;                    cmp        #16
+;                    bcs        :vsyncloop             ; Wait until we're within the top 4 scanlines
+
+               lda   #0
+               jsr   _SetBorderColor
+
+               ldx        #8
+               jsr        _WaitForScanline
+
+               lda        #1
+               jsr        _SetBorderColor
+:no_vsync
+               pea    $0000
+               _GTERenderDirty
+;                    brk  $03
+
+;                    lda        vsync
+;                    beq        :no_vsync2
+;                    lda        #0
+;                    jsr        _SetBorderColor
 
 :no_vsync2
                     brl        EvtLoop
@@ -293,6 +333,8 @@ TransitionRight
                     clc
                     adc        #128
                     sta        TransitionX
+
+                    jsr        HideEnemies
 
 :loop               lda        StartX
                     cmp        TransitionX
@@ -317,11 +359,11 @@ TransitionRight
                     pha
                     _GTEMoveSprite
 :nosprite
-
+                    pea   $0000
                     _GTERender                      ; Do full renders since the playfield is scrolling
                     bra        :loop
 :out
-
+                    jsr        ShowEnemies
                     inc        MapScreenX           ; Move the index to the next screen
 :done
                     rts
@@ -331,6 +373,8 @@ TransitionLeft
                     lda        MapScreenX
                     cmp        #0
                     beq        :done
+
+                    jsr        HideEnemies
 
                     lda        StartX               ; Scroll 128 bytes to the left
                     sec
@@ -361,13 +405,80 @@ TransitionLeft
                     pha
                     _GTEMoveSprite
 :nosprite
-
+                    pea   $0000
                     _GTERender
                     bra        :loop
 :out
+                    jsr        ShowEnemies
                     dec        MapScreenX           ; Move the index to the next screen
 :done
                     rts 
+
+; Move an oktorok. A = 0 - 3, X = animation frame
+MoveEnemy
+                phx
+
+                tay
+                iny                               ; Oktoroks are in slots 1 - 4
+
+                asl
+                tax                               ; Update this oktorok
+
+                pla                               ; Pop the VBL value
+                and        #$007C
+                lsr
+
+                phy                               ; push the SLOT ID
+                tay
+
+                lda        OktorokX,x
+                clc
+                adc        OktorokDelta,y
+                pha                               ; Push the X position
+
+                lda        OktorokY,x
+                pha
+                _GTEMoveSprite
+                rts
+
+; Set the hidden flag on the enemy sprites during the screen transition
+HideEnemies
+                ldx        #6
+:loop
+                phx
+
+                txa
+                lsr
+                inc
+                pha
+                pea   SPRITE_HIDE
+                pea   OKTOROK_VBUFF
+                _GTEUpdateSprite
+
+                plx
+                dex
+                dex
+                bpl   :loop
+                rts
+
+ShowEnemies
+                ldx        #6
+:loop
+                phx
+
+                txa
+                lsr
+                inc
+                pha
+                pea   $0000
+                pea   OKTOROK_VBUFF
+                _GTEUpdateSprite
+
+                plx
+                dex
+                dex
+                bpl   :loop
+                rts
 
 ToolPath        str   '1/Tool160'
 MyUserId            ds         2
@@ -382,7 +493,7 @@ PlayerX             ds         2
 PlayerY             ds         2
 
 OktorokX            dw         32,32,96,96
-OktorokY            dw         48,96,56,72
+OktorokY            dw         64,96,56,72
 OktorokDelta        dw         0,1,2,3,4,5,6,7,6,5,4,3,2,1,0,-1,-2,-3,-4,-5,-6,-7,-8,-7,-6,-5,-4,-3,-2,-1,0,0,0
 TransitionX         ds         2
 TransitionY         ds         2
@@ -457,6 +568,24 @@ GTEStartUp
 BORDER_REG             equ   $E0C034     ; 0-3 = border, 4-7 Text color
 VBL_VERT_REG           equ   $E0C02E
 VBL_HORZ_REG           equ   $E0C02F
+VBL_STATE_REG          equ   $E0C019
+
+_WaitForVBL
+                 sep   #$20
+:wait1           ldal  VBL_STATE_REG        ; If we are already in VBL, then wait
+                 bmi   :wait1
+:wait2           ldal  VBL_STATE_REG
+                 bpl   :wait2               ; spin until transition into VBL
+                 rep   #$20
+                 rts
+
+_WaitForScanline
+                 jsr  _GetVBL
+                 and  #$FFFE
+                 sta  tmp0
+                 cpx  tmp0
+                 bne  _WaitForScanline
+                 rts
 
 _GetVBL
                  sep   #$20

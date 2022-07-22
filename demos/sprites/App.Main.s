@@ -74,6 +74,7 @@ ScreenHeight    equ        14
                 jsr        TileAnimInit
                 jsr        SetLimits
 
+                lda        #193                    ; Tile ID of '0'
                 jsr        InitOverlay             ; Initialize the status bar
                 stz        frameCount
                 pha
@@ -317,9 +318,6 @@ EvtLoop
                 pha
                 _GTEMoveSprite                    ; Move the sprite to this local position
 
-; Update the timers
-;                jsl        DoTimers
-
 ; Let's see what it looks like!
 
 ;                    lda        vsync
@@ -342,6 +340,12 @@ EvtLoop
 ;                    jsl        SetBorderColor
 ;:no_vsync2
 
+                    lda        runningCount
+                    inc
+                    sta        runningCount
+                    pha
+                    _GTESetBG1Rotation
+
 ; Update the performance counters
 
                     inc        frameCount
@@ -353,6 +357,7 @@ EvtLoop
                     sta        oldOneSecondCounter
                     jsr        UdtOverlay
                     stz        frameCount
+
 :noudt
                     brl        EvtLoop
 
@@ -401,6 +406,7 @@ MaxBG0Y             ds         2
 
 oldOneSecondCounter  ds    2
 frameCount           ds    2
+runningCount         dw    0 
 MyUserId             ds    2
 MyDirectPage         ds    2
 

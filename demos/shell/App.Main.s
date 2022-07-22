@@ -43,6 +43,7 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                 _GTESetPalette
 
                 pea   $0000
+                pea   $0000
                 _GTESetScreenMode
 
 ; Set up our level data
@@ -56,6 +57,8 @@ NO_MUSIC            equ        1                       ; turn music + tool loadi
                 sta        BankLoad                ; Store "Bank Pointer"
 
                 jsr        MovePlayerToOrigin      ; Put the player at the beginning of the map
+
+                lda        #193                    ; Tile ID of '0'
                 jsr        InitOverlay             ; Initialize the status bar
 
 EvtLoop
