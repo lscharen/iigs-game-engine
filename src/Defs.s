@@ -208,10 +208,10 @@ TILE_CTRL_MASK         equ   $FE00
 
 ; Sprite constants
 SPRITE_HIDE            equ   $2000
-SPRITE_16X16           equ   $1800
-SPRITE_16X8            equ   $1000
-SPRITE_8X16            equ   $0800
-SPRITE_8X8             equ   $0000
+SPRITE_16X16           equ   $1800                    ; 16 pixels wide x 16 pixels tall
+SPRITE_16X8            equ   $1000                    ; 16 pixels wide x 8 pixels tall
+SPRITE_8X16            equ   $0800                    ; 8 pixels wide x 16 pixels tall
+SPRITE_8X8             equ   $0000                    ; 8 pixels wide x 8 pixels tall
 SPRITE_VFLIP           equ   $0400
 SPRITE_HFLIP           equ   $0200
 
