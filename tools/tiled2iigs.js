@@ -9,6 +9,17 @@ const StringBuilder = require('string-builder');
 const parser = require('xml2json');
 const png2iigs = require('./png2iigs');
 
+// Global constants
+const GTE_PRIORITY_BIT  = 0x4000;
+const GTE_MASK_BIT  = 0x1000;
+const GTE_DYN_BIT = 0x0800;
+const GTE_VFLIP_BIT = 0x0400;
+const GTE_HFLIP_BIT = 0x0200;
+
+const TILED_VFLIP_BIT = 0x40000000;
+const TILED_HFLIP_BIT = 0x80000000;
+const TILED_DFLIP_BIT = 0x20000000;
+
 main(process.argv.slice(2)).then(
     () => process.exit(0), 
     (e) => {
@@ -272,6 +283,12 @@ async function main(argv) {
     // Sort the tile layers by ID.  The lower ID is considered to be the "front" layer
     tileLayers.sort((first, second) => first.id - second.id);
 
+    // Look for an object layer where miscellaneous flags are stored
+    const objectLayers = doc.layers.filter(l => l.type === 'objectgroup');
+    if (objectLayers.length > 1) {
+        throw new Error('Only one object layer is supported');
+    }
+
     // Load up any/all tilesets
     const tileSets = await Promise.all(doc.tilesets.map(tileset => loadTileset(workdir, tileset)));
 
@@ -329,12 +346,21 @@ async function main(argv) {
         bg0TileSet = tiles;
     }
 
-    // Ok, looks good.  Write out the source code for the layers
-    console.log('Generating data for front layer (BG0): ' + tileLayers[0].name);
-    const header = emitHeader();
-    const bg0 = emitBG0Layer(tileLayers[0], bg0TileSet);
+    // Convert the Tiled data to a plain 2D array
+    const bg0layer = tileLayers[0];
+    const bg0data = buildLayerData(bg0layer, bg0TileSet);
 
-    const bg0OutputFilename = path.resolve(path.join(outdir, tileLayers[0].name + '.s'));
+    // If there is an object layer, apply it to BG0
+    if (objectLayers.length > 0) {
+        applyObjectLayerToBG0(objectLayers[0], bg0data);
+    }
+
+    // Write out the source code for the layers
+    console.log('Generating data for front layer (BG0): ' + bg0layer.name);
+    const header = emitHeader();
+    const bg0 = emitBG0Layer(bg0layer, bg0data);
+
+    const bg0OutputFilename = path.resolve(path.join(outdir, bg0layer.name + '.s'));
     console.log(`Writing BG0 data to ${bg0OutputFilename}`);
     fs.writeFileSync(bg0OutputFilename, header + '\n' + bg0);
     console.log(`Writing complete`);
@@ -346,6 +372,29 @@ async function main(argv) {
         console.log(`Writing BG1 data to ${bg1OutputFilename}`);
         fs.writeFileSync(bg1OutputFilename, header + '\n' + bg1);
         console.log(`Writing complete`);
+    }
+}
+
+function isPriorityObject(obj) {
+    return obj && obj.properties && obj.properties.some(p => p.name === "Priority" && p.value === true);
+}
+
+function applyObjectLayerToBG0(objectLayer, bg0data) {
+    // Find any objects that mark priority tile areas
+    const priorityObjects = objectLayer.objects.filter(o => isPriorityObject(o));
+    console.log(`Found ${priorityObjects.length} priority objects`);
+
+    for (const region of priorityObjects) {
+        // Convert coordinates to tile indices
+        const [x, y, w, h] = [region.x, region.y, region.width, region.height].map(x => Math.floor(x / 8));
+
+        console.log(`Marking tiles (${x}, ${y}) to (${x+w-1}, ${y+h-1}) as priorty tiles`);
+        // Mark each tile as priority
+        for (let j = y; j < (y + h); j += 1) {
+            for (let i = x; i < (x + w); i += 1) {
+                bg0data[j][i] |= GTE_PRIORITY_BIT;
+            }
+        }
     }
 }
 
@@ -372,7 +421,7 @@ BG1SetUp
     return sb.toString();
 }
 
-function emitBG0Layer(layer, tileset) {
+function emitBG0Layer(layer, data) {
     const sb = new StringBuilder();
 
     const label = layer.name.split(' ').join('_').split('.').join('_');
@@ -387,33 +436,37 @@ BG0SetUp
     `;
     sb.appendLine(initCode);
     sb.appendLine(`${label}`);
-    emitLayerData(sb, layer, tileset);
+    emitLayerData(sb, layer, data);
 
     return sb.toString();
 }
 
-function emitLayerData(sb, layer, tileset) {
+// Return the raw 2D array of tile data
+function buildLayerData(layer, tileset) {
+    const rows = [];
+    const tileIDs = layer.data;
+
+    for (let j = 0; j < tileIDs.length; j += layer.width) {
+        const src = tileIDs.slice(j, j + layer.width);
+        const row = src.map(tID => convertTileID(tID, tileset));
+
+        rows.push(row);
+    }
+
+    return rows;
+}
+
+function emitLayerData(sb, layer, rows) {
     // Print out the data in groups of N
     //
     // Merlin32 errors out with errno 3221226505 is the line is too long (>1047 characters)
     const N = 64;
-    const rows = [];
-    const tileIDs = layer.data;
-
-    // Create cunks of chunks so we can put a break between logical rows
-    for (let j = 0; j < tileIDs.length; j += layer.width) {
-        const row = tileIDs.slice(j, j + layer.width);
-        const chunks = [];
-        for (let i = 0; i < row.length; i += N) {
-            chunks.push(row.slice(i, i + N).map(tID => convertTileID(tID, tileset)))
-        }
-        rows.push(chunks);
-    }
 
     // Tiled starts numbering its tiles at 1. This is OK since Tile 0 is reserved in
     // GTE, also
     for (const row of rows) {
-        for (const chunk of row) {
+        for (let i = 0; i < row.length; i += N) {
+            const chunk = row.slice(i, i + N);
             sb.appendLine('        dw ' + chunk.map(id => '$' + toHex(id, 4)).join(','));
         }
         sb.appendLine('');
@@ -428,14 +481,6 @@ function emitLayerData(sb, layer, tileset) {
  * tileID is a value from the exported TileD data.  It starts at index 1.
  */
 function convertTileID(tileId, tileset) {
-    const GTE_MASK_BIT  = 0x1000;
-    const GTE_DYN_BIT = 0x0800;
-    const GTE_VFLIP_BIT = 0x0400;
-    const GTE_HFLIP_BIT = 0x0200;
-    const TILED_VFLIP_BIT = 0x40000000;
-    const TILED_HFLIP_BIT = 0x80000000;
-    const TILED_DFLIP_BIT = 0x20000000;
-
     // We don't support the flipped diagonally flag or tile values greater than 511
     if ((tileId & TILED_DFLIP_BIT) !== 0) {
         throw new Error('Diagonally flipped bits are not supported: tileId =  ' + tileId.toString(16));
