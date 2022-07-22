@@ -73,7 +73,11 @@ Scale           equ   56
                 stz   LastHFlip
                 stz   SpriteCount
                 stz   SpriteToggle
-                stz   Scale
+
+                lda   #4
+                sta   Scale
+                pei   Scale
+                _GTESetBG1Scale
 
 ; Initialize the graphics screen playfield
 
@@ -211,8 +215,16 @@ EvtLoop
                 beq   :reg_key
                 and   #$007F
                 cmp   #'s'
-                bne   :reg_key
+                bne   :not_s
                 inc   Scale
+                pei   Scale
+                _GTESetBG1Scale
+                jmp   do_render
+
+:not_s
+                cmp   #'x'
+                bne   :reg_key
+                dec   Scale
                 pei   Scale
                 _GTESetBG1Scale
                 jmp   do_render
