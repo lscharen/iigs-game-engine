@@ -814,6 +814,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -998,6 +999,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1059,14 +1061,12 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
-            <td class="bot"></td>
-            xpos
+            <td class="bot">xpos</td>
             <td></td>
             <td><em>Word</em>&mdash;Unsigned horizontal position</td>
           </tr>
           <tr>
-            <td class="bot"></td>
-            ypos
+            <td class="bot">ypos</td>
             <td></td>
             <td><em>Word</em>&mdash;Unsigned vertical position</td>
           </tr>
@@ -1101,6 +1101,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1116,16 +1117,93 @@ style: toolref
     <p>Renders the current playfield to the graphics screen.</p>
     <div class="section">
       <h5>Parameters</h5>
-      <p>
-        The stack is not affected by this call. There are no input or output parameters.
-      </p>
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack before call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">flags</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Render control flags</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack after call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+    <table role="table">
+      <thead>
+        <tr>
+          <th>flags</th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RENDER_ALT_BG1</td>
+          <td>$0001</td>
+          <td>Set the data bank register to the alternate secondary background.</td>
+        </tr>
+        <tr>
+          <td>RENDER_BG1_HORZ_OFFSET</td>
+          <td>$0002</td>
+          <td>Offsets each scanline of the secondary background's horizontal position.</td>
+        </tr>
+        <tr>
+          <td>RENDER_BG1_VERT_OFFSET</td>
+          <td>$0004</td>
+          <td>Offsets each column of the secondary background's vertical position. Unimplemented.</td>
+        </tr>
+        <tr>
+          <td>RENDER_BG1_ROTATIONT</td>
+          <td>$0004</td>
+          <td>Use the internal rotation tables to render the secondary background</td>
+        </tr>
+      </tbody>
+    </table>
+
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTERender()</tt></p>
+      <p><tt>extern pascal void GTERender(flags)</tt></p>
+      <p><tt>Word     flags;</tt></p>
     </div>
   </div>
 
@@ -1192,6 +1270,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1265,6 +1344,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1382,6 +1462,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1489,6 +1570,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1568,6 +1650,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1633,6 +1716,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1701,6 +1785,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1774,6 +1859,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1846,6 +1932,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -1876,6 +1963,21 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">width</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Width of the source image data to be copied in bytes. Maximum value of 256.</td>
+          </tr>
+          <tr>
+            <td class="bot">height</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Height of the source image data to be copied in rows. Maximum value of 208.</td>
+          </tr>
+          <tr>
+            <td class="bot">stride</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Number of bytes in each row</td>
           </tr>
           <tr>
             <td class="bot">picPtr</td>
@@ -1913,10 +2015,14 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTECopyPicToBG1(picPtr)</tt></p>
+      <p><tt>extern pascal void GTECopyPicToBG1(width, height, stride, picPtr)</tt></p>
+      <p><tt>Word     width;</tt></p>
+      <p><tt>Word     height;</tt></p>
+      <p><tt>Word     stride;</tt></p>
       <p><tt>Pointer  picPtr;</tt></p>
     </div>
   </div>
@@ -1984,6 +2090,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2075,6 +2182,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2175,6 +2283,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2247,6 +2356,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2329,6 +2439,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2406,6 +2517,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2484,6 +2596,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2580,6 +2693,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2645,6 +2759,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2673,6 +2788,16 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">numTicks</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Number of ticks between script invocations.</td>
+          </tr>
+          <tr>
+            <td class="bot">scriptAddr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the script bytecode.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -2703,9 +2828,13 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTEStartScript(numTicks, scriptAddr)</tt></p>
+      <p><tt>Word     numTicks;</tt></p>
+      <p><tt>Pointer  scriptAddr;</tt></p>
     </div>
   </div>
 
@@ -2729,6 +2858,21 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">top</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Top screen line of the overlay</td>
+          </tr>
+          <tr>
+            <td class="bot">bottom</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Bottom screen line of the overlay.</td>
+          </tr>
+          <tr>
+            <td class="bot">procPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the callback function.</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -2759,16 +2903,21 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTESetOverlay(top, bottom, procPtr)</tt></p>
+      <p><tt>Word     top;</tt></p>
+      <p><tt>Word     bottom;</tt></p>
+      <p><tt>Pointer  procPtr;</tt></p>
     </div>
   </div>
 
   <div class="api">
     <h4 class="tn">$23XX</h4>
     <h4>GTEClearOverlay</h4>
-    <p>This API is under active development at this time.</p>
+    <p>Removes the active overlay. This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -2815,9 +2964,11 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Word GTEClearOverlay()</tt></p>
     </div>
   </div>
 
@@ -2871,6 +3022,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2934,6 +3086,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
@@ -2957,11 +3110,214 @@ style: toolref
     </div>
     <div class="section">
       <h5>Errors</h5>
+      <p>None</p>
     </div>
     <div class="section">
       <h5>C</h5>
       <p><tt>extern pascal void GTERefresh()</tt></p>
     </div>
   </div>
+
+  
+  <div class="api">
+    <h4 class="tn">$27XX</h4>
+    <h4>GTESetBG1Displacement</h4>
+    <p>
+      Sets a displacement into the BG1 offset table.  Must be a value between 0 and 31.
+    </p>
+    <div class="section">
+      <h5>Parameters</h5>
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack before call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">offset</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Offset index.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack after call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h5>Errors</h5>
+      <p>None</p>
+    </div>
+    <div class="section">
+      <h5>C</h5>
+      <p><tt>extern pascal void GTESetBG1Displacement(offset)</tt></p>
+      <p><tt>Word     offset;</tt></p>
+    </div>
+  </div>
+
+  <div class="api">
+    <h4 class="tn">$28XX</h4>
+    <h4>GTESetBG1Rotation</h4>
+    <p>
+      Sets the rotation angle of the BG1 buffer.  There are 64 sets in the angle tables, so 
+      the value must be between 0 and 63.
+    </p>
+    <div class="section">
+      <h5>Parameters</h5>
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack before call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">rotIndex</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Rotation index. Must be between 0 and 63.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack after call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h5>Errors</h5>
+      <p>None</p>
+    </div>
+    <div class="section">
+      <h5>C</h5>
+      <p><tt>extern pascal void GTESetBG1Rotation(rotIndex)</tt></p>
+      <p><tt>Word     rotIndex;</tt></p>
+    </div>
+  </div>
+
+  
+  <div class="api">
+    <h4 class="tn">$29XX</h4>
+    <h4>GTEClearBG1Buffer</h4>
+    <p>
+      Clears the BG1 pixel buffer with a 16-bit value.
+    </p>
+    <div class="section">
+      <h5>Parameters</h5>
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack before call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">value</td>
+            <td></td>
+            <td><em>Word</em>&mdash;16-bit value to fill all of BG1 memeory.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack after call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h5>Errors</h5>
+      <p>None</p>
+    </div>
+    <div class="section">
+      <h5>C</h5>
+      <p><tt>extern pascal void GTEClearBG1Buffer(value)</tt></p>
+      <p><tt>Word     value;</tt></p>
+    </div>
+  </div>
+
 
 </div>
