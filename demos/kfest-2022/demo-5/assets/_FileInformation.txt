@@ -1,0 +1,1 @@
+overworld.ntp=Type(D5),AuxType(0008),Access(E3)

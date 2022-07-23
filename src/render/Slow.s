@@ -84,3 +84,14 @@ _FillPEAOpcode
             jsr   FillPEAOpcode
             plb                                    ; Restore the TileStore bank
             rts
+
+CopyTileASlow
+            tax
+            jsr   FillPEAOpcode
+            jmp   _CopyTileAFast
+
+
+CopyTileVSlow
+            tax
+            jsr   FillPEAOpcode
+            jmp   _CopyTileVFast

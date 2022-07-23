@@ -91,6 +91,11 @@ _CallTable
                 adrl  _TSFillTileStore-1
                 adrl  _TSRefresh-1
                 adrl  _TSRenderDirty-1
+                adrl  _TSSetBG1Displacement-1
+                adrl  _TSSetBG1Rotation-1
+
+                adrl  _TSClearBG1Buffer-1
+                adrl  _TSSetBG1Scale-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -277,18 +282,24 @@ xPos            equ     FirstParam+2
 
                 _TSExit #0;#4
 
-; Render()
+; Render(flags)
 _TSRender
+:flags          equ     FirstParam+0
+
                 _TSEntry
-                 jsr     _Render
-                _TSExit #0;#0
+                lda     :flags,s
+                jsr     _Render
+                _TSExit #0;#2
 
 
-; RenderDirty()
+; RenderDirty(flags)
 _TSRenderDirty
+:flags          equ     FirstParam+0
+
                 _TSEntry
-                 jsr     _RenderDirty
-                _TSExit #0;#0
+                lda     :flags,s
+                jsr     _RenderDirty
+                _TSExit #0;#2
 
 ; LoadTileSet(Pointer)
 _TSLoadTileSet
@@ -432,19 +443,40 @@ _TSSetPalette
 
                 _TSExit  #0;#6
 
+; CopyPicToBG1(width, height, stride, ptr, flags)
 _TSCopyPicToBG1
-:ptr            equ    FirstParam+0
+:flags          equ    FirstParam+0
+:ptr            equ    FirstParam+2
+:stride         equ    FirstParam+6
+:height         equ    FirstParam+8
+:width          equ    FirstParam+10
 
                 _TSEntry
 
-                lda     BG1DataBank
-                tay
-                lda     :ptr+2,s
-                tax
-                lda     :ptr,s
-                jsr     _CopyPicToBG1
+; Lots of parameters for this function, so pass them on the direct page
+:src_width      equ    tmp6
+:src_height     equ    tmp7
+:src_stride     equ    tmp8
 
-                _TSExit  #0;#4
+                lda    :width,s
+                sta    :src_width
+                lda    :height,s
+                sta    :src_height
+                lda    :stride,s
+                sta    :src_stride
+
+                ldy    BG1DataBank              ; Pick the target data bank
+                lda    :flags,s
+                bit    #$0001
+                beq    *+4
+                ldy    BG1AltBank
+                
+                lda    :ptr+2,s
+                tax
+                lda    :ptr,s
+                jsr    _CopyToBG1
+
+                _TSExit  #0;#12
 
 _TSBindSCBArray
 :ptr            equ    FirstParam+0
@@ -589,11 +621,11 @@ _TSAddTimer
 
                 lda     :callback+2,s
                 tax
-                lda     :callback,s
+                lda     :numTicks,s
                 tay
                 lda     :flags,s
-                lsr                        ; put low bit into carry
-                lda     :numTicks,s
+                ror                        ; put low bit into carry
+                lda     :callback,s
                 jsr     _AddTimer
                 sta     :output,s
                 ldx     #0
@@ -708,6 +740,58 @@ _TSRefresh
                 jsr     _Refresh
                 _TSExit #0;#0
 
+
+; SetBG1Displacement(offset)
+_TSSetBG1Displacement
+:offset          equ     FirstParam+0
+
+                _TSEntry
+
+                lda     :offset,s
+                and     #$001E
+                sta     BG1OffsetIndex
+
+                _TSExit #0;#2
+
+; SetBG1Rotation(rotIndex)
+_TSSetBG1Rotation
+:rotIndex       equ     FirstParam+0
+x_angles        EXT
+y_angles        EXT
+
+                _TSEntry
+
+                lda     :rotIndex,s
+                and     #$003F               ; only 64 angles to choose from
+
+                asl
+                tax
+                ldal    x_angles,x           ; load the address of addresses for this angle
+                tay
+                phx
+                jsr     _ApplyBG1XPosAngle
+                plx
+
+                ldal     y_angles,x           ; load the address of addresses for this angle
+                tay
+                jsr     _ApplyBG1YPosAngle
+
+                _TSExit #0;#2
+
+_TSClearBG1Buffer
+:value       equ     FirstParam+0
+                _TSEntry
+                lda     :value,s
+                jsr     _ClearBG1Buffer
+                _TSExit #0;#2
+
+_TSSetBG1Scale
+:sIndex         equ     FirstParam+0
+                _TSEntry
+                lda     :value,s
+                sta     BG1Scaling
+                _TSExit #0;#2
+
 ; Insert the GTE code
 
                 put     Math.s
@@ -736,9 +820,7 @@ _TSRefresh
                 put     blitter/Vert.s
                 put     blitter/BG0.s
                 put     blitter/BG1.s
+                put     blitter/Rotation.s
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
                 put     blitter/Blitter.s
-                put     blitter/TileProcs.s
-                put     blitter/Tiles00000.s
-;                put     blitter/Tiles.s

@@ -51,23 +51,26 @@ _BltRange
                 lda   #FULL_RETURN   ; this is the offset of the return code
                 sta   [:exit_ptr],y  ; patch out the low byte of the JMP/JML
 
-;                lda   StartYMod208
-;                cmp   #63
-;                bne   *+4
-;                brk   $40
-
 ; Now we need to set up the Bank, Stack Pointer and Direct Page registers for calling into 
 ; the code field
 
-;                lda   StartX
-;                bit   #$01
-;                beq   :primary
-;                lda   BG1AltBank
-;                bra   :alt
-:primary        lda   BG1DataBank    ; This is $00 if the TWO_LAYER bit of EngineMode is not set
+                lda   EngineMode
+                bit   #ENGINE_MODE_TWO_LAYER
+                beq   :skip_bank
+                
+                lda   RenderFlags
+                bit   #RENDER_ALT_BG1
+                beq   :primary
+
+                lda   BG1AltBank
+                bra   :alt
+
+:primary        lda   BG1DataBank
 :alt
                 pha
                 plb
+
+:skip_bank
                 rep   #$20
 
                 phd                  ; Save the application direct page

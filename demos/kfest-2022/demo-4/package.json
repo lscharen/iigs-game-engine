@@ -1,0 +1,45 @@
+{
+  "name": "kfest-demo-4",
+  "version": "1.0.0",
+  "description": "Two Layer scrilling with snippets and without",
+  "main": "index.js",
+  "config": {
+    "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+    "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+    "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+    "macros": "../../../macros",
+    "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe",
+    "png2iigs": "../../../tools/png2iigs.js",
+    "tiled2iigs": "../../../tools/tiled2iigs.js"
+  },
+  "scripts": {
+    "test": "npm run build && npm run build:image && npm run gsport",
+    "gsport": "%npm_package_config_gsport%",
+    "debug": "%npm_package_config_crossrunner% GTEDemo4 -Source GTEDemo4_S02_MAINSEG_Output.txt -Debug -CompatibilityLayer",
+    "build:all": "npm run build:tiles && npm run build:map && npm run build:tool && npm run build:sys16 && npm run build:image",
+    "build:map": "node %npm_package_config_tiled2iigs% ./assets/tiled/yoshi-1.json --force-masked --no-gen-tiles --output-dir ./gen",
+    "build:tiles": "node %npm_package_config_png2iigs% ./assets/tilesets/smw-256x128-4bpp.png --max-tiles 360 --as-tile-data --verbose --transparent-color FF00FF --background-color 216058 > ./gen/App.TileSet.s",
+    "build:tiles:blocky": "node %npm_package_config_png2iigs% ./assets/tilesets/smw-256x128-4bpp.png --max-tiles 360 --as-tile-data --verbose --force-word-alignment --transparent-color FF00FF --background-color 216058 > ./gen/App.TileSet.s",
+    "build:sys16": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
+    "build": "npm run build:tool && npm run build:sys16",
+    "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% ../../../src/Master.s",
+    "build:image": "build-image.bat %npm_package_config_cadius%",
+    "build:background": "node %npm_package_config_png2iigs% ./assets/tilesets/bg1.png ./gen/bg1.bin --force-color-match --palette FF00FF,C14F4A,020202,00E100,C89858,216058,DCE9EE,008000,F80080,F5D56C,20308F,A0CDCC,4080A0,70B0D0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lscharen/iigs-game-engine.git"
+  },
+  "author": "Lucas Scharenbroich",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lscharen/iigs-game-engine/issues"
+  },
+  "homepage": "https://github.com/lscharen/iigs-game-engine#readme",
+  "devDependencies": {
+    "pngjs": "^6.0.0",
+    "string-builder": "^0.1.8",
+    "watch": "latest",
+    "xml2json": "^0.12.0"
+  }
+}

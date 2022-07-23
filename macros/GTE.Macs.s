@@ -114,6 +114,18 @@ _GTERefresh          MAC
 _GTERenderDirty      MAC
                      UserTool  $2700+GTEToolNum
                      <<<
+_GTESetBG1Displacement MAC
+                     UserTool  $2800+GTEToolNum
+                     <<<
+_GTESetBG1Rotation   MAC
+                     UserTool  $2900+GTEToolNum
+                     <<<
+_GTEClearBG1Buffer   MAC
+                     UserTool  $2A00+GTEToolNum
+                     <<<
+_GTESetBG1Scale      MAC
+                     UserTool  $2B00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -134,6 +146,12 @@ PAD_KEY_DOWN           equ   $0400
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004
+
+; Render flags
+RENDER_ALT_BG1         equ   $0001
+RENDER_BG1_HORZ_OFFSET equ   $0002
+RENDER_BG1_VERT_OFFSET equ   $0004
+RENDER_BG1_ROTATION    equ   $0008
 
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000

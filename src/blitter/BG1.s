@@ -34,10 +34,12 @@ _CopyBinToBG1
 _CopyPicToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
+:src_stride               equ   tmp8
 
                           pha
                           lda    #160
                           sta    :src_width
+                          sta    :src_stride
                           lda    #200
                           sta    :src_height
                           pla
@@ -51,6 +53,7 @@ _CopyToBG1
 :col_cnt                  equ   tmp5
 :src_width                equ   tmp6
 :src_height               equ   tmp7
+:src_stride               equ   tmp8
 
                           sta   :srcptr
                           stx   :srcptr+2
@@ -77,12 +80,17 @@ _CopyToBG1
                           bcc   :cloop
 
                           ldy   #164
-                          lda   [:srcptr]                 ; Duplicate the last byte in the extra space at the end of the line
+                          lda   [:srcptr]                 ; Duplicate the last couple of words in the extra space at the end of the line
+                          sta   [:dstptr],y
+
+                          ldy   #2
+                          lda   [:srcptr],y
+                          ldy   #166
                           sta   [:dstptr],y
 
                           lda   :srcptr
                           clc
-                          adc   :src_width
+                          adc   :src_stride
                           sta   :srcptr
 
                           inc   :line_cnt
@@ -90,10 +98,6 @@ _CopyToBG1
                           cmp   :src_height
                           bcc   :rloop
                           rts
-
-SetBG1XPos                ENT
-                          jsr   _SetBG1XPos
-                          rtl
 
 _SetBG1XPos
                           cmp   BG1StartX
@@ -108,11 +112,6 @@ _SetBG1XPos
 
                           stx   OldBG1StartX              ; First change, so preserve the value
 :out                      rts
-
-
-SetBG1YPos                ENT
-                          jsr   _SetBG1YPos
-                          rtl
 
 _SetBG1YPos
                           cmp   BG1StartY
@@ -243,10 +242,21 @@ _ApplyBG1YPos
                           asl
                           tax
 
+                          lda   RenderFlags
+                          bit   #RENDER_BG1_HORZ_OFFSET   ; Are we using horizontal displacement?
+                          beq   :no_displacement
+
+                          lda   :ytbl_idx                 ; Read from this location in the BG1YTable
+                          asl
+                          jsr   CopyBG1YTableToBG1Addr2
+                          bra   :next_step
+
+:no_displacement
                           lda   :ytbl_idx                 ; Read from this location in the BG1YTable
                           asl
                           jsr   CopyBG1YTableToBG1Addr    ; or CopyBG1YTableToBG1Addr2
 
+:next_step
                           lda   :virt_line                ; advance to the virtual line after the segment we just
                           clc                             ; filled in
                           adc   :draw_count
@@ -353,8 +363,10 @@ CopyBG1YTableToBG1Addr2
                           phy                             ; save the registers
                           phx
                           phb
+                          pha
+                          jsr   _SetDataBank              ; Set to toolbox data bank
 
-                          jsr   _SetDataBank              ; restore access to this bank
+                          pla
                           ldy   BG1OffsetIndex            ; Get the offset and save the values
                           jsr   SaveBG1OffsetValues
 
@@ -492,5 +504,3 @@ ApplyBG1OffsetValues
 :do01                     ldal  BG1YCache+00
                           sta:  BG1_ADDR+$0000,y
 :none                     rts
-
-BG1YCache                 ds    32
