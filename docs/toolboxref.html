@@ -749,7 +749,9 @@ style: toolref
         The value returned in <em>userInput</em> bitfield are show below.
       </p>
       <table class="bits bitfield">
-        <colgroup span="6" style="background-color: #999;"></colgroup>
+        <colgroup span="5" style="background-color: #999;"></colgroup>
+        <colgroup span="3" style="background-color: #fff;"></colgroup>
+        <colgroup span="1" style="background-color: #999;"></colgroup>
         <colgroup span="10" style="background-color: #fff;"></colgroup>
         <tbody>
           <tr>
@@ -759,12 +761,12 @@ style: toolref
       </table>
       <table class="bitfield-definitions">
         <tbody>
-          <tr><td>Bits 0-7</td><td><em>keyCode</em></td><td>Keyboard code read from the Keyboard register. If no key is currently pressed, this value is zero.</td></tr>
-          <tr><td>Bit 8</td><td>Reserved</td><td>Must be zero.</td></tr>
-          <tr><td>Bit 9</td><td>PAD_BUTTON_B</td><td>Set to 1 if the <tt>B</tt> button of the gamepad is pressed.  Mapped to the option key by default.</td></tr>
-          <tr><td>Bit 10</td><td>PAD_BUTTON_A</td><td>Set to 1 if the <tt>A</tt> button of the gamepad is pressed.  Mapped to the command key by default.</td></tr>
-          <tr><td>Bit 11</td><td>PAD_KEY_DOWN</td><td>Set to 1 on the initial press of a key.  If a key is held down, the <tt>keyCode</tt> will be set and this bit will be zero.</tt></td></tr>
-          <tr><td>Bits 12-15</td><td>Reserved</td><td>Must be zero.</td></tr>
+          <tr><td>Bits 0-6</td><td><em>keyCode</em></td><td>Keyboard code read from the Keyboard register. If no key is currently pressed, this value is zero.</td></tr>
+          <tr><td>Bit 7</td><td>Reserved</td><td>Always zero.</td></tr>
+          <tr><td>Bit 8</td><td>PAD_BUTTON_B</td><td>Set to 1 if the <tt>B</tt> button of the gamepad is pressed.  Mapped to the option key by default.</td></tr>
+          <tr><td>Bit 9</td><td>PAD_BUTTON_A</td><td>Set to 1 if the <tt>A</tt> button of the gamepad is pressed.  Mapped to the command key by default.</td></tr>
+          <tr><td>Bit 10</td><td>PAD_KEY_DOWN</td><td>Set to 1 on the initial press of a key.  If a key is held down, the <tt>keyCode</tt> will be set and this bit will be zero.</tt></td></tr>
+          <tr><td>Bits 11-15</td><td>Reserved</td><td>Always zero.</td></tr>
        </tbody>
       </table>
     </div>
