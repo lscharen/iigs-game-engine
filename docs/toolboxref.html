@@ -6,11 +6,15 @@ style: toolref
 <link rel="stylesheet" href="{{ 'assets/css/toolref.css' | relative_url }}">
 <div id="content">
   <ul>
-    <li><a href="#Init">Intialization Functions</a></li>
-    <li><a href="#Sprite">Sprite Functions</a></li>
-    <li><a href="#Tile">Tile Functions</a></li>
-    <li><a href="#Buffer">Buffer Functions</a></li>
-    <li><a href="#IO">I/O Functions</a></li>
+    <li><a href="#HousekeepingRoutines">Housekeeping Functions</a></li>
+    <li><a href="#SpriteRoutines">Sprite Functions</a></li>
+    <li><a href="#TileRoutines">Tile Functions</a></li>
+    <li><a href="#PrimaryRoutines">Primary Background Functions</a></li>
+    <li><a href="#SecondaryRoutines">Secondary Background Functions</a></li>
+    <li><a href="#TimerRoutines">Timer Functions</a></li>
+    <li><a href="#OverlayRoutines">Overlay Functions</a></li>
+    <li><a href="#GlobalRoutines">Global State Functions</a></li>
+    <li><a href="#MiscRoutines">Miscellaneous Functions</a></li>
   </ul>
 
   <div class="api_intro">
@@ -52,189 +56,201 @@ style: toolref
           <th>Description</th>
         </tr>
         <tr>
-          <th colspan="2">Housekeeping Routines</th>
+          <th id="HousekeepingRoutines" colspan="2">Housekeeping Routines</th>
         </tr>
         <tr>
-          <td>GTEBootInit</td>
+          <td><a href="#GTEBootInit">GTEBootInit</a></td>
           <td>Initializes the GTE Tool Set; called only by the Tool Locator — must not be called by an application</td>
         </tr>
         <tr>
-          <td>GTEStartUp</td>
+          <td><a href="#GTEStartUp">GTEStartUp</a></td>
           <td>Starts up the GTE Tool Set for use by an application</td>
         </tr>
         <tr>
-          <td>GTEShutDown</td>
+          <td><a href="#GTEShutDown">GTEShutDown</a></td>
           <td>Shuts down the GTE Tool Set when an application quits</td>
         </tr>
         <tr>
-          <td>GTEVersion</td>
+          <td><a href="#GTEVersion">GTEVersion</a></td>
           <td>Returns the version number of the GTE Tool Set</td>
         </tr>
         <tr>
-          <td>GTEReset</td>
+          <td><a href="#GTEReset">GTEReset</a></td>
           <td>Resets the GTE Tool Set; called only when the system is reset — must not be called by an application</td>
         </tr>
         <tr>
-          <td>GTEStatus</td>
+          <td><a href="#GTEStatus">GTEStatus</a></td>
           <td>Indicates whether the GTE Tool Set is active</td>
         </tr>
 
         <tr>
-          <th colspan="2">Sprite Routines</th>
+          <th id="SpriteRoutines" colspan="2">Sprite Routines</th>
           <th></th>
         </tr>
         <tr>
-          <td>GTECreateSpriteStamp</td>
+          <td><a href="#GTECreateSpriteStamp">GTECreateSpriteStamp</a></td>
           <td> Creates a sprite stamp from the tile set</td>
         </tr>
         <tr>
-          <td>GTEAddSprite</td>
+          <td><a href="#GTEAddSprite">GTEAddSprite</a></td>
           <td>Add a active sprite to the scene</td>
         </tr>
         <tr>
-          <td>GTEMoveSprite</td>
+          <td><a href="#GTEMoveSprite">GTEMoveSprite</a></td>
           <td>Changes a sprite's location</td>
         </tr>
         <tr>
-          <td>GTEUpdateSprite</td>
+          <td><a href="#GTEUpdateSprite">GTEUpdateSprite</a></td>
           <td>Changes a sprite's tile set reference and display flags</td>
         </tr>
         <tr>
-          <td>GTERemoveSprite</td>
+          <td><a href="#GTERemoveSprite">GTERemoveSprite</a></td>
           <td> Removes a sprite from the scene</td>
         </tr>
 
         <tr>
-          <th colspan="2">Tile Routines</th>
+          <th id="TileRoutines" colspan="2">Tile Routines</th>
         </tr>
         <tr>
-          <td>GTELoadTileSet</td>
+          <td><a href="#GTELoadTileSet">GTELoadTileSet</a></td>
           <td>Copies a tileset into the GTE tileset memory</td>
         </tr>
         <tr>
-          <td>GTESetTile</td>
+          <td><a href="#GTESetTile">GTESetTile</a></td>
           <td>Assigns a tile to a tile store</td>
         </tr>
         <tr>
-          <td>GTEGetTileAt</td>
+          <td><a href="#GTEGetTileAt">GTEGetTileAt</a></td>
           <td>Retrieves the tile ID stored in the tile store</td>
         </tr>
         <tr>
-          <td>GTECopyTileToDynamic</td>
+          <td><a href="#GTECopyTileToDynamic">GTECopyTileToDynamic</a></td>
           <td>Copies a tile from the tileset memory into the managed dynamic tile memory. Changing the dynamic tile data
             will result in all of the tiles updating
             on the next call the <tt>GTERender()</tt></td>
         </tr>
         <tr>
-          <td>GTEGetTileDataAddr</td>
+          <td><a href="#GTEGetTileDataAddr">GTEGetTileDataAddr</a></td>
           <td>Returns the base address of the tiledata memory</td>
         </tr>
         <tr>
-          <td>GTEFillTileStore</td>
+          <td><a href="#GTEFillTileStore">GTEFillTileStore</a></td>
           <td>Fills the entire tile store with a tile ID.</td>
         </tr>
 
         <tr>
-          <th colspan="2">Primary Background Routines</th>
+          <th id="PrimaryRoutines" colspan="2">Primary Background Routines</th>
         </tr>
         <tr>
-          <td>GTESetBG0Origin</td>
+          <td><a href="#GTESetBG0Origin">GTESetBG0Origin</a></td>
           <td>Sets the upper-left origin point in the primary background</td>
         </tr>
         <tr>
-          <td>GTERender</td>
+          <td><a href="#GTERender">GTERender</a></td>
           <td>Draws the current scene to the graphics screen</td>
         </tr>
         <tr>
-          <td>GTEGetBG0TileMapInfo</td>
+          <td><a href="#GTEGetBG0TileMapInfo">GTEGetBG0TileMapInfo</a></td>
           <td>Returns a record describing the number of tiles in the primary tilemap and a pointer to the tilemap data.
           </td>
         </tr>
         <tr>
-          <td>GTESetBG0TileMapInfo</td>
+          <td><a href="#GTESetBG0TileMapInfo">GTESetBG0TileMapInfo</a></td>
           <td>Defines a tile map for the primary background</td>
         </tr>
         <tr>
-          <td>GTERefresh</td>
+          <td><a href="#GTERefresh">GTERefresh</a></td>
           <td>Forces all of the tiles in the tile store to be refreshed on the next render.</td>
         </tr>
 
         <tr>
-          <th colspan="2">Secondary Background Routines</th>
+          <th id="SecondaryRoutines" colspan="2">Secondary Background Routines</th>
         </tr>
         <tr>
-          <td>GTESetBG1Origin</td>
+          <td><a href="#GTESetBG1Origin">GTESetBG1Origin</a></td>
           <td>Sets the upper-left origin point in the secondary background</td>
         </tr>
         <tr>
-          <td>GTECopyPicToBG1</td>
+          <td><a href="#GTECopyPicToBG1">GTECopyPicToBG1</a></td>
           <td>Copies an uncompressed pixel image into the secondard background buffer</td>
         </tr>
         <tr>
-          <td>GTESetBG1TileMapInfo</td>
+          <td><a href="#GTESetBG1TileMapInfo">GTESetBG1TileMapInfo</a></td>
           <td>Defines a tile map for the secondary background</td>
+        </tr>
+        <tr>
+          <td><a href="#GTESetBG1Displacement">GTESetBG1Displacement</a></td>
+          <td>Sets a displacement into the BG1 offset table.</td>
+        </tr>
+        <tr>
+          <td><a href="#GTESetBG1Rotation">GTESetBG1Rotation</a></td>
+          <td>Sets the rotation angle of the BG1 buffer.</td>
+        </tr>
+        <tr>
+          <td><a href="#GTEClearBG1Buffer">GTEClearBG1Buffer</a></td>
+          <td>Clears the BG1 pixel buffer with a 16-bit value.</td>
         </tr>
 
         <tr>
-          <th colspan="2">Timer Routines</th>
+          <th id="TimerRoutines" colspan="2">Timer Routines</th>
         </tr>
         <tr>
-          <td>GTEAddTimer</td>
+          <td><a href="#GTEAddTimer">GTEAddTimer</a></td>
           <td>Add a timer callback that is fired after a designated number of VBL ticks</td>
         </tr>
         <tr>
-          <td>GTERemoveTimer</td>
+          <td><a href="#GTERemoveTimer">GTERemoveTimer</a></td>
           <td>Removes an active timer</td>
         </tr>
         <tr>
-          <td>GTEStartScript</td>
+          <td><a href="#GTEStartScript">GTEStartScript</a></td>
           <td>Registers a GTE script to be handled in the background</td>
         </tr>
 
         <tr>
-          <th colspan="2">Overlay Routines</th>
+          <th id="OverlayRoutines" colspan="2">Overlay Routines</th>
         </tr>
         <tr>
-          <td>GTESetOverlay</td>
+          <td><a href="#GTESetOverlay">GTESetOverlay</a></td>
           <td>Registers an overlay routine to be integrated into the renderer. Typically used for status bars or
             messages.</td>
         </tr>
         <tr>
-          <td>GTEClearOverlay</td>
+          <td><a href="#GTEClearOverlay">GTEClearOverlay</a></td>
           <td>Removes the current overlay from the renderer</td>
         </tr>
 
         <tr>
-          <th colspan="2">Functions affecting the global state</th>
+          <th id="GlobalRoutines" colspan="2">Functions affecting the global state</th>
         </tr>
         <tr>
-          <td>GTESetScreenMode</td>
+          <td><a href="#GTESetScreenMode">GTESetScreenMode</a></td>
           <td>Sets the playing field's port rectangle to a pre-defined size, or a specified width and height</td>
         </tr>
         <tr>
-          <td>GTESetPalette</td>
+          <td><a href="#GTESetPalette">GTESetPalette</a></td>
           <td>Copies a palette to the Super HiRes palette memory</td>
         </tr>
         <tr>
-          <td>GTEBindSCBArray</td>
+          <td><a href="#GTEBindSCBArray">GTEBindSCBArray</a></td>
           <td>Takes an array of SCB bytes and binds them to either the Primary or Secondary background's vertical
             position</td>
         </tr>
         <tr>
-          <td>GTEGetScreenInfo</td>
+          <td><a href="#GTEGetScreenInfo">GTEGetScreenInfo</a></td>
           <td>Returns a records describing the origin, width and height of the playfield on the physical graphics
             screen.</td>
         </tr>
 
         <tr>
-          <th colspan="2">Misc. Functions</th>
+          <th id="MiscRoutines" colspan="2">Misc. Functions</th>
         </tr>
         <tr>
-          <td>GTEReadControl</td>
+          <td><a href="#GTEReadControl">GTEReadControl</a></td>
           <td>Reads the keyboard and returns key events in a gamepad structure</td>
         </tr>
         <tr>
-          <td>GTEGetSeconds</td>
+          <td><a href="#GTEGetSeconds">GTEGetSeconds</a></td>
           <td>Returns the number of seconds elapsed since the toolset was started</td>
         </tr>
       </tbody>
@@ -296,7 +312,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$01XX</h4>
 
-    <h4>GTEBootInit</h4>
+    <h4 id="GTEBootInit">GTEBootInit</h4>
     <p>
       Initializes the GTE Tool Set; called only by the Tool Locator.
     </p>
@@ -456,7 +472,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$03XX</h4>
-    <h4>GTEShutDown</h4>
+    <h4 id="GTEShutDown">GTEShutDown</h4>
     <p>
       Shuts down the GTE Toolset when an application quits.
     </p>
@@ -480,7 +496,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$04XX</h4>
-    <h4>GTEVersion</h4>
+    <h4 id="GTEVersion">GTEVersion</h4>
     <p>
       Returns the version number of the GTE Tool Set.
     </p>
@@ -554,7 +570,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$05XX</h4>
-    <h4>GTEReset</h4>
+    <h4 id="GTEReset">GTEReset</h4>
     <p>
       Resets the GTE Tool Set; called only when the system is reset.
     </p>
@@ -583,7 +599,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$06XX</h4>
-    <h4>GTEStatus</h4>
+    <h4 id="GTEStatus">GTEStatus</h4>
     <p>
       Indicates whether the GTE Tool Set is active.
     </p>
@@ -662,7 +678,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$09XX</h4>
-    <h4>GTEReadControl</h4>
+    <h4 id="GTEReadControl">GTEReadControl</h4>
     <p></p>
     <div class="section">
       <h5>Parameters</h5>
@@ -745,9 +761,9 @@ style: toolref
         <tbody>
           <tr><td>Bits 0-7</td><td><em>keyCode</em></td><td>Keyboard code read from the Keyboard register. If no key is currently pressed, this value is zero.</td></tr>
           <tr><td>Bit 8</td><td>Reserved</td><td>Must be zero.</td></tr>
-          <tr><td>Bit 9</td><td>fPadButtonB</td><td>Set to 1 if the <tt>B</tt> button of the gamepad is pressed.  Mapped to the option key by default.</td></tr>
-          <tr><td>Bit 10</td><td>fPadButtonA</td><td>Set to 1 if the <tt>A</tt> button of the gamepad is pressed.  Mapped to the command key by default.</td></tr>
-          <tr><td>Bit 11</td><td>fKeyDown</td><td>Set to 1 on the initial press of a key.  If a key is held down, the <tt>keyCode</tt> will be set and this bit will be zero.</tt></td></tr>
+          <tr><td>Bit 9</td><td>PAD_BUTTON_B</td><td>Set to 1 if the <tt>B</tt> button of the gamepad is pressed.  Mapped to the option key by default.</td></tr>
+          <tr><td>Bit 10</td><td>PAD_BUTTON_A</td><td>Set to 1 if the <tt>A</tt> button of the gamepad is pressed.  Mapped to the command key by default.</td></tr>
+          <tr><td>Bit 11</td><td>PAD_KEY_DOWN</td><td>Set to 1 on the initial press of a key.  If a key is held down, the <tt>keyCode</tt> will be set and this bit will be zero.</tt></td></tr>
           <tr><td>Bits 12-15</td><td>Reserved</td><td>Must be zero.</td></tr>
        </tbody>
       </table>
@@ -756,7 +772,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$0AXX</h4>
-    <h4>GTESetScreenMode</h4>
+    <h4 id="GTESetScreenMode">GTESetScreenMode</h4>
     <p></p>
     <div class="section">
       <h5>Parameters</h5>
@@ -936,7 +952,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$0BXX</h4>
-    <h4>GTESetTile</h4>
+    <h4 id="GTESetTile">GTESetTile</h4>
     <p></p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1040,7 +1056,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$0CXX</h4>
-    <h4>GTESetBG0Origin</h4>
+    <h4 id="GTESetBG0Origin">GTESetBG0Origin</h4>
     <p>
       Sets the coordinate of the upper-left corner of the playfield within the primary background buffer. The coordiate values
       are <em>unsigned</em>, so transitioning from 0 to -1 will result in a discontinuous jump in the background position.
@@ -1113,7 +1129,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$0DXX</h4>
-    <h4>GTERender</h4>
+    <h4 id="GTERender">GTERender</h4>
     <p>Renders the current playfield to the graphics screen.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1209,7 +1225,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$0EXX</h4>
-    <h4>GTELoadTileSet</h4>
+    <h4 id="GTELoadTileSet">GTELoadTileSet</h4>
     <p>
       Loads a tileset into the internal GTE memory buffer.  The <span class="sc">pointer</span> must point to 
       tiles that are already in GTE tile format.
@@ -1281,7 +1297,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$0FXX</h4>
-    <h4>GTECreateSpriteStamp</h4>
+    <h4 id="GTECreateSpriteStamp">GTECreateSpriteStamp</h4>
     <p>
       Creates a sprite stamp (cache sprite pixel data copy) from a sprite identifier and the current
       tile set.  The <em>vBuffAddr</em> points to a location in the internal virtual buffer area.  In
@@ -1387,7 +1403,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$10XX</h4>
-    <h4>GTEAddSprite</h4>
+    <h4 id="GTEAddSprite">GTEAddSprite</h4>
     <p>
       Adds a new sprite to the current scene.  If a sprite is already assigned to the sprite slot, then
       that sprite is removed and replaced with the new sprite.
@@ -1495,10 +1511,10 @@ style: toolref
       <table class="bitfield-definitions">
         <tbody>
           <tr><td>Bits 0-8</td><td>tileIndex</td><td>The index of a tile in the current Tile Set that defines the top-left part of the sprite</td></tr>
-          <tr><td>Bit 9</td><td>fSpriteHorzFlip</td><td>Flips the sprite horizontally.</td></tr>
-          <tr><td>Bit 10</td><td>fSpriteVertFlip</td><td>Flips the sprite vertically.</td></tr>
-          <tr><td>Bits 11-12</td><td>fSpriteSize</td><td>Sets the size of the sprite<ul><li>00 - 8x8</li><li>01 - 8x16</li><li>10 - 16x8</li><li>11 - 16x16</li></ul></td></tr>
-          <tr><td>Bit 13</td><td>fSpriteHide</td><td>When set, does not render the sprite.</td></tr>
+          <tr><td>Bit 9</td><td>SPRITE_HFLIP</td><td>Flips the sprite horizontally.</td></tr>
+          <tr><td>Bit 10</td><td>SPRITE_VFLIP</td><td>Flips the sprite vertically.</td></tr>
+          <tr><td>Bits 11-12</td><td>SPRITE_SIZE</td><td>Sets the size of the sprite<ul><li>00 - 8x8</li><li>01 - 8x16</li><li>10 - 16x8</li><li>11 - 16x16</li></ul></td></tr>
+          <tr><td>Bit 13</td><td>SPRITE_HIDE</td><td>When set, does not render the sprite.</td></tr>
           <tr><td>Bit 14-15</td><td>Reserved</td><td>Must be zero.</td></tr>
        </tbody>
       </table>
@@ -1507,7 +1523,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$11XX</h4>
-    <h4>GTEMoveSprite</h4>
+    <h4 id="GTEMoveSprite">GTEMoveSprite</h4>
     <p>Repositions a sprite on the play field.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1583,7 +1599,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$12XX</h4>
-    <h4>GTEUpdateSprite</h4>
+    <h4 id="GTEUpdateSprite">GTEUpdateSprite</h4>
     <p>
       Changes the stamp or the status flags of a sprite.  The size of the sprite cannot be changed.
       Typically, an application will call <tt>GTEUpdateSprite</tt> immediately after <tt>GTEAddSprite</tt> to
@@ -1663,7 +1679,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$13XX</h4>
-    <h4>GTERemoveSprite</h4>
+    <h4 id="GTERemoveSprite">GTERemoveSprite</h4>
     <p>Removes a sprite from the play field.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1727,7 +1743,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$14XX</h4>
-    <h4>GTEGetSeconds</h4>
+    <h4 id="GTEGetSeconds">GTEGetSeconds</h4>
     <p>Returns the number of seconds that have elapsed since the engine was started. This is a 16-bit value and will wrap around after 65536 seconds (~18 hours)</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1795,7 +1811,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$15XX</h4>
-    <h4>GTECopyTileToDynamic</h4>
+    <h4 id="GTECopyTileToDynamic">GTECopyTileToDynamic</h4>
     <p>
       Copies a tile by ID into one of the dynamic tile slots.  If a dynamic tile associated with the
       slot is visible, it will show the new data after the next call to <tt>GETRender</tt>.
@@ -1871,7 +1887,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$16XX</h4>
-    <h4>GTESetPalette</h4>
+    <h4 id="GTESetPalette">GTESetPalette</h4>
     <p>
       Sets one of the 16 palettes to the RGB values in the passed array.  This is a convenience function that
       immediately updated the visible palette.  The palette change is <em>not</em> deferred.
@@ -1944,7 +1960,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$17XX</h4>
-    <h4>GTECopyPicToBG1</h4>
+    <h4 id="GTECopyPicToBG1">GTECopyPicToBG1</h4>
     <p>
       Copies an uncompressed SHR image into the secondard background pixel buffer.  This is an easy way to load a
       background image into the secondary layer.  SCB values and palettes are <em>not</em> copied.
@@ -2029,7 +2045,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$18XX</h4>
-    <h4>GTEBindSCBArray</h4>
+    <h4 id="GTEBindSCBArray">GTEBindSCBArray</h4>
     <p>
       Binds an array of SCB values to either the primary or secondard background layer.  This will automatically
       update the SHR screen SCB values as the vertical offset of the designated background layer changes.
@@ -2101,7 +2117,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$19XX</h4>
-    <h4>GTEGetBG0TileMapInfo</h4>
+    <h4 id="GTEGetBG0TileMapInfo">GTEGetBG0TileMapInfo</h4>
     <p>
       Returns information about the current BG0 tile map.
     </p>
@@ -2192,7 +2208,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$1AXX</h4>
-    <h4>GTEGetScreenInfo</h4>
+    <h4 id="GTEGetScreenInfo">GTEGetScreenInfo</h4>
     <p>
       Returns information about the current position and size of the play field.
     </p>
@@ -2293,7 +2309,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$1BXX</h4>
-    <h4>GTESetBG1Origin</h4>
+    <h4 id="GTESetBG1Origin">GTESetBG1Origin</h4>
     <p>
       Sets the coordinate of the upper-left corner of the playfield within the secondary background buffer. The coordiate values
       are <em>unsigned</em>, so transitioning from 0 to -1 will result in a discontinuous jump in the background position.
@@ -2368,7 +2384,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$1CXX</h4>
-    <h4>GTEGetTileAt</h4>
+    <h4 id="GTEGetTileAt">GTEGetTileAt</h4>
     <p>
       Returns the tile at a local coordinate poiint.  The primary use of this function is to lookup
       a Tile ID using a sprite's coordinates.
@@ -2451,7 +2467,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$1DXX</h4>
-    <h4>GTESetBG0TileMapInfo</h4>
+    <h4 id="GTESetBG0TileMapInfo">GTESetBG0TileMapInfo</h4>
     <p>
       Sets a tile map that will be used to automatically populate the primary background layer based on the current origin. Behavior is
       undefined if the origin is set to a value that is outside the bounds of the tilemap.
@@ -2526,11 +2542,41 @@ style: toolref
       <p><tt>Word     height;</tt></p>
       <p><tt>Pointer  tileMapPtr;</tt></p>
     </div>
+
+    <div class="example">
+      <h5>Tile Map Entries</h5>
+      <p>
+        The values in a tilemap are an array of 16-bit values.
+      </p>
+      <table class="bits bitfield">
+        <colgroup span="1" style="background-color: #999;"></colgroup>
+        <colgroup span="6" style="background-color: lightblue;"></colgroup>
+        <colgroup span="9" style="background-color: white;"></colgroup>
+        <tbody>
+          <tr>
+            <td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td>
+        </tr>
+       </tbody>
+      </table>
+      <table class="bitfield-definitions">
+        <tbody>
+          <tr><td>Bits 0-8</td><td>tileIndex</td><td>The index of a tile in the current Tile Set</td></tr>
+          <tr><td>Bit 9</td><td>TILE_HFLIP_BIT</td><td>Flip the tile horizontally when rendering.</td></tr>
+          <tr><td>Bit 10</td><td>TILE_VFLIP_BIT</td><td>Flip the tile vertically when rendering.</td></tr>
+          <tr><td>Bit 11</td><td>TILE_DYN_BIT</td><td>Marks a tile to use the dynamic tile data.  The <em>tileIndex</em> must be between 0 and 31 if this bit is set.</em></td></tr>
+          <tr><td>Bit 12</td><td>TILE_SOLID_BIT</td><td>A hint bit that is used in ENGINE_MODE_TWO_LAYER to improve performance.</td></tr>
+          <tr><td>Bit 13</td><td>TILE_FRINGE_BIT</td><td>Unused. Must be zero.</td></tr>
+          <tr><td>Bit 14</td><td>TILE_PRIORITY_BIT</td><td>Sets the tile to be high priority to render on top of sprites.</td></tr>
+          <tr><td>Bit 15</td><td>Reserved</td><td>Must be zero.</td></tr>
+       </tbody>
+      </table>
+    </div>
+
   </div>
 
   <div class="api">
     <h4 class="tn">$1EXX</h4>
-    <h4>GTESetBG1TileMapInfo</h4>
+    <h4 id="GTESetBG1TileMapInfo">GTESetBG1TileMapInfo</h4>
     <p>
       Sets a tile map that will be used to automatically populate the secondary background layer based on the current origin. Behavior is
       undefined if the origin is set to a value that is outside the bounds of the tilemap.
@@ -2609,7 +2655,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$1FXX</h4>
-    <h4>GTEAddTimer</h4>
+    <h4 id="GTEAddTimer">GTEAddTimer</h4>
     <p>
       Adds a timer with a callback function and a delay in VBL ticks.  Timers may be repeated or one-shot timers. A one-shot
       timer will remove itself after firing.  Timers are handled on a best-effort basis.  It is possible that a timer
@@ -2706,7 +2752,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$20XX</h4>
-    <h4>GTERemoveTimer</h4>
+    <h4 id="GTERemoveTimer">GTERemoveTimer</h4>
     <p>Removed a timer that had been added to the system.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -2770,7 +2816,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$21XX</h4>
-    <h4>GTEStartScript</h4>
+    <h4 id="GTEStartScript">GTEStartScript</h4>
     <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -2840,7 +2886,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$22XX</h4>
-    <h4>GTESetOverlay</h4>
+    <h4 id="GTESetOverlay">GTESetOverlay</h4>
     <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -2916,7 +2962,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$23XX</h4>
-    <h4>GTEClearOverlay</h4>
+    <h4 id="GTEClearOverlay">GTEClearOverlay</h4>
     <p>Removes the active overlay. This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -2974,7 +3020,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$24XX</h4>
-    <h4>GTEGetTileDataAddr</h4>
+    <h4 id="GTEGetTileDataAddr">GTEGetTileDataAddr</h4>
     <p>This API is under active development at this time.</p>
     <div class="section">
       <h5>Parameters</h5>
@@ -3031,7 +3077,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$25XX</h4>
-    <h4>GTEFillTileStore</h4>
+    <h4 id="GTEFillTileStore">GTEFillTileStore</h4>
     <p>
       Fills the entire Tile Store with a specific Tile ID value.
     </p>
@@ -3097,7 +3143,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$26XX</h4>
-    <h4>GTERefresh</h4>
+    <h4 id="GTERefresh">GTERefresh</h4>
     <p>
       Forces a refresh of the play field.  This is implemented by adding all of the visible tiles to the dirty tile
       queue which will force them to be redrawn on the next call to <tt>GTERender()</tt>.
@@ -3121,7 +3167,7 @@ style: toolref
   
   <div class="api">
     <h4 class="tn">$27XX</h4>
-    <h4>GTESetBG1Displacement</h4>
+    <h4 id="GTESetBG1Displacement">GTESetBG1Displacement</h4>
     <p>
       Sets a displacement into the BG1 offset table.  Must be a value between 0 and 31.
     </p>
@@ -3187,7 +3233,7 @@ style: toolref
 
   <div class="api">
     <h4 class="tn">$28XX</h4>
-    <h4>GTESetBG1Rotation</h4>
+    <h4 id="GTESetBG1Rotation">GTESetBG1Rotation</h4>
     <p>
       Sets the rotation angle of the BG1 buffer.  There are 64 sets in the angle tables, so 
       the value must be between 0 and 63.
@@ -3255,7 +3301,7 @@ style: toolref
   
   <div class="api">
     <h4 class="tn">$29XX</h4>
-    <h4>GTEClearBG1Buffer</h4>
+    <h4 id="GTEClearBG1Buffer">GTEClearBG1Buffer</h4>
     <p>
       Clears the BG1 pixel buffer with a 16-bit value.
     </p>
@@ -3318,6 +3364,4 @@ style: toolref
       <p><tt>Word     value;</tt></p>
     </div>
   </div>
-
-
 </div>
