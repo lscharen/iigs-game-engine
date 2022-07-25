@@ -11,6 +11,8 @@
     "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
   },
   "scripts": {
+    "gsport": "%npm_package_config_gsport%",
+    "build:image": "npm run build && build-image.bat %npm_package_config_cadius%",
     "build:docs": "cd docs && bundle exec jekyll serve",
     "archive": "%npm_package_config_cadius% EXTRACTFILE ./emu/Target.2mg /GTEDev/Tool160.SHK .",
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
