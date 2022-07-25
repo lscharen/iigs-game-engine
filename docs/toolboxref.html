@@ -1322,9 +1322,9 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
-            <td class="bot">spriteID</td>
+            <td class="bot">spriteIdent</td>
             <td></td>
-            <td><em>Word</em>&mdash;sprite descriptor word</td>
+            <td><em>Word</em>&mdash;sprite identifier word</td>
           </tr>
           <tr>
             <td class="bot">vBuffAddr</td>
@@ -1366,14 +1366,14 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTECreateSpriteStamp(spriteID, vBuffAddr)</tt></p>
-      <p><tt>Word     spriteID;</tt></p>
+      <p><tt>extern pascal void GTECreateSpriteStamp(spriteIdent, vBuffAddr)</tt></p>
+      <p><tt>Word     spriteIdent;</tt></p>
       <p><tt>Word     vBuffAddr;</tt></p>
     </div>
     <div class="example">
-      <h5>Sprite Descriptor</h5>
+      <h5>Sprite Identifier</h5>
       <p>
-        The sprite descriptor is a subset of the full sprite bitfield.  Only the starting Tile Index and
+        The sprite identifier is a subset of the full sprite descriptor.  Only the starting Tile Index and
         the size bits are used.
       </p>
       <p>
@@ -1430,9 +1430,9 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
-            <td class="bot">spriteSlot</td>
+            <td class="bot">spriteDescriptor</td>
             <td></td>
-            <td><em>Word</em>&mdash;Sprite slot assigned to this new sprite.</td>
+            <td><em>Word</em>&mdash;Sprite descriptor word that is used to set the status bits.</td>
           </tr>
           <tr>
             <td class="bot">x</td>
@@ -1445,9 +1445,9 @@ style: toolref
             <td><em>Word</em>&mdash;Signed vertical sprite position on the playfield.</td>
           </tr>
           <tr>
-            <td class="bot">vBuffAddr</td>
+            <td class="bot">spriteSlot</td>
             <td></td>
-            <td><em>Word</em>&mdash;Address of the stamp to use for this sprite.  A stamp can be shared by multiple sprites.</td>
+            <td><em>Word</em>&mdash;The slot to assign the sprite to.  There are 16 slots and sprites in lower slots are drawn above the sprites in higher slots.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1484,11 +1484,11 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTEAddSprite(spriteSlot, x, y, vBuffAddr)</tt></p>
-      <p><tt>Word     spriteSlot;</tt></p>
+      <p><tt>extern pascal void GTEAddSprite(spriteDescriptor, x, y, spriteSlot)</tt></p>
+      <p><tt>Word     spriteDescriptor;</tt></p>
       <p><tt>Word     x;</tt></p>
       <p><tt>Word     y;</tt></p>
-      <p><tt>Word     vBuffAddr;</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
     </div>
     <div class="example">
       <h5>Sprite Descriptor</h5>
