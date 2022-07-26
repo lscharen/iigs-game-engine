@@ -314,7 +314,7 @@ TSPtr           equ     FirstParam
 
                 _TSExit #0;#4
 
-; CreateSpriteStamp(spriteId: Word, vbuffAddr: Word)
+; CreateSpriteStamp(spriteDescriptor: Word, vbuffAddr: Word)
 _TSCreateSpriteStamp
 :vbuff          equ     FirstParam
 :spriteId       equ     FirstParam+2
@@ -328,11 +328,13 @@ _TSCreateSpriteStamp
 
                 _TSExit #0;#4
 
+; AddSprite(spriteSlot, spriteFlags, vbuff, spriteX, spriteY)
 _TSAddSprite
-:spriteSlot     equ    FirstParam+0
-:spriteY        equ    FirstParam+2
-:spriteX        equ    FirstParam+4
-:spriteId       equ    FirstParam+6
+:spriteY        equ    FirstParam+0
+:spriteX        equ    FirstParam+2
+:vbuff          equ    FirstParam+4
+:spriteFlags    equ    FirstParam+6
+:spriteSlot     equ    FirstParam+8
 
                 _TSEntry
 
@@ -348,11 +350,19 @@ _TSAddSprite
                 lda    :spriteSlot,s
                 tax
 
-                lda    :spriteId,s
+                lda    :spriteFlags,s
                 jsr    _AddSprite
 
-                _TSExit #0;#8
+                lda    :spriteFlags,s
+                tax
+                lda    :vbuff,s
+                tay
+                lda    :spriteSlot,s
+                jsr    _UpdateSprite
 
+                _TSExit #0;#10
+
+; MoveSprite(spriteSlot, x, y)
 _TSMoveSprite
 :spriteY        equ    FirstParam+0
 :spriteX        equ    FirstParam+2
@@ -368,6 +378,7 @@ _TSMoveSprite
 
                 _TSExit #0;#6
 
+; UpdateSprite(spriteSlot, spriteFlags, vbuff)
 _TSUpdateSprite
 :vbuff          equ    FirstParam+0
 :spriteFlags    equ    FirstParam+2

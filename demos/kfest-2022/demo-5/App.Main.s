@@ -119,13 +119,15 @@ SpriteCount     equ   50
 
 ; Create the sprites
 
-HERO_FRAME_1    equ   {SPRITE_16X16+145}
+HERO_SIZE       equ   {SPRITE_16X16}
+HERO_FLAGS      equ   HERO_SIZE                                 ; no extra H/V bits for now
+HERO_FRAME_1    equ   HERO_SIZE+145
 HERO_VBUFF_1    equ   VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
-HERO_FRAME_2    equ   {SPRITE_16X16+147}
+HERO_FRAME_2    equ   HERO_SIZE+147
 HERO_VBUFF_2    equ   VBUFF_SPRITE_START+1*VBUFF_SPRITE_STEP
-HERO_FRAME_3    equ   {SPRITE_16X16+149}
+HERO_FRAME_3    equ   HERO_SIZE+149
 HERO_VBUFF_3    equ   VBUFF_SPRITE_START+2*VBUFF_SPRITE_STEP
-HERO_FRAME_4    equ   {SPRITE_16X16+151}
+HERO_FRAME_4    equ   HERO_SIZE+151
 HERO_VBUFF_4    equ   VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
 HERO_SLOT       equ   1
 
@@ -145,16 +147,12 @@ HERO_SLOT       equ   1
                 pea   HERO_VBUFF_4
                 _GTECreateSpriteStamp
 
-                pea   HERO_FRAME_1
+                pea   HERO_SLOT                    ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1                 ; and use this stamp
                 pei   PlayerX
                 pei   PlayerY
-                pea   HERO_SLOT                    ; Put the player in slot 1
                 _GTEAddSprite
-
-                pea   HERO_SLOT
-                pea   $0000
-                pea   HERO_VBUFF_1                 ; and use this stamp
-                _GTEUpdateSprite
 
 EvtLoop
                 pha
