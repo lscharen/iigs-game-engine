@@ -20,6 +20,7 @@ SHR_SCREEN             equ   $E12000
 SHR_SCB                equ   $E19D00
 SHR_PALETTES           equ   $E19E00
 SHR_LINE_WIDTH         equ   160
+SHR_SCREEN_HEIGHT      equ   200
 
 ; Direct page locations used by the engine
 ScreenHeight           equ   0           ; Height of the playfield in scan lines

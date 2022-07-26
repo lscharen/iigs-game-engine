@@ -40,7 +40,7 @@ InitGraphics
 ;  9. Agony (Amiga)         : 36 x 24   288 x 192 (27,648 bytes ( 86.4%))
 ; 10. Atari Lynx            : 20 x 13   160 x 102 (8,160 bytes  ( 25.5%))
 ;
-;  X = mode number OR width in pixels (must be multiple of 2)
+;  X = mode number OR width in bytes
 ;  Y = height in pixels (if X > 8)
 _SetScreenMode
                   cpx       #11
@@ -54,25 +54,23 @@ _SetScreenMode
                   lda       ScreenModeWidth,x
                   tax
 
-:direct           cpy       #201
+:direct           cpy       #SHR_SCREEN_HEIGHT+1
                   bcs       :exit
 
-                  cpx       #321
+                  cpx       #SHR_LINE_WIDTH+1
                   bcs       :exit
 
-                  txa
-                  lsr
-                  pha                           ; Save X (width / 2) and Y (height)
+                  phx                           ; Save X (width) and Y (height)
                   phy
 
-                  lda       #160                ; Center the screen
+                  lda       #SHR_LINE_WIDTH    ; Center the screen
                   sec
                   sbc       3,s
                   lsr
                   xba
                   pha                           ; Save half the origin coordinate
 
-                  lda       #200
+                  lda       #SHR_SCREEN_HEIGHT
                   sec
                   sbc       3,s                 ; This is now Y because of the PHA above
                   lsr

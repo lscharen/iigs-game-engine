@@ -75,8 +75,8 @@ SpriteCount     equ   50
 
 ; Initialize the graphics screen playfield
 
-                pea   #320
-                pea   #200
+                pea   #160         ; width in bytes
+                pea   #200         ; height in lines
                 _GTESetScreenMode
 
 ; Load a tileset
