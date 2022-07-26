@@ -571,14 +571,14 @@ dobit       mac
             bcc   next_bit
             beq   last_bit
             tax
-            lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc
-            adc   _Sprites+TS_VBUFF_BASE+{]1*2}
+            lda   (SPRITE_VBUFF_PTR+{]1*2}),y       ; The carry is always set
+;            clc
+            adc   _Sprites+TS_VBUFF_BASE+{]1*2}     ; [!! INTERLOCK !!] The table is pre-decremented in Sprite2.s
             sta   sprite_ptr0+{]2*4}
             txa
             jmp   ]3
 last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc    ; pre-adjust these later
+;            clc    ; pre-adjust these later
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]4
@@ -593,13 +593,13 @@ dobit1      mac
             beq   last_bit
             tax
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc
+;            clc
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             txa
             jmp   ]3
 last_bit    lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc    ; pre-adjust these later
+;            clc    ; pre-adjust these later
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             tyx
@@ -612,7 +612,7 @@ stpbit      mac
             lsr
             bcc   next_bit
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc    ; pre-adjust these later
+;            clc    ; pre-adjust these later
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
@@ -622,7 +622,7 @@ next_bit
 ; Last bit test which *must* be set
 endbit      mac
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc    ; pre-adjust these later
+;            clc    ; pre-adjust these later
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             jmp   ]3
@@ -630,7 +630,7 @@ endbit      mac
 
 endbit1     mac
             lda   (SPRITE_VBUFF_PTR+{]1*2}),y
-            clc    ; pre-adjust these later
+;            clc    ; pre-adjust these later
             adc   _Sprites+TS_VBUFF_BASE+{]1*2}
             sta   sprite_ptr0+{]2*4}
             tyx

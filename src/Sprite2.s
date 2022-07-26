@@ -186,6 +186,7 @@ _CalcDirtySprite
         eor   #$FFFF                             ; A = -X - 1
         sec                                      ; C = 1
         adc   _Sprites+SPRITE_DISP,y             ; A = SPRITE_DISP + (-X - 1) + 1 = SPRITE_DISP - X
+        dec                                      ; [!! INTERLOCK !!] pre-decrement to save clc in core blitter. See dobit macros in src/Tiles.s
         sta   _Sprites+TS_VBUFF_BASE,y
 
 ; Create an offset value for loading the calculated VBUFF addresses within the core renderer by
