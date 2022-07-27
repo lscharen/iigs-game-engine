@@ -24,7 +24,7 @@ void LoadGTEToolSet(Word userId) {
   loadRec = InitialLoad(userId, (Pointer) (&toolPath), 1);
   TOOLFAIL("Unable to load Tool160 from local path");
 
-  // Install the tool using the system tool vector
+  // Install the tool using the user tool vector
   SetTSPtr(0x8000, 160, loadRec.startAddr);
   TOOLFAIL("Could not install tool");
 }
