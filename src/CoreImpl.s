@@ -97,6 +97,7 @@ _CoreStartUp
                   rts
 
 _CoreShutDown
+                  jsr       UnInitMemory
                   jsr       IntShutDown
                   rts
 
@@ -107,10 +108,14 @@ _CoreShutDown
 IntStartUp
                   lda       #NO_INTERRUPTS
                   bne       :no_interrupts
+
                   PushLong  #0
                   pea       $0015               ; Get the existing 1-second interrupt handler and save
                   _GetVector
                   PullLong  OldOneSecVec
+
+                  pea       $0007
+                  _IntSource
 
                   pea       $0015               ; Set the new handler and enable interrupts
                   PushLong  #OneSecHandler
@@ -119,8 +124,8 @@ IntStartUp
                   pea       $0006
                   _IntSource
 
-                  PushLong  #VBLTASK            ; Also register a Heart Beat Task
-                  _SetHeartBeat
+;                  PushLong  #VBLTASK            ; Also register a Heart Beat Task
+;                  _SetHeartBeat
 
 :no_interrupts
                   rts
@@ -129,11 +134,11 @@ IntShutDown
                   lda       #NO_INTERRUPTS
                   bne       :no_interrupts
 
+;                  PushLong  #VBLTASK            ; Remove our heartbeat task
+;                  _DelHeartBeat
+
                   pea       $0007               ; disable 1-second interrupts
                   _IntSource
-
-                  PushLong  #VBLTASK            ; Remove our heartbeat task
-                  _DelHeartBeat
 
                   pea       $0015
                   PushLong  OldOneSecVec        ; Reset the interrupt vector

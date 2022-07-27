@@ -28,6 +28,22 @@ _Deref          MAC
                 plb                   ; restore the caller's data bank register    
                 <<<
 
+
+; Call _NewHandle, but track the allocation
+_TrackHandle   mac
+               _NewHandle
+               bcs       err
+               ldx       NumHandles
+               lda       1,s
+               sta       Handles,x
+               lda       3,s
+               sta       Handles+2,x
+               txa
+               adc       #4
+               sta       NumHandles
+err
+               <<<
+               
 _Mul128         mac
                 asl
                 asl

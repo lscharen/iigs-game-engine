@@ -266,6 +266,8 @@ VBuffHorzTableSelect EXT
 Overlays          EXT
 BG1YCache         EXT
 ScalingTables     EXT
+NumHandles        EXT
+Handles           EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

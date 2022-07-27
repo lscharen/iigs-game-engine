@@ -110,12 +110,18 @@ _GTERemoveSprite     MAC
                      UserTool  $1300+GTEToolNum
                      <<<
 ; Helper function to set the data back to the toolset default
-_SetDataBank    sep  #$20
-                lda  #^TileStore
-                pha
-                plb
-                rep  #$20
-                rts
+;_SetDataBank
+;                sep  #$20
+;                lda  #^TileStore
+;                pha
+;                plb
+;                rep  #$20
+;                rts
+_SetDataBank
+                 pea  #>TileStore                ; This does not depend on Acc being 8 or 16 bit
+                 plb
+                 plb
+                 rts
 
 ; Do nothing when the tool set is installed
 _TSBootInit

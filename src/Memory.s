@@ -25,7 +25,7 @@ InitMemory     lda       EngineMode
                PushWord  UserId
                PushWord  #%11000000_00010111         ; Fixed location
                PushLong  #$002000
-               _NewHandle                            ; returns LONG Handle on stack
+               _TrackHandle                          ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
 ;               _Deref
@@ -38,7 +38,7 @@ InitMemory     lda       EngineMode
                PushWord  UserId
                PushWord  #%11000000_00010111         ; Fixed location
                PushLong  #$012000
-               _NewHandle                            ; returns LONG Handle on stack
+               _TrackHandle                          ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
 ;               _Deref
@@ -58,7 +58,7 @@ InitMemory     lda       EngineMode
                PushWord  UserId
                PushWord  #%11000000_00010101         ; Page-aligned, fixed bank
                PushLong  #$000000
-               _NewHandle                            ; returns LONG Handle on stack
+               _TrackHandle                          ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
@@ -156,6 +156,26 @@ InitMemory     lda       EngineMode
 :exit
                rts
 
+UnInitMemory
+               ldx       #0
+:loop
+               phx                              ; save
+               lda       Handles+2,x
+               pha
+               lda       Handles,x
+               pha
+               _DisposeHandle
+
+               pla
+               clc
+               adc       #4
+               tax
+               cpx       NumHandles
+               bcc       :loop
+
+               stz       NumHandles
+               rts
+
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)
 
 AllocOneBank   PushLong  #0
@@ -163,7 +183,7 @@ AllocOneBank   PushLong  #0
                PushWord  UserId
                PushWord  #%11000000_00011100
                PushLong  #0
-               _NewHandle                            ; returns LONG Handle on stack
+               _TrackHandle                          ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                xba                                   ; swap accumulator bytes to XX00	
@@ -177,7 +197,7 @@ AllocOneBank2  PushLong  #0
                PushWord  UserId
                PushWord  #%11000000_00011100
                PushLong  #0
-               _NewHandle
+               _TrackHandle
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
