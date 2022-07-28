@@ -87,9 +87,8 @@ Counter            equ   tmp3
 ; A = value
 ;
 ; Set M to 0 or 1
-SetConst                                            ; Need a blank line here, otherwise the :tbl local variable resolveds backwards
-                   jmp   (:tbl,x)
-:tbl               da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
+SetConst
+                   da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
                    da    :bottom-36,:bottom-39,:bottom-42,:bottom-45

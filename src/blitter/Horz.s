@@ -33,8 +33,8 @@ _RestoreBG0Opcodes
                     lda   LastPatchOffset            ; If zero, there are no saved opcodes
                     sta   :exit_offset
 
-:loop
                     ldx   :virt_line_x2
+:loop
                     ldal  BTableLow,x                ; Get the address of the first code field line
                     tay
 
@@ -47,8 +47,7 @@ _RestoreBG0Opcodes
                     txa                              ; lda   :virt_line_x2
                     and   #$001E
                     eor   #$FFFF
-                    inc
-                    clc
+                    sec
                     adc   #32
                     min   :lines_left_x2
                     sta   :draw_count_x2             ; Do half of this many lines
@@ -60,12 +59,13 @@ _RestoreBG0Opcodes
                     clc
                     adc   :exit_offset               ; Add some offsets to get the base address in the code field line
 
-                    jsr   RestoreOpcode
+                    jsr   (RestoreOpcode,x)
 
                     lda   :virt_line_x2              ; advance to the virtual line after the segment we just
                     clc                              ; filled in
                     adc   :draw_count_x2
                     sta   :virt_line_x2
+                    tax
 
                     lda   :lines_left_x2             ; subtract the number of lines we just completed
                     sec
@@ -113,16 +113,16 @@ _ApplyBG0XPosPre
 
 _ApplyBG0XPos
 
-:virt_line          equ   tmp1
-:lines_left         equ   tmp2
-:draw_count         equ   tmp3
+:stk_save           equ   tmp0
+:virt_line_x2       equ   tmp1
+:lines_left_x2      equ   tmp2
+:draw_count_x2      equ   tmp3
 :exit_offset        equ   tmp4
 :entry_offset       equ   tmp5
 :exit_bra           equ   tmp6
 :exit_address       equ   tmp7
 :base_address       equ   tmp8
-:draw_count_x2      equ   tmp9
-:opcode             equ   tmp0
+:opcode             equ   tmp9
 :odd_entry_offset   equ   tmp10
 
 ; If there are saved opcodes that have not been restored, do not run this routine
@@ -133,10 +133,12 @@ _ApplyBG0XPos
 ; This code is fairly succinct.  See the corresponding code in Vert.s for more detailed comments.
 :ok
                     lda   StartYMod208               ; This is the base line of the virtual screen
-                    sta   :virt_line                 ; Keep track of it
+                    asl
+                    sta   :virt_line_x2              ; Keep track of it
 
                     lda   ScreenHeight
-                    sta   :lines_left
+                    asl
+                    sta   :lines_left_x2
 
 ; Calculate the exit and entry offsets into the code fields.  This is a bit tricky, because odd-aligned
 ; rendering causes the left and right edges to move in a staggered fashion.
@@ -280,32 +282,30 @@ _ApplyBG0XPos
 ; 3. Writes the JMP entry point to enter the code field
 
                     phb                              ; Save the existing bank
+                    tsc
+                    sta   :stk_save
+
 :loop
-                    lda   :virt_line
-                    asl                              ; This will clear the carry bit
-                    tax
+                    ldx   :virt_line_x2
                     ldal  BTableLow,x                ; Get the address of the first code field line
                     tay                              ; Save it to use as the base address
+
+                    clc
                     adc   :exit_offset               ; Add some offsets to get the base address in the code field line
                     sta   :exit_address
                     sty   :base_address
 
-                    sep   #$20
                     ldal  BTableHigh,x
                     pha
-                    plb                              ; This is the bank that will receive the updates
-                    rep   #$20
+                    plb
 
-                    lda   :virt_line
-                    and   #$000F
+                    txa
+                    and   #$001E
                     eor   #$FFFF
-                    inc
-                    clc
-                    adc   #16
-                    min   :lines_left
+                    sec
+                    adc   #32
+                    min   :lines_left_x2
 
-                    sta   :draw_count                ; Do this many lines
-                    asl
                     sta   :draw_count_x2
 
 ; First step is to set the BRA instruction to exit the code field at the proper location.  There
@@ -317,64 +317,63 @@ _ApplyBG0XPos
 ; screen
                                                      ; y is already set to :base_address
                     tax                              ; :draw_count_x2
-                    lda   :exit_address              ; Save from this location
-                    jsr   SaveOpcode
+                    clc                              ; advance to the virtual line after the segment we just
+                    adc   :virt_line_x2             ; filled in
+                    sta   :virt_line_x2
 
+                    lda   :exit_address              ; Save from this location
+                    jsr   (SaveOpcode,x)             ; X = :exit_address on return
+
+                    txy                              ; ldy :exit_address -- starting at this address
                     ldx   :draw_count_x2             ; Do this many lines
                     lda   :exit_bra                  ; Copy this value into all of the lines
-                    ldy   :exit_address              ; starting at this address
-                    jsr   SetConst
+                    jsr   (SetConst,x)               ; All registers are preserved
 
 ; Next, patch in the CODE_ENTRY value, which is the low byte of a JMP instruction. This is an
 ; 8-bit operation and, since the PEA code is bank aligned, we use the entry_offset value directly
 
                     sep   #$20
 
-                    ldx   :draw_count_x2
+;                    ldx   :draw_count_x2
                     lda   :entry_offset
                     ldy   :base_address
-                    jsr   SetCodeEntry
+                    jsr   (SetCodeEntry,x)           ; All registers are preserved
 
 ; Now, patch in the opcode
 
-                    ldx   :draw_count_x2
+;                    ldx   :draw_count_x2
                     lda   :opcode
-                    ldy   :base_address          ; Y-register is preserved, this can be removed
-                    jsr   SetCodeEntryOpcode
+                    jsr   (SetCodeEntryOpcode,x)     ; All registers are preserved
 
 ; If this is an odd entry, also set the odd_entry low byte and save the operand high byte
 
                     lda   :odd_entry_offset
                     beq   :not_odd
 
-                    ldx   :draw_count_x2
-                    ldy   :base_address         ; Y-register is preserved, this can be removed
-                    jsr   SetOddCodeEntry
+; NOTE: SetOddCodeEntry and SaveHighOperand can probably be combined to eliminate call/return overhead
 
-                    ldx   :draw_count_x2
-                    ldy   :base_address         ; Y-register is preserved, this can be removed
-                    pei   :exit_address
-                    jmp   :SaveHighOperand      ; Only used once, so "inline" it
+;                    ldx   :draw_count_x2
+                    jsr   (SetOddCodeEntry,x)        ; All registers are preserved
+
+;                    ldx   :draw_count_x2
+                    jmp   (:SaveHighOperand,x)       ; Only used once, so "inline" it
 :save_high_op_rtn
 
 :not_odd
-                    rep   #$20
+                    rep   #$21                       ; clear the carry
 
 ; Do the end of the loop -- update the virtual line counter and reduce the number
 ; of lines left to render
 
-                    lda   :virt_line                 ; advance to the virtual line after the segment we just
-                    clc                              ; filled in
-                    adc   :draw_count
-                    sta   :virt_line
-
-                    lda   :lines_left                ; subtract the number of lines we just completed
+                    lda   :lines_left_x2             ; subtract the number of lines we just completed
                     sec
-                    sbc   :draw_count
-                    sta   :lines_left
+                    sbc   :draw_count_x2
+                    sta   :lines_left_x2
 
                     jne   :loop
 
+                    lda   :stk_save
+                    tcs
                     plb
                     rts
 
@@ -387,45 +386,43 @@ _ApplyBG0XPos
 ; Y = starting line * $1000
 ; A = code field location * $1000
 :SaveHighOperand
-                    jmp   (:tbl,x)
-
-:tbl                da    :bottom
+                    da    :bottom
                     da    :do01,:do02,:do03,:do04
                     da    :do05,:do06,:do07,:do08
                     da    :do09,:do10,:do11,:do12
                     da    :do13,:do14,:do15,:do16
 
-:do15               plx
+:do15               ldx   :exit_address                   ; accumulator is in 8-bit mode, so can't use TAX
                     bra   :x15
-:do14               plx
+:do14               ldx   :exit_address
                     bra   :x14
-:do13               plx
+:do13               ldx   :exit_address
                     bra   :x13
-:do12               plx
+:do12               ldx   :exit_address
                     bra   :x12
-:do11               plx
+:do11               ldx   :exit_address
                     bra   :x11
-:do10               plx
+:do10               ldx   :exit_address
                     bra   :x10
-:do09               plx
+:do09               ldx   :exit_address
                     bra   :x09
-:do08               plx
+:do08               ldx   :exit_address
                     bra   :x08
-:do07               plx
+:do07               ldx   :exit_address
                     bra   :x07
-:do06               plx
+:do06               ldx   :exit_address
                     bra   :x06
-:do05               plx
+:do05               ldx   :exit_address
                     bra   :x05
-:do04               plx
+:do04               ldx   :exit_address
                     bra   :x04
-:do03               plx
+:do03               ldx   :exit_address
                     bra   :x03
-:do02               plx
+:do02               ldx   :exit_address
                     bra   :x02
-:do01               plx
+:do01               ldx   :exit_address
                     bra   :x01
-:do16               plx
+:do16               ldx   :exit_address
 :x16                lda   $F002,x
                     sta   OPCODE_HIGH_SAVE+$F000,y
 :x15                lda   $E002,x
@@ -469,9 +466,7 @@ _ApplyBG0XPos
 ; Y = starting line * $1000
 ; A = code field location * $1000
 SaveOpcode
-                    jmp   (:tbl,x)
-
-:tbl                da    :bottom
+                    da    :bottom
                     da    :do01,:do02,:do03,:do04
                     da    :do05,:do06,:do07,:do08
                     da    :do09,:do10,:do11,:do12
@@ -550,9 +545,7 @@ SaveOpcode
 ; Y = starting line * $1000
 ; A = code field location * $1000
 RestoreOpcode
-                    jmp   (:tbl,x)
-
-:tbl                da    :bottom
+                    da    :bottom
                     da    :do01,:do02,:do03,:do04
                     da    :do05,:do06,:do07,:do08
                     da    :do09,:do10,:do11,:do12
@@ -631,8 +624,7 @@ RestoreOpcode
 ; Y = starting line * $1000
 ; A = address low byte
 SetCodeEntry
-                    jmp   (:tbl,x)
-:tbl                da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
+                    da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
                     da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
                     da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
                     da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
@@ -663,8 +655,7 @@ SetCodeEntry
 ; Y = starting line * $1000
 ; A = address low byte
 SetOddCodeEntry
-                    jmp   (:tbl,x)
-:tbl                da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
+                    da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
                     da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
                     da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
                     da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
@@ -695,8 +686,7 @@ SetOddCodeEntry
 ; Y = starting line * $1000
 ; A = opcode value
 SetCodeEntryOpcode
-                    jmp   (:tbl,x)
-:tbl                da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
+                    da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
                     da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
                     da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
                     da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
