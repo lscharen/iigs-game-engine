@@ -69,12 +69,11 @@ _ApplyBG0YPos
                      sta   :virt_line_x2
 
                      plb
-                     jsr   (:CopyRTableToStkAddr,x)   ; X = rtbl_idx_x2 on return
+                     CopyRTableToStkAddr :rtbl_idx_x2    ; X = rtbl_idx_x2 on return
 
                      txa                        ; carry flag is unchanged
                      adc   :draw_count_x2       ; advance the index into the RTable
                      sta   :rtbl_idx_x2
-
 
                      lda   :lines_left_x2       ; subtract the number of lines we just completed
                      sec
@@ -93,73 +92,75 @@ _ApplyBG0YPos
 ; A = intect into the RTable array (x2)
 ; Y = starting line * $1000
 ; X = number of lines (x2)
-:CopyRTableToStkAddr
-                     da    :none
-                     da    :do01,:do02,:do03,:do04
-                     da    :do05,:do06,:do07,:do08
-                     da    :do09,:do10,:do11,:do12
-                     da    :do13,:do14,:do15,:do16
-:do15                ldx   :rtbl_idx_x2
-                     bra   :x15
-:do14                ldx   :rtbl_idx_x2
-                     bra   :x14
-:do13                ldx   :rtbl_idx_x2
-                     bra   :x13
-:do12                ldx   :rtbl_idx_x2
-                     bra   :x12
-:do11                ldx   :rtbl_idx_x2
-                     bra   :x11
-:do10                ldx   :rtbl_idx_x2
-                     bra   :x10
-:do09                ldx   :rtbl_idx_x2
-                     bra   :x09
-:do08                ldx   :rtbl_idx_x2
-                     bra   :x08
-:do07                ldx   :rtbl_idx_x2
-                     bra   :x07
-:do06                ldx   :rtbl_idx_x2
-                     bra   :x06
-:do05                ldx   :rtbl_idx_x2
-                     bra   :x05
-:do04                ldx   :rtbl_idx_x2
-                     bra   :x04
-:do03                ldx   :rtbl_idx_x2
-                     bra   :x03
-:do02                ldx   :rtbl_idx_x2
-                     bra   :x02
-:do01                ldx   :rtbl_idx_x2
-                     bra   :x01
-:do16                ldx   :rtbl_idx_x2
+CopyRTableToStkAddr  mac
+                     jmp   (dispTbl,x)
+dispTbl              da    bottom
+                     da    do01,do02,do03,do04
+                     da    do05,do06,do07,do08
+                     da    do09,do10,do11,do12
+                     da    do13,do14,do15,do16
+do15                 ldx   ]1
+                     bra   x15
+do14                 ldx   ]1
+                     bra   x14
+do13                 ldx   ]1
+                     bra   x13
+do12                 ldx   ]1
+                     bra   x12
+do11                 ldx   ]1
+                     bra   x11
+do10                 ldx   ]1
+                     bra   x10
+do09                 ldx   ]1
+                     bra   x09
+do08                 ldx   ]1
+                     bra   x08
+do07                 ldx   ]1
+                     bra   x07
+do06                 ldx   ]1
+                     bra   x06
+do05                 ldx   ]1
+                     bra   x05
+do04                 ldx   ]1
+                     bra   x04
+do03                 ldx   ]1
+                     bra   x03
+do02                 ldx   ]1
+                     bra   x02
+do01                 ldx   ]1
+                     bra   x01
+do16                 ldx   ]1
                      ldal  RTable+30,x
                      sta   STK_ADDR+$F000,y
-:x15                 ldal  RTable+28,x
+x15                  ldal  RTable+28,x
                      sta   STK_ADDR+$E000,y
-:x14                 ldal  RTable+26,x
+x14                  ldal  RTable+26,x
                      sta   STK_ADDR+$D000,y
-:x13                 ldal  RTable+24,x
+x13                  ldal  RTable+24,x
                      sta   STK_ADDR+$C000,y
-:x12                 ldal  RTable+22,x
+x12                  ldal  RTable+22,x
                      sta   STK_ADDR+$B000,y
-:x11                 ldal  RTable+20,x
+x11                  ldal  RTable+20,x
                      sta   STK_ADDR+$A000,y
-:x10                 ldal  RTable+18,x
+x10                  ldal  RTable+18,x
                      sta   STK_ADDR+$9000,y
-:x09                 ldal  RTable+16,x
+x09                  ldal  RTable+16,x
                      sta   STK_ADDR+$8000,y
-:x08                 ldal  RTable+14,x
+x08                  ldal  RTable+14,x
                      sta   STK_ADDR+$7000,y
-:x07                 ldal  RTable+12,x
+x07                  ldal  RTable+12,x
                      sta   STK_ADDR+$6000,y
-:x06                 ldal  RTable+10,x
+x06                  ldal  RTable+10,x
                      sta   STK_ADDR+$5000,y
-:x05                 ldal  RTable+08,x
+x05                  ldal  RTable+08,x
                      sta   STK_ADDR+$4000,y
-:x04                 ldal  RTable+06,x
+x04                  ldal  RTable+06,x
                      sta   STK_ADDR+$3000,y
-:x03                 ldal  RTable+04,x
+x03                  ldal  RTable+04,x
                      sta   STK_ADDR+$2000,y
-:x02                 ldal  RTable+02,x
+x02                  ldal  RTable+02,x
                      sta   STK_ADDR+$1000,y
-:x01                 ldal  RTable+00,x
+x01                  ldal  RTable+00,x
                      sta:  STK_ADDR+$0000,y
-:none                rts
+bottom
+                     <<<

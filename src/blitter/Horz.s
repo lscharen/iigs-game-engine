@@ -63,8 +63,7 @@ _RestoreBG0Opcodes
                     tya
                     adc   :exit_offset               ; Add some offsets to get the base address in the code field line
 
-                    jmp   (:tgt,x)
-:tgt                RestoreOpcode
+                    RestoreOpcode
 
                     lda   :lines_left_x2             ; subtract the number of lines we just completed
                     sec
@@ -323,12 +322,12 @@ _ApplyBG0XPos
                     sta   :virt_line_x2
 
                     lda   :exit_address              ; Save from this location
-                    jsr   (SaveOpcode,x)             ; X = :exit_address on return
+                    SaveOpcode                       ; X = :exit_address on return
 
                     txy                              ; ldy :exit_address -- starting at this address
                     ldx   :draw_count_x2             ; Do this many lines
                     lda   :exit_bra                  ; Copy this value into all of the lines
-                    jsr   (SetConst,x)               ; All registers are preserved
+                    SetConst                         ; All registers are preserved
 
 ; Next, patch in the CODE_ENTRY value, which is the low byte of a JMP instruction. This is an
 ; 8-bit operation and, since the PEA code is bank aligned, we use the entry_offset value directly
@@ -337,21 +336,20 @@ _ApplyBG0XPos
 
                     lda   :entry_offset
                     ldy   :base_address
-                    jsr   (SetCodeEntry,x)           ; All registers are preserved
+                    SetCodeEntry                    ; All registers are preserved
 
 ; Now, patch in the opcode
 
                     lda   :opcode
-                    jsr   (SetCodeEntryOpcode,x)     ; All registers are preserved
+                    SetCodeEntryOpcode               ; All registers are preserved
 
 ; If this is an odd entry, also set the odd_entry low byte and save the operand high byte
 
                     lda   :odd_entry_offset
-                    beq   :not_odd
+                    jeq   :not_odd
 
-                    jsr   (SetOddCodeEntry,x)        ; All registers are preserved
-                    jmp   (:SaveHighOperand,x)       ; Only used once, so "inline" it
-:save_high_op_rtn
+                    SetOddCodeEntry                  ; All registers are preserved
+                    SaveHighOperand  :exit_address   ; Only used once, so "inline" it
 
 :not_odd
                     rep   #$21                       ; clear the carry
@@ -379,77 +377,78 @@ _ApplyBG0XPos
 ; X = number of lines * 2, 0 to 32
 ; Y = starting line * $1000
 ; A = code field location * $1000
-:SaveHighOperand
-                    da    :bottom
-                    da    :do01,:do02,:do03,:do04
-                    da    :do05,:do06,:do07,:do08
-                    da    :do09,:do10,:do11,:do12
-                    da    :do13,:do14,:do15,:do16
+SaveHighOperand     mac
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom
+                    da    do01,do02,do03,do04
+                    da    do05,do06,do07,do08
+                    da    do09,do10,do11,do12
+                    da    do13,do14,do15,do16
 
-:do15               ldx   :exit_address                   ; accumulator is in 8-bit mode, so can't use TAX
-                    bra   :x15
-:do14               ldx   :exit_address
-                    bra   :x14
-:do13               ldx   :exit_address
-                    bra   :x13
-:do12               ldx   :exit_address
-                    bra   :x12
-:do11               ldx   :exit_address
-                    bra   :x11
-:do10               ldx   :exit_address
-                    bra   :x10
-:do09               ldx   :exit_address
-                    bra   :x09
-:do08               ldx   :exit_address
-                    bra   :x08
-:do07               ldx   :exit_address
-                    bra   :x07
-:do06               ldx   :exit_address
-                    bra   :x06
-:do05               ldx   :exit_address
-                    bra   :x05
-:do04               ldx   :exit_address
-                    bra   :x04
-:do03               ldx   :exit_address
-                    bra   :x03
-:do02               ldx   :exit_address
-                    bra   :x02
-:do01               ldx   :exit_address
-                    bra   :x01
-:do16               ldx   :exit_address
-:x16                lda   $F002,x
+do15                ldx   ]1                   ; accumulator is in 8-bit mode, so can't use TAX
+                    bra   x15
+do14                ldx   ]1
+                    bra   x14
+do13                ldx   ]1
+                    bra   x13
+do12                ldx   ]1
+                    bra   x12
+do11                ldx   ]1
+                    bra   x11
+do10                ldx   ]1
+                    bra   x10
+do09                ldx   ]1
+                    bra   x09
+do08                ldx   ]1
+                    bra   x08
+do07                ldx   ]1
+                    bra   x07
+do06                ldx   ]1
+                    bra   x06
+do05                ldx   ]1
+                    bra   x05
+do04                ldx   ]1
+                    bra   x04
+do03                ldx   ]1
+                    bra   x03
+do02                ldx   ]1
+                    bra   x02
+do01                ldx   ]1
+                    bra   x01
+do16                ldx   ]1
+x16                 lda   $F002,x
                     sta   OPCODE_HIGH_SAVE+$F000,y
-:x15                lda   $E002,x
+x15                 lda   $E002,x
                     sta   OPCODE_HIGH_SAVE+$E000,y
-:x14                lda   $D002,x
+x14                 lda   $D002,x
                     sta   OPCODE_HIGH_SAVE+$D000,y
-:x13                lda   $C002,x
+x13                 lda   $C002,x
                     sta   OPCODE_HIGH_SAVE+$C000,y
-:x12                lda   $B002,x
+x12                 lda   $B002,x
                     sta   OPCODE_HIGH_SAVE+$B000,y
-:x11                lda   $A002,x
+x11                 lda   $A002,x
                     sta   OPCODE_HIGH_SAVE+$A000,y
-:x10                lda   $9002,x
+x10                 lda   $9002,x
                     sta   OPCODE_HIGH_SAVE+$9000,y
-:x09                lda   $8002,x
+x09                 lda   $8002,x
                     sta   OPCODE_HIGH_SAVE+$8000,y
-:x08                lda   $7002,x
+x08                 lda   $7002,x
                     sta   OPCODE_HIGH_SAVE+$7000,y
-:x07                lda   $6002,x
+x07                 lda   $6002,x
                     sta   OPCODE_HIGH_SAVE+$6000,y
-:x06                lda   $5002,x
+x06                 lda   $5002,x
                     sta   OPCODE_HIGH_SAVE+$5000,y
-:x05                lda   $4002,x
+x05                 lda   $4002,x
                     sta   OPCODE_HIGH_SAVE+$4000,y
-:x04                lda   $3002,x
+x04                 lda   $3002,x
                     sta   OPCODE_HIGH_SAVE+$3000,y
-:x03                lda   $2002,x
+x03                 lda   $2002,x
                     sta   OPCODE_HIGH_SAVE+$2000,y
-:x02                lda   $1002,x
+x02                 lda   $1002,x
                     sta   OPCODE_HIGH_SAVE+$1000,y
-:x01                lda:  $0002,x
+x01                 lda:  $0002,x
                     sta:  OPCODE_HIGH_SAVE+$0000,y
-:bottom             jmp   :save_high_op_rtn
+bottom              <<<
 
 ; SaveOpcode
 ;
@@ -459,77 +458,79 @@ _ApplyBG0XPos
 ; X = number of lines * 2, 0 to 32
 ; Y = starting line * $1000
 ; A = code field location * $1000
-SaveOpcode
-                    da    :bottom
-                    da    :do01,:do02,:do03,:do04
-                    da    :do05,:do06,:do07,:do08
-                    da    :do09,:do10,:do11,:do12
-                    da    :do13,:do14,:do15,:do16
+SaveOpcode          mac
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom
+                    da    do01,do02,do03,do04
+                    da    do05,do06,do07,do08
+                    da    do09,do10,do11,do12
+                    da    do13,do14,do15,do16
 
-:do15               tax
-                    bra   :x15
-:do14               tax
-                    bra   :x14
-:do13               tax
-                    bra   :x13
-:do12               tax
-                    bra   :x12
-:do11               tax
-                    bra   :x11
-:do10               tax
-                    bra   :x10
-:do09               tax
-                    bra   :x09
-:do08               tax
-                    bra   :x08
-:do07               tax
-                    bra   :x07
-:do06               tax
-                    bra   :x06
-:do05               tax
-                    bra   :x05
-:do04               tax
-                    bra   :x04
-:do03               tax
-                    bra   :x03
-:do02               tax
-                    bra   :x02
-:do01               tax
-                    bra   :x01
-:do16               tax
-:x16                lda   $F000,x
+do15                tax
+                    bra   x15
+do14                tax
+                    bra   x14
+do13                tax
+                    bra   x13
+do12                tax
+                    bra   x12
+do11                tax
+                    bra   x11
+do10                tax
+                    bra   x10
+do09                tax
+                    bra   x09
+do08                tax
+                    bra   x08
+do07                tax
+                    bra   x07
+do06                tax
+                    bra   x06
+do05                tax
+                    bra   x05
+do04                tax
+                    bra   x04
+do03                tax
+                    bra   x03
+do02                tax
+                    bra   x02
+do01                tax
+                    bra   x01
+do16                tax
+x16                 lda   $F000,x
                     sta   OPCODE_SAVE+$F000,y
-:x15                lda   $E000,x
+x15                 lda   $E000,x
                     sta   OPCODE_SAVE+$E000,y
-:x14                lda   $D000,x
+x14                 lda   $D000,x
                     sta   OPCODE_SAVE+$D000,y
-:x13                lda   $C000,x
+x13                 lda   $C000,x
                     sta   OPCODE_SAVE+$C000,y
-:x12                lda   $B000,x
+x12                 lda   $B000,x
                     sta   OPCODE_SAVE+$B000,y
-:x11                lda   $A000,x
+x11                 lda   $A000,x
                     sta   OPCODE_SAVE+$A000,y
-:x10                lda   $9000,x
+x10                 lda   $9000,x
                     sta   OPCODE_SAVE+$9000,y
-:x09                lda   $8000,x
+x09                 lda   $8000,x
                     sta   OPCODE_SAVE+$8000,y
-:x08                lda   $7000,x
+x08                 lda   $7000,x
                     sta   OPCODE_SAVE+$7000,y
-:x07                lda   $6000,x
+x07                 lda   $6000,x
                     sta   OPCODE_SAVE+$6000,y
-:x06                lda   $5000,x
+x06                 lda   $5000,x
                     sta   OPCODE_SAVE+$5000,y
-:x05                lda   $4000,x
+x05                 lda   $4000,x
                     sta   OPCODE_SAVE+$4000,y
-:x04                lda   $3000,x
+x04                 lda   $3000,x
                     sta   OPCODE_SAVE+$3000,y
-:x03                lda   $2000,x
+x03                 lda   $2000,x
                     sta   OPCODE_SAVE+$2000,y
-:x02                lda   $1000,x
+x02                 lda   $1000,x
                     sta   OPCODE_SAVE+$1000,y
-:x01                lda:  $0000,x
+x01                 lda:  $0000,x
                     sta:  OPCODE_SAVE+$0000,y
-:bottom             rts
+bottom
+                    <<<
 
 ; RestoreOpcode
 ;
@@ -539,7 +540,8 @@ SaveOpcode
 ; Y = starting line * $1000
 ; A = code field location * $1000
 RestoreOpcode       mac
-                    da    bottom
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom
                     da    do01,do02,do03,do04
                     da    do05,do06,do07,do08
                     da    do09,do10,do11,do12
@@ -618,13 +620,14 @@ bottom
 ; X = number of lines * 2, 0 to 32
 ; Y = starting line * $1000
 ; A = address low byte
-SetCodeEntry
-                    da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
-                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
-                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
-                    da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
-                    da    :bottom-48
-:top                sta   CODE_ENTRY+$F000,y
+SetCodeEntry        mac
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom-00,bottom-03,bottom-06,bottom-09
+                    da    bottom-12,bottom-15,bottom-18,bottom-21
+                    da    bottom-24,bottom-27,bottom-30,bottom-33
+                    da    bottom-36,bottom-39,bottom-42,bottom-45
+                    da    bottom-48
+                    sta   CODE_ENTRY+$F000,y
                     sta   CODE_ENTRY+$E000,y
                     sta   CODE_ENTRY+$D000,y
                     sta   CODE_ENTRY+$C000,y
@@ -640,7 +643,8 @@ SetCodeEntry
                     sta   CODE_ENTRY+$2000,y
                     sta   CODE_ENTRY+$1000,y
                     sta:  CODE_ENTRY+$0000,y
-:bottom             rts
+bottom
+                    <<<
 
 ; SetOddCodeEntry
 ;
@@ -649,13 +653,14 @@ SetCodeEntry
 ; X = number of lines * 2, 0 to 32
 ; Y = starting line * $1000
 ; A = address low byte
-SetOddCodeEntry
-                    da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
-                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
-                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
-                    da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
-                    da    :bottom-48
-:top                sta   ODD_ENTRY+$F000,y
+SetOddCodeEntry     mac
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom-00,bottom-03,bottom-06,bottom-09
+                    da    bottom-12,bottom-15,bottom-18,bottom-21
+                    da    bottom-24,bottom-27,bottom-30,bottom-33
+                    da    bottom-36,bottom-39,bottom-42,bottom-45
+                    da    bottom-48
+                    sta   ODD_ENTRY+$F000,y
                     sta   ODD_ENTRY+$E000,y
                     sta   ODD_ENTRY+$D000,y
                     sta   ODD_ENTRY+$C000,y
@@ -671,7 +676,8 @@ SetOddCodeEntry
                     sta   ODD_ENTRY+$2000,y
                     sta   ODD_ENTRY+$1000,y
                     sta:  ODD_ENTRY+$0000,y
-:bottom             rts
+bottom
+                    <<<
 
 ; SetCodeEntryOpcode
 ;
@@ -680,13 +686,14 @@ SetOddCodeEntry
 ; X = number of lines * 2, 0 to 32
 ; Y = starting line * $1000
 ; A = opcode value
-SetCodeEntryOpcode
-                    da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
-                    da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
-                    da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
-                    da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
-                    da    :bottom-48
-:top                sta   CODE_ENTRY_OPCODE+$F000,y
+SetCodeEntryOpcode  mac
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom-00,bottom-03,bottom-06,bottom-09
+                    da    bottom-12,bottom-15,bottom-18,bottom-21
+                    da    bottom-24,bottom-27,bottom-30,bottom-33
+                    da    bottom-36,bottom-39,bottom-42,bottom-45
+                    da    bottom-48
+                    sta   CODE_ENTRY_OPCODE+$F000,y
                     sta   CODE_ENTRY_OPCODE+$E000,y
                     sta   CODE_ENTRY_OPCODE+$D000,y
                     sta   CODE_ENTRY_OPCODE+$C000,y
@@ -702,4 +709,5 @@ SetCodeEntryOpcode
                     sta   CODE_ENTRY_OPCODE+$2000,y
                     sta   CODE_ENTRY_OPCODE+$1000,y
                     sta:  CODE_ENTRY_OPCODE+$0000,y
-:bottom             rts
+bottom
+                    <<<
