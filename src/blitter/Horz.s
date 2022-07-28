@@ -20,6 +20,7 @@ _RestoreBG0Opcodes
 :lines_left_x2      equ   tmp2
 :draw_count_x2      equ   tmp3
 :exit_offset        equ   tmp4
+:stk_save           equ   tmp5
 
                     phb                              ; Save data bank
 
@@ -33,16 +34,17 @@ _RestoreBG0Opcodes
                     lda   LastPatchOffset            ; If zero, there are no saved opcodes
                     sta   :exit_offset
 
-                    ldx   :virt_line_x2
+                    tsc
+                    sta   :stk_save
+
 :loop
+                    ldx   :virt_line_x2
                     ldal  BTableLow,x                ; Get the address of the first code field line
                     tay
 
-                    sep   #$20
-                    ldal  BTableHigh,x
+                    ldal  BTableHigh,x               ; This intentionally leaks one byte on the stack
                     pha
                     plb                              ; This is the bank that will receive the updates
-                    rep   #$20
 
                     txa                              ; lda   :virt_line_x2
                     and   #$001E
@@ -54,18 +56,15 @@ _RestoreBG0Opcodes
 
                                                      ; y is already set to :base_address
                     tax                              ; :draw_count * 2
+                    clc
+                    adc   :virt_line_x2
+                    sta   :virt_line_x2
 
                     tya
-                    clc
                     adc   :exit_offset               ; Add some offsets to get the base address in the code field line
 
-                    jsr   (RestoreOpcode,x)
-
-                    lda   :virt_line_x2              ; advance to the virtual line after the segment we just
-                    clc                              ; filled in
-                    adc   :draw_count_x2
-                    sta   :virt_line_x2
-                    tax
+                    jmp   (:tgt,x)
+:tgt                RestoreOpcode
 
                     lda   :lines_left_x2             ; subtract the number of lines we just completed
                     sec
@@ -73,9 +72,11 @@ _RestoreBG0Opcodes
                     sta   :lines_left_x2
 
                     jne   :loop
+
                     stz   LastPatchOffset            ; Clear the value once completed
 
-:out
+                    lda   :stk_save
+                    tcs
                     plb
                     rts
 
@@ -318,7 +319,7 @@ _ApplyBG0XPos
                                                      ; y is already set to :base_address
                     tax                              ; :draw_count_x2
                     clc                              ; advance to the virtual line after the segment we just
-                    adc   :virt_line_x2             ; filled in
+                    adc   :virt_line_x2              ; filled in
                     sta   :virt_line_x2
 
                     lda   :exit_address              ; Save from this location
@@ -334,14 +335,12 @@ _ApplyBG0XPos
 
                     sep   #$20
 
-;                    ldx   :draw_count_x2
                     lda   :entry_offset
                     ldy   :base_address
                     jsr   (SetCodeEntry,x)           ; All registers are preserved
 
 ; Now, patch in the opcode
 
-;                    ldx   :draw_count_x2
                     lda   :opcode
                     jsr   (SetCodeEntryOpcode,x)     ; All registers are preserved
 
@@ -350,12 +349,7 @@ _ApplyBG0XPos
                     lda   :odd_entry_offset
                     beq   :not_odd
 
-; NOTE: SetOddCodeEntry and SaveHighOperand can probably be combined to eliminate call/return overhead
-
-;                    ldx   :draw_count_x2
                     jsr   (SetOddCodeEntry,x)        ; All registers are preserved
-
-;                    ldx   :draw_count_x2
                     jmp   (:SaveHighOperand,x)       ; Only used once, so "inline" it
 :save_high_op_rtn
 
@@ -544,77 +538,78 @@ SaveOpcode
 ; X = number of lines * 2, 0 to 32
 ; Y = starting line * $1000
 ; A = code field location * $1000
-RestoreOpcode
-                    da    :bottom
-                    da    :do01,:do02,:do03,:do04
-                    da    :do05,:do06,:do07,:do08
-                    da    :do09,:do10,:do11,:do12
-                    da    :do13,:do14,:do15,:do16
+RestoreOpcode       mac
+                    da    bottom
+                    da    do01,do02,do03,do04
+                    da    do05,do06,do07,do08
+                    da    do09,do10,do11,do12
+                    da    do13,do14,do15,do16
 
-:do15               tax
-                    bra   :x15
-:do14               tax
-                    bra   :x14
-:do13               tax
-                    bra   :x13
-:do12               tax
-                    bra   :x12
-:do11               tax
-                    bra   :x11
-:do10               tax
-                    bra   :x10
-:do09               tax
-                    bra   :x09
-:do08               tax
-                    bra   :x08
-:do07               tax
-                    bra   :x07
-:do06               tax
-                    bra   :x06
-:do05               tax
-                    bra   :x05
-:do04               tax
-                    bra   :x04
-:do03               tax
-                    bra   :x03
-:do02               tax
-                    bra   :x02
-:do01               tax
-                    bra   :x01
-:do16               tax
-:x16                lda   OPCODE_SAVE+$F000,y
+do15                tax
+                    bra   x15
+do14                tax
+                    bra   x14
+do13                tax
+                    bra   x13
+do12                tax
+                    bra   x12
+do11                tax
+                    bra   x11
+do10                tax
+                    bra   x10
+do09                tax
+                    bra   x09
+do08                tax
+                    bra   x08
+do07                tax
+                    bra   x07
+do06                tax
+                    bra   x06
+do05                tax
+                    bra   x05
+do04                tax
+                    bra   x04
+do03                tax
+                    bra   x03
+do02                tax
+                    bra   x02
+do01                tax
+                    bra   x01
+do16                tax
+x16                 lda   OPCODE_SAVE+$F000,y
                     sta   $F000,x
-:x15                lda   OPCODE_SAVE+$E000,y
+x15                 lda   OPCODE_SAVE+$E000,y
                     sta   $E000,x
-:x14                lda   OPCODE_SAVE+$D000,y
+x14                 lda   OPCODE_SAVE+$D000,y
                     sta   $D000,x
-:x13                lda   OPCODE_SAVE+$C000,y
+x13                 lda   OPCODE_SAVE+$C000,y
                     sta   $C000,x
-:x12                lda   OPCODE_SAVE+$B000,y
+x12                 lda   OPCODE_SAVE+$B000,y
                     sta   $B000,x
-:x11                lda   OPCODE_SAVE+$A000,y
+x11                 lda   OPCODE_SAVE+$A000,y
                     sta   $A000,x
-:x10                lda   OPCODE_SAVE+$9000,y
+x10                 lda   OPCODE_SAVE+$9000,y
                     sta   $9000,x
-:x09                lda   OPCODE_SAVE+$8000,y
+x09                 lda   OPCODE_SAVE+$8000,y
                     sta   $8000,x
-:x08                lda   OPCODE_SAVE+$7000,y
+x08                 lda   OPCODE_SAVE+$7000,y
                     sta   $7000,x
-:x07                lda   OPCODE_SAVE+$6000,y
+x07                 lda   OPCODE_SAVE+$6000,y
                     sta   $6000,x
-:x06                lda   OPCODE_SAVE+$5000,y
+x06                 lda   OPCODE_SAVE+$5000,y
                     sta   $5000,x
-:x05                lda   OPCODE_SAVE+$4000,y
+x05                 lda   OPCODE_SAVE+$4000,y
                     sta   $4000,x
-:x04                lda   OPCODE_SAVE+$3000,y
+x04                 lda   OPCODE_SAVE+$3000,y
                     sta   $3000,x
-:x03                lda   OPCODE_SAVE+$2000,y
+x03                 lda   OPCODE_SAVE+$2000,y
                     sta   $2000,x
-:x02                lda   OPCODE_SAVE+$1000,y
+x02                 lda   OPCODE_SAVE+$1000,y
                     sta   $1000,x
-:x01                lda:  OPCODE_SAVE+$0000,y
+x01                 lda:  OPCODE_SAVE+$0000,y
                     sta:  $0000,x
-:bottom             rts
+bottom
+                    <<<
 
 ; SetCodeEntry
 ;
