@@ -58,7 +58,7 @@ appTmp0         equ   28
 
 ; Initialize the graphics screen playfield
 
-                pea   #320
+                pea   #160
                 pea   #200
                 _GTESetScreenMode
 

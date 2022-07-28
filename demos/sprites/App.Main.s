@@ -780,7 +780,7 @@ AllocBank      PushLong  #0
                PushWord  MyUserId
                PushWord  #%11000000_00011100
                PushLong  #0
-               _NewHandle
+               _TrackHandle
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
                _Deref
