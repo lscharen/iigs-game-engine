@@ -28,9 +28,7 @@ InitMemory     lda       EngineMode
                _NewHandle                            ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
-;               _Deref
-;               stx       Buff00
-;               sta       Buff00+2
+
 :no_bnk0_buff
 
                PushLong  #0                          ; space for result
@@ -41,9 +39,6 @@ InitMemory     lda       EngineMode
                _NewHandle                            ; returns LONG Handle on stack
                plx                                   ; base address of the new handle
                pla                                   ; high address 00XX of the new handle (bank)
-;               _Deref
-;               stx       Buff01
-;               sta       Buff01+2
 
                PushLong  #0                          ; space for result
 

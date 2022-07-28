@@ -87,14 +87,14 @@ Counter            equ   tmp3
 ; A = value
 ;
 ; Set M to 0 or 1
-SetConst                                            ; Need a blank line here, otherwise the :tbl local variable resolveds backwards
-                   jmp   (:tbl,x)
-:tbl               da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
-                   da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
-                   da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
-                   da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
-                   da    :bottom-48
-:top               sta   $F000,y
+SetConst           mac
+                   jmp   (dispTbl,x)
+dispTbl            da    bottom-00,bottom-03,bottom-06,bottom-09
+                   da    bottom-12,bottom-15,bottom-18,bottom-21
+                   da    bottom-24,bottom-27,bottom-30,bottom-33
+                   da    bottom-36,bottom-39,bottom-42,bottom-45
+                   da    bottom-48
+                   sta   $F000,y
                    sta   $E000,y
                    sta   $D000,y
                    sta   $C000,y
@@ -110,7 +110,8 @@ SetConst                                            ; Need a blank line here, ot
                    sta   $2000,y
                    sta   $1000,y
                    sta:  $0000,y
-:bottom            rts
+bottom
+                   <<<
 
 ; SetDPAddrs
 ;
