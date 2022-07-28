@@ -56,12 +56,6 @@ appTmp0         equ   28
                 stz   StartY
                 stz   frameCount
 
-; Initialize the graphics screen playfield
-
-                pea   #320
-                pea   #200
-                _GTESetScreenMode
-
 ; Load a tileset
 
                 pea   #^tiledata
