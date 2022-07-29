@@ -4,33 +4,12 @@
 #include <misctool.h>
 #include <types.h>
 
-#include "main.h"
-#include "gte_user.h"
+#include "gte.h"
 #include "demo_data.h"
 
 #define TOOLFAIL(string) if (toolerror()) SysFailMgr(toolerror(), "\p" string "\n\r    Error Code -> $");
 
-typedef struct PString {
-  byte length;
-  char text[32];
-} PString;
-
 #define SPRITE_START_TILE 2
-
-PString toolPath = {9, "1/Tool160" };
-
-void LoadGTEToolSet(Word userId) {
-  InitialLoadOutputRec loadRec;
-  
-  // Load the tool from the local directory
-  loadRec = InitialLoad(userId, (Pointer) (&toolPath), 1);
-  TOOLFAIL("Unable to load Tool160 from local path");
-
-  // Install the tool using the user tool vector
-  SetTSPtr(0x8000, 160, loadRec.startAddr);
-  TOOLFAIL("Could not install tool");
-}
-
 #define SPRITE_SLOT 0
 #define SPRITE_VBUFF (GTE_VBUFF_SPRITE_START+0*GTE_VBUFF_SPRITE_STEP)
 
@@ -53,13 +32,6 @@ int main (void) {
   MTStartUp();
   TOOLFAIL("Unable to start misc tools");
 
-  /* If GTE is installed in System:Tools use this and switch to "gte.h" */
-  /*
-  LoadOneTool(160, 0);
-  TOOLFAIL("Unable to load GTE toolset");
-  */
-
-  /* If GTE is installed with the application, use this and "gte_user.h" */
   LoadGTEToolSet(userId);
 
   dpHndl = NewHandle(0x0200, userId, 0x4015, 0);

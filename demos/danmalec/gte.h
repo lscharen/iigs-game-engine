@@ -19,42 +19,64 @@
 #ifndef _GTE_HEADER_INCLUDE_
 #define _GTE_HEADER_INCLUDE_
 
+#include <types.h>
+
+/*
+ GTE_IS_SYSTEM_TOOLS_INSTALL is a boolean toggle for controlling what the application assumes about the location of the GTE tool.
+
+ If GTE is installed in System:Tools, GTE_IS_SYSTEM_TOOLS_INSTALL must be defined.
+ Otherwise, GTE_IS_SYSTEM_TOOLS_INSTALL must be undefined.
+
+ This will control which header file is used as well as the calls used to load the tool during application startup.
+*/
+// #define GTE_IS_SYSTEM_TOOLS_INSTALL 1
+
+#ifdef GTE_IS_SYSTEM_TOOLS_INSTALL
+#define tool_dispatcher dispatcher
+#else
+#define tool_dispatcher 0xE10008L
+#endif // GTE_IS_SYSTEM_TOOLS_INSTALL
+
+
+/* GTE C Helper Routines */
+void LoadGTEToolSet(Word userId);
+
 
 /* GTE Housekeeping Routines */
-extern pascal void GTEBootInit(void) inline(0x01A0, dispatcher);
-extern pascal void GTEStartUp(Word dPageAddr, Word capFlags, Word userID) inline(0x02A0, dispatcher);
-extern pascal void GTEShutDown(void) inline(0x03A0, dispatcher);
-extern pascal Word GTEVersion(void) inline(0x04A0, dispatcher);
-extern pascal void GTEReset(void) inline(0x05A0, dispatcher);
-extern pascal Word GTEStatus(void) inline(0x06A0, dispatcher);
+extern pascal void GTEBootInit(void) inline(0x01A0, tool_dispatcher);
+extern pascal void GTEStartUp(Word dPageAddr, Word capFlags, Word userID) inline(0x02A0, tool_dispatcher);
+extern pascal void GTEShutDown(void) inline(0x03A0, tool_dispatcher);
+extern pascal Word GTEVersion(void) inline(0x04A0, tool_dispatcher);
+extern pascal void GTEReset(void) inline(0x05A0, tool_dispatcher);
+extern pascal Word GTEStatus(void) inline(0x06A0, tool_dispatcher);
 
 
 /* GTE Sprite Routines */
-extern pascal void GTECreateSpriteStamp(Word spriteDescriptor, Word vBuffAddr) inline(0x0FA0, dispatcher);
-extern pascal void GTEAddSprite(Word spriteSlot, Word spriteFlags, Word vBuffAddr, Word x, Word y) inline(0x10A0, dispatcher);
-extern pascal void GTEMoveSprite(Word spriteSlot, Word x, Word y) inline(0x11A0, dispatcher);
-extern pascal void GTEUpdateSprite(Word spriteSlot, Word spriteFlags, Word vBuffAddr) inline(0x12A0, dispatcher);
-extern pascal void GTERemoveSprite(Word spriteSlot) inline(0x13A0, dispatcher);
+extern pascal void GTECreateSpriteStamp(Word spriteDescriptor, Word vBuffAddr) inline(0x0FA0, tool_dispatcher);
+extern pascal void GTEAddSprite(Word spriteSlot, Word spriteFlags, Word vBuffAddr, Word x, Word y) inline(0x10A0, tool_dispatcher);
+extern pascal void GTEMoveSprite(Word spriteSlot, Word x, Word y) inline(0x11A0, tool_dispatcher);
+extern pascal void GTEUpdateSprite(Word spriteSlot, Word spriteFlags, Word vBuffAddr) inline(0x12A0, tool_dispatcher);
+extern pascal void GTERemoveSprite(Word spriteSlot) inline(0x13A0, tool_dispatcher);
 
 
 /* GTE Tile Routines */
-extern pascal void GTELoadTileSet(Pointer tileSetPtr) inline(0x0EA0, dispatcher);
-extern pascal void GTEFillTileStore(Word tileID) inline(0x25A0, dispatcher);
+extern pascal void GTELoadTileSet(Pointer tileSetPtr) inline(0x0EA0, tool_dispatcher);
+extern pascal void GTEFillTileStore(Word tileID) inline(0x25A0, tool_dispatcher);
 
 
 /* GTE Primary Background Routines */
-extern pascal void GTESetBG0Origin(Word x, Word y) inline(0x0CA0, dispatcher);
-extern pascal void GTERender(Word flags) inline(0x0DA0, dispatcher);
+extern pascal void GTESetBG0Origin(Word x, Word y) inline(0x0CA0, tool_dispatcher);
+extern pascal void GTERender(Word flags) inline(0x0DA0, tool_dispatcher);
 
 
 /* GTE Global State Functions */
-extern pascal void GTESetScreenMode(Word width, Word height) inline(0x0AA0, dispatcher);
-extern pascal void GTESetPalette(Word palNum, Pointer palettePtr) inline(0x16A0, dispatcher);
+extern pascal void GTESetScreenMode(Word width, Word height) inline(0x0AA0, tool_dispatcher);
+extern pascal void GTESetPalette(Word palNum, Pointer palettePtr) inline(0x16A0, tool_dispatcher);
 
 
 /* GTE Misc. Functions */
-extern pascal Word GTEReadControl(void) inline(0x09A0, dispatcher);
-extern pascal Word GTEGetSeconds(void) inline(0x14A0, dispatcher);
+extern pascal Word GTEReadControl(void) inline(0x09A0, tool_dispatcher);
+extern pascal Word GTEGetSeconds(void) inline(0x14A0, tool_dispatcher);
 
 
 /* GTE Sprite Constants */
