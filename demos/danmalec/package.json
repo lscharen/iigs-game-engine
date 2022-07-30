@@ -14,7 +14,7 @@
     "gsport": "%npm_package_config_gsport%",
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
     "build": "npm run build:tool && npm run build:sys16",
-    "build:sys16": "iix compile demo_data.c main.c && iix -DKeepType=S16 link main demo_data keep=App",
+    "build:sys16": "iix compile demo_data.c gte.c main.c && iix -DKeepType=S16 link main demo_data gte keep=App",
     "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% ../../src/Master.s",
     "debug": "%npm_package_config_crossrunner% ./App -Debug -CompatibilityLayer"
   }
