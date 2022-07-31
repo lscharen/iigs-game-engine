@@ -5,7 +5,7 @@
 ; Based on the current value of StartY in the direct page.  Set up the dispatch
 ; information so that the BltRange driver will render the correct code field
 ; lines in the correct order
-_ApplyBG0YPos
+_ApplyBG0YPosOld
 
 :rtbl_idx_x2         equ   tmp0
 :virt_line_x2        equ   tmp1
@@ -51,7 +51,7 @@ _ApplyBG0YPos
                      ldal  BTableLow,x          ; Get the address of the first code field line
                      tay
 
-                     ldal  BTableHigh,x         ; Target bank in low byte, current bank in high
+                     ldal  BTableHigh,x         ; Target bank in low byte
                      pha
 
                      txa
@@ -69,7 +69,8 @@ _ApplyBG0YPos
                      sta   :virt_line_x2
 
                      plb
-                     CopyRTableToStkAddr :rtbl_idx_x2    ; X = rtbl_idx_x2 on return
+                     jsr   _CopyRTableToStkAddr
+;                     CopyRTableToStkAddr :rtbl_idx_x2    ; X = rtbl_idx_x2 on return
 
                      txa                        ; carry flag is unchanged
                      adc   :draw_count_x2       ; advance the index into the RTable
@@ -82,6 +83,159 @@ _ApplyBG0YPos
 
                      jne   :loop
 
+                     lda   :stk_save
+                     tcs
+                     plb
+                     rts
+
+; This is an optimized version of _ApplyBG0YPos.  We pre-compute the breakdown across the bank
+; boundries in order to eliminate the the minimum calculation and some loop variable updates
+; from the inner loop.
+
+_ApplyBG0YPos
+
+:rtbl_idx_x2         equ   tmp0
+:virt_line_x2        equ   tmp1
+:lines_left_x2       equ   tmp2
+:draw_count_x2       equ   tmp3
+:stk_save            equ   tmp4
+:line_count          equ   tmp5
+
+; First task is to fill in the STK_ADDR values by copying them from the RTable array.  We
+; copy from RTable[i] into BlitField[StartY+i].  As with all of this code, the difficult part
+; is decomposing the update across banks
+
+                     stz   :rtbl_idx_x2         ; Start copying from the first entry in the table
+
+                     lda   StartY               ; This is the base line of the virtual screen
+                     jsr   Mod208
+                     sta   StartYMod208
+
+                     asl
+                     sta   :virt_line_x2        ; Keep track of it
+
+                     phb                        ; Save the current bank
+                     tsc                        ; we intentionally leak one byte of stack in each loop
+                     sta   :stk_save            ; iteration, so save the stack to repair at the end
+
+; copy a range of address from the table into the destination bank. If we restrict ourselves to
+; rectangular playfields, this can be optimized to just subtracting a constant value.  See the 
+; Templates::SetScreenAddrs subroutine.
+
+                     lda   ScreenHeight
+                     asl
+                     sta   :lines_left_x2
+
+; This is the verbose part -- figure out how many lines to draw.  We don't want to artificially limit
+; the height of the visible screen (for example, doing an animated wipe while scrolling), so the screen
+; height could be anything from 1 to 200.
+;
+; For larger values, we want to break things up on 16-line boundaries based on the virt_line value. So,
+;
+; draw_count = min(lines_left, (16 - (virt_line % 16))
+
+; Pre-loop: Calculate the number of lines to copy to get the loop into a bank-aligned state
+;
+; lines_in_bank = 16 - (virt_line % 16)
+:pre
+                     ldx   :virt_line_x2
+                     ldal  BTableLow,x          ; Get the address of the first code field line
+                     tay
+
+                     ldal  BTableHigh,x         ; Target bank in low byte
+                     pha
+
+                     txa
+                     and   #$001E
+                     eor   #$FFFF
+                     sec
+                     adc   #32
+                     min   :lines_left_x2
+
+                     sta   :draw_count_x2       ; Do this many lines
+                     tax
+
+                     clc                        ; pre-advance virt_line_2 because we have the value
+                     adc   :virt_line_x2
+                     sta   :virt_line_x2
+
+                     plb
+                     jsr   _CopyRTableToStkAddr
+
+                     txa                        ; carry flag is unchanged
+                     adc   :draw_count_x2       ; advance the index into the RTable
+                     sta   :rtbl_idx_x2
+
+                     lda   :lines_left_x2       ; subtract the number of lines we just completed
+                     sec
+                     sbc   :draw_count_x2
+                     sta   :lines_left_x2
+
+                     jeq   :done                ; if there are no lines left, we're done!
+                     cmp   #33
+                     jcc   :post                ; if there are 16 lines or less left, jump to post
+
+; Now we are in the main loop.  We know that the virt_line is a multiple of 16, but the number
+; of remaining lines could be any number greater than 0.  we test to see if the lines_left are
+; less than 16.  If so, we can jump straight to the post-loop update.  Otherwise we caculate
+; the number of 16-line iterations and but that in an auxiliary count variable and simplify
+; the loop update.
+
+                     tax
+                     and   #$001E               ; this is the number of lines in post
+                     sta   :lines_left_x2
+                     txa
+                     lsr
+                     lsr
+                     lsr
+                     lsr
+                     lsr
+                     sta   :line_count          ; single byte count, saves 9 cycles per loop iteration
+
+:loop
+                     ldx   :virt_line_x2
+                     ldal  BTableLow,x          ; Get the address of the first code field line
+                     tay
+
+                     ldal  BTableHigh,x         ; Target bank in low byte
+                     pha
+
+                     lda   #32                  ; Do this many lines (x2)
+                     tax
+
+                     clc                        ; pre-advance virt_line_2 because we have the value
+                     adc   :virt_line_x2
+                     sta   :virt_line_x2
+
+                     plb
+                     CopyRTableToStkAddr :rtbl_idx_x2
+
+                     txa                        ; carry flag is unchanged
+                     adc   #32                  ; advance the index into the RTable
+                     sta   :rtbl_idx_x2
+
+                     dec   :line_count
+                     jne   :loop
+
+                     lda   :lines_left_x2
+                     beq   :done
+
+; Draw some number of lines that are less that 16.  No need to update loop variabls because we
+; know we are in the last iteration
+
+:post
+                     ldx   :virt_line_x2
+                     ldal  BTableLow,x          ; Get the address of the first code field line
+                     tay
+
+                     ldal  BTableHigh,x         ; Target bank in low byte
+                     pha
+
+                     ldx   :lines_left_x2       ; Do this many lines
+                     plb
+                     jsr   _CopyRTableToStkAddr
+
+:done
                      lda   :stk_save
                      tcs
                      plb
@@ -164,3 +318,7 @@ x01                  ldal  RTable+00,x
                      sta:  STK_ADDR+$0000,y
 bottom
                      <<<
+
+_CopyRTableToStkAddr
+                     CopyRTableToStkAddr tmp0
+                     rts
