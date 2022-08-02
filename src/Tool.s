@@ -156,7 +156,9 @@ zpToUse         =    userId+4
 
 ; SetWAP(userOrSystem, tsNum, waptPtr)
 
-                pea     #$8000             ; $8000 = user tool set
+                lda     EngineMode         ; $0000 = system tool, $8000 = user tool set
+                and     #$8000
+                pha
                 pei     ToolNum            ; Push the tool number from the direct page
                 pea     $0000              ; High word of WAP is zero (bank 0)
                 phd                        ; Low word of WAP is the direct page
