@@ -245,8 +245,8 @@ BuildBank
                    plb
                    plb
 
-; Change the patched value to one of DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based on the capabilities
-; that the engine needs.
+; Change the patched value to one of BANK_ENTRY, DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based
+; on the capabilities that the engine needs.
 
                    lda   #DP_ENTRY
                    sta   :entryOffset

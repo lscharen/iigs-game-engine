@@ -170,3 +170,36 @@ _ScanlineBG0XPos
                     jne   :loop
 
                     rts
+
+; Unrolled copy routine to move BankTable entries into BNK_ADDR position.  This is a bit different than the
+; other routines, because we don't need to put values into the code fields, but just copy one-byte values
+; into an internal array in bank 00 space.  The reason for this is because the code sequence
+;
+; lda #ADDR
+; tcs
+; plb
+;
+; Take only 9 cycles, but the alternative is slower
+;
+; pea #$BBBB
+; plb
+; plb         = 13 cycles
+;
+; If for some reason it becimes important to preserve the accumulator, or save the 208 bytes of
+; bank 00 memory, then we can change it.  The advantage right now is that updating the array can
+; be done 16-bits at a time and without having to chunk up the writes across multiple banks.  This
+; is quite a bit faster than the other routines.
+CopyTableToBankBytes
+
+                     tsx                             ; save the stack
+                     sei
+                     jmp   $0000
+
+                     lda:  2,y
+                     pha
+                     lda:  0,y
+                     pha
+bottom
+                     txs                             ; restore the stack
+                     cli                             ; turn interrupts back on
+                     rts
