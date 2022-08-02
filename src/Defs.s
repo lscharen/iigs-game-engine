@@ -166,6 +166,7 @@ SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuf
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004
+ENGINE_MODE_USER_TOOL  equ   $8000       ; Communicate if GTE is loaded as a system tool, or a user tool
 
 ; Render flags
 RENDER_ALT_BG1         equ   $0001
