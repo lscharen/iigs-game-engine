@@ -3023,7 +3023,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$24XX</h4>
     <h4 id="GTEGetTileDataAddr">GTEGetTileDataAddr</h4>
-    <p>This API is under active development at this time.</p>
+    <p>Returns a pointer to the bottom of the internal tile data memory.  The data for a each tile can be found at offset <tt>N * 128</tt></p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -3038,6 +3038,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">longspace</td>
+            <td></td>
+            <td><em>Long</em>&mdash;Space for result</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -3061,6 +3066,11 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">tileDataPtr</td>
+            <td></td>
+            <td><em>Long</em>;mdash;<span class="sc">pointer</span> to the tile data</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -3074,6 +3084,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Pointer GTEGetTileDataAddr()</tt></p>
     </div>
   </div>
 
