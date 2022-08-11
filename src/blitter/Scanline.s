@@ -109,7 +109,7 @@ _ScanlineBG0XPos
                     sty   :base_address
 
                     lda   BTableHigh,x
-                    ora   src_bank
+                    ora   :src_bank
                     pha
                     plb
 
@@ -171,6 +171,56 @@ _ScanlineBG0XPos
 
                     rts
 
+
+_RestoreScanlineBG0Opcodes
+
+:virt_line_x2       equ   tmp1
+:lines_left_x2      equ   tmp2
+:src_bank           equ   tmp6
+
+                    asl
+                    sta   :virt_line_x2              ; Keep track of it
+
+                    phb
+                    phb
+                    pla
+                    and   #$FF00
+                    sta   :src_bank
+
+                    txa
+                    asl
+                    sta   :lines_left_x2
+
+:loop
+                    ldx   :virt_line_x2
+                    ldy   BTableLow,x                ; Get the address of the first code field line
+
+                    lda   BTableHigh,x
+                    ora   :src_bank
+                    pha
+
+                    lda   LastPatchOffsetArr,x
+                    tax
+
+                    plb
+                    lda   OPCODE_SAVE+$0000,y
+                    sta   $0000,x
+
+; Do the end of the loop -- update the virtual line counter and reduce the number
+; of lines left to render
+
+                    plb                              ; restore the bank
+
+                    lda   :virt_line_x2
+                    inc
+                    inc
+                    sta   :virt_line_x2
+                    cmp   :last_line_x2
+                    jne   :loop
+
+                    stz   LastPatchOffset            ; Clear the value once completed
+                    rts
+
 ; Unrolled copy routine to move BankTable entries into BNK_ADDR position.  This is a bit different than the
 ; other routines, because we don't need to put values into the code fields, but just copy one-byte values
 ; into an internal array in bank 00 space.  The reason for this is because the code sequence
@@ -185,7 +235,7 @@ _ScanlineBG0XPos
 ; plb
 ; plb         = 13 cycles
 ;
-; If for some reason it becimes important to preserve the accumulator, or save the 208 bytes of
+; If for some reason it becomes important to preserve the accumulator, or save the 208 bytes of
 ; bank 00 memory, then we can change it.  The advantage right now is that updating the array can
 ; be done 16-bits at a time and without having to chunk up the writes across multiple banks.  This
 ; is quite a bit faster than the other routines.

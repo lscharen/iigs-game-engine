@@ -243,7 +243,7 @@ _ApplyBG0YPos
 
 ; Unrolled copy routine to move RTable intries into STK_ADDR position.  
 ;
-; A = intect into the RTable array (x2)
+; A = index into the RTable array (x2)
 ; Y = starting line * $1000
 ; X = number of lines (x2)
 CopyRTableToStkAddr  mac
@@ -320,5 +320,5 @@ bottom
                      <<<
 
 _CopyRTableToStkAddr
-                     CopyRTableToStkAddr tmp0
-                     rts
+            CopyRTableToStkAddr tmp0
+            rts

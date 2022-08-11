@@ -321,7 +321,7 @@ _ApplyBG0XPos
                     adc   :virt_line_x2              ; filled in
                     sta   :virt_line_x2
 
-                    lda   :exit_address              ; Save from this location
+                    lda   :exit_address              ; Save from this location (not needed in fast mode)
                     SaveOpcode                       ; X = :exit_address on return
 
                     txy                              ; ldy :exit_address -- starting at this address
@@ -336,7 +336,7 @@ _ApplyBG0XPos
 
                     lda   :entry_offset
                     ldy   :base_address
-                    SetCodeEntry                    ; All registers are preserved
+                    SetCodeEntry                     ; All registers are preserved
 
 ; Now, patch in the opcode
 
