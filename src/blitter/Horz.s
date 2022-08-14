@@ -205,9 +205,8 @@ _ApplyBG0XPos
 ; where the exit will be patched in
 
                     dec                              ; (a - 1) % 164
-                    bpl   :hop1
+                    bpl   *+5
                     lda   #163
-:hop1
 
 ; If the exit byte is odd, then the left edge is even-aligned and we round down and exit at at
 ; that word.
@@ -243,7 +242,7 @@ _ApplyBG0XPos
                     dec                              ; to get the index of the first on-screen byte
 
                     cmp   #164                       ; Keep the value in range
-                    bcc   :hop2
+                    bcc   *+5
                     sbc   #164
 :hop2
 

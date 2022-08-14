@@ -39,7 +39,6 @@ _Render
             beq   *+5
             jmp   _RenderScanlines    ; Do the scanline-based renderer
 
-
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
 
             lda   #RENDER_BG1_ROTATION
@@ -57,7 +56,7 @@ _Render
             jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
-;            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
+            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
@@ -155,61 +154,63 @@ _DoOverlay
 :disp       jsl   $000000
             rts
 
+
 ; Use the per-scanline tables to set the screen.  This is really meant to be used without the built-in tilemap
 ; support and is more of a low-level way to control the background rendering
 _RenderScanlines
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
-;            jsr   _ApplyBG1YPos       ; Set the y-register values of the blitter
+            jsr   _ApplyBG1YPos       ; Set the y-register values of the blitter
 
 ; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
 ; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
 
             jsr   _ApplyBG0XPosPre
-;            jsr   _ApplyBG1XPosPre
+            jsr   _ApplyBG1XPosPre
 
 ;            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
 
 ;            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
-            jsr   _ScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
+             jsr   _ScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
+
 ;            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
 
 ; The code fields are locked in now and ready to be rendered. See if there is an overlay or any
 ; other reason to render with shadowing off.  Otherwise, just do things quickly.
 
-            lda   Overlays
-            beq   :no_ovrly
+;            lda   Overlays
+;            beq   :no_ovrly
 
-            jsr   _ShadowOff
+;            jsr   _ShadowOff
 
 ; Shadowing is turned off. Render all of the scan lines that need a second pass. One
 ; optimization that can be done here is that the lines can be rendered in any order
 ; since it is not shown on-screen yet.
 
-            ldx   Overlays+2                  ; Blit the full virtual buffer to the screen
-            ldy   Overlays+4
-            jsr   _BltRange
+;            ldx   Overlays+2                  ; Blit the full virtual buffer to the screen
+;            ldy   Overlays+4
+;            jsr   _BltRange
 
 ; Turn shadowing back on
 
-            jsr   _ShadowOn
+;            jsr   _ShadowOn
 
 ; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
 
-            ldx   #0
-            ldy   Overlays+2
-            beq   :skip
-            jsr   _BltRange
+;            ldx   #0
+;            ldy   Overlays+2
+;            beq   :skip
+;            jsr   _BltRange
 :skip
-            jsr   _DoOverlay
+;            jsr   _DoOverlay
 
-            ldx   Overlays+4
-            cpx   ScreenHeight
-            beq   :done
-            ldy   ScreenHeight
-            jsr   _BltRange
-            bra   :done
+;            ldx   Overlays+4
+;            cpx   ScreenHeight
+;            beq   :done
+;            ldy   ScreenHeight
+;            jsr   _BltRange
+;            bra   :done
 
 :no_ovrly
             ldx   #0                  ; Blit the full virtual buffer to the screen
@@ -217,9 +218,9 @@ _RenderScanlines
             jsr   _BltRange
 :done
 
-            ldx   #0
-            ldy   ScreenHeight
-            jsr   _BltSCB
+;            ldx   #0
+;            ldy   ScreenHeight
+;            jsr   _BltSCB
 
             lda   StartYMod208              ; Restore the fields back to their original state
             ldx   ScreenHeight

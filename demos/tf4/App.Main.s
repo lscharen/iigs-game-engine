@@ -37,6 +37,8 @@ MaxBG0X         equ   20
 MaxBG0Y         equ   22
 OldOneSecondCounter equ 26
 appTmp0         equ   28
+appTmp1         equ   30
+appTmp2         equ   32
 
                 phk
                 plb
@@ -50,15 +52,39 @@ appTmp0         equ   28
                 lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
 
-; Initialize local variables
+                pea   $0000                   ; Set the first two tiles
+                pea   $0002
+                pea   #^TileData
+                pea   #TileData
+                _GTELoadTileSet
 
-;                pea   $0000
-;                pea   #^TileSetPalette
-;                pea   #TileSetPalette
-;                _GTESetPalette
+                pea   $0000
+                pea   #^TileSetPalette
+                pea   #TileSetPalette
+                _GTESetPalette
 
-; Set up our level data
+; Fill in the field with a checkboard pattern
 
+                stz   appTmp1
+
+:tloop0         stz   appTmp0
+:tloop1         lda   appTmp0     ; X
+                pha
+                pei   appTmp1     ; Y
+                eor   appTmp1
+                and   #$0001
+                pha               ; tile ID
+                _GTESetTile
+
+                inc   appTmp0
+                lda   #40
+                cmp   appTmp0
+                bcs   :tloop1
+
+                inc   appTmp1
+                lda   #25
+                cmp   appTmp1
+                bcs   :tloop0
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
@@ -70,7 +96,8 @@ EvtLoop
 
                 jsr   HandleKeys                   ; Do the generic key handlers
 
-                pea  RENDER_PER_SCANLINE           ; Scanline rendering
+                pea  #RENDER_PER_SCANLINE          ; Scanline rendering
+;                pea  $0000
                 _GTERender
 
                 brl   EvtLoop
@@ -88,9 +115,12 @@ qtRec           adrl  $0000
                 da    $00
 
 ; Color palette
+TileSetPalette  dw    $0000,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF,$0FFF
+
 MyDirectPage    ds    2
 
 ; Stub
 SetLimits       rts
 
                 PUT        ../kfest-2022/StartUp.s
+                PUT        Tiles.s

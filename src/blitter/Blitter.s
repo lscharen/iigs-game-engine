@@ -57,7 +57,9 @@ _BltRange
                 lda   EngineMode
                 bit   #ENGINE_MODE_TWO_LAYER
                 beq   :skip_bank
-                
+
+; TODO: Switch to loading the selected BG1 bank. No special "Alt" bank
+
                 lda   RenderFlags
                 bit   #RENDER_ALT_BG1
                 beq   :primary
@@ -81,7 +83,7 @@ _BltRange
                 _R0W1
                 tsc                  ; save the stack pointer
                 stal  stk_save+1
-
+                
 blt_entry       jml   $000000        ; Jump into the blitter code $XX/YY00
 
 blt_return      _R0W0

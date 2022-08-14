@@ -1,20 +1,29 @@
 ; Basic tile functions
 
 ; Copy tileset data from a pointer in memory to the tiledata back
-; X = high word
-; A = low word
+; 
+; tmp0 = Pointer to tile data
+; X = first tile
+; Y = last tile
+;
+; To copy in three tiles starting at tile 5, for example, X = 5 and Y = 9
 _LoadTileSet
-                sta  tmp0
-                stx  tmp1
+                txa
+                _Mul128                   ; Jump to the target location
+                tax
+                tya
+                _Mul128
+                sta  tmp2                 ; This is the terminating byte
+
                 ldy  #0
-                tyx
 :loop           lda  [tmp0],y
                 stal tiledata,x
-                dex
-                dex
-                dey
-                dey
-                bne  :loop
+                inx
+                inx
+                iny
+                iny
+                cpx  tmp2
+                bne  :loop                ; Use BNE so when Y=512 => $0000, we wait for wrap-around
                 rts
 
 

@@ -19,7 +19,8 @@ _ScanlineBG0XPos
 :base_address       equ   tmp8
 :opcode             equ   tmp9
 :odd_entry_offset   equ   tmp10
-
+                   
+                    brk   $AB
                     lda   StartYMod208               ; This is the base line of the virtual screen
                     asl
                     sta   :virt_line_x2              ; Keep track of it
@@ -38,8 +39,8 @@ _ScanlineBG0XPos
 
 :loop
                     ldx   :virt_line_x2
-                    lda   StartXMod164Arr,x          ; Get the offset for this line
 
+                    lda   StartXMod164Arr,x          ; Get the offset for this line
                     dec                              ; The exit point is one byte sooner
                     bpl   *+5
                     lda   #163
@@ -100,7 +101,7 @@ _ScanlineBG0XPos
                     sta   :opcode
 :prep_complete
 
-; Not patch in the code field line
+; Now patch in the code field line
 
                     ldy   BTableLow,x                ; Get the address of the first code field line
                     clc
@@ -124,9 +125,9 @@ _ScanlineBG0XPos
                     sta:  OPCODE_SAVE+$0000,y
 
 ;SetConst
-                    txy                              ; ldy :exit_address -- starting at this address
-                    ldx   :exit_bra                  ; Copy this value into all of the lines
-                    sta:  $0000,y
+;                    txy                              ; ldy :exit_address -- starting at this address
+                    lda   :exit_bra                  ; Copy this value into all of the lines
+                    sta:  $0000,x
 
 ; Next, patch in the CODE_ENTRY value, which is the low byte of a JMP instruction. This is an
 ; 8-bit operation and, since the PEA code is bank aligned, we use the entry_offset value directly
@@ -135,7 +136,7 @@ _ScanlineBG0XPos
 
 ; SetCodeEntry
                     lda   :entry_offset
-                    ldy   :base_address
+;                    ldy   :base_address
                     sta:  CODE_ENTRY+$0000,y
 
 ; SetCodeEntryOpcode
@@ -151,11 +152,11 @@ _ScanlineBG0XPos
 ; SetOddCodeEntry
                     sta:  ODD_ENTRY+$0000,y
 ; SaveHighOperand
-                    ldx   :exit_address
+;                    ldx   :exit_address
                     lda:  $0002,x
                     sta:  OPCODE_HIGH_SAVE+$0000,y
 :not_odd
-                    rep   #$21                       ; clear the carry
+                    rep   #$20                       ; clear the carry
 
 ; Do the end of the loop -- update the virtual line counter and reduce the number
 ; of lines left to render
@@ -193,18 +194,19 @@ _RestoreScanlineBG0Opcodes
 
 :loop
                     ldx   :virt_line_x2
-                    ldy   BTableLow,x                ; Get the address of the first code field line
 
                     lda   BTableHigh,x
                     ora   :src_bank
                     pha
 
-                    lda   LastPatchOffsetArr,x
+                    lda   BTableLow,x                ; Get the address of the first code field line
+                    clc
+                    adc   LastPatchOffsetArr,x
                     tax
 
                     plb
-                    lda   OPCODE_SAVE+$0000,y
-                    sta   $0000,x
+                    lda:  OPCODE_SAVE+$0000,y
+                    sta:  $0000,x
 
 ; Do the end of the loop -- update the virtual line counter and reduce the number
 ; of lines left to render

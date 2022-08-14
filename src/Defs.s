@@ -184,6 +184,9 @@ DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
 DIRTY_BIT_SPRITE_ARRAY equ   $0040
 
+; GetAddress table IDs
+scanlineHorzOffset     equ   $0001        ; table of 416 wors, a double-array of scanline offset values. Must be 0, 163
+
 ; Script definition
 YIELD                  equ   $8000
 JUMP                   equ   $4000

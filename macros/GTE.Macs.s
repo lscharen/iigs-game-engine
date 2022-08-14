@@ -126,6 +126,9 @@ _GTEClearBG1Buffer   MAC
 _GTESetBG1Scale      MAC
                      UserTool  $2B00+GTEToolNum
                      <<<
+_GTEGetAddress       MAC
+                     UserTool  $2C00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -155,6 +158,8 @@ RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
 RENDER_PER_SCANLINE    equ   $0010
 
+; GetAddress table IDs
+scanlineHorzOffset     equ   $0001
 
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000
