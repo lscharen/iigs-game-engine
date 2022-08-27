@@ -47,7 +47,7 @@ appTmp0         equ   28
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #0                      ; Engine in Fast Mode
+                lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode as a User Tool
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
 
 ; Initialize local variables
