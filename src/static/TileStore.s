@@ -536,3 +536,8 @@ Scale15   dw $003C,$003C,$003C,$003E,$003E,$003E,$003E,$0040,$0040,$0040,$0040,$
 
 blt_return
 stk_save
+
+StartXMod164Arr ENT
+                ds 416*2
+LastPatchOffsetArr ENT
+                ds 416*2

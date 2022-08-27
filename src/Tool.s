@@ -96,6 +96,7 @@ _CallTable
 
                 adrl  _TSClearBG1Buffer-1
                 adrl  _TSSetBG1Scale-1
+                adrl  _TSGetAddress-1
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -183,7 +184,7 @@ _TSShutDown
                 jsr     _CoreShutDown      ; Shut down the library
                 plb
 
-                lda     EngineMode
+                lda     EngineMode         ; $0000 = system tool, $8000 = user tool set
                 and     #$8000
                 pha
                 pei     ToolNum
@@ -305,18 +306,27 @@ _TSRenderDirty
                 jsr     _RenderDirty
                 _TSExit #0;#2
 
-; LoadTileSet(Pointer)
+; LoadTileSet(Start, Finish, Pointer)
 _TSLoadTileSet
-TSPtr           equ     FirstParam
+:TSPtr          equ     FirstParam
+:finish         equ     FirstParam+4
+:start          equ     FirstParam+6
 
                 _TSEntry
 
-                lda     TSPtr+2,s
+                lda     :TSPtr+2,s               ; stuff the pointer in the direct page
+                sta     tmp1
+                lda     :TSPtr,s
+                sta     tmp0
+
+                lda     :start,s                 ; put the range in the registers
                 tax
-                lda     TSPtr,s
+                lda     :finish,s
+                tay
+
                 jsr     _LoadTileSet
 
-                _TSExit #0;#4
+                _TSExit #0;#8
 
 ; CreateSpriteStamp(spriteDescriptor: Word, vbuffAddr: Word)
 _TSCreateSpriteStamp
@@ -807,6 +817,27 @@ _TSSetBG1Scale
                 sta     BG1Scaling
                 _TSExit #0;#2
 
+_TSGetAddress
+:output         equ     FirstParam+0
+:tblId          equ     FirstParam+4
+
+                _TSEntry
+                lda     #0
+                sta     :output,s
+                sta     :output+2,s
+
+                lda     :value,s
+                cmp     #scanlineHorzOffset
+                bne     :out
+
+                lda     #StartXMod164Arr
+                sta     :output,s
+                lda     #^StartXMod164Arr
+                sta     :output+2,s
+
+:out
+                _TSExit #0;#2
+
 ; Insert the GTE code
 
                 put     Math.s
@@ -821,6 +852,7 @@ _TSSetBG1Scale
                 put     Sprite2.s
                 put     SpriteRender.s
                 put     Render.s
+                put     blitter/Scanline.s
                 put     render/Render.s
                 put     render/Fast.s
                 put     render/Slow.s

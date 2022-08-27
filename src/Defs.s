@@ -173,6 +173,7 @@ RENDER_ALT_BG1         equ   $0001
 RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
+RENDER_PER_SCANLINE    equ   $0010
 
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
@@ -182,6 +183,9 @@ DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
 DIRTY_BIT_SPRITE_ARRAY equ   $0040
+
+; GetAddress table IDs
+scanlineHorzOffset     equ   $0001        ; table of 416 wors, a double-array of scanline offset values. Must be 0, 163
 
 ; Script definition
 YIELD                  equ   $8000
@@ -267,6 +271,9 @@ VBuffHorzTableSelect EXT
 Overlays          EXT
 BG1YCache         EXT
 ScalingTables     EXT
+
+StartXMod164Arr    EXT
+LastPatchOffsetArr EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

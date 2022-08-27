@@ -5,10 +5,12 @@
 DP_ADDR            equ   entry_1-base+1             ; offset to patch in the direct page for dynamic tiles
 BG1_ADDR           equ   entry_2-base+1             ; offset to patch in the Y-reg for BG1 (dp),y addressing
 STK_ADDR           equ   entry_3-base+1             ; offset to patch in the stack (SHR) right edge address
+; BNK_ADDR           equ   entry_0-base+1             ; offset to patch in the address of a Bank 0 memory location to load the bank register
 
 DP_ENTRY           equ   entry_1-base
 TWO_LYR_ENTRY      equ   entry_2-base
 ONE_LYR_ENTRY      equ   entry_3-base
+; BANK_ENTRY         equ   entry_0-base
 
 CODE_ENTRY_OPCODE  equ   entry_jmp-base
 CODE_ENTRY         equ   entry_jmp-base+1           ; low byte of the page-aligned jump address
@@ -66,6 +68,9 @@ BankPatchNum       equ   *-BankPatches
 ; the code is assembled on a page boundary to help with alignment
                    ds    \,$00                      ; pad to the next page boundary
 base
+;entry_0            lda   #0000                      ; Used to set per-scanline bank register
+;                   tcs
+;                   plb
 entry_1            ldx   #0000                      ; Used for LDA 00,x addressing (Dynamic Tiles)
 entry_2            ldy   #0000                      ; Used for LDA (00),y addressing (Second Layer; BG1)
 entry_3            lda   #0000                      ; Sets screen address (right edge)
