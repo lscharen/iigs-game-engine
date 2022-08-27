@@ -146,6 +146,8 @@ function getOptions(argv) {
     options.targetPalette = getArg(argv, '--palette', x => x.split(',').map(c => hexStringToPalette(c)), null);
     options.forceMatch = getArg(argv, '--force-color-match', x => true, false);
     options.forceWordAlignment = getArg(argv, '--force-word-alignment', x => true, false);
+    options.format = getArg(argv, '--format', x => x, 'asm65816');  // asm65816 or orcac or rez
+    options.varName = getArg(argv, '--var-name', x => x, 'tiles');  // language-specific label to reference tile data
 
     return options;
 }
@@ -222,25 +224,60 @@ function getPaletteMap(options, png) {
     };
 }
 
+function writeComment(options, message, logger=console.log) {
+    switch (options.format) {
+        case 'orcac':
+            logger(`/* ${message} */`);
+            break;
+        default:
+            logger(`; ${message}`);
+    }
+}
+
+function writePaletteArray(options, palette, logger=console.log) {
+    switch (options.format) {
+        case 'orcac': {
+            const hexCodes = palette.map(c => '0x' + paletteToIIgs(c));
+            if (options.backgroundColor !== null) {
+                hexCodes[0] = '0x' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
+            }
+            logger('#include <types.h>');
+            logger('');
+            logger(`Word ${options.varName}Palette[16] = {`);
+            logger(`    ${hexCodes.join(',')}`);
+            logger(`};`);
+            break;
+        }
+        default: {
+            const hexCodes = palette.map(c => '$' + paletteToIIgs(c));
+            // The transparent color is always mapped into color 0, so if a background color is set it goes into index 0
+            if (options.backgroundColor !== null) {
+                hexCodes[0] = '$' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
+            }
+            logger('TileSetPalette ENT');
+            logger('               dw   ', hexCodes.join(','));
+        }
+    }
+}
+
 async function main(argv) {
     // try {
         const png = await readPNG(argv[0]);
         const options = getOptions(argv);
-        
-        console.info(`; startIndex = ${options.startIndex}`);
 
+        writeComment(options, `startIndex = ${options.startIndex}`);
         if (png.colorType !== 3) {
-            console.warn('; PNG must be in palette color type');
+            writeComment(options, `PNG must be in palette color type`, logger.warn);
             return;
         }
 
         if (png.palette.length > 16) {
-            console.warn('; Too many colors.  Must be 16 or less');
+            writeComment(options, `Too many colors.  Must be 16 or less`, logger.warn);
             return;
         }
 
         if (options.palette && options.palette.length > 16) {
-            console.warn('; Too many colors on command line.  Must be 16 or less');
+            writeComment(options, `Too many colors on command line.  Must be 16 or less`, logger.warn);
             return;
         }
 
@@ -249,22 +286,16 @@ async function main(argv) {
         options.paletteMap = paletteMap;
 
         // Dump the palette in IIgs hex format
-        console.log('; Palette');
-        const hexCodes = targetPalette.map(c => '$' + paletteToIIgs(c));
-
-        // The transparent color is always mapped into color 0, so if a background color is set it goes into index 0
-        if (options.backgroundColor !== null) {
-            hexCodes[0] = '$' + paletteToIIgs(hexStringToPalette(options.backgroundColor));
-        }
-        console.log('TileSetPalette ENT');
-        console.log('               dw   ', hexCodes.join(','));
+        writeComment(options, `Palette`);
+        writePaletteArray(options, targetPalette);
 
         // Just convert a paletted PNG to IIgs memory format.  We make sure that only a few widths
         // are supported
         let buff = null;
         let mask = null;
 
-        console.log('; Converting to BG0 format...');
+        console.log('');
+        writeComment(options, `Converting to BG0 format...`);
         [buff, mask] = pngToIIgsBuff(options, png);
 
         if (buff && argv[1]) {
@@ -272,7 +303,7 @@ async function main(argv) {
                 writeToTileDataSource(options, buff, mask, png.width / 2);
             }
             else {
-                console.log(`; Writing to output file ${argv[1]}`);
+                writeComment(options, `Writing to output file ${argv[1]}`);
                 await writeBinayOutput(options, argv[1], buff);
             }
         }
@@ -429,21 +460,66 @@ function writeTileToStream(stream, data) {
     }
 }
 
+function writeTileToStreamORCAC(stream, data) {
+    // Output the tile data
+    for (const row of data) {
+        const hex = row.map(d => toHex(d)).join('');
+        stream.write('      0x' + hex + ',\n');
+    }
+}
+
 function writeTilesToStream(options, stream, tiles, label='tiledata') {
-    stream.write(`${label}    ENT\n`);
+    switch (options.format) {
+        case 'orcac':
+            writeTilesToStreamORCAC(options, stream, tiles, label);
+            break;
+
+        case 'asm65816':
+            writeTilesToStreamASM65816(options, stream, tiles, label);
+            break;
+
+        default:
+            throw `Unknown output format: ${options.format}`;
+    }
+}
+
+function writeTilesToStreamORCAC(options, stream, tiles, label='tiledata') {
+    stream.write(`long ${options.varName}[] = {\n`);
+    stream.write('/* Reserved space (tile 0 is special...) */\n');
+    for (let i = 0; i < 8; i += 1) {
+        stream.write('    0x00000000L,0x00000000L,0x00000000L,0x00000000L,\n');
+    }
+    stream.write('\n');
+
+    let count = 0;
+    for (const tile of tiles.slice(0, options.maxTiles)) {
+        stream.write(`/* Tile ID ${count + 1}, isSolid: ${tile.isSolid} */\n`);
+        writeTileToStreamORCAC(stream, tile.normal.data);
+        writeTileToStreamORCAC(stream, tile.normal.mask);
+        writeTileToStreamORCAC(stream, tile.flipped.data);
+        writeTileToStreamORCAC(stream, tile.flipped.mask);
+        stream.write('\n');
+
+        count += 1;
+    }
+    stream.write('};\n');
+    stream.write('\n');
+}
+
+function writeTilesToStreamASM65816(options, stream, tiles, label='tiledata') {
+    stream.write(`${options.varName}    ENT\n`);
     stream.write('');
     stream.write('; Reserved space (tile 0 is special...)\n');
     stream.write('            ds 128\n');
 
     let count = 0;
     for (const tile of tiles.slice(0, options.maxTiles)) {
-        console.log(`Writing tile ${count + 1}`);
         stream.write(`; Tile ID ${count + 1}, isSolid: ${tile.isSolid}\n`);
         writeTileToStream(stream, tile.normal.data);
         writeTileToStream(stream, tile.normal.mask);
         writeTileToStream(stream, tile.flipped.data);
         writeTileToStream(stream, tile.flipped.mask);
-        stream.write('');
+        stream.write('\n');
 
         count += 1;
     }
@@ -485,51 +561,13 @@ function buildMerlinCodeForTiles(options, tiles, label='tiledata') {
 }
 
 function writeToTileDataSource(options, buff, mask, width) {
-    console.log('tiledata    ENT');
-    console.log();
-    console.log('; Reserved space (tile 0 is special...');
-    console.log('            ds 128');
+    const stream = process.stdout;
 
-    let count = 0;
-    for (let y = 0; ; y += 8) {
-        for (let x = 0; x < width; x += 4, count += 1) {
-            if (count >= options.maxTiles) {
-                return;
-            }
-            console.log('; Tile ID ' + (count + 1));
-            console.log('; From image coordinates ' + (x * 2) + ', ' + y);
+    // Build the tiles
+    const tiles = buildTiles(options, buff, mask, width);
 
-            const tile = buildTile(options, buff, mask, width, x, y);
-
-            // Output the tile data
-            for (const row of tile.normal.data) {
-                const hex = row.map(d => toHex(d)).join('');
-                console.log('            hex   ' + hex);
-            }
-            console.log();
-
-            // Output the tile mask
-            for (const row of tile.normal.mask) {
-                const hex = row.map(d => toHex(d)).join('');
-                console.log('            hex   ' + hex);
-            }
-            console.log();
-
-            // Output the flipped tile data
-            for (const row of tile.flipped.data) {
-                const hex = row.map(d => toHex(d)).join('');
-                console.log('            hex   ' + hex);
-            }
-            console.log();
-
-            // Output the flipped tile data
-            for (const row of tile.flipped.mask) {
-                const hex = row.map(d => toHex(d)).join('');
-                console.log('            hex   ' + hex);
-            }
-            console.log();
-        }
-    }
+    // Write them to the default output stream
+    writeTilesToStream(options, stream, tiles, options.varName);
 }
 
 async function writeBinayOutput(options, filename, buff) {
