@@ -183,7 +183,9 @@ _TSShutDown
                 jsr     _CoreShutDown      ; Shut down the library
                 plb
 
-                pea     $8000
+                lda     EngineMode
+                and     #$8000
+                pha
                 pei     ToolNum
                 pea     $0000              ; Set WAP to null
                 pea     $0000

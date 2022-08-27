@@ -1,0 +1,21 @@
+{
+    "name": "chrisv-c-demo",
+    "version": "1.0.0",
+    "description": "Using GTE from C",
+    "main": "index.js",
+    "config": {
+      "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
+      "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
+      "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
+      "macros": "../../macros",
+      "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
+    },
+    "scripts": {
+      "gsport": "%npm_package_config_gsport%",
+      "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+      "build": "npm run build:tool && npm run build:sys16",
+      "build:sys16": "iix compile tileData.c test.c && iix -DKeepType=S16 link test tileData keep=App",
+      "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% ../../src/Master.s",
+      "debug": "%npm_package_config_crossrunner% ./App -Debug -CompatibilityLayer"
+    }
+  }
