@@ -8,13 +8,17 @@
       "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
       "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
       "macros": "../../macros",
-      "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
+      "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe",
+      "png2iigs": "../../tools/png2iigs.js"
     },
     "scripts": {
       "gsport": "%npm_package_config_gsport%",
-      "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
+      "test:all": "npm run build && npm run build:image && %npm_package_config_gsport%",
       "build": "npm run build:tool && npm run build:sys16",
-      "build:sys16": "iix compile tileData.c test.c && iix -DKeepType=S16 link test tileData keep=App",
+      "test": "npm run build:sys16 && npm run build:image && %npm_package_config_gsport%",
+      "build:image": "build-image.bat %npm_package_config_cadius%",
+      "build:sys16": "iix compile foo.c test.c && iix -DKeepType=S16 link test foo keep=App",
+      "build:tiles": "node %npm_package_config_png2iigs% ./assets/tileset.png --format orcac --max-tiles 160 --as-tile-data --verbose > tileData.c",
       "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% ../../src/Master.s",
       "debug": "%npm_package_config_crossrunner% ./App -Debug -CompatibilityLayer"
     }

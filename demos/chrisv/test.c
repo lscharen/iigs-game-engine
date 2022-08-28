@@ -79,13 +79,13 @@ void main(void) {
 
     /* GTESetScreenMode(160, 200);  /* 160x200 is the default screen mode */
     GTESetPalette(0, (Pointer)tilesPalette);
-    GTELoadTileSet(0, 50, tiles);   /* Load in 50 tiles */
+    GTELoadTileSet(0, 160, tiles);   /* Load in the tiles */
 
     GTEFillTileStore(1);
     GTERender(0);
 
     for (a = 3; a < 18; a++) {
-        GTESetTile(5, a, a);
+        GTESetTile(a, a, 5);
     }
     GTESetTile(1, 0, 34);
     GTESetTile(2, 0, 33);
@@ -96,7 +96,7 @@ void main(void) {
     for (b = 4; b < 6; b++) {
         for (a = 1; a < 10; a++) {
             GTESetBG0Origin(a, b);
-            tileId = (((b - 1) * 10) + a) | TILE_SOLID_BIT | TILE_HFLIP_BIT;
+            tileId = (((b - 1) * 32) + a) | TILE_SOLID_BIT | TILE_HFLIP_BIT;
             GTESetTile(a, b, tileId);
             GTERender(0);
         }

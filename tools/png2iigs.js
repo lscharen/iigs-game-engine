@@ -319,7 +319,7 @@ function reverse(str) {
 }
 
 function toHex(h) {
-    return h.toString(16).padStart(2, '0');
+    return h.toString(16).padStart(2, '0').toUpperCase();
 }
 
 function swap(hex) {
@@ -463,9 +463,10 @@ function writeTileToStream(stream, data) {
 function writeTileToStreamORCAC(stream, data) {
     // Output the tile data
     for (const row of data) {
-        const hex = row.map(d => toHex(d)).join('');
-        stream.write('      0x' + hex + ',\n');
+        const hex = row.map(d => '0x' + toHex(d)).join(', ');
+        stream.write('    ' + hex + ',\n');
     }
+    stream.write('\n');
 }
 
 function writeTilesToStream(options, stream, tiles, label='tiledata') {
@@ -484,12 +485,14 @@ function writeTilesToStream(options, stream, tiles, label='tiledata') {
 }
 
 function writeTilesToStreamORCAC(options, stream, tiles, label='tiledata') {
-    stream.write(`long ${options.varName}[] = {\n`);
+    stream.write(`Byte ${options.varName}[] = {\n`);
     stream.write('/* Reserved space (tile 0 is special...) */\n');
-    for (let i = 0; i < 8; i += 1) {
-        stream.write('    0x00000000L,0x00000000L,0x00000000L,0x00000000L,\n');
+    for (let j = 0; j < 4; j += 1) {
+        for (let i = 0; i < 8; i += 1) {
+            stream.write('    0x00, 0x00, 0x00, 0x00,\n');
+        }
+        stream.write('\n');
     }
-    stream.write('\n');
 
     let count = 0;
     for (const tile of tiles.slice(0, options.maxTiles)) {
