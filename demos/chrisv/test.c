@@ -1,7 +1,6 @@
-#include <types.h>
-#include <memory.h>
 #include <loader.h>
 #include <locator.h>
+#include <memory.h>
 #include <misctool.h>
 #include <types.h>
 
@@ -29,7 +28,7 @@ void LoadGTEToolSet(Word unused) {
 #else
 void LoadGTEToolSet(Word userId) {
   InitialLoadOutputRec loadRec;
-  
+
   // Load the tool from the local directory
   loadRec = InitialLoad(userId, (Pointer) (&toolPath), 1);
   TOOLFAIL("Unable to load Tool160 from local path");
@@ -50,34 +49,37 @@ void UnloadGTEToolSet() {
 }
 #endif // GTE_IS_SYSTEM_TOOLS_INSTALL
 
+extern Byte tiles[];
+extern Word tilesPalette[16];
+
 void main(void) {
-    char i;
     Word userId;
+    Word tileId;
     Word controlMask, keyPress;
     Handle dpHandle;
     Word   dpAddr;
-    extern Pointer tiles;
-    extern Pointer tilesPalette;
     int a, b;
 
     TLStartUp();
-    /* Get the program memory ID */
+    TOOLFAIL("Unable to start tool locator");
+
     userId = MMStartUp();
+    TOOLFAIL("Unable to start memory manager");
+
     MTStartUp();
+    TOOLFAIL("Unable to start misc tools");
+
+    LoadGTEToolSet(userId);
 
     dpHandle = NewHandle(0x200L, userId, attrBank + attrPage + attrFixed + attrLocked + attrNoCross, 0);
     TOOLFAIL("Could not allocate direct page memory for GTE");
     dpAddr = (Word) (*dpHandle);
 
-    printf("dpAddr: %x\n", (int)dpAddr);
-    printf("engineMode: %x", (int)ENGINE_STARTUP_MODE);
-
     GTEStartUp(dpAddr, (Word) ENGINE_STARTUP_MODE, userId);
-    goto out;
-    /*
-    GTESetScreenMode(160, 200);
-    GTESetPalette(0, tilesPalette);
-    GTELoadTileSet(tiles);
+
+    /* GTESetScreenMode(160, 200);  /* 160x200 is the default screen mode */
+    GTESetPalette(0, (Pointer)tilesPalette);
+    GTELoadTileSet(0, 50, tiles);   /* Load in 50 tiles */
 
     GTEFillTileStore(1);
     GTERender(0);
@@ -94,19 +96,17 @@ void main(void) {
     for (b = 4; b < 6; b++) {
         for (a = 1; a < 10; a++) {
             GTESetBG0Origin(a, b);
-            i =  (((b - 1) * 10) + a) | TILE_SOLID_BIT | TILE_HFLIP_BIT;
-            GTESetTile(a, b, i);
+            tileId = (((b - 1) * 10) + a) | TILE_SOLID_BIT | TILE_HFLIP_BIT;
+            GTESetTile(a, b, tileId);
             GTERender(0);
         }
     }
-    */
 
     do {
         controlMask = GTEReadControl();
         keyPress = controlMask & 0x007F;
-    } while (toupper(keyPress) != 'Q');
+    } while (keyPress != 'Q');
 
-out:
     GTEShutDown();
     UnloadGTEToolSet();
 

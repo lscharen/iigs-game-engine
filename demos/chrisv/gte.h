@@ -37,6 +37,19 @@
 #define tool_dispatcher 0xE10008L
 #endif // GTE_IS_SYSTEM_TOOLS_INSTALL
 
+typedef struct TileMapInfo {
+    Word width;
+    Word height;
+    Pointer tileMapPtr;
+} TileMapInfo;
+
+typedef struct ScreenInfo {
+    Word x;
+    Word y;
+    Word width;
+    Word height;
+} ScreenInfo;
+
 /* GTE Housekeeping Routines */
 extern pascal void GTEBootInit(void) inline(0x01A0, tool_dispatcher);
 extern pascal void GTEStartUp(Word dPageAddr, Word capFlags, Word userID) inline(0x02A0, tool_dispatcher);
@@ -55,23 +68,53 @@ extern pascal void GTERemoveSprite(Word spriteSlot) inline(0x13A0, tool_dispatch
 
 
 /* GTE Tile Routines */
-extern pascal void GTELoadTileSet(Pointer tileSetPtr) inline(0x0EA0, tool_dispatcher);
+extern pascal void GTELoadTileSet(Word start, Word finish, Pointer tileSetPtr) inline(0x0EA0, tool_dispatcher);
 extern pascal void GTEFillTileStore(Word tileID) inline(0x25A0, tool_dispatcher);
 extern pascal void GTESetTile(Word xTile, Word yTile, Word tileID) inline(0x0BA0, tool_dispatcher);
+extern pascal void GTECopyTileToDynamic(Word tileID, Word dynID) inline(0x15A0, tool_dispatcher);
+extern pascal Word GTEGetTileAt(Word x, Word y) inline(0x1CA0, tool_dispatcher);
+extern pascal Pointer GTEGetTileDataAddr() inline(0x24A0, tool_dispatcher);
+
 
 /* GTE Primary Background Routines */
 extern pascal void GTESetBG0Origin(Word x, Word y) inline(0x0CA0, tool_dispatcher);
 extern pascal void GTERender(Word flags) inline(0x0DA0, tool_dispatcher);
+extern pascal void GTERefresh() inline(0x26A0, tool_dispatcher);
+extern pascal struct TileMapInfo GTEGetBG0TileMapInfo() inline(0x19A0, tool_dispatcher);
+extern pascal void GTESetBG0TileMapInfo(Word width, Word height, Pointer tileMapPtr) inline(0x1DA0, tool_dispatcher);
+
+
+/* GTE Secondary Background Routines */
+extern pascal void GTESetBG1Origin(Word x, Word y) inline(0x1BA0, tool_dispatcher);
+extern pascal void GTECopyPicToBG1(Word width, Word height, Word stride, Pointer picPtr) inline(0x17A0, tool_dispatcher);
+extern pascal void GTESetBG1TileMapInfo(Word width, Word height, Pointer tileMapPtr) inline(0x1EA0, tool_dispatcher);
 
 
 /* GTE Global State Functions */
 extern pascal void GTESetScreenMode(Word width, Word height) inline(0x0AA0, tool_dispatcher);
 extern pascal void GTESetPalette(Word palNum, Pointer palettePtr) inline(0x16A0, tool_dispatcher);
+extern pascal void GTEBindSCBArray(Pointer scbPtr) inline(0x18A0, tool_dispatcher);
+extern pascal struct ScreenInfo GTEGetScreenInfo() inline(0x1AA0, tool_dispatcher);
+extern pascal void GTESetBG1Displacement(Word offset) inline(0x27A0, tool_dispatcher);
+extern pascal void GTESetBG1Rotation(Word rotIndex) inline(0x28A0, tool_dispatcher);
+extern pascal void GTEClearBG1Buffer(Word value) inline(0x29A0, tool_dispatcher);
 
 
 /* GTE Misc. Functions */
 extern pascal Word GTEReadControl(void) inline(0x09A0, tool_dispatcher);
 extern pascal Word GTEGetSeconds(void) inline(0x14A0, tool_dispatcher);
+
+
+/* GTE Timer Functions */
+extern pascal Word GTEAddTimer(Word numTicks, Pointer callback, Word flags) inline(0x1FA0, tool_dispatcher);
+extern pascal Word GTERemoveTimer(Word timerID) inline(0x20A0, tool_dispatcher);
+extern pascal Word GTEStartScript(Word numTicks, Pointer scriptAddr) inline(0x21A0, tool_dispatcher);
+
+
+/* GTE Overlay Functions */
+extern pascal Word GTESetOverlay(Word top, Word bottom, Pointer procPtr) inline(0x22A0, tool_dispatcher);
+extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
+
 
 /* ReadControl return value bits */
 #define PAD_BUTTON_B               0x0100
