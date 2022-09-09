@@ -19,8 +19,7 @@ _ScanlineBG0XPos
 :base_address       equ   tmp8
 :opcode             equ   tmp9
 :odd_entry_offset   equ   tmp10
-                   
-                    brk   $AB
+
                     lda   StartYMod208               ; This is the base line of the virtual screen
                     asl
                     sta   :virt_line_x2              ; Keep track of it

@@ -503,6 +503,13 @@ _SpriteBits      ENT
 _SpriteBitsNot   ENT
                  dw $FFFE,$FFFD,$FFFB,$FFF7,$FFEF,$FFDF,$FFBF,$FF7F,$FEFF,$FDFF,$FBFF,$F7FF,$EFFF,$DFFF,$BFFF,$7FFF
 
+; Doubly linked list that allows the sprites to be traversed in SPRITE_CLIP_TOP order. The prev/next
+; index links are stored in the parallel _Sprites structure; just the extra head and tail index values
+; are stored here.  A negative value is used as a setinel
+_SortedHead     ENT
+                dw  $FFFF
+;_SortedTail     dw  $FFFF
+
 ; Steps to the different sprite stamps
 _stamp_step      ENT
                  dw  0,12,24,36

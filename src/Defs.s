@@ -275,5 +275,6 @@ ScalingTables     EXT
 StartXMod164Arr    EXT
 LastPatchOffsetArr EXT
 
+_SortedHead EXT
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

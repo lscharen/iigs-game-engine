@@ -397,8 +397,6 @@ _AddSprite
             and   #$00FF
             sta   _Sprites+SPRITE_X,x           ; X coordinate
 
-            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
-
 ; Mark the dirty bit to indicate that the active sprite list needs to be rebuilt in the next
 ; render call
 
@@ -408,7 +406,266 @@ _AddSprite
             lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
             tsb   SpriteMap                     ; Mark it in the sprite map bit field
 
-            rts
+            jmp   _PrecalcAllSpriteInfo         ; Cache sprite property values
+
+; _SortSprite
+;
+; Given a sprite's index, i, update the sprite permutation array such that p[j] = i where
+; the sprite is the j.th sprite ordered by the SPRITE_CLIP_TOP value.  It is important to
+; note that the sorted sprite order does not impact rendering order (that is determined by
+; the sprite index position), but is only used to calculate region of the screen to update
+; and, in the future, may be useful for isometric perspectives where sorting order *is*
+; determined by y-position
+;
+; X = current sprite index
+;
+; The sorting strategy is to 
+;
+; a) check if the corrent slot's y-pos is greater than the next item. If yes, then search forward
+; b) check if the current slot's y-pos is less than the prev item.  If yes, then search in reverse
+; c) sprite is in the correct location
+;
+; The heuristic in play here is that, usually sprites will only move one position in the sorted order
+; between frames, if at all.
+_SortSprite
+           lda   _Sprites+SPRITE_CLIP_TOP,x
+
+           ldy   _Sprites+SORTED_PREV,x
+           bmi   :chk_fwd
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcc   :chk_bkwd                     ; The current node needs to move to an lower position
+
+:chk_fwd
+           ldy   _Sprites+SORTED_NEXT,x        ; If there is nothing ahead of the current node, we're done
+           bmi   :early_out
+           cmp   _Sprites+SPRITE_CLIP_TOP,y    ; If the current node is <= the next node, we're done
+           bcc   :early_out
+           bne   :scan_fwd
+
+:early_out
+           rts
+
+; Look to move the sprite into a later position
+:scan_fwd
+           lda   _Sprites+SORTED_NEXT,y        ; Need to step forward; if we're at the end, then insert here
+           bmi   :insert_end
+           tay
+           lda   _Sprites+SPRITE_CLIP_TOP,y    ; Check against the next node. If it's less that current, keep going
+           cmp   _Sprites+SPRITE_CLIP_TOP,x
+           bcc   :scan_fwd
+
+; Put X before Y
+;
+; Change
+;  a <=> x <=> b
+;  c <=> y <=> d
+;
+; Into
+;  a <=> b and c <=> x <=> y <=> d
+:insert_before
+           jsr  _OrphanNode
+
+           tya
+           sta  _Sprites+SORTED_NEXT,x        ; Link X to Y
+
+           lda  _Sprites+SORTED_PREV,y
+           sta  _Sprites+SORTED_PREV,x        ; Link X to C
+
+           txa                                ; Link Y to X
+           sta  _Sprites+SORTED_PREV,y
+
+           ldy  _Sprites+SORTED_PREV,x        ; Link C to X
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+; Move X to the end of the list. Y point to the last element
+;
+; ; Change
+;  a <=> x <=> b
+;  y -> nil
+;
+; Into
+;  a <=> b and y <=> x -> nil
+:insert_end
+           jsr  _OrphanNode
+
+           lda  #$FFFF
+           sta  _Sprites+SORTED_NEXT,x
+           tya
+           sta  _Sprites+SORTED_PREV,x
+           txa
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+:chk_bkwd
+           ldy   _Sprites+SORTED_PREV,x        ; If there is nothing behind the current node, we're done
+           bmi   :done
+           cmp   _Sprites+SPRITE_CLIP_TOP,y    ; If the current node is >= the previous node, we're done
+           bcs   :done
+
+; Look to move the sprite into an earlier position
+:scan_bkwd
+           lda   _Sprites+SORTED_PREV,y        ; Need to step backward; if we're at the beginning, then insert here
+           bmi   :insert_front
+           tay
+           lda   _Sprites+SPRITE_CLIP_TOP,x    ; Check against the next node. If it's less that current, keep going
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcc   :scan_bkwd
+
+; Put X after Y
+;
+; Change
+;  a <=> x <=> b
+;  c <=> y <=> d
+;
+; Into
+;  a <=> b and c <=> y <=> x <=> d
+:insert_after
+           jsr  _OrphanNode
+
+           tya
+           sta  _Sprites+SORTED_NEXT,x        ; Link X to Y
+
+           lda  _Sprites+SORTED_PREV,y
+           sta  _Sprites+SORTED_PREV,x        ; Link X to C
+
+           txa                                ; Link Y to X
+           sta  _Sprites+SORTED_PREV,y
+
+           ldy  _Sprites+SORTED_PREV,x        ; Link C to X
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+; Move X to the front of the list. Y points to the first element
+;
+; ; Change
+;  a <=> x <=> b
+;  head -> y
+;
+; Into
+;  a <=> b and head -> x <=> y
+:insert_front
+           jsr  _OrphanNode
+
+           stx  _SortedHead
+           txa
+           sta  _Sprites+SORTED_PREV,y
+           lda  #$FFFF
+           sta  _Sprites+SORTED_PREV,x
+           tya
+           sta  _Sprites+SORTED_NEXT,x
+           rts
+
+:done
+           rts
+
+; Take the node pointed at X and remove it from the doubly-linked list.  Assumes it is not
+; at the beginning or end of the list
+_OrphanNode
+           phy
+           ldy  _Sprites+SORTED_PREV,x        ; Remove X from between A and B
+           lda  _Sprites+SORTED_NEXT,x
+           sta  _Sprites+SORTED_NEXT,y
+           tay
+           lda  _Sprites+SORTED_PREV,x
+           sta  _Sprites+SORTED_PREV,y
+           ply
+           rts
+
+; Add a new sprite into the sorted double-linked list
+_InsertSprite
+           lda   _SortedHead                   ; If the list is empty, just insert the sprite index
+           bmi   :empty
+
+           tay                                 ; Check the first item
+           lda   _Sprites+SPRITE_CLIP_TOP,x
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcc   :insert_head
+
+:next
+           lda   _Sprites+SORTED_NEXT,y
+           bmi   :insert_tail
+
+           tay
+           lda   _Sprites+SPRITE_CLIP_TOP,x
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcs   :next
+
+:insert
+           lda   _Sprites+SORTED_PREV,y
+           sta   _Sprites+SORTED_PREV,x       ;  [p] <-- [c]     [n]
+
+           tya
+           sta   _Sprites+SORTED_NEXT,x       ;  [p] <-- [c] --> [n]
+
+           txa
+           sta   _Sprites+SORTED_PREV,y       ;  [p] <-- [c] <=> [n]
+
+           ldy   _Sprites+SORTED_PREV,x
+           sta   _Sprites+SORTED_NEXT,y       ;  [p] <=> [c] <=> [n]
+
+           rts
+
+:insert_head
+           stx   _SortedHead
+           lda   #$FFFF
+           sta   _Sprites+SORTED_PREV,x
+           tya
+           sta   _Sprites+SORTED_NEXT,x
+           txa
+           sta   _Sprites+SORTED_PREV,y
+           rts
+
+:insert_tail
+           txa
+           sta   _Sprites+SORTED_NEXT,y
+           tya
+           sta   _Sprites+SORTED_PREV,x
+           lda   #$FFFF
+           sta   _Sprites+SORTED_NEXT,x
+           rts
+
+:empty
+           sta  _Sprites+SORTED_NEXT,x
+           sta  _Sprites+SORTED_PREV,x
+           stx  _SortedHead
+           rts
+
+; Remove a sprite from the double-linked list
+_DeleteSprite
+           ldy  _Sprites+SORTED_NEXT,x
+           bmi  :remove_tail
+
+           cpx  _SortedHead
+           beq  :remove_head
+
+           lda  _Sprites+SORTED_PREV,x
+           sta  _Sprites+SORTED_PREV,y
+
+           tay
+           lda  _Sprites+SORTED_NEXT,x
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+:remove_head
+           sty  _SortedHead
+           lda  #$FFFF
+           sta  _Sprites+SORTED_PREV,y
+           rts
+
+:remove_tail
+           ldy  _Sprites+SORTED_PREV,x
+           bmi  :make_empty
+
+           lda  #$FFFF
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+:make_empty
+           lda  #$FFFF
+           sta  _SortedHead
+           rts
+
 
 ; Macro to make the unrolled loop more concise
 ;
@@ -651,6 +908,10 @@ _CacheSpriteBanks
 ;
 ; X = sprite index
 _PrecalcAllSpriteInfo
+            jsr   _PrecalcSpriteState
+            jmp   _PrecalcSpritePos
+
+_PrecalcSpriteState
             lda   _Sprites+SPRITE_ID,x 
 ;            and   #$3E00
             xba
@@ -681,10 +942,11 @@ _PrecalcAllSpriteInfo
             lda   #16
             sta   _Sprites+SPRITE_HEIGHT,x
 :height_8
+            rts
 
 ; Clip the sprite's bounding box to the play field size and also set a flag if the sprite
 ; is fully off-screen or not
-
+_PrecalcSpritePos
             lda   _Sprites+SPRITE_X,x
             bpl   :pos_x
             lda   #0
@@ -813,7 +1075,7 @@ _UpdateSprite
             ora   #SPRITE_STATUS_UPDATED
             sta   _Sprites+SPRITE_STATUS,x
 
-            jmp   _PrecalcAllSpriteInfo         ; Cache stuff and return
+            jmp   _PrecalcSpriteState           ; Cache stuff and return
 
 ; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
 ; a full remove/add cycle needs to happen
@@ -849,4 +1111,5 @@ _MoveSprite
             ora   #SPRITE_STATUS_MOVED
             sta   _Sprites+SPRITE_STATUS,x
 
-            jmp   _PrecalcAllSpriteInfo         ; Can be specialized to only update (x,y) values
+            jsr   _PrecalcSpritePos             ; Can be specialized to only update (x,y) values
+            jmp   _SortSprite                   ; UPdate the sprite's sorted position

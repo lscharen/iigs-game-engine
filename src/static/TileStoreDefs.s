@@ -62,7 +62,9 @@ SPRITE_HEIGHT        equ {MAX_SPRITES*28}
 SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*30}
 SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*32}
 TS_VBUFF_BASE        equ {MAX_SPRITES*34}        ; Finalized VBUFF address based on the sprite position and tile offsets
-VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*36}        ; Fixed address where this sprite's VBUFF addresses are stores. The array is the same shape as TileStore, but much smaller
+;VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*36}        ; Fixed address where this sprite's VBUFF addresses are stores. The array is the same shape as TileStore, but much smaller
+SORTED_PREV          equ {MAX_SPRITES*36}
+SORTED_NEXT          equ {MAX_SPRITES*38}
 
 ; 52 rows by 82 columns + 2 extra rows and columns for sprite sizes
 ;
