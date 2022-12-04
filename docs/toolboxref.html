@@ -1234,8 +1234,17 @@ style: toolref
     </p>
     <p>
       A tile set is an array of (up to) 512 tile definitions and each tile definition is 128 bytes.  The tile definition
-      is comprised of four, 32-byte tiles; a normal tile, its mask, a horizontally flipped versio of the tile and its mask.
+      is comprised of four, 32-byte tiles; a normal tile, its mask, a horizontally flipped version of the tile and its mask.
       The first 128 bytes of a tileset must be set to zero.
+    </p>
+    <p>
+      The <em>start</em> and <em>finish</em> parameters define a subset of tiles to be copied into the GTE memory
+      buffer. This is most commonly used to load a small number of tiles to avoid needing to store a full set of 512
+      tiles that are mostly unushed.  For eample, loading in 16 tiles can be performed as <tt>GTELoadTileSet(0, 17, tilePtr)</tt>.
+    </p>
+    <p>
+      This function can also be used to swap out subsets of tiles on the fly.  Any tiles that are replaced which may
+      be on-screen are not automatically refreshed.
     </p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1251,6 +1260,16 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">start</td>
+            <td></td>
+            <td><em>Word</em>&mdash;index of the first tile to copy</td>
+          </tr>
+          <tr>
+            <td class="bot">finish</td>
+            <td></td>
+            <td><em>Word</em>&mdash;terminating index.  This tile is not copied.</td>
           </tr>
           <tr>
             <td class="bot">tileSetPtr</td>
@@ -1292,7 +1311,9 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTELoadTileSet(tileSetPtr)</tt></p>
+      <p><tt>extern pascal void GTELoadTileSet(start, finish, tileSetPtr)</tt></p>
+      <p><tt>Word     start;</tt></p>
+      <p><tt>Word     finish;</tt></p>
       <p><tt>Pointer  tileSetPtr;</tt></p>
     </div>
   </div>
