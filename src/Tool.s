@@ -293,7 +293,15 @@ _TSRender
 
                 _TSEntry
                 lda     :flags,s
+                bit     #RENDER_WITH_SHADOWING
+                beq     :no_shadowing
+                jsr     _RenderWithShadowing
+                bra     :done
+
+:no_shadowing
                 jsr     _Render
+
+:done
                 _TSExit #0;#2
 
 
@@ -696,14 +704,15 @@ _TSSetOverlay
 
                 lda     #1
                 sta     Overlays
+                stz     Overlays+OVERLAY_FLAGS
                 lda     :top,s
-                sta     Overlays+2
+                sta     Overlays+OVERLAY_TOP
                 lda     :bottom,s
-                sta     Overlays+4
+                sta     Overlays+OVERLAY_BOTTOM
                 lda     :proc,s
-                sta     Overlays+6
+                sta     Overlays+OVERLAY_PROC
                 lda     :proc+2,s
-                sta     Overlays+8
+                sta     Overlays+OVERLAY_PROC+2
 
                 _TSExit #0;#8
 

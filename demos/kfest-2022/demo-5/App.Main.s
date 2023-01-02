@@ -81,6 +81,8 @@ SpriteCount     equ   50
 
 ; Load a tileset
 
+                pea   #0
+                pea   #511
                 pea   #^tiledata
                 pea   #tiledata
                 _GTELoadTileSet
@@ -131,28 +133,31 @@ HERO_FRAME_4    equ   HERO_SIZE+151
 HERO_VBUFF_4    equ   VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
 HERO_SLOT       equ   1
 
-                pea   HERO_FRAME_1
-                pea   HERO_VBUFF_1
-                _GTECreateSpriteStamp
+;                pea   HERO_FRAME_1
+;                pea   HERO_VBUFF_1
+;                _GTECreateSpriteStamp
 
-                pea   HERO_FRAME_2
-                pea   HERO_VBUFF_2
-                _GTECreateSpriteStamp
+;                pea   HERO_FRAME_2
+;                pea   HERO_VBUFF_2
+;                _GTECreateSpriteStamp
 
-                pea   HERO_FRAME_3
-                pea   HERO_VBUFF_3
-                _GTECreateSpriteStamp
+;                pea   HERO_FRAME_3
+;                pea   HERO_VBUFF_3
+;                _GTECreateSpriteStamp
 
-                pea   HERO_FRAME_4
-                pea   HERO_VBUFF_4
-                _GTECreateSpriteStamp
+;                pea   HERO_FRAME_4
+;                pea   HERO_VBUFF_4
+;                _GTECreateSpriteStamp
 
-                pea   HERO_SLOT                    ; Put the player in slot 1
-                pea   HERO_FLAGS
-                pea   HERO_VBUFF_1                 ; and use this stamp
-                pei   PlayerX
-                pei   PlayerY
-                _GTEAddSprite
+;                pea   HERO_SLOT                    ; Put the player in slot 1
+;                pea   HERO_FLAGS
+;                pea   HERO_VBUFF_1                 ; and use this stamp
+;                pei   PlayerX
+;                pei   PlayerY
+;                _GTEAddSprite
+
+                pea  $0000
+                _GTERender
 
 EvtLoop
                 pha
@@ -202,13 +207,13 @@ do_render
                 jsr   ApplyCollisions        ; Check if we run into things
                 jsr   UpdateCameraPos        ; Moves the screen
 
-                pea   HERO_SLOT
-                pei   PlayerX
-                pei   PlayerY
-                _GTEMoveSprite                    ; Move the sprite to this local position
+;                pea   HERO_SLOT
+;                pei   PlayerX
+;                pei   PlayerY
+;                _GTEMoveSprite                    ; Move the sprite to this local position
 
-                pea  $0000
-                _GTERender
+;                pea  $0000
+;                _GTERender
 
 ; Update the performance counters
 
@@ -216,11 +221,11 @@ do_render
                 pha
                 _GTEGetSeconds
                 pla
-                cmp   OldOneSecondCounter
-                beq   :noudt
-                sta   OldOneSecondCounter
-                jsr   UdtOverlay
-                stz   frameCount
+;                cmp   OldOneSecondCounter
+;                beq   :noudt
+;                sta   OldOneSecondCounter
+;                jsr   UdtOverlay
+;                stz   frameCount
 :noudt
                 brl   EvtLoop
 
@@ -468,10 +473,10 @@ ApplyCollisions
             tax
 :frame
 
-            pea   HERO_SLOT
-            pei   LastHFlip
-            phx
-            _GTEUpdateSprite
+;            pea   HERO_SLOT
+;            pei   LastHFlip
+;            phx
+;            _GTEUpdateSprite
             
             rts
 

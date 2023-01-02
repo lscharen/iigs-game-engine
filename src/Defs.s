@@ -174,6 +174,20 @@ RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
 RENDER_PER_SCANLINE    equ   $0010
+RENDER_WITH_SHADOWING  equ   $0020
+
+; Overlay flags
+OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first
+OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fully opaque
+OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
+OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
+
+OVERLAY_BASE           equ   2          ; 2 bytes for the number of overlays
+OVERLAY_REC_SIZE       equ   10         ; Size of an overlay record (10 bytes)
+OVERLAY_FLAGS          equ   {OVERLAY_BASE+0}
+OVERLAY_TOP            equ   {OVERLAY_BASE+2}
+OVERLAY_BOTTOM         equ   {OVERLAY_BASE+4}
+OVERLAY_PROC           equ   {OVERLAY_BASE+6}
 
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
@@ -185,7 +199,7 @@ DIRTY_BIT_BG1_REFRESH  equ   $0020
 DIRTY_BIT_SPRITE_ARRAY equ   $0040
 
 ; GetAddress table IDs
-scanlineHorzOffset     equ   $0001        ; table of 416 wors, a double-array of scanline offset values. Must be 0, 163
+scanlineHorzOffset     equ   $0001        ; table of 416 words, a double-array of scanline offset values. Must be 0, 163
 
 ; Script definition
 YIELD                  equ   $8000

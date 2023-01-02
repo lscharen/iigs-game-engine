@@ -157,6 +157,13 @@ RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
 RENDER_PER_SCANLINE    equ   $0010
+RENDER_WITH_SHADOWING  equ   $0020
+
+; Overlay flags
+OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first
+OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fully opaque
+OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
+OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
 
 ; GetAddress table IDs
 scanlineHorzOffset     equ   $0001

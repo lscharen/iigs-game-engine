@@ -8,8 +8,15 @@
 ; and internal data structure to properly render the play field.  Then the update pipeline is
 ; executed.
 ;
-; Everything is composited into the tiles in the playfield and then the screen is rendered in
-; a single pass.
+; There are two major rendering modes: a composited mode and a scanline mode.  The composited mode
+; will render all of the sprites into the playfield tiles, and then perform a single blit to update
+; the entire playfield.  The scanline mode utilized shadowing and blits the background scanlines
+; on sprite lines first, then draws the sprites and finally exposes the updated scanlines.
+;
+; The composited mode has the advantages of being able to render sprites behind tile data as well
+; as avoiding most overdraw.  The scanline mode is able to draw sprites correctly even when scanline
+; effect are used on the background and has lower overhead, which can make it faster in some cases,
+; even with the additional overdraw.
 ;
 ; TODO -- actually check the dirty bits and be selective on what gets updated.  For example, if
 ;         only the Y position changes, then we should only need to set new values on the 
@@ -31,13 +38,6 @@ _Render
             jsr   _DoTimers           ; Run any pending timer tasks
 
             stz   SpriteRemovedFlag   ; If we remove a sprite, then we need to flag a rebuild for the next frame
-
-; If we are doing per-scanline rendering, use the alternate renderer
-
-            lda   #RENDER_PER_SCANLINE
-            bit   RenderFlags
-            beq   *+5
-            jmp   _RenderScanlines    ; Do the scanline-based renderer
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
 
@@ -61,6 +61,7 @@ _Render
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode            
+
             lda   #RENDER_BG1_ROTATION
             bit   RenderFlags
             bne   :skip_bg1_x
@@ -79,8 +80,8 @@ _Render
 ; optimization that can be done here is that the lines can be rendered in any order
 ; since it is not shown on-screen yet.
 
-            ldx   Overlays+2                  ; Blit the full virtual buffer to the screen
-            ldy   Overlays+4
+            ldx   Overlays+OVERLAY_TOP                  ; Blit the full virtual buffer to the screen
+            ldy   Overlays+OVERLAY_BOTTOM
             jsr   _BltRange
 
 ; Turn shadowing back on
@@ -89,14 +90,9 @@ _Render
 
 ; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
 
-            ldx   #0
-            ldy   Overlays+2
-            beq   :skip
-            jsr   _BltRange
-:skip
             jsr   _DoOverlay
 
-            ldx   Overlays+4
+            ldx   Overlays+OVERLAY_BOTTOM
             cpx   ScreenHeight
             beq   :done
             ldy   ScreenHeight
@@ -138,14 +134,14 @@ _Render
             rts
 
 _DoOverlay
-            lda   Overlays+6
+            lda   Overlays+OVERLAY_PROC
             stal  :disp+1
-            lda   Overlays+7
+            lda   Overlays+OVERLAY_PROC+1
             stal  :disp+2
 
             lda   ScreenY0             ; pass the address of the first line of the overlay
             clc
-            adc   Overlays+2
+            adc   Overlays+OVERLAY_TOP
             asl
             tax
             lda   ScreenAddr,x
@@ -312,3 +308,157 @@ _ApplyDirtyTiles
             stz  DirtyTileCount         ; Reset the dirty tile count
             rts
 
+; This rendering mode turns off shadowing and draws all of the relevant background lines and then
+; draws sprites on top of the background before turning shadowing on and exposing the lines to the
+; screen.  Even though entire lines are drawn twice, it's so efficient that it is often faster
+; than using all of the logic to draw/erase tiles in the TileBuffer, even though less visible words
+; are touched.
+;
+; This mode is also necessary if per-scanling rendering it used since spritge would not look correct
+; if each line had independent offsets.
+_RenderWithShadowing
+            sta   RenderFlags
+            jsr   _DoTimers           ; Run any pending timer tasks
+
+            jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
+            jsr   _ApplyBG1YPos       ; Set the y-register values of the blitter
+
+; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
+; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
+
+            jsr   _ApplyBG0XPosPre
+            jsr   _ApplyBG1XPosPre
+
+            jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
+            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
+
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
+
+            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
+            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
+
+; At this point, everything in the background has been rendered into the code field.  Next, we need
+; to create priority lists of scanline ranges.
+;
+; The objects that need to be reasoned about are
+;
+; 1. Sprites
+; 2. Overlays
+;    a. Solid High Priority
+;    b. Solid Low Priority
+;    c. Masked High Priority
+;    d. Masked Low Priority
+; 3. Background
+;
+; Notes:
+;
+;  A High Priority overlay is rendered above the sprites
+;  A Low Priority overlay is rendered below the sprites
+;  A Solid High Priority overlay obscured everything and if the only thing drawn on the scanline
+;
+; The order of draw oprations is:
+;
+; 1. Turn off shadowing
+; 2. Draw the background for scanlines with (Sprites OR a Masked Low Priority overlay) AND NOT a Solid Low Priority overlay
+; 3. Draw the Solid Low Priority overlays
+; 4. Draw the Sprites
+; 5. Draw the Masked Low Priority overlays
+; 6. Turn on shadowing
+; 7. Draw, in top-to-bottom order
+;    a. Background lines not drawn yet
+;    b. PEI Slam lines with (Sprites OR a Masked Low Priority Overlay) AND NOT a High Priority overlay
+;    c. High Priority overlays
+;
+; The work of this routine is to quickly build a sorted list of scanline ranges that can the appropriate
+; sub-renderer
+
+;            jsr   BuildShadowSegments
+;
+; The trick is to create a bit-field mapping for the different actions to define 
+
+            lda   Overlays
+            beq   :no_ovrly
+
+            jsr   _ShadowOff
+
+; Shadowing is turned off. Render all of the scan lines that need a second pass. One
+; optimization that can be done here is that the lines can be rendered in any order
+; since it is not shown on-screen yet.
+
+            ldx   Overlays+OVERLAY_TOP                  ; Blit the full virtual buffer to the screen
+            ldy   Overlays+OVERLAY_BOTTOM
+            jsr   _BltRange
+
+; Turn shadowing back on
+
+            jsr   _ShadowOn
+
+; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
+
+            ldx   #0
+            ldy   Overlays+OVERLAY_TOP
+            beq   :skip
+            jsr   _BltRange
+:skip
+            jsr   _DoOverlay
+
+            ldx   Overlays+OVERLAY_BOTTOM
+            cpx   ScreenHeight
+            beq   :done
+            ldy   ScreenHeight
+            jsr   _BltRange
+            bra   :done
+
+:no_ovrly
+            ldx   #0                  ; Blit the full virtual buffer to the screen
+            ldy   ScreenHeight
+            jsr   _BltRange
+:done
+
+            ldx   #0
+            ldy   ScreenHeight
+            jsr   _BltSCB
+
+            lda   StartYMod208              ; Restore the fields back to their original state
+            ldx   ScreenHeight
+            jsr   _RestoreBG0Opcodes
+
+            lda   StartY
+            sta   OldStartY
+            lda   StartX
+            sta   OldStartX
+
+            lda   BG1StartY
+            sta   OldBG1StartY
+            lda   BG1StartX
+            sta   OldBG1StartX
+
+            stz   DirtyBits
+            stz   LastRender                    ; Mark that a full render was just performed
+
+            lda   SpriteRemovedFlag             ; If any sprite was removed, set the rebuild flag
+            beq   :no_removal
+            lda   #DIRTY_BIT_SPRITE_ARRAY
+            sta   DirtyBits
+:no_removal
+            rts
+
+; Look at the overlay list and the sprite list and figure out which scaneline ranges need to be 
+; blitted in what order.  We try to build all of the scan line segments lists because that 
+; saves the work of re-scanning the lists.
+;
+; The semgent list definitions are:
+;
+;   BLIT_W_SHADOW_OF
+BuildShadowSegments
+;            ldx   _SortedHead
+;            bmi   :no_sprite
+;:loop
+;            lda   _Sprites+CLIP_TOP,x
+;            lda   _Sprites+SORTED_NEXT,x
+;            tax
+;            bpl   :loop
+;
+;            lda   #0                            ; Start at the top of the 
+
+            rts

@@ -223,10 +223,11 @@ _DoPhase1
             trb   SpriteMap
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
             sta   _Sprites+SPRITE_STATUS,y
-            jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
-
+            tyx
+            jsr   _DeleteSprite                   ; Remove sprite from linked list
+            txy                                   ; Restore y-register
 :hidden
-            jmp   _ClearSpriteFromTileStore
+            jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
 :no_clear
 
@@ -406,7 +407,8 @@ _AddSprite
             lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
             tsb   SpriteMap                     ; Mark it in the sprite map bit field
 
-            jmp   _PrecalcAllSpriteInfo         ; Cache sprite property values
+            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values
+            jmp    _InsertSprite                ; Insert it into the sorted list
 
 ; _SortSprite
 ;
@@ -419,9 +421,9 @@ _AddSprite
 ;
 ; X = current sprite index
 ;
-; The sorting strategy is to 
+; The sorting strategy is to
 ;
-; a) check if the corrent slot's y-pos is greater than the next item. If yes, then search forward
+; a) check if the current slot's y-pos is greater than the next item. If yes, then search forward
 ; b) check if the current slot's y-pos is less than the prev item.  If yes, then search in reverse
 ; c) sprite is in the correct location
 ;
@@ -1022,7 +1024,7 @@ _RemoveSprite
             ora   #SPRITE_STATUS_REMOVED
             sta   _Sprites+SPRITE_STATUS,x
 
-            rts
+            rts                                   ; The _DeleteSprite call is made in _DoPhase1 during the next render
 
 ; Update the sprite's flags. We do not allow the size of a sprite to be changed.  That requires
 ; the sprite to be removed and re-added.
@@ -1112,4 +1114,4 @@ _MoveSprite
             sta   _Sprites+SPRITE_STATUS,x
 
             jsr   _PrecalcSpritePos             ; Can be specialized to only update (x,y) values
-            jmp   _SortSprite                   ; UPdate the sprite's sorted position
+            jmp   _SortSprite                   ; Update the sprite's sorted position
