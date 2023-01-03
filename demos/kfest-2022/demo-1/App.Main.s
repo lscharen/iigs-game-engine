@@ -58,11 +58,11 @@ appTmp0         equ   28
 
 ; Load a tileset
 
-;                pea   0
-;                pea   256
-;                pea   #^tiledata
-;                pea   #tiledata
-;                _GTELoadTileSet
+                pea   0
+                pea   256
+                pea   #^tiledata
+                pea   #tiledata
+                _GTELoadTileSet
 
                 pea   $0000
                 pea   #^TileSetPalette
