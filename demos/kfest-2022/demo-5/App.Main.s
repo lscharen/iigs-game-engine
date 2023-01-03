@@ -59,8 +59,9 @@ SpriteCount     equ   50
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #0                      ; Engine in Fast Mode
+                lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
+                
                 jsr   SoundStartUp
                 jsr   StartMusic
 
@@ -81,6 +82,8 @@ SpriteCount     equ   50
 
 ; Load a tileset
 
+                pea   #0
+                pea   #512
                 pea   #^tiledata
                 pea   #tiledata
                 _GTELoadTileSet
