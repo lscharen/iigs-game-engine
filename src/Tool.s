@@ -360,13 +360,13 @@ _TSAddSprite
 
                 _TSEntry
 
-                lda    :spriteY,s
-                and    #$00FF
-                xba
-                sta    :spriteY,s
                 lda    :spriteX,s
                 and    #$00FF
-                ora    :spriteY,s
+                xba
+                sta    :spriteX,s
+                lda    :spriteY,s
+                and    #$00FF
+                ora    :spriteX,s
                 tay
 
                 lda    :spriteSlot,s

@@ -150,7 +150,7 @@ ROW_BYTES  equ 384                                 ; VBUFF_TILE_ROW_BYTES
 ;          a. If it is not marked in the DirtyTile list
 ;             * Clear its bit from the TileStore's TS_SPRITE_FLAG
 ;             * Add the tile to the DirtyTile list
-;t
+;
 ; 2. If a sprite is marked as SPRITE_STATUS_REMOVED, then
 ;    A. Clear its bit from the SpriteBits bitmap
 ;    B. For each tile the sprite overlaps with:
@@ -384,7 +384,7 @@ _AddSprite
 
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
 
-            lda   #SPRITE_STATUS_ADDED
+            lda   #SPRITE_STATUS_ADDED          ; Used to initialize the SPRITE_STATUS
             sta   _Sprites+SPRITE_STATUS,x
 
             stz   _Sprites+VBUFF_ADDR,x         ; Clear the VBUFF address, just to initialize it
@@ -407,8 +407,10 @@ _AddSprite
             lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
             tsb   SpriteMap                     ; Mark it in the sprite map bit field
 
-            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values
-            jmp    _InsertSprite                ; Insert it into the sorted list
+            jsr   _PrecalcSpriteSize            ; Cache sprite property values
+            jsr   _PrecalcSpriteBounds
+
+            jmp   _InsertSprite                 ; Insert it into the sorted list
 
 ; _SortSprite
 ;
@@ -905,26 +907,19 @@ _CacheSpriteBanks
 ; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
 ; specifically the draw/erase routines more efficient.
 ;
-; There are variations of this routine based on whether we are adding a new sprite, updating
-; it's tile information, or changing its position.
-;
 ; X = sprite index
-_PrecalcAllSpriteInfo
-            jsr   _PrecalcSpriteState
-            jmp   _PrecalcSpritePos
-
-_PrecalcSpriteState
+_PrecalcSpriteVBuff
             lda   _Sprites+SPRITE_ID,x 
-;            and   #$3E00
             xba
             and   #$0006
-
             tay
             lda   _Sprites+VBUFF_ADDR,x
             clc
             adc   _stamp_step,y
             sta   _Sprites+SPRITE_DISP,x
+            rts
 
+_PrecalcSpriteSize
 ; Set the sprite's width and height
             lda   #4
             sta   _Sprites+SPRITE_WIDTH,x
@@ -948,7 +943,7 @@ _PrecalcSpriteState
 
 ; Clip the sprite's bounding box to the play field size and also set a flag if the sprite
 ; is fully off-screen or not
-_PrecalcSpritePos
+_PrecalcSpriteBounds
             lda   _Sprites+SPRITE_X,x
             bpl   :pos_x
             lda   #0
@@ -1077,7 +1072,7 @@ _UpdateSprite
             ora   #SPRITE_STATUS_UPDATED
             sta   _Sprites+SPRITE_STATUS,x
 
-            jmp   _PrecalcSpriteState           ; Cache stuff and return
+            jmp   _PrecalcSpriteVBuff           ; Cache stuff and return
 
 ; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
 ; a full remove/add cycle needs to happen
@@ -1113,5 +1108,5 @@ _MoveSprite
             ora   #SPRITE_STATUS_MOVED
             sta   _Sprites+SPRITE_STATUS,x
 
-            jsr   _PrecalcSpritePos             ; Can be specialized to only update (x,y) values
+            jsr   _PrecalcSpriteBounds          ; Can be specialized to only update (x,y) values
             jmp   _SortSprite                   ; Update the sprite's sorted position
