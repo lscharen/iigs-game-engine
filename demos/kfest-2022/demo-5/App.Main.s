@@ -114,11 +114,19 @@ SpriteCount     equ   50
                 lda   MaxGlobalY
                 sec
                 sbc   #48                     ; 32 for tiles, 16 for sprite
+                lda   #48                     ; 32 for tiles, 16 for sprite
                 sta   PlayerGlobalY
                 sta   PlayerY
 
                 stz   PlayerXVel
                 stz   PlayerYVel
+
+; Set the screen to the bottom-left
+
+                pea   $0000
+                lda   MaxBG0Y
+                pha
+                _GTESetBG0Origin
 
 ; Create the sprites
 
@@ -134,28 +142,46 @@ HERO_FRAME_4    equ   HERO_SIZE+151
 HERO_VBUFF_4    equ   VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
 HERO_SLOT       equ   1
 
-;                pea   HERO_FRAME_1
-;                pea   HERO_VBUFF_1
-;                _GTECreateSpriteStamp
+                pea   HERO_FRAME_1
+                pea   HERO_VBUFF_1
+                _GTECreateSpriteStamp
 
-;                pea   HERO_FRAME_2
-;                pea   HERO_VBUFF_2
-;                _GTECreateSpriteStamp
+                pea   HERO_FRAME_2
+                pea   HERO_VBUFF_2
+                _GTECreateSpriteStamp
 
-;                pea   HERO_FRAME_3
-;                pea   HERO_VBUFF_3
-;                _GTECreateSpriteStamp
+                pea   HERO_FRAME_3
+                pea   HERO_VBUFF_3
+                _GTECreateSpriteStamp
 
-;                pea   HERO_FRAME_4
-;                pea   HERO_VBUFF_4
-;                _GTECreateSpriteStamp
+                pea   HERO_FRAME_4
+                pea   HERO_VBUFF_4
+                _GTECreateSpriteStamp
 
-;                pea   HERO_SLOT                    ; Put the player in slot 1
-;                pea   HERO_FLAGS
-;                pea   HERO_VBUFF_1                 ; and use this stamp
-;                pei   PlayerX
-;                pei   PlayerY
-;                _GTEAddSprite
+                pea   HERO_SLOT                    ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1                 ; and use this stamp
+                pei   PlayerX
+                pei   PlayerY
+                _GTEAddSprite
+
+                pea   HERO_SLOT+1                   ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1                 ; and use this stamp
+                lda   PlayerX
+                adc   #4
+                pha
+                pei   PlayerY
+                _GTEAddSprite
+
+                pea   HERO_SLOT+2                   ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1                 ; and use this stamp
+                lda   PlayerX
+                adc   #8
+                pha
+                pei   PlayerY
+                _GTEAddSprite
 
                 pea  $0000
                 _GTERender
@@ -204,12 +230,26 @@ EvtLoop
                 stz   PlayerXVel
 
 do_render
-                jsr   UpdatePlayerPos        ; Apply forces
-                jsr   ApplyCollisions        ; Check if we run into things
-                jsr   UpdateCameraPos        ; Moves the screen
+;                jsr   UpdatePlayerPos        ; Apply forces
+;                jsr   ApplyCollisions        ; Check if we run into things
+;                jsr   UpdateCameraPos        ; Moves the screen
 
 ;                pea   HERO_SLOT
 ;                pei   PlayerX
+;                pei   PlayerY
+;                _GTEMoveSprite                    ; Move the sprite to this local position
+
+;                pea   HERO_SLOT+1
+;                lda   PlayerX
+;                adc   #4
+;                pha 
+;                pei   PlayerY
+;                _GTEMoveSprite                    ; Move the sprite to this local position
+
+;                pea   HERO_SLOT+2
+;                lda   PlayerX
+;                adc   #8
+;                pha 
 ;                pei   PlayerY
 ;                _GTEMoveSprite                    ; Move the sprite to this local position
 
@@ -222,11 +262,11 @@ do_render
                 pha
                 _GTEGetSeconds
                 pla
-;                cmp   OldOneSecondCounter
-;                beq   :noudt
-;                sta   OldOneSecondCounter
-;                jsr   UdtOverlay
-;                stz   frameCount
+                cmp   OldOneSecondCounter
+                beq   :noudt
+                sta   OldOneSecondCounter
+                jsr   UdtOverlay
+                stz   frameCount
 :noudt
                 brl   EvtLoop
 
