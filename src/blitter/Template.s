@@ -232,6 +232,21 @@ epilogue_1         tsc
 ;        its passed state, because having the carry bit clear prevents evaluation of
 ;        the V bit.
 ;
+; The snippet code is fixed to allow fast updates and the entry point is chosen based on the
+; EngineMode during initializations
+;
+; _snippet
+;           lda  (00),y           ; Entry point for mixed dyn & bg1. Set opcode below.
+;           and  80,x
+;           lda  (00),y           ; Entry point for BG1 or Dyn. Change opcode.
+;           and  #MASK
+;           ora  #DATA
+; _2        bcs  _alt
+;           pha
+;           jmp  NEXT
+; _alt      jmp  RTN
+;
+
 ; Snippet Samples:
 ;
 ; Standard Two-level Mix (23 bytes)

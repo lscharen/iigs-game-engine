@@ -508,7 +508,23 @@ _SpriteBitsNot   ENT
 ; are stored here.  A negative value is used as a setinel
 _SortedHead     ENT
                 dw  $FFFF
-;_SortedTail     dw  $FFFF
+
+; Array of screen ranges covered by the sprites.  Adjacent sprites are merged. Used in the shadowing renderer
+_ShadowListCount  ENT
+                  ds 2
+_ShadowListTop    ENT
+                  ds {2*{MAX_SPRITES+1}}   ; space for all of the sprites + overlay range
+_ShadowListBottom ENT
+                  ds {2*{MAX_SPRITES+1}}
+
+; Complement of the Shadow List.  Can have one more segment than that list
+_DirectListCount  ENT
+                  ds 2
+_DirectListTop    ENT
+                  ds {2*{MAX_SPRITES+2}}
+_DirectListBottom ENT
+                  ds {2*{MAX_SPRITES+2}}
+
 
 ; Steps to the different sprite stamps
 _stamp_step      ENT

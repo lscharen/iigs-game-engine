@@ -290,5 +290,13 @@ StartXMod164Arr    EXT
 LastPatchOffsetArr EXT
 
 _SortedHead EXT
+_ShadowListCount  EXT
+_ShadowListTop    EXT
+_ShadowListBottom EXT
+_DirectListCount  EXT
+_DirectListTop    EXT
+_DirectListBottom EXT
+
+
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

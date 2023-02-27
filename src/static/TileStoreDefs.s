@@ -12,7 +12,6 @@ TS_TILE_ADDR          equ  {TILE_STORE_SIZE*3}      ; cached value, the address 
 TS_CODE_ADDR_LOW      equ  {TILE_STORE_SIZE*4}      ; const value, address of this tile in the code fields
 TS_CODE_ADDR_HIGH     equ  {TILE_STORE_SIZE*5}
 TS_WORD_OFFSET        equ  {TILE_STORE_SIZE*6}      ; const value, word offset value for this tile if LDA (dp),y instructions re used
-;TS_BASE_ADDR          equ  {TILE_STORE_SIZE*7}      ; const value, because there are two rows of tiles per bank, this is set to $0000 or $8000.
 TS_JMP_ADDR           equ  {TILE_STORE_SIZE*7}      ; const value, address of the 32-byte snippet space for this tile
 TS_SCREEN_ADDR        equ  {TILE_STORE_SIZE*8}      ; cached value of on-screen location of tile. Used for DirtyRender.
 
@@ -62,7 +61,6 @@ SPRITE_HEIGHT        equ {MAX_SPRITES*28}
 SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*30}
 SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*32}
 TS_VBUFF_BASE        equ {MAX_SPRITES*34}        ; Finalized VBUFF address based on the sprite position and tile offsets
-;VBUFF_ARRAY_ADDR     equ {MAX_SPRITES*36}        ; Fixed address where this sprite's VBUFF addresses are stores. The array is the same shape as TileStore, but much smaller
 SORTED_PREV          equ {MAX_SPRITES*36}
 SORTED_NEXT          equ {MAX_SPRITES*38}
 

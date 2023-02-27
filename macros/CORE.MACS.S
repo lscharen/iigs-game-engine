@@ -3,7 +3,7 @@
 ****************************************
 _Err            mac
                 bcc   NoErr
-                do    ]0              ; (DO if true) 
+                do    ]0              ; (DO if true) Mu
                 jsr   PgmDeath        ;  this is conditionally compiled if
                 str   ]1              ;  we pass in an error statement
                 else                  ; (ELSE) 

@@ -62,8 +62,8 @@ SpriteCount     equ   50
                 lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
                 
-                jsr   SoundStartUp
-                jsr   StartMusic
+;                jsr   SoundStartUp
+;                jsr   StartMusic
 
 ; Initialize local variables
 
@@ -183,7 +183,7 @@ HERO_SLOT       equ   1
                 pei   PlayerY
                 _GTEAddSprite
 
-                pea  $0000
+                pea  #RENDER_WITH_SHADOWING
                 _GTERender
 
 EvtLoop
@@ -272,7 +272,7 @@ do_render
 
 ; Exit code
 Exit
-                jsr   SoundShutDown
+;                jsr   SoundShutDown
                 _GTEShutDown
 Quit
                 _QuitGS    qtRec

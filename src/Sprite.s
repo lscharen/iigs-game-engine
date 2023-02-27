@@ -904,7 +904,7 @@ _CacheSpriteBanks
             
             rts
 
-; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
+; Precalculate some cached values for a sprite.  These are *only* to make other parts of code,
 ; specifically the draw/erase routines more efficient.
 ;
 ; X = sprite index

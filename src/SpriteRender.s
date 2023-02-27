@@ -1,3 +1,105 @@
+; Draw a sprite directly to the graphics screen.  No clipping / bounds checking is performed
+;
+; X = sprite record index
+_DrawStampToScreen
+             clc
+             lda    _Sprites+SPRITE_Y,x
+             adc    ScreenY0
+             asl
+             asl
+             asl
+             asl
+             asl
+             sta    tmp0
+             asl
+             asl
+             clc
+             adc    tmp0
+             clc
+             adc    #$2000
+             clc
+             adc    ScreenX0
+             adc    _Sprites+SPRITE_X,x              ; Move to the horizontal address
+             tay                                     ; This is the on-screen address
+
+             lda    _Sprites+SPRITE_HEIGHT,x
+             sta    tmp0
+
+; Sprite is either 8 or 16 pixels wide, so select the entry point
+             lda    _Sprites+SPRITE_WIDTH,x
+             cmp    #4
+             beq    :skinny
+
+             lda    _Sprites+SPRITE_DISP,x           ; This is the VBUFF address with the correct sprite frame
+             tax
+             phb
+             pea    $0101
+             plb
+             plb
+             bra    :entry16
+:loop16
+             clc
+             txa
+             adc    #SPRITE_PLANE_SPAN
+             tax
+             tya
+             adc    #SHR_LINE_WIDTH
+             tay
+:entry16
+             lda:   6,y
+             andl   spritemask+6,x
+             oral   spritedata+6,x
+             sta:   6,y
+             lda:   4,y
+             andl   spritemask+4,x
+             oral   spritedata+4,x
+             sta:   4,y
+             lda:   2,y
+             andl   spritemask+2,x
+             oral   spritedata+2,x
+             sta:   2,y
+             lda:   0,y
+             andl   spritemask+0,x
+             oral   spritedata+0,x
+             sta:   0,y
+
+             dec    tmp0
+             bne    :loop16
+
+             plb
+             rts
+
+:skinny
+             lda    _Sprites+SPRITE_DISP,x           ; This is the VBUFF address with the correct sprite frame
+             tax
+             phb
+             pea    $0101
+             plb
+             plb
+             bra    :entry8
+:loop8
+             clc
+             txa
+             adc    #SPRITE_PLANE_SPAN
+             tax
+             tya
+             adc    #SHR_LINE_WIDTH
+             tay
+:entry8
+             lda:   2,y
+             andl   spritemask+2,x
+             oral   spritedata+2,x
+             sta:   2,y
+             lda:   0,y
+             andl   spritemask+0,x
+             oral   spritedata+0,x
+             sta:   0,y
+
+             dec    tmp0
+             bne    :loop8
+
+             plb
+             rts
 ; Alternate entry point that takes arguments in registers instead of using a _Sprite
 ; record
 ;

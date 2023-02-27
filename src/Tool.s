@@ -880,3 +880,4 @@ _TSGetAddress
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
                 put     blitter/Blitter.s
+                put     blitter/PEISlammer.s
