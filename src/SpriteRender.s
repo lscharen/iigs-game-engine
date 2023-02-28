@@ -1,7 +1,129 @@
-; Draw a sprite directly to the graphics screen.  No clipping / bounds checking is performed
+; Compile a stamp into a compilation cache
+_CompileStamp
+_lines      equ    tmp0
+_width0     equ    tmp1
+_width      equ    tmp2 
+baseAddr    equ    tmp3
+destAddr    equ    tmp4
+vbuffAddr   equ    tmp5
+
+            lda    _Sprites+SPRITE_HEIGHT,x
+            sta    _lines
+
+            lda    _Sprites+SPRITE_WIDTH,x          ; Width in bytes (4 or 8)
+            lsr
+            sta    
+            sta    _width0
+
+            lda    _Sprites+SPRITE_DISP,x           ; Get the address of the stamp
+            sta    vbuffAddr
+            tax
+
+            ldy    CompileBankTop                   ; First free byte in the compilation bank
+
+            phb
+            pei    CompileBank
+            plb
+            plb                                     ; Set the bank to the compilation cache
+
+            stz    baseAddr
+            stz    destAddr
+
+:oloop
+            lda    _width0
+            sta    _width
+
+:iloop
+            ldal   spritemask,x
+            beq    :no_mask                         ; If Mask == $0000, then it's a solid word
+            cmp    #$FFFF
+            beq    :next                            ; If Mask == $FFFF, then it's transparent
+
+; Mask with the screen data
+            lda    #LDA_ABS_X_OPCODE
+            sta:   0,y
+            lda    destAddr
+            sta:   1,y
+            sta:   10,y
+            lda    #AND_IMM_OPCODE
+            sta:   3,y
+            ldal   spritemask,x
+            sta:   4,y
+            lda    #ORA_IMM_OPCODE
+            sta:   6,y
+            ldal   spritedata,x
+            sta:   7,y
+            lda    #STA_ABS_X_OPCODE
+            sta:   9,y
+
+            tya
+            adc    #12
+            tay
+            bra    :next
+
+; Just store the data
+:no_mask    lda    #LDA_IMM_OPCODE
+            sta:   0,y
+            ldal   spritedata,x
+            sta:   1,y
+
+            lda    #STA_ABS_X_OPCODE
+            sta:   3,y
+            lda    destAddr
+            sta:   4,y
+
+            tya
+            adc    #6
+            tay
+
+:next
+            inx
+            inx
+
+            inc    destAddr                         ; Move to the next word
+            inc    destAddr
+
+            dec    _width
+            bne    :iloop
+
+            lda    vbuffAddr
+            adc    #SPRITE_PLANE_SPAN
+            sta    vbuffAddr
+            tax
+
+            lda    baseAddr                         ; Move to the next line
+            adc    #160
+            sta    baseAddr
+            sta    destAddr
+
+            dec    lines
+            bne    :oloop
+
+            lda    #RTL_OPCODE                      ; Finish up the subroutine
+            sta:   0,y
+            iny
+            sty    CompileBankTop
+
+            plb
+            rts
+
+; Draw a sprite directly to the graphics screen. If sprite is clipped at all, do not draw.
 ;
 ; X = sprite record index
+_DSTSOut
+             rts
+
 _DrawStampToScreen
+             lda    _Sprites+IS_OFF_SCREEN,x        ; If the sprite is off-screen, don't draw it
+             bne    _DSTSOut
+
+             lda    _Sprites+SPRITE_CLIP_WIDTH,x    ; If the sprite is clipped to the playfield, don't draw it
+             cmp    _Sprites+SPRITE_WIDTH,x
+             bne    _DSTSOut
+             lda    _Sprites+SPRITE_CLIP_HEIGHT,x
+             cmp    _Sprites+SPRITE_HEIGHT,x
+             bne    _DSTSOut
+
              clc
              lda    _Sprites+SPRITE_Y,x
              adc    ScreenY0

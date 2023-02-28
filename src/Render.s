@@ -341,7 +341,9 @@ _RenderWithShadowing
 ; to create priority lists of scanline ranges.
 
             jsr   _BuildShadowList    ; Create the rages based on the sorted sprite y-values
-            jsr   _ComplementList     ; Create the complement to identify non-sprite scanlines
+;            jsr   _MergeOverlay       ; Add the overlay range into the shadow list (treat it as a sprite)
+
+            jsr   _ComplementList     ; Create the complement to identify non-sprite / non-overlay scanlines
 
             jsr   _ShadowOff          ; Turn off shadowing and draw all the scanlines with sprites on them
             jsr   _DrawShadowList
@@ -484,7 +486,7 @@ _BuildShadowList
 
             ldx    _SortedHead
             bmi    :empty
-            bra   :insert
+            bra    :insert
 
 ; Start of loop
 :advance
@@ -496,7 +498,7 @@ _BuildShadowList
             sta   _ShadowListTop,y                ; Set the top entry of the list to the sprite top
 
             lda   _Sprites+SPRITE_CLIP_BOTTOM,x   ; Optimistically set the end of the segment to the bottom of this sprite
-            inc
+            inc                                   ; Clip values are on the scanline, so add one to make it a proper interval
 
 :replace
             sta   _ShadowListBottom,y
@@ -603,13 +605,25 @@ _DrawDirectSprites
             bmi    :empty
 
 :loop
-            phx
-            jsr   _DrawStampToScreen
-            plx
+            lda    _Sprites+SPRITE_STATUS,x
+            bit    #SPRITE_STATUS_HIDDEN
+            bne    :next
 
-            lda   _Sprites+SORTED_NEXT,x        ; If there another sprite in the list?
+            lda    _Sprites+SPRITE_ID,x          ; If this is a compiled sprite, call the routine in the compilation bank
+            bit    #SPRITE_COMPILED
+            bne    :compiled
+
+            phx
+            jsr    _DrawStampToScreen
+            plx
+            bra    :next
+
+:compiled
+
+:next
+            lda    _Sprites+SORTED_NEXT,x        ; If there another sprite in the list?
             tax
-            bpl   :loop 
+            bpl    :loop 
 
 :empty
             rts
@@ -633,6 +647,8 @@ _DrawComplementList
             lda   _DirectListTop,x
             ldy   _DirectListBottom,x
             tax
+            lda   #0
+            jsr   DebugSCBs
             jsr   _BltRange
             plx
 
@@ -646,6 +662,8 @@ _DrawComplementList
             phx
             ldy   _DirectListTop,x
             tax
+            lda   #1
+            jsr   DebugSCBs
             jsr   _PEISlam
             plx
             bra   :blt_range
@@ -655,6 +673,41 @@ _DrawComplementList
             bcs   :out                                  ; screen, then expose that range
             tax
             ldy   ScreenHeight
+            lda   #1
+            jsr   DebugSCBs
             jsr   _PEISlam
 :out
             rts
+
+; Helper to set a palette index on a range of SCBs to help show whicih actions are applied to which lines
+DebugSCBs
+            phx
+            phy
+            sep   #$30          ; short m/x
+
+            pha                 ; save the SCB value
+            
+            phx
+            tya
+            sec
+            sbc   1,s
+            tay                 ; number of scanlines
+
+            pla
+            clc
+            adc   ScreenY0
+            tax                 ; physical line index
+
+            pla
+:loop
+            stal  SHR_SCB,x
+            inx
+            dey
+            bne   :loop
+
+            rep   #$30
+            ply
+            plx
+            rts
+
+

@@ -228,13 +228,14 @@ TILE_CTRL_MASK         equ   $FE00
 ; TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
 
 ; Sprite constants
-SPRITE_HIDE            equ   $2000
+SPRITE_COMPILED        equ   $4000                    ; This is a compiled sprite (SPRITE_DISP points to a routine in the compiled cache bank)
+SPRITE_HIDE            equ   $2000                    ; Do not render the sprite
 SPRITE_16X16           equ   $1800                    ; 16 pixels wide x 16 pixels tall
 SPRITE_16X8            equ   $1000                    ; 16 pixels wide x 8 pixels tall
 SPRITE_8X16            equ   $0800                    ; 8 pixels wide x 16 pixels tall
 SPRITE_8X8             equ   $0000                    ; 8 pixels wide x 8 pixels tall
-SPRITE_VFLIP           equ   $0400
-SPRITE_HFLIP           equ   $0200
+SPRITE_VFLIP           equ   $0400                    ; Flip the sprite vertically
+SPRITE_HFLIP           equ   $0200                    ; Flip the sprite horizontally
 
 ; Stamp storage parameters
 VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
