@@ -609,16 +609,10 @@ _DrawDirectSprites
             bit    #SPRITE_STATUS_HIDDEN
             bne    :next
 
-            lda    _Sprites+SPRITE_ID,x          ; If this is a compiled sprite, call the routine in the compilation bank
-            bit    #SPRITE_COMPILED
-            bne    :compiled
-
             phx
             jsr    _DrawStampToScreen
             plx
             bra    :next
-
-:compiled
 
 :next
             lda    _Sprites+SORTED_NEXT,x        ; If there another sprite in the list?
@@ -647,8 +641,8 @@ _DrawComplementList
             lda   _DirectListTop,x
             ldy   _DirectListBottom,x
             tax
-            lda   #0
-            jsr   DebugSCBs
+;            lda   #0
+;            jsr   DebugSCBs
             jsr   _BltRange
             plx
 
@@ -662,8 +656,8 @@ _DrawComplementList
             phx
             ldy   _DirectListTop,x
             tax
-            lda   #1
-            jsr   DebugSCBs
+;            lda   #1
+;            jsr   DebugSCBs
             jsr   _PEISlam
             plx
             bra   :blt_range
@@ -673,8 +667,8 @@ _DrawComplementList
             bcs   :out                                  ; screen, then expose that range
             tax
             ldy   ScreenHeight
-            lda   #1
-            jsr   DebugSCBs
+;            lda   #1
+;            jsr   DebugSCBs
             jsr   _PEISlam
 :out
             rts

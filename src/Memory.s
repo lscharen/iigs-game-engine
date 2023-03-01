@@ -59,16 +59,20 @@ InitMemory     lda       EngineMode
                _Deref
                stx       BlitterDP
 
-; Allocate banks of memory for BG1
+; Allocate banks of memory for BG1.  If the user wants to swap between multiple BG1 banks, then they need to be allocated
+; outside of GTE and selected using the GTESetBG1Bank() function.  Passing a zero for that function's argument will
+; always set the bank to the allocated bank number.  Bank 00 and Bank 01 are illegal values.
+
                lda       EngineMode
                bit       #ENGINE_MODE_TWO_LAYER
                beq       :no_bg1
                jsr       AllocOneBank2
                sta       BG1DataBank
+:no_bg1
 
                jsr       AllocOneBank2
-               sta       BG1AltBank
-:no_bg1
+               sta       CompileBank
+               stz       CompileBank0
 
 ; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0

@@ -40,12 +40,12 @@ EngineMode             equ   20          ; Defined the mode/capabilities that ar
                                          ;  bit 2: 0 = No static buffer, 1 = Allocation Bank 00 space for a static screen buffer
 DirtyBits              equ   22          ; Identify values that have changed between frames
 
-BG1DataBank            equ   24          ; Data bank that holds BG1 layer data
-BG1AltBank             equ   26          ; Alternate BG1 bank
+CompileBank0           equ   24          ; Always zero to allow [CompileBank0],y addressing
+CompileBank            equ   26          ; Data bank that holds compiled sprite code
 
-BlitterDP              equ   28          ; Direct page address the holder blitter data
+BlitterDP              equ   28          ; Direct page address that holds blitter data
 
-OldStartX              equ   30
+OldStartX              equ   30          ; Used to track deltas between frames
 OldStartY              equ   32
 
 LastPatchOffset        equ   34          ; Offset into code field that was patched with BRA instructions
@@ -61,7 +61,7 @@ BG1StartYMod208        equ   46
 OldBG1StartX           equ   48
 OldBG1StartY           equ   50
 
-BG1OffsetIndex         equ   52
+BG1OffsetIndex         equ   52          ; Utility index for scanline effect in BG1
 
 BG0TileOriginX         equ   54          ; Coordinate in the tile map that corresponds to the top-left corner
 BG0TileOriginY         equ   56
@@ -73,22 +73,22 @@ BG1TileOriginY         equ   64
 OldBG1TileOriginX      equ   66
 OldBG1TileOriginY      equ   68
 
-TileMapWidth           equ   70
+TileMapWidth           equ   70          ; Pointer to memory holding the tile map for the primary background
 TileMapHeight          equ   72
 TileMapPtr             equ   74
 FringeMapPtr           equ   78
 
 BG1TileMapWidth        equ   82
 BG1TileMapHeight       equ   84
-BG1TileMapPtr          equ   86
+BG1TileMapPtr          equ   86          ; Pointer to memory holding the tile map for the secondary background
 
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
 LastRender             equ   96          ; Record which render function was last executed
-; gap
+CompileBankTop         equ   98          ; First free byte i nthe compile bank.  Grows upward in memeory.
 SpriteMap              equ   100         ; Bitmap of open sprite slots.
 ActiveSpriteCount      equ   102
-BankLoad               equ   104
+BG1DataBank            equ   104          ; Data bank that holds BG1 layer data
 TileStoreBankAndBank01 equ   106
 TileStoreBankAndTileDataBank equ 108
 TileStoreBankDoubled   equ   110

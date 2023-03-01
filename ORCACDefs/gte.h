@@ -61,6 +61,7 @@ extern pascal Word GTEStatus(void) inline(0x06A0, tool_dispatcher);
 
 /* GTE Sprite Routines */
 extern pascal void GTECreateSpriteStamp(Word spriteDescriptor, Word vBuffAddr) inline(0x0FA0, tool_dispatcher);
+extern pascal Word GTECompileSpriteStamp(Word spriteDescriptor, Word vBuffAddr) inline(0x2DA0, tool_dispatcher);
 extern pascal void GTEAddSprite(Word spriteSlot, Word spriteFlags, Word vBuffAddr, Word x, Word y) inline(0x10A0, tool_dispatcher);
 extern pascal void GTEMoveSprite(Word spriteSlot, Word x, Word y) inline(0x11A0, tool_dispatcher);
 extern pascal void GTEUpdateSprite(Word spriteSlot, Word spriteFlags, Word vBuffAddr) inline(0x12A0, tool_dispatcher);

@@ -49,6 +49,10 @@ LastHFlip       equ   44
 SpriteFrame     equ   46
 SpriteToggle    equ   48
 SpriteCount     equ   50
+PlayerX1        equ   52
+PlayerY1        equ   54
+PlayerX2        equ   56
+PlayerY2        equ   58
 
                 phk
                 plb
@@ -111,12 +115,17 @@ SpriteCount     equ   50
                 lda   #16
                 sta   PlayerGlobalX
                 sta   PlayerX
+                sta   PlayerX1
+                sta   PlayerX2
+
                 lda   MaxGlobalY
                 sec
                 sbc   #48                     ; 32 for tiles, 16 for sprite
                 lda   #48                     ; 32 for tiles, 16 for sprite
                 sta   PlayerGlobalY
                 sta   PlayerY
+                sta   PlayerY1
+                sta   PlayerY2
 
                 stz   PlayerXVel
                 stz   PlayerYVel
@@ -142,6 +151,8 @@ HERO_FRAME_4    equ   HERO_SIZE+151
 HERO_VBUFF_4    equ   VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
 HERO_SLOT       equ   1
 
+; Create stamps of each sprite
+
                 pea   HERO_FRAME_1
                 pea   HERO_VBUFF_1
                 _GTECreateSpriteStamp
@@ -158,29 +169,37 @@ HERO_SLOT       equ   1
                 pea   HERO_VBUFF_4
                 _GTECreateSpriteStamp
 
+; Compile the sprite stamps and hold the compilation token
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_1
+                _GTECompileSpriteStamp
+                pla
+
                 pea   HERO_SLOT                    ; Put the player in slot 1
-                pea   HERO_FLAGS
-                pea   HERO_VBUFF_1                 ; and use this stamp
+                pea   HERO_FLAGS+SPRITE_COMPILED   ;  mark this as a compiled sprite (can only use in RENDER_WITH_SHADOWING mode)
+                pha                                ;  pass in the token of the compiled stamp
                 pei   PlayerX
                 pei   PlayerY
                 _GTEAddSprite
 
+;                brl   Exit
+
+; Repeat for each stamp.  _GTECompileSpriteStamp will return an error if it runs out of memory
+
                 pea   HERO_SLOT+1                   ; Put the player in slot 1
                 pea   HERO_FLAGS
                 pea   HERO_VBUFF_1                 ; and use this stamp
-                lda   PlayerX
-                adc   #4
-                pha
-                pei   PlayerY
+                pei   PlayerX1
+                pei   PlayerY1
                 _GTEAddSprite
 
                 pea   HERO_SLOT+2                   ; Put the player in slot 1
                 pea   HERO_FLAGS
                 pea   HERO_VBUFF_1                 ; and use this stamp
-                lda   PlayerX
-                adc   #8
-                pha
-                pei   PlayerY
+                pei   PlayerX2
+                pei   PlayerY2
                 _GTEAddSprite
 
                 pea  #RENDER_WITH_SHADOWING
@@ -230,31 +249,39 @@ EvtLoop
                 stz   PlayerXVel
 
 do_render
-;                jsr   UpdatePlayerPos        ; Apply forces
-;                jsr   ApplyCollisions        ; Check if we run into things
-;                jsr   UpdateCameraPos        ; Moves the screen
+                jsr   UpdatePlayerPos        ; Apply forces
+                jsr   ApplyCollisions        ; Check if we run into things
+                jsr   UpdateCameraPos        ; Moves the screen
 
-;                pea   HERO_SLOT
-;                pei   PlayerX
-;                pei   PlayerY
-;                _GTEMoveSprite                    ; Move the sprite to this local position
+                pea   HERO_SLOT
+                pei   PlayerX
+                pei   PlayerY
+                _GTEMoveSprite                    ; Move the sprite to this local position
 
-;                pea   HERO_SLOT+1
-;                lda   PlayerX
-;                adc   #4
-;                pha 
-;                pei   PlayerY
-;                _GTEMoveSprite                    ; Move the sprite to this local position
+                pea   HERO_SLOT+1
+                lda   PlayerX1
+                sec
+                sbc   StartX
+                pha
+                lda   PlayerY1
+                sec
+                sbc   StartY
+                pha
+                _GTEMoveSprite                    ; Move the sprite to this local position
 
-;                pea   HERO_SLOT+2
-;                lda   PlayerX
-;                adc   #8
-;                pha 
-;                pei   PlayerY
-;                _GTEMoveSprite                    ; Move the sprite to this local position
+                pea   HERO_SLOT+2
+                lda   PlayerX2
+                sec
+                sbc   StartX
+                pha
+                lda   PlayerY2
+                sec
+                sbc   StartY
+                pha
+                _GTEMoveSprite                    ; Move the sprite to this local position
 
-;                pea  $0000
-;                _GTERender
+                pea  #RENDER_WITH_SHADOWING
+                _GTERender
 
 ; Update the performance counters
 
@@ -428,6 +455,17 @@ UpdatePlayerPos
             rts
 
 ApplyCollisions
+
+; Move coordinates down the list
+            lda  PlayerX1
+            sta  PlayerX2
+            lda  PlayerY1
+            sta  PlayerY2
+
+            lda  PlayerGlobalX
+            sta  PlayerX1
+            lda  PlayerGlobalY
+            sta  PlayerY1
 
 ; Convert global to local coordinates
 

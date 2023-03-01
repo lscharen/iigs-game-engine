@@ -97,6 +97,9 @@ _CallTable
                 adrl  _TSClearBG1Buffer-1
                 adrl  _TSSetBG1Scale-1
                 adrl  _TSGetAddress-1
+
+                adrl  _TSCompileSpriteStamp-1
+
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -232,14 +235,14 @@ _TSReserved
 
 ; SetScreenMode(width, height)
 _TSSetScreenMode
-height          equ     FirstParam
-width           equ     FirstParam+2
+:height         equ     FirstParam
+:width          equ     FirstParam+2
 
                 _TSEntry
 
-                lda     height,s
+                lda     :height,s
                 tay
-                lda     width,s
+                lda     :width,s
                 tax
                 jsr     _SetScreenMode
 
@@ -350,7 +353,7 @@ _TSCreateSpriteStamp
 
                 _TSExit #0;#4
 
-; AddSprite(spriteSlot, spriteFlags, vbuff, spriteX, spriteY)
+; AddSprite(spriteSlot, spriteFlags, vbuff | cbuff, spriteX, spriteY)
 _TSAddSprite
 :spriteY        equ    FirstParam+0
 :spriteX        equ    FirstParam+2
@@ -499,10 +502,10 @@ _TSCopyPicToBG1
                 sta    :src_stride
 
                 ldy    BG1DataBank              ; Pick the target data bank
-                lda    :flags,s
-                bit    #$0001
-                beq    *+4
-                ldy    BG1AltBank
+;                lda    :flags,s
+;                bit    #$0001
+;                beq    *+4
+;                ldy    BG1AltBank
                 
                 lda    :ptr+2,s
                 tax
@@ -846,6 +849,22 @@ _TSGetAddress
 
 :out
                 _TSExit #0;#2
+
+; CompileSpriteStamp(spriteId, vbuffAddr)
+_TSCompileSpriteStamp
+:vbuff          equ     FirstParam
+:spriteId       equ     FirstParam+2
+:output         equ     FirstParam+4
+
+                _TSEntry
+
+                lda     :vbuff,s
+                tax
+                lda     :spriteId,s
+                jsr     _CompileStampSet
+                sta     :output,s
+
+                _TSExit  #0;#4
 
 ; Insert the GTE code
 

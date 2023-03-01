@@ -220,6 +220,8 @@ EngineReset
                   stz       BG1TileMapPtr
                   stz       BG1TileMapPtr+2
 
+                  stz       CompileBankTop
+
                   stz       SCBArrayPtr
                   stz       SCBArrayPtr+2
 

@@ -59,16 +59,17 @@ _BltRange
                 beq   :skip_bank
 
 ; TODO: Switch to loading the selected BG1 bank. No special "Alt" bank
-
-                lda   RenderFlags
-                bit   #RENDER_ALT_BG1
-                beq   :primary
-
-                lda   BG1AltBank
-                bra   :alt
-
-:primary        lda   BG1DataBank
-:alt
+;
+;                lda   RenderFlags
+;                bit   #RENDER_ALT_BG1
+;                beq   :primary
+;
+;                lda   BG1AltBank
+;                bra   :alt
+;
+;:primary        lda   BG1DataBank
+;:alt
+                lda   BG1DataBank
                 pha
                 plb
 

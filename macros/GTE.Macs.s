@@ -129,6 +129,9 @@ _GTESetBG1Scale      MAC
 _GTEGetAddress       MAC
                      UserTool  $2C00+GTEToolNum
                      <<<
+_GTECompileSpriteStamp MAC
+                     UserTool  $2D00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -181,6 +184,7 @@ TILE_CTRL_MASK         equ   $FE00
 
 
 ; Sprite constants
+SPRITE_COMPILED        equ   $4000                   ; This is a compiled sprite
 SPRITE_HIDE            equ   $2000
 SPRITE_16X16           equ   $1800
 SPRITE_16X8            equ   $1000

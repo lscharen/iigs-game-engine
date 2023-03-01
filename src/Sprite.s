@@ -331,7 +331,7 @@ phase1      dw    :phase1_0
 ; the stamp every time.  So this allows users to create stamps in advance and then
 ; assign them to the sprites as needed.
 ;
-; Note that the user had full freedom to create a stamp at any VBUFF address, however,
+; Note that the user has full freedom to create a stamp at any VBUFF address, however,
 ; without leaving a buffer around each stamp, graphical corruption will occur.  It is
 ; recommended that the defines for VBUFF_SPRITE_START, VBUFF_TILE_ROW_BYTES and
 ; VBUFF_TILE_COL_BYTES to calculate tile-aligned corner locations to lay out the 
@@ -362,8 +362,8 @@ _CreateSpriteStamp
 ;   01 - 8x16 (1x2 tiles)
 ;   10 - 16x8 (2x1 tiles)
 ;   11 - 16x16 (2x2 tiles)
-; Bit 13       : Show/Hid sprite
-; Bit 14       : Reserved. Must be zero.
+; Bit 13       : Show/Hide sprite during rendering
+; Bit 14       : Mark sprite as a compile sprite.  SPRITE_DISP is treated as a compilation token.
 ; Bit 15       : Reserved. Must be zero.
 ; TBD: Bit 15       : Low Sprite priority. Draws behind high priority tiles.
 ;
@@ -371,7 +371,7 @@ _CreateSpriteStamp
 ; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
 ; with a width of 256 pixels.
 ;
-; A = vbuffAddress
+; A = Sprite ID / Flags
 ; Y = High Byte = x-pos, Low Byte = y-pos
 ; X = Sprite Slot (0 - 15)
 _AddSprite
@@ -387,7 +387,8 @@ _AddSprite
             lda   #SPRITE_STATUS_ADDED          ; Used to initialize the SPRITE_STATUS
             sta   _Sprites+SPRITE_STATUS,x
 
-            stz   _Sprites+VBUFF_ADDR,x         ; Clear the VBUFF address, just to initialize it
+            lda   #$FFFF
+            sta   _Sprites+VBUFF_ADDR,x         ; Clear the VBUFF address, just to initialize it
  
             phy
             tya
@@ -909,14 +910,123 @@ _CacheSpriteBanks
 ;
 ; X = sprite index
 _PrecalcSpriteVBuff
-            lda   _Sprites+SPRITE_ID,x 
+            lda   _Sprites+SPRITE_ID,x               ; Compiled sprites use the SPRITE_DISP as a fixed address to compiled code
+            bit   #SPRITE_COMPILED
+            bne   :compiled
+
             xba
             and   #$0006
             tay
             lda   _Sprites+VBUFF_ADDR,x
             clc
             adc   _stamp_step,y
-            sta   _Sprites+SPRITE_DISP,x
+            sta   _Sprites+SPRITE_DISP,x            ; Interpreted as an address in the VBUFF bank
+            rts
+
+:compiled
+            xba
+            and   #$0006                            ; Pick the address from the table of 4 values.  Can use this value directly
+            clc                                     ; as an index
+            adc   _Sprites+VBUFF_ADDR,x
+            tay
+            lda   [CompileBank0],y
+            sta   _Sprites+SPRITE_DISP,x            ; Interpreted as an address in the CompileBank
+            rts
+
+; Compile the four stamps and keep a reference to the addresses.  We take the current CompileBankTop address and allocate 8 bytes
+; of memory.  Then compile each stamp and save the compilation address in the header area.  Finally, the DISP_ADDR is set
+; to that value and the SPRITE_COMPILED bit is set in the SPRITE_ID word.
+;
+; A = sprite Id
+; X = vbuff base address
+_CompileStampSet
+:height     equ   tmp8
+:width      equ   tmp9
+:base       equ   tmp10
+:output     equ   tmp11
+:addrs      equ   tmp12            ; 4 words (tmp12, tmp13, tmp14 and tmp15)
+
+; Save the base address
+            stx   :base
+
+; Initialize the height and width based on the sprite flags
+
+            ldy   #8
+            sty   :height
+            ldx   #4
+            stx   :width
+
+            bit   #$1000                              ; wide flag
+            beq   :skinny
+            ldx   #8
+            stx   :width
+:skinny
+
+            bit   #$0800                              ; tall flag
+            beq   :short
+            ldy   #16
+            sty   :height
+:short
+
+            lda   CompileBankTop
+            sta   :output                         ; Save the current address as the return value
+
+            clc
+            adc   #8
+            sta   CompileBankTop                ; Allocate space for the 4 addresses return by _CompileStamp
+
+;            ldy   :height                      ; X and Y are already set for the first call
+;            ldx   :width
+            lda   :base
+            jsr   _CompileStamp                 ; Compile into the bank
+            sta   :addrs                        ; Save the address temporarily
+
+            ldy   :height
+            ldx   :width
+            clc
+            lda   :base
+            adc   _stamp_step+2
+            jsr   _CompileStamp
+            sta   :addrs+2
+
+            ldy   :height
+            ldx   :width
+            clc
+            lda   :base
+            adc   _stamp_step+4
+            jsr   _CompileStamp
+            sta   :addrs+4
+
+            ldy   :height
+            ldx   :width
+            clc
+            lda   :base
+            adc   _stamp_step+6
+            jsr   _CompileStamp
+            sta   :addrs+6
+
+; Now the sprite stamps are all compiled.  Set the bank to the compilation bank and fill in the header
+
+            phb
+
+            ldy   :output
+            pei   CompileBank
+            plb
+
+            lda   :addrs
+            sta:  0,y
+            lda   :addrs+2
+            sta:  2,y
+            lda   :addrs+4
+            sta:  4,y
+            lda   :addrs+6
+            sta:  6,y
+
+            plb
+            plb
+
+            tya                             ; Put the output value into the accumulator
+            clc                             ; No error
             rts
 
 _PrecalcSpriteSize
@@ -1026,7 +1136,7 @@ _RemoveSprite
 ;
 ; A = Sprite slot
 ; X = New Sprite Flags
-; Y = New Sprite Stamp Address
+; Y = New Sprite Stamp Address | New Compiled Sprite Token
 _UpdateSprite
             cmp   #MAX_SPRITES
             bcc   :ok

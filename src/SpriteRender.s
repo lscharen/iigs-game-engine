@@ -1,37 +1,48 @@
 ; Compile a stamp into a compilation cache
+;
+; A = vbuff address
+; X = width (in bytes)
+; Y = height (in scanlines)
+
 _CompileStamp
-_lines      equ    tmp0
-_width0     equ    tmp1
-_width      equ    tmp2 
-baseAddr    equ    tmp3
-destAddr    equ    tmp4
-vbuffAddr   equ    tmp5
+:lines       equ    tmp0
+:sprwidth    equ    tmp1
+:cntwidth    equ    tmp2
+:baseAddr    equ    tmp3
+:destAddr    equ    tmp4
+:vbuffAddr   equ    tmp5
+:rtnval      equ    tmp6
 
-            lda    _Sprites+SPRITE_HEIGHT,x
-            sta    _lines
+LDA_IMM_OPCODE   equ $A9
+LDA_ABS_X_OPCODE equ $BD
+AND_IMM_OPCODE   equ $29
+ORA_IMM_OPCODE   equ $09
+STA_ABS_X_OPCODE equ $9D
+STZ_ABS_X_OPCODE equ $9E
+RTL_OPCODE       equ $6B
 
-            lda    _Sprites+SPRITE_WIDTH,x          ; Width in bytes (4 or 8)
+            sta    :vbuffAddr
+            sty    :lines
+            txa
             lsr
-            sta    
-            sta    _width0
+            sta    :sprwidth
 
-            lda    _Sprites+SPRITE_DISP,x           ; Get the address of the stamp
-            sta    vbuffAddr
-            tax
+; Get ready to build the sprite
 
             ldy    CompileBankTop                   ; First free byte in the compilation bank
+            sty    :rtnval                          ; Save it as the return value
 
             phb
             pei    CompileBank
-            plb
             plb                                     ; Set the bank to the compilation cache
 
-            stz    baseAddr
-            stz    destAddr
+            stz    :baseAddr
+            stz    :destAddr
 
 :oloop
-            lda    _width0
-            sta    _width
+            lda    :sprwidth
+            sta    :cntwidth
+            ldx    :vbuffAddr
 
 :iloop
             ldal   spritemask,x
@@ -42,9 +53,8 @@ vbuffAddr   equ    tmp5
 ; Mask with the screen data
             lda    #LDA_ABS_X_OPCODE
             sta:   0,y
-            lda    destAddr
+            lda    :destAddr
             sta:   1,y
-            sta:   10,y
             lda    #AND_IMM_OPCODE
             sta:   3,y
             ldal   spritemask,x
@@ -55,8 +65,11 @@ vbuffAddr   equ    tmp5
             sta:   7,y
             lda    #STA_ABS_X_OPCODE
             sta:   9,y
+            lda    :destAddr
+            sta:   10,y
 
             tya
+            clc
             adc    #12
             tay
             bra    :next
@@ -65,46 +78,63 @@ vbuffAddr   equ    tmp5
 :no_mask    lda    #LDA_IMM_OPCODE
             sta:   0,y
             ldal   spritedata,x
+            beq    :zero
             sta:   1,y
 
             lda    #STA_ABS_X_OPCODE
             sta:   3,y
-            lda    destAddr
+            lda    :destAddr
             sta:   4,y
 
             tya
+            clc
             adc    #6
             tay
+            bra    :next
+
+:zero       lda    #STZ_ABS_X_OPCODE
+            sta:   0,y
+            lda    :destAddr
+            sta:   1,y
+
+            iny
+            iny
+            iny
 
 :next
             inx
             inx
 
-            inc    destAddr                         ; Move to the next word
-            inc    destAddr
+            inc    :destAddr                         ; Move to the next word
+            inc    :destAddr
 
-            dec    _width
+            dec    :cntwidth
             bne    :iloop
 
-            lda    vbuffAddr
+            lda    :vbuffAddr
+            clc
             adc    #SPRITE_PLANE_SPAN
-            sta    vbuffAddr
-            tax
+            sta    :vbuffAddr
 
-            lda    baseAddr                         ; Move to the next line
+            lda    :baseAddr                         ; Move to the next line
+            clc
             adc    #160
-            sta    baseAddr
-            sta    destAddr
+            sta    :baseAddr
+            sta    :destAddr
 
-            dec    lines
-            bne    :oloop
+            dec    :lines
+            beq    :out
+            brl    :oloop
 
+:out
             lda    #RTL_OPCODE                      ; Finish up the subroutine
             sta:   0,y
             iny
             sty    CompileBankTop
 
             plb
+            plb
+            lda    :rtnval                          ; Address in the compile memory
             rts
 
 ; Draw a sprite directly to the graphics screen. If sprite is clipped at all, do not draw.
@@ -143,6 +173,11 @@ _DrawStampToScreen
              adc    ScreenX0
              adc    _Sprites+SPRITE_X,x              ; Move to the horizontal address
              tay                                     ; This is the on-screen address
+
+             lda    _Sprites+SPRITE_ID,x          ; If this is a compiled sprite, call the routine in the compilation bank
+             bit    #SPRITE_COMPILED
+             beq    *+5
+             brl    :compiled
 
              lda    _Sprites+SPRITE_HEIGHT,x
              sta    tmp0
@@ -222,6 +257,22 @@ _DrawStampToScreen
 
              plb
              rts
+
+:compiled
+            lda    CompileBank-1                 ; Load the bank into the high byte
+            stal   :patch+2                      ; Put it into the 3rd address bytes (2nd byte is garbage)
+            lda    _Sprites+SPRITE_DISP,x        ; Address in the compile bank
+            stal   :patch+1                      ; Set 1st and 2nd address bytes
+
+            tyx                                  ; Put on-screen address in X-register
+            phb                                  ; Compiled sprites assume bank register is $01
+            pea    $0101
+            plb
+            plb
+:patch      jsl    $000000                       ; Dispatch
+            plb
+            rts
+
 ; Alternate entry point that takes arguments in registers instead of using a _Sprite
 ; record
 ;
