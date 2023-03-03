@@ -25,6 +25,12 @@ ENABLE_INT         equ   enable_int-base            ; offset that re-enable inte
 LINES_PER_BANK     equ   16
 SNIPPET_BASE       equ   snippets-base
 
+; offsets from each snippet base address for the different entry points
+
+SNIPPET_ENTRY_1    equ   0                          ; two layer + dynamic tile + sprite
+SNIPPET_ENTRY_2    equ   4                          ; (two layer | dynamic tile) + sprite
+SNIPPET_ENTRY_3    equ   18                         ; two layer + dynamic tile (no sprite)
+
 ; Locations that need the page offset added
 PagePatches        da    {long_0-base+2}
                    da    {long_1-base+2}
@@ -43,9 +49,9 @@ PagePatches        da    {long_0-base+2}
 ;                   da    {jmp_rtn_2-base+2}
 
 ]index             equ   0
-                   lup   82                                 ; All the snippet addresses. The two JMP
-                   da    {snippets-base+{]index*32}+31}     ; instructions are at the end of each of
-                   da    {snippets-base+{]index*32}+28}     ; the 32-byte buffers
+                   lup   82                                 ; Patch anything that needs updating within the snippets
+                   da    {snippets-base+{]index*32}+17}
+                   da    {snippets-base+{]index*32}+28}
 ]index             equ   ]index+1
                    --^
 PagePatchNum       equ   *-PagePatches
@@ -232,88 +238,93 @@ epilogue_1         tsc
 ;        its passed state, because having the carry bit clear prevents evaluation of
 ;        the V bit.
 ;
-; The snippet code is fixed to allow fast updates and the entry point is chosen based on the
-; EngineMode during initializations
+; Version 2: In order to improve performance, especially for two-layer tiles + sprites, the
+;            snippet code was revised to have a fixed structure so that the constant DATA and
+;            MASK values always exist in the same location, regarless of the tile type.  The
+;            tradeoff is that there is a different entry point into the snippet based on the 
+;            tile type, but that is significantly cheaper to lookup and patch into the code
+;            field JMP instruction than it is to rebuild 20+ bytes of code each time.
 ;
-; _snippet
-;           lda  (00),y           ; Entry point for mixed dyn & bg1. Set opcode below.
-;           and  80,x
-;           lda  (00),y           ; Entry point for BG1 or Dyn. Change opcode.
-;           and  #MASK
-;           ora  #DATA
-; _2        bcs  _alt
+;            There are different snippet templates + offset tables based on the EngineMode
+;
+; EngineMode 
+;
+;  ENGINE_MODE_TWO_LAYER  NO
+;  ENGINE_MODE_DYN_TILES  NO
+;
+;  Snippet Template
+;      None.
+;
+;  ENGINE_MODE_TWO_LAYER  YES
+;  ENGINE_MODE_DYN_TILES  NO
+;
+;  Snippet Template
+;
+;           ds   4
+;           lda  (00),y   <-- Single Entry Point
+;           and  #MASK    <-- Mask is always at byte 8
+;           ora  #DATA    <-- Data is always at byte 11
+;           bcs  _alt
 ;           pha
 ;           jmp  NEXT
 ; _alt      jmp  RTN
 ;
+;  ENGINE_MODE_TWO_LAYER  NO
+;  ENGINE_MODE_DYN_TILES  YES
+;
+;  Snippet Template
+;
+;           ds   4
+;           lda  00,x     <-- Single Entry Point
+;           and  #MASK
+;           ora  #DATA
+;           bcs  _alt
+;           pha
+;           jmp  NEXT
+; _alt      jmp  RTN
+;
+;  ENGINE_MODE_TWO_LAYER  YES
+;  ENGINE_MODE_DYN_TILES  YES
+;
+;  Snippet Template
+;
+;           lda  (00),y     <-- Entry Point 1
+;           and  $80,x
+;           ora  $00,x      <-- Entry Point 2 (Change this word to "lda (00),y" or "lda 00,x", or "ora 00,x" depending on combination)
+;           and  #MASK
+;           ora  #DATA
+;           bcs  _alt
+; _16bit    pha
+;           jmp  NEXT
+;           lda  (00),y     <--- Entry Point 3 (sneak this in here to avoid extra branch)
+;           and  $80,x
+;           ora  $00,x
+;           bcc  _16bit
+; _alt      jmp  RTN (29 bytes)
+;
+; Note that the code that's assembled in these snippets is just a template.  Every routine that utilizes
+; an exception handler *MUST* patch up the routines.  There are different routines based on the Engine Mode.
+;
+; The LDA (00),y opcodes have a fixed operand, but the dynamic tile instructions are determined by the
+; dynamic tile id and must be set each time.
 
-; Snippet Samples:
-;
-; Standard Two-level Mix (23 bytes)
-;
-;   Optimal     = 18 cycles (LDA/AND/ORA/PHA/JMP)
-;  16-bit write = 20 cycles 
-;   8-bit low   = 28 cycles
-;   8-bit high  = 27 cycles
-;
-;  start     lda  (00),y        ; 6
-;            and  #MASK         ; 3
-;            ora  #DATA         ; 3 = 12 cycles to load the data
-;            bcs  alt_exit      ; 2/3
-;            pha                ; 4
-;  out       jmp  next          ; 3 Fast-path completes in 5 additional cycles
-;  alt_exit  jmp  jmp_rtn       ; 3 
-;
-;
-; For dynamic masked tiles, we re-write bytes 2 - 8 as this, which mostly
-; avoids an execution speed pentaly for having to fill in the two extra bytes
-; with an instruction
-;
-;  start     lda  (00),y        ; 6
-;            and  $80,x         ; 5
-;            ora  $00,x         ; 5 = 16 cycles to load the data
-;            bcs  alt_exit      ; 2/3
-;            pha
-;            ...
-;
-; A theoretical exception handler that performed a full 3-level blend would be
-;
-;  start     lda  0,s
-;            and  [00],y
-;            ora  (00),y
-;            and  $80,x
-;            ora  $00,x
-;            and  #MASK
-;            ora  #DATA
-;            bcs  alt_exit
-;            pha                ; 4
-;  out       brl  next          ; 4 Fast-path completes in 5 additional cycles
-;
-;  alt_exit  bvs  r_edge        ; 2/3 
-;            clc                ; 2
-;            brl  l_jmp_rtn     ; 3
-;  r_edge    rep   #$41
-;            brl  r_jmp_rtn     ; 3
-
-; Each snippet is provided 32 bytes of space.  The constant code is filled in from the end and
-; it is the responsibility of the code that fills in the hander to create valid program in the
-; first 23 bytes are available to be manipulated.
-;
-; Note that the code that's assembled in the first bytes of these snippets is just an example.  Every
-; routine that created an exception handler *MUST* write a full set of instructions since there is
-; no guarantee of what was written previously.
                    ds    \,$00                      ; pad to the next page boundary
 ]index             equ   0
 snippets           lup   82
-                   ds    2                          ; space for all exception handlers
-                   and   #$0000                     ; the mask operand will be set when the tile is drawn
-                   ora   #$0000                     ; the data operand will be set when the tile is drawn
-                   ds    15                         ; extra padding
-
-                   bcs   :byte                      ; if C = 0, just push the data and return
-                   pha                              ; 1 byte 
-                   jmp   loop+3+{3*]index}-base     ; 3 bytes
-:byte              jmp   jmp_rtn-base               ; 3 bytes
+                   lda   ({{81-]index}*2}),y        ; 0:  Pre-set the LDA (XX),y instructions
+                   and   $80,x                      ; 2:  The direct page instructions are placeholders and get overwritten
+                   ora   $00,x                      ; 4:  This gets patched out often
+                   and   #$0000                     ; 6:  the mask operand will be set when the tile is drawn
+                   ora   #$0000                     ; 9:  the data operand will be set when the tile is drawn
+                   bcs   :byte                      ; 12: if C = 0, just push the data and return
+:word              pha                              ; 14:
+                   jmp   loop+3+{3*]index}-base     ; 15: Return address offset within the code field
+                   lda   ({{81-]index}*2}),y        ; 18: Pre-set the LDA (XX),y instructions
+                   and   $80,x                      ; 20:
+                   ora   $00,x                      ; 22:
+                   bcc   :word                      ; 24:
+:byte              jmp   jmp_rtn-base               ; 26:
+                   ds    3                          ; 29: Padding to make a full 32 bytes
 ]index             equ   ]index+1
                    --^
 top

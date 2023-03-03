@@ -58,8 +58,8 @@ _Render
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
 ;            jsr   _UpdateBG1TileMap   ; that need to be updated in the code field
 
-            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
             jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode            
 
             lda   #RENDER_BG1_ROTATION

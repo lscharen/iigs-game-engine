@@ -60,7 +60,7 @@ SpriteCount     equ   54
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER+ENGINE_MODE_DYN_TILES
+                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER ; +ENGINE_MODE_DYN_TILES
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
 
 ; Initialize local variables
@@ -75,12 +75,14 @@ SpriteCount     equ   54
 
 ; Initialize the graphics screen playfield
 
-                pea   #320
+                pea   #160
                 pea   #200
                 _GTESetScreenMode
 
 ; Load a tileset
 
+                pea   #0
+                pea   #511
                 pea   #^tiledata
                 pea   #tiledata
                 _GTELoadTileSet
@@ -141,6 +143,8 @@ SpriteCount     equ   54
 
 ; Create the sprites
 
+HERO_SIZE       equ   {SPRITE_16X16}
+HERO_FLAGS      equ   HERO_SIZE                                 ; no extra H/V bits for now
 HERO_FRAME_1    equ   {SPRITE_16X16+1}
 HERO_VBUFF_1    equ   VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
 HERO_FRAME_2    equ   {SPRITE_16X16+7}
@@ -168,30 +172,22 @@ HERO_SLOT_2     equ   2
                 pea   HERO_VBUFF_4
                 _GTECreateSpriteStamp
 
-                pea   HERO_FRAME_1
+                pea   HERO_SLOT_1                   ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1
                 pei   PlayerX
                 pei   PlayerY
-                pea   HERO_SLOT_1                   ; Put the player in slot 1
                 _GTEAddSprite
 
-                pea   HERO_SLOT_1
-                pea   $0000
-                pea   HERO_VBUFF_1                 ; and use this stamp
-                _GTEUpdateSprite
-
-                pea   HERO_FRAME_2
+                pea   HERO_SLOT_2
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_2
                 pei   PlayerX
                 lda   PlayerY
                 clc
                 adc   #16
                 pha
-                pea   HERO_SLOT_2                   ; Put the player in slot 1
                 _GTEAddSprite
-
-                pea   HERO_SLOT_2
-                pea   $0000
-                pea   HERO_VBUFF_3                 ; and use this stamp
-                _GTEUpdateSprite
 
 EvtLoop
                 pha

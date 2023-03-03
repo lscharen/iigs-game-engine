@@ -459,8 +459,76 @@ CopyMaskedDWord MAC
             sta:  $0004,x         ; ORA $00,x
             lda   #$0F80          ; branch to the prologue (BRA *+17)
             sta:  $0006,x
+
+; Version 2 only needs to set the JMP address to Entry Point 3
+;            lda   _JTBL_CACHE
+;            ora   #{{]1}&$7000}     ; adjust for the current row offset
+;            sta:  {]1}+1,y
+
             eom
 
+; Version 2 will set the JMP to Entry Point 1 and set the Opcode at Entry Point 2 to a ora $00,x.  Also
+; the mask transparency check can be performed earlier.
+;
+;            lda   #$004C                         ; JMP to handler
+;            sta:  {]2},y
+;            lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
+;            ora   #{]2&$7000}                    ; adjust for the current row offset
+;            sta:  {]2}+1,y
+;            tax                                  ; This becomes the new address that we use to patch in
+;            lda   OP_CACHE_2                     ; switch from AND to ORA instruction cached in setup
+;            sta:  $0004,x                        ; ORA $00,x
+
+CopyDynMaskedSpriteWord2 MAC
+; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Tile
+; code and eliminate the constant AND/ORA instructions.
+
+            lda   tmp_sprite_mask+{]1}           ; load the mask value
+            bne   mixed                          ; a non-zero value may be mixed
+
+; This is a solid word
+            lda   #$00F4                         ; PEA instruction
+            sta:  {]2},y
+
+            lda   tmp_sprite_data+{]1}           ; load the sprite data
+            sta:  {]2}+1,y                       ; PEA operand
+            bra   next
+
+; We will always do a JMP to the exception handler, but the entry point changes depending on
+; whether the mask is transparent or not
+mixed
+            cmp   #$FFFF
+            beq   transparent
+
+            lda   #$004C                         ; JMP to handler
+            sta:  {]2},y
+
+            lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
+            ora   #{]2&$7000}                    ; adjust for the current row offset
+            sta:  {]2}+1,y
+            tax                                  ; This becomes the new address that we use to patch in
+
+            lda   _OP_CACHE2
+            sta:  $0004,x                        ; ORA $00,x
+
+            lda   tmp_sprite_mask+{]1} 
+            sta:  $0007,x
+
+            lda   tmp_sprite_data+{]1}
+            sta:  $000A,x
+
+            bra   next
+
+; This is a transparent word, so just show the dynamic data overlaid on layer 2
+transparent
+            lda   #$004C                         ; JMP to handler
+            sta:  {]2},y
+            lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
+            ora   #{]2&$7000}.ENTRY_POINT_2      ; adjust for the current row offset and OR in the offset since snippets are 32-byte aligned
+            sta:  {]2}+1,y
+
+next
+            eom
 
 ; Masked renderer for a masked dynamic tile with sprite data overlaid.
 ;
@@ -479,7 +547,7 @@ CopyDynMaskedSpriteWord MAC
 ;            bra  *+15
 ;
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Tile
-; code and eliminate the constanct AND/ORA instructions.
+; code and eliminate the constant AND/ORA instructions.
 
             lda   tmp_sprite_mask+{]1}           ; load the mask value
             bne   mixed                          ; a non-zero value may be mixed
@@ -493,6 +561,7 @@ CopyDynMaskedSpriteWord MAC
 
 ; We will always do a JMP to the exception handler, so set that up, then check for sprite
 ; transparency
+
 mixed
             lda   #$004C                         ; JMP to handler
             sta:  {]2},y

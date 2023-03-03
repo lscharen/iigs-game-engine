@@ -72,7 +72,7 @@ Counter            equ   tmp3
                    rts
 
 
-; Patch an 8-bit or 16-bit valueS into the bank.  These are a set up unrolled loops to 
+; Patch an 8-bit or 16-bit valueS into the bank.  These are set up as unrolled loops to 
 ; quickly patch in a constant value, or a value from an array into a given set of 
 ; templates.
 ;

@@ -50,6 +50,7 @@ Tile0TwoLyr
 SpriteOver0TwoLyr
 
             lda   TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_2             ; Offset into the second entry point
             sta   _JTBL_CACHE
 
             lda   TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
@@ -95,6 +96,7 @@ SpriteOver0TwoLyr
 
 TmpTileDataToCodeField
             lda   TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_2
             sta   _JTBL_CACHE
 
             lda   TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
@@ -143,6 +145,7 @@ _TmpTileDataToCodeField
 ; Copy a tile into the tile data buffer and then render to the code field
 CopyTileATwoLyr
             ldal  TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_2
             sta   _JTBL_CACHE
 
             ldal  TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
@@ -170,6 +173,7 @@ CopyTileATwoLyr
 
 CopyTileVTwoLyr
             ldal  TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_2
             sta   _JTBL_CACHE
 
             ldal  TileStore+TS_WORD_OFFSET,x   ; Load the word offset of this tile (0 to 82 in steps of 2)
@@ -348,21 +352,13 @@ mixed       cmp   #$FFFF            ; All 1's in the mask is fully transparent
             sta:  {]2}+1,y
             tax                     ; This becomes the new address that we use to patch in
 
-            lda   #$29
-            sta:  $0002,x         ; AND #$0000 opcode
-            lda   #$09
-            sta:  $0005,x         ; ORA #$0000 opcode
-
             lda   _OP_CACHE       ; Get the LDA (dp),y instruction for this column
             sta:  $0000,x
 
-            lda   {]1}+32           ; insert the tile mask and data into the exception
-            sta:  $0003,x         ; handler.
+            lda   {]1}+32          ; insert the tile mask and data into the exception
+            sta:  $0003,x          ; handler.
             lda   {]1}
             sta:  $0006,x
-
-            lda   #$0D80          ; branch to the prologue (BRA *+15)
-            sta:  $0008,x
 
             bra   next
 

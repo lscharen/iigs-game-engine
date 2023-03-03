@@ -61,7 +61,7 @@ Scale           equ   56
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER+ENGINE_MODE_DYN_TILES
+                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER ; +ENGINE_MODE_DYN_TILES
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
 
 ; Initialize local variables

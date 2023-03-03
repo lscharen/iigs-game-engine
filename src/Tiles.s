@@ -268,7 +268,7 @@ _SetNormalTileProcs
                  brl  :pickDynProc
 
 :pickTwoLyrProc  ldy  #TwoLyrProcs
-                 pla                          ; pull of the proc index
+                 pla                          ; pull off the proc index
                  jmp  _SetTileProcs
 
 ; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
