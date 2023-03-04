@@ -29,7 +29,8 @@ SNIPPET_BASE       equ   snippets-base
 
 SNIPPET_ENTRY_1    equ   0                          ; two layer + dynamic tile + sprite
 SNIPPET_ENTRY_2    equ   4                          ; (two layer | dynamic tile) + sprite
-SNIPPET_ENTRY_3    equ   18                         ; two layer + dynamic tile (no sprite)
+SNIPPET_ENTRY_3    equ   18                         ; sprite under dynamic tile
+SNIPPET_ENTRY_4    equ   19                         ; two layer + dynamic tile (no sprite)
 
 ; Locations that need the page offset added
 PagePatches        da    {long_0-base+2}
@@ -51,7 +52,7 @@ PagePatches        da    {long_0-base+2}
 ]index             equ   0
                    lup   82                                 ; Patch anything that needs updating within the snippets
                    da    {snippets-base+{]index*32}+17}
-                   da    {snippets-base+{]index*32}+28}
+                   da    {snippets-base+{]index*32}+29}
 ]index             equ   ]index+1
                    --^
 PagePatchNum       equ   *-PagePatches
@@ -296,7 +297,8 @@ epilogue_1         tsc
 ;           bcs  _alt
 ; _16bit    pha
 ;           jmp  NEXT
-;           lda  (00),y     <--- Entry Point 3 (sneak this in here to avoid extra branch)
+;           db   1          <--- Entry Point 3 (opcode for an LDA #DATA instruction)
+;           lda  (00),y     <--- Entry Point 4 (sneak this in here to avoid extra branch)
 ;           and  $80,x
 ;           ora  $00,x
 ;           bcc  _16bit
@@ -319,12 +321,13 @@ snippets           lup   82
                    bcs   :byte                      ; 12: if C = 0, just push the data and return
 :word              pha                              ; 14:
                    jmp   loop+3+{3*]index}-base     ; 15: Return address offset within the code field
-                   lda   ({{81-]index}*2}),y        ; 18: Pre-set the LDA (XX),y instructions
-                   and   $80,x                      ; 20:
-                   ora   $00,x                      ; 22:
-                   bcc   :word                      ; 24:
-:byte              jmp   jmp_rtn-base               ; 26:
-                   ds    3                          ; 29: Padding to make a full 32 bytes
+                   db    $A9                        ; 18: LDA #DATA opcode
+                   lda   ({{81-]index}*2}),y        ; 19: Pre-set the LDA (XX),y instructions
+                   and   $80,x                      ; 21:
+                   ora   $00,x                      ; 23:
+                   bcc   :word                      ; 25:
+:byte              jmp   jmp_rtn-base               ; 27:
+                   ds    2                          ; 30: Padding to make a full 32 bytes
 ]index             equ   ]index+1
                    --^
 top

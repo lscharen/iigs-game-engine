@@ -216,16 +216,16 @@ PAD_BUTTON_A           equ   $0200
 PAD_KEY_DOWN           equ   $0400
 
 ; Tile constants
-; TILE_RESERVED_BIT      equ   $8000
-TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
+TILE_DAMAGED_BIT       equ   $8000                  ; Mark a tile as damaged (internal only)
+TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite (unimplemented)
 TILE_FRINGE_BIT        equ   $2000                  ; Unused
 TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
 TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
 TILE_ID_MASK           equ   $01FF
-TILE_CTRL_MASK         equ   $FE00
-; TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
+TILE_CTRL_MASK         equ   $7E00
+; TILE_PROC_MASK         equ   $7800                  ; Select tile proc for rendering
 
 ; Sprite constants
 SPRITE_COMPILED        equ   $4000                    ; This is a compiled sprite (SPRITE_DISP points to a routine in the compiled cache bank)
