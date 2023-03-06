@@ -89,7 +89,11 @@ style: toolref
         </tr>
         <tr>
           <td><a href="#GTECreateSpriteStamp">GTECreateSpriteStamp</a></td>
-          <td> Creates a sprite stamp from the tile set</td>
+          <td>Creates a sprite stamp from the tile set</td>
+        </tr>
+        <tr>
+          <td><a href="#GTECompileSpriteStamp">GTECompilepriteStamp</a></td>
+          <td>Created a compiled sprite from a sprite stamp</td>
         </tr>
         <tr>
           <td><a href="#GTEAddSprite">GTEAddSprite</a></td>
@@ -794,12 +798,12 @@ style: toolref
           <tr>
             <td class="bot">width</td>
             <td><em></em></td>
-            <td><em>Word</em>&mdash;Width of the playfield in pixels. Must be even.</td>
+            <td><em>Word</em>&mdash;Width of the playfield in bytes. Must be even.</td>
           </tr>
           <tr>
             <td class="bot">height</td>
             <td><em></em></td>
-            <td><em>Word</em>&mdash;Height of the playfield in pixels.</td>
+            <td><em>Word</em>&mdash;Height of the playfield in scanlines.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1425,6 +1429,90 @@ style: toolref
   </div>
 
   <div class="api">
+    <h4 class="tn">$2DXX</h4>
+    <h4 id="GTECompileSpriteStamp">GTECompileSpriteStamp</h4>
+    <p>
+      Creates a compiled sprite in a special compilation buffer from an existing sprite stamp.  The return value
+      is an address token that can be passed into the AddSprite function in place of the vBuffAddr parameter as
+      long as the `SPRITE_COMPILED` flag is set.
+    </p>
+    <div class="section">
+      <h5>Parameters</h5>
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack before call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteIdent</td>
+            <td></td>
+            <td><em>Word</em>&mdash;sprite identifier word</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Location in the sprite vitual buffer.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack after call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">addr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Location in the sprite compilation buffer.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h5>Errors</h5>
+      <p>None</p>
+    </div>
+    <div class="section">
+      <h5>C</h5>
+      <p><tt>extern pascal Word GTECompileSpriteStamp(spriteIdent, vBuffAddr)</tt></p>
+      <p><tt>Word     spriteIdent;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
+    </div>
+  </div>
+
+  <div class="api">
     <h4 class="tn">$10XX</h4>
     <h4 id="GTEAddSprite">GTEAddSprite</h4>
     <p>
@@ -1451,9 +1539,19 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
-            <td class="bot">spriteDescriptor</td>
+            <td class="bot">spriteSlot</td>
             <td></td>
-            <td><em>Word</em>&mdash;Sprite descriptor word that is used to set the status bits.</td>
+            <td><em>Word</em>&mdash;The slot to assign the sprite to.  There are 16 slots and sprites in lower slots are drawn above the sprites in higher slots.</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteFlags</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite flags that define the sprite's properties.</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite address in the VBUFF space, or a compiled sprite address</td>
           </tr>
           <tr>
             <td class="bot">x</td>
@@ -1464,11 +1562,6 @@ style: toolref
             <td class="bot">y</td>
             <td></td>
             <td><em>Word</em>&mdash;Signed vertical sprite position on the playfield.</td>
-          </tr>
-          <tr>
-            <td class="bot">spriteSlot</td>
-            <td></td>
-            <td><em>Word</em>&mdash;The slot to assign the sprite to.  There are 16 slots and sprites in lower slots are drawn above the sprites in higher slots.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1505,11 +1598,12 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTEAddSprite(spriteDescriptor, x, y, spriteSlot)</tt></p>
+      <p><tt>extern pascal void GTEAddSprite(spriteSlot, spriteFlags, vBuffAddr, x, y)</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
       <p><tt>Word     spriteDescriptor;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
       <p><tt>Word     x;</tt></p>
       <p><tt>Word     y;</tt></p>
-      <p><tt>Word     spriteSlot;</tt></p>
     </div>
     <div class="example">
       <h5>Sprite Descriptor</h5>
