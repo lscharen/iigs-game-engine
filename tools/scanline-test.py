@@ -35,8 +35,8 @@ def simplify(a):
     return b
 
 # Given two sorted lists, merge them together into a minimal set of ranges.  This could
-# be done as a list merge nd then a combine step, but we want to be more efficient and
-# do the merge-and-compbine at the same time
+# be done as a list merge and then a combine step, but we want to be more efficient and
+# do the merge-and-combine at the same time
 def merge(a, b):
     if len(a) == 0:
         return simplify(b)
