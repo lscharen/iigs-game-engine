@@ -202,9 +202,6 @@ HERO_SLOT       equ   1
                 pei   PlayerY2
                 _GTEAddSprite
 
-                pea  #RENDER_WITH_SHADOWING
-                _GTERender
-
 EvtLoop
                 pha
                 _GTEReadControl
@@ -280,7 +277,8 @@ do_render
                 pha
                 _GTEMoveSprite                    ; Move the sprite to this local position
 
-                pea  #RENDER_WITH_SHADOWING
+;                pea  #RENDER_WITH_SHADOWING
+                pea  $0000
                 _GTERender
 
 ; Update the performance counters

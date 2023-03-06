@@ -172,16 +172,64 @@ HERO_SLOT_2     equ   2
                 pea   HERO_VBUFF_4
                 _GTECreateSpriteStamp
 
-                pea   HERO_SLOT_1                   ; Put the player in slot 1
-                pea   HERO_FLAGS
+                DO    0
+                lda   #SPRITE_16X16
+                sta   SpriteFlags1
+                lda   #SPRITE_16X8
+                sta   SpriteFlags2
+                ELSE
+                lda   #SPRITE_16X16+SPRITE_COMPILED
+                sta   SpriteFlags1
+                lda   #SPRITE_16X8+SPRITE_COMPILED
+                sta   SpriteFlags2
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
                 pea   HERO_VBUFF_1
+                _GTECompileSpriteStamp
+                pla
+                sta   HeroFrames1+2
+                sta   HeroFrames1+6
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_2
+                _GTECompileSpriteStamp
+                pla
+                sta   HeroFrames1+0
+                sta   HeroFrames1+4
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_3
+                _GTECompileSpriteStamp
+                pla
+                sta   HeroFrames2+2
+                sta   HeroFrames2+6
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_4
+                _GTECompileSpriteStamp
+                pla
+                sta   HeroFrames2+0
+                sta   HeroFrames2+4
+                FIN
+
+                pea   HERO_SLOT_1                   ; Put the player in slot 1
+                lda   SpriteFlags1
+                pha
+                lda   HeroFrames1
+                pha
                 pei   PlayerX
                 pei   PlayerY
                 _GTEAddSprite
 
                 pea   HERO_SLOT_2
-                pea   HERO_FLAGS
-                pea   HERO_VBUFF_2
+                lda   SpriteFlags2
+                pha
+                lda   HeroFrames2
+                pha
                 pei   PlayerX
                 lda   PlayerY
                 clc
@@ -294,7 +342,9 @@ do_render
                 pha
                 _GTESetBG1Origin
 
-                pea    #RENDER_BG1_HORZ_OFFSET
+;                pea    #RENDER_BG1_HORZ_OFFSET
+               pea    #RENDER_WITH_SHADOWING
+;                pea    #0
                 _GTERender
 
 ; Update the performance counters
@@ -524,6 +574,10 @@ Fatal           brk   $00
 
 qtRec           adrl  $0000
                 da    $00
+
+; Sprite VBUFF / Compile tokens
+SpriteFlags1    ds    2
+SpriteFlags2    ds    2
 
 ; Color palette
 MyDirectPage    ds    2
