@@ -27,7 +27,7 @@ DirtyTiles     ENT
 
                ds  \,$00             ; pad to the next page boundary
 _Sprites       ENT
-               ds  SPRITE_REC_SIZE*MAX_SPRITES
+               ds  SPRITE_REC_SIZE*MAX_ELEMENTS
 
 ;-------------------------------------------------------------------------------------
 ;
@@ -389,9 +389,10 @@ OldOneSecVec      ENT
                   ds        4
 Timers            ENT
                   ds        TIMER_REC_SIZE*MAX_TIMERS
-Overlays          ENT
-                  dw        0     ; count
-                  ds        10    ; only support one for now (flags, start_line, end_line, function call)
+
+;Overlays          ENT
+;                  dw        0     ; count
+;                  ds        10    ; only support one for now (flags, start_line, end_line, function call)
 
 ; From the IIgs ref 
 DefaultPalette   ENT
@@ -513,17 +514,17 @@ _SortedHead     ENT
 _ShadowListCount  ENT
                   ds 2
 _ShadowListTop    ENT
-                  ds {2*{MAX_SPRITES+1}}   ; space for all of the sprites + overlay range
+                  ds {2*{MAX_ELEMENTS}}   ; space for all of the sprites + overlay range
 _ShadowListBottom ENT
-                  ds {2*{MAX_SPRITES+1}}
+                  ds {2*{MAX_ELEMENTS}}
 
 ; Complement of the Shadow List.  Can have one more segment than that list
 _DirectListCount  ENT
                   ds 2
 _DirectListTop    ENT
-                  ds {2*{MAX_SPRITES+2}}
+                  ds {2*{MAX_ELEMENTS+1}}
 _DirectListBottom ENT
-                  ds {2*{MAX_SPRITES+2}}
+                  ds {2*{MAX_ELEMENTS+1}}
 
 
 ; Steps to the different sprite stamps

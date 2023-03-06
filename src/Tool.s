@@ -698,6 +698,11 @@ _TSStartScript
 
                 _TSExit #0;#6
 ; SetOverlay(top, bottom, proc)
+;
+; Overlays are handled as quasi-sprites.  They need to be included in the y-sorted list of "stuff", but they are not drawn like
+; sprites.  As such, they set a special flag in the SPRITE_ID field which allows them to be ignored for other purposes.  Also,
+; they are not added into the "normal" sprite range on 0 - 15, but are stored in locations 16 and up to further seggregate them from
+; the rest of the system.  A lot of the SPRITE_* locations are repurposed for Overlay-specific information.
 _TSSetOverlay
 :proc           equ     FirstParam+0
 :bottom         equ     FirstParam+4
@@ -705,9 +710,40 @@ _TSSetOverlay
 
                 _TSEntry
 
-                lda     #1
-                sta     Overlays
-                stz     Overlays+OVERLAY_FLAGS
+                ldx     #0                              ; Always just use the first spot
+                lda     #SPRITE_OVERLAY
+                sta     Overlays+OVERLAY_ID,x
+                stz     Overlays+OVERLAY_FLAGS,x
+
+                lda     :top,s
+                sta     Overlays+OVERLAY_TOP,x
+                lda     :bottom,s
+                dec
+                sta     Overlays+OVERLAY_BOTTOM,x
+                sec
+                sbc     :top,s
+                inc
+                sta     Overlays+OVERLAY_HEIGHT,x
+
+                lda     :proc,s
+                sta     Overlays+OVERLAY_PROC,x
+                lda     :proc+2,s
+                sta     Overlays+OVERLAY_PROC+2,x
+
+                ldx     #{MAX_SPRITES+0}*2              ; Adjust to call the generic routings
+                jsr     _InsertSprite
+ 
+                _TSExit #0;#8
+
+_TSUpdateOverlay
+:proc           equ     FirstParam+0
+:bottom         equ     FirstParam+4
+:top            equ     FirstParam+6
+
+                _TSEntry
+                
+                ldx     #0
+                stz     Overlays+OVERLAY_FLAGS,x
                 lda     :top,s
                 sta     Overlays+OVERLAY_TOP
                 lda     :bottom,s

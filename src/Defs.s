@@ -182,13 +182,6 @@ OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fu
 OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
 OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
 
-OVERLAY_BASE           equ   2          ; 2 bytes for the number of overlays
-OVERLAY_REC_SIZE       equ   10         ; Size of an overlay record (10 bytes)
-OVERLAY_FLAGS          equ   {OVERLAY_BASE+0}
-OVERLAY_TOP            equ   {OVERLAY_BASE+2}
-OVERLAY_BOTTOM         equ   {OVERLAY_BASE+4}
-OVERLAY_PROC           equ   {OVERLAY_BASE+6}
-
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
 DIRTY_BIT_BG0_Y        equ   $0002
@@ -228,6 +221,7 @@ TILE_CTRL_MASK         equ   $7E00
 ; TILE_PROC_MASK         equ   $7800                  ; Select tile proc for rendering
 
 ; Sprite constants
+SPRITE_OVERLAY         equ   $8000                    ; This is an overlay record.  Stored as a sprite for render ordering purposes
 SPRITE_COMPILED        equ   $4000                    ; This is a compiled sprite (SPRITE_DISP points to a routine in the compiled cache bank)
 SPRITE_HIDE            equ   $2000                    ; Do not render the sprite
 SPRITE_16X16           equ   $1800                    ; 16 pixels wide x 16 pixels tall
@@ -283,7 +277,7 @@ VBuffArray        EXT
 _stamp_step       EXT
 VBuffVertTableSelect EXT
 VBuffHorzTableSelect EXT
-Overlays          EXT
+; Overlays          EXT
 BG1YCache         EXT
 ScalingTables     EXT
 

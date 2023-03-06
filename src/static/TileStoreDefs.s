@@ -28,6 +28,9 @@ TILE_STORE_NUM        equ  12                     ; Need this many parallel arra
 MAX_SPRITES            equ 16
 SPRITE_REC_SIZE        equ 42
 
+MAX_OVERLAYS           equ 2
+MAX_ELEMENTS           equ {MAX_SPRITES+MAX_OVERLAYS}
+
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
 ; A REMOVED sprite if removed from the sprite list during the Render call, so it's ID is not
@@ -41,28 +44,39 @@ SPRITE_STATUS_REMOVED  equ $0008         ; Sprite has been removed.
 SPRITE_STATUS_HIDDEN   equ $0010         ; Sprite is in a hidden state
 
 ; These values are set by the user
-SPRITE_STATUS        equ {MAX_SPRITES*0}
-SPRITE_ID            equ {MAX_SPRITES*2}
-SPRITE_X             equ {MAX_SPRITES*4}
-SPRITE_Y             equ {MAX_SPRITES*6}
-VBUFF_ADDR           equ {MAX_SPRITES*8}         ; Base address of the sprite's stamp in the data/mask banks
+SPRITE_STATUS        equ {MAX_ELEMENTS*0}
+SPRITE_ID            equ {MAX_ELEMENTS*2}
+SPRITE_X             equ {MAX_ELEMENTS*4}
+SPRITE_Y             equ {MAX_ELEMENTS*6}
+VBUFF_ADDR           equ {MAX_ELEMENTS*8}         ; Base address of the sprite's stamp in the data/mask banks
 
 ; These values are cached / calculated during the rendering process
-TS_LOOKUP_INDEX      equ {MAX_SPRITES*10}        ; The index from the TileStoreLookup table that corresponds to the top-left corner of the sprite
-TS_COVERAGE_SIZE     equ {MAX_SPRITES*12}        ; Representation of how many TileStore tiles (NxM) are covered by this sprite
-SPRITE_DISP          equ {MAX_SPRITES*14}        ; Cached address of the specific stamp based on sprite flags
-SPRITE_CLIP_LEFT     equ {MAX_SPRITES*16}
-SPRITE_CLIP_RIGHT    equ {MAX_SPRITES*18}
-SPRITE_CLIP_TOP      equ {MAX_SPRITES*20}
-SPRITE_CLIP_BOTTOM   equ {MAX_SPRITES*22}
-IS_OFF_SCREEN        equ {MAX_SPRITES*24}
-SPRITE_WIDTH         equ {MAX_SPRITES*26}
-SPRITE_HEIGHT        equ {MAX_SPRITES*28}
-SPRITE_CLIP_WIDTH    equ {MAX_SPRITES*30}
-SPRITE_CLIP_HEIGHT   equ {MAX_SPRITES*32}
-TS_VBUFF_BASE        equ {MAX_SPRITES*34}        ; Finalized VBUFF address based on the sprite position and tile offsets
-SORTED_PREV          equ {MAX_SPRITES*36}        ; Doubly-Linked List that maintains the sprites in sorted order based on SPRITE_Y
-SORTED_NEXT          equ {MAX_SPRITES*38}
+TS_LOOKUP_INDEX      equ {MAX_ELEMENTS*10}        ; The index from the TileStoreLookup table that corresponds to the top-left corner of the sprite
+TS_COVERAGE_SIZE     equ {MAX_ELEMENTS*12}        ; Representation of how many TileStore tiles (NxM) are covered by this sprite
+SPRITE_DISP          equ {MAX_ELEMENTS*14}        ; Cached address of the specific stamp based on sprite flags
+SPRITE_CLIP_LEFT     equ {MAX_ELEMENTS*16}
+SPRITE_CLIP_RIGHT    equ {MAX_ELEMENTS*18}
+SPRITE_CLIP_TOP      equ {MAX_ELEMENTS*20}
+SPRITE_CLIP_BOTTOM   equ {MAX_ELEMENTS*22}
+IS_OFF_SCREEN        equ {MAX_ELEMENTS*24}
+SPRITE_WIDTH         equ {MAX_ELEMENTS*26}
+SPRITE_HEIGHT        equ {MAX_ELEMENTS*28}
+SPRITE_CLIP_WIDTH    equ {MAX_ELEMENTS*30}
+SPRITE_CLIP_HEIGHT   equ {MAX_ELEMENTS*32}
+TS_VBUFF_BASE        equ {MAX_ELEMENTS*34}        ; Finalized VBUFF address based on the sprite position and tile offsets
+SORTED_PREV          equ {MAX_ELEMENTS*36}        ; Doubly-Linked List that maintains the sprites in sorted order based on SPRITE_Y
+SORTED_NEXT          equ {MAX_ELEMENTS*38}
+
+; The Overlays are part of the _Sprites memory space and come after the maximum number of sprites
+Overlays             equ {_Sprites+{MAX_SPRITES*2}}
+
+; Aliases of SPRITE_* memory locations that are used for Overlay info when the SPRITE_OVERLAY bit is set on SPRITE_ID
+OVERLAY_ID             equ   SPRITE_ID
+OVERLAY_FLAGS          equ   SPRITE_STATUS
+OVERLAY_TOP            equ   SPRITE_CLIP_TOP      ; This is important because SPRITE_CLIP_TOP is used for sorting
+OVERLAY_BOTTOM         equ   SPRITE_CLIP_BOTTOM
+OVERLAY_HEIGHT         equ   SPRITE_HEIGHT
+OVERLAY_PROC           equ   VBUFF_ADDR
 
 ; 52 rows by 82 columns + 2 extra rows and columns for sprite sizes
 ;
