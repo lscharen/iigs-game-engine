@@ -292,6 +292,7 @@ _DirectListCount  EXT
 _DirectListTop    EXT
 _DirectListBottom EXT
 
+StartXMod164Tbl   EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

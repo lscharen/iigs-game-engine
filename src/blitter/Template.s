@@ -18,8 +18,8 @@ ODD_ENTRY          equ   odd_entry-base+1
 CODE_TOP           equ   loop-base
 CODE_LEN           equ   top-base
 CODE_EXIT          equ   even_exit-base
-OPCODE_SAVE        equ   odd_save-base              ; spot to save the code field opcode when patching exit BRA
-OPCODE_HIGH_SAVE   equ   odd_save-base+2            ; save the third byte
+OPCODE_SAVE        equ   odd_low_save-base          ; spot to save the code field opcode when patching exit BRA
+OPCODE_HIGH_SAVE   equ   odd_high_save-base         ; save the second and third byte
 FULL_RETURN        equ   full_return-base           ; offset that returns from the blitter
 ENABLE_INT         equ   enable_int-base            ; offset that re-enable interrupts and continues
 LINES_PER_BANK     equ   16
@@ -37,7 +37,7 @@ PagePatches        da    {long_0-base+2}
                    da    {long_1-base+2}
                    da    {long_2-base+2}
                    da    {long_3-base+2}
-                   da    {long_4-base+2}
+;                   da    {long_4-base+2}
                    da    {long_5-base+2}
                    da    {long_6-base+2}
                    da    {odd_entry-base+2}
@@ -62,7 +62,7 @@ BankPatches        da    {long_0-base+3}
                    da    {long_1-base+3}
                    da    {long_2-base+3}
                    da    {long_3-base+3}
-                   da    {long_4-base+3}
+;                   da    {long_4-base+3}
                    da    {long_5-base+3}
                    da    {long_6-base+3}
 BankPatchNum       equ   *-BankPatches
@@ -178,38 +178,39 @@ loop               lup   82                         ; +6   Set up 82 PEA instruc
 loop_back          jmp   loop-base                  ; +252 Ensure execution continues to loop around
 loop_exit_3        jmp   even_exit-base             ; +255
 
-long_5
-odd_exit           ldal  l_is_jmp+1-base
-                   bit   #$000B
+odd_exit           sep   #$21                       ; 8-bit mode and set the carry just in case we get to a snippet JMP
+long_5             ldal  OPCODE_SAVE                ; Load the opcode that was saved
+                   bit   #$0B
                    bne   :chk_jmp
-
-                   sep   #$20
-long_6             ldal  l_is_jmp+3-base            ; get the high byte of the PEA operand
+long_6             ldal  OPCODE_HIGH_SAVE+1         ; get the high byte of the PEA operand
 
 ; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimized
-; for the PEA $0000 case -- only 19 cycles to handle the edge, so pretty good
-:left_byte
+; for the PEA $0000 case -- only 17 cycles to handle the edge, so pretty good
+
                    pha
-                   rep   #$20
+                   rep   #$21
 
 ; JMP opcode = $4C, JML opcode = $5C
 even_exit          jmp   $1000                      ; Jump to the next line.
                    ds    1                          ; space so that the last line in a bank can be patched into a JML
 
-:chk_jmp
-                   bit   #$0040
+:chk_jmp           mx    %10                        ; 8-bit accumulator / 16-bit registers
+                   bit   #$40
                    bne   l_is_jmp
 
-long_4             stal  *+4-base
-                   dfb   $00,$00
+                   rep   #$20                       ; saved 3 cycles using 8-bit mode, but give it back here.
+odd_low_save       dfb   $00,$00                    ; save the first and second bytes of the code field.  Works for LDA dp,x and LDA (0),y
 l_jmp_rtn          xba
                    sep   #$20
                    pha
                    rep   #$61                       ; Clear everything C, V and M
                    bra   even_exit
 
-l_is_jmp           sec                              ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
-odd_save           dfb   $00,$00,$00                ; The odd exit 3-byte sequence is always stashed here
+l_is_jmp
+                   rep   #$20                       ; Back to 16-bit mode (carry was set above)
+;                   sec                              ; Set the C flag (V is always cleared at this point) which tells a snippet to push only the high byte
+                   dfb   $4C                        ; Expect a JMP instruction
+odd_high_save      dfb   $00,$00                    ; The high 2 bytes of the 3-byte code field sequence is always stashed here
 
 ; Special epilogue: skip a number of bytes and jump back into the code field. This is useful for
 ;                   large, floating panels in the attract mode of a game, or to overlay solid

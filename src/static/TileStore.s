@@ -382,6 +382,9 @@ BG1YOffsetTable   ENT
 ;                  dw     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
                   --^
 
+; Per-scanline offsets for BG0
+StartXMod164Tbl   ENT
+
 ; Other Toolset variables
 OneSecondCounter  ENT
                   dw        0
