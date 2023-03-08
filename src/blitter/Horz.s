@@ -31,9 +31,12 @@
 ; sep   #$20              ; 3
 ; ldal  l_is_jmp+3-base   ; 5
 ; pha                     ; 3 = 17 cycles
+;
+; Even if some additional branch is needed, it is likely to be a small improvement for the PEA case
+; and a significant improvement for the other cases since it avoids the chain of BIT instructions
 
 ; Simple function that restores the saved opcode that are stashed in _applyBG0Xpos.  It is
-; very important that opcodes are restored before new ones are inserted, because there is 
+; very important that opcodes are restored before new ones are inserted, because there is
 ; only one, fixed storage location and old values will be overwritten if operations are not
 ; performed in order.
 ;
@@ -229,46 +232,26 @@ _ApplyBG0XPos
 ;  +-----------+
 
                     lda   StartXMod164
-
-; Right now we have the offset of the left-edge visible byte. Move one byte earlier to figure out
-; where the exit will be patched in
-
-                    dec                              ; (a - 1) % 164
-                    bpl   *+5
-                    lda   #163
+                    bit   #$0001
+                    jne   :odd_case                  ; Specialized routines for even/odd cases
 
 ; If the exit byte is odd, then the left edge is even-aligned and we round down and exit at at
 ; that word.
 ;
 ; If the exit byte is even, then the left edge is odd-aligned and we exit at this word.
 
-                    bit   #$0001
-                    beq   :odd_exit
-
-; This is the even code path
-
-                    and   #$FFFE
                     tax
-                    lda   CodeFieldEvenBRA,x
+                    lda   CodeFieldEvenBRA-2,x
                     sta   :exit_bra
-                    lda   Col2CodeOffset,x
-                    sta   :exit_offset
-                    sta   LastPatchOffset            ; Cache as a flag for later
-                    bra   :do_entry
-
-; This is the odd code path
-:odd_exit           tax
-                    lda   CodeFieldOddBRA,x
-                    sta   :exit_bra
-                    lda   Col2CodeOffset,x
+                    lda   Col2CodeOffset-2,x
                     sta   :exit_offset
                     sta   LastPatchOffset            ; Cache as a flag for later
 
 ; Calculate the entry point into the code field by calculating the right edge
-:do_entry           lda   StartXMod164
+
+                    txa                              ; lda StartXMod164
                     clc
-                    adc   ScreenWidth                ; move to the right edge and back up a byte
-                    dec                              ; to get the index of the first on-screen byte
+                    adc   ScreenWidth                ; move to the right edge
 
                     cmp   #164                       ; Keep the value in range
                     bcc   *+5
@@ -284,29 +267,11 @@ _ApplyBG0XPos
 ; changed depending on even/odd alignment in order to do the work with a single 16-bit
 ; store instead of two 8-bit stores.
 
-                    bit   #$0001
-                    beq   :odd_entry
-
-                    and   #$FFFE
                     tax
-                    lda   Col2CodeOffset-1,x          ; Only use the one byte for the entry_offset
+                    lda   Col2CodeOffset-3,x          ; Only use the one byte for the entry_offset
                     and   #$FF00
                     ora   #$004C                      ; Merge in the JMP instruction
                     sta   :opcode
-
-                    stz   :odd_entry_offset          ; mark as an even case
-                    bra   :prep_complete
-
-:odd_entry
-                    tax
-                    lda   Col2CodeOffset-1,x
-                    and   #$FF00
-                    ora   #$00AF
-                    sta   :opcode
-
-                    lda   Col2CodeOffset-2,x
-                    sta   :odd_entry_offset          ; will the the actual location to jump to
-:prep_complete
 
 ; Main loop that 
 ;
@@ -318,7 +283,7 @@ _ApplyBG0XPos
                     tsc
                     sta   :stk_save
 
-:loop
+:even_loop
                     ldx   :virt_line_x2
 
                     ldal  BTableHigh,x               ; Get the bank
@@ -360,27 +325,11 @@ _ApplyBG0XPos
                     lda   :exit_bra                  ; Copy this value into all of the lines
                     SetConst                         ; All registers are preserved
 
-; Next, patch in the CODE_ENTRY value, which is the low byte of a JMP instruction. This is an
-; 8-bit operation and, since the PEA code is bank aligned, we use the entry_offset value directly
-;
 ; Now, patch in the opcode + code entry_offset
 
                     ldy   :base_address
                     lda   :opcode
                     SetCodeEntryOpcode               ; All registers are preserved
-
-; If this is an odd entry, also set the odd_entry low byte and save the operand high byte
-
-                    lda   :odd_entry_offset
-                    jeq   :not_odd
-
-                    sep   #$20
-                    SetOddCodeEntry                  ; All registers are preserved
-                    rep   #$20
-
-                    SaveHighOperand  :exit_address   ; Only used once, so "inline" it
-
-:not_odd
 
 ; Do the end of the loop -- update the virtual line counter and reduce the number
 ; of lines left to render
@@ -395,7 +344,101 @@ _ApplyBG0XPos
                     sbc   :draw_count_x2
                     sta   :lines_left_x2
 
-                    jne   :loop
+                    jne   :even_loop
+
+                    lda   :stk_save
+                    tcs
+                    plb
+                    rts
+
+:odd_case
+                    dec
+                    tax
+                    lda   CodeFieldOddBRA,x
+                    sta   :exit_bra
+                    lda   Col2CodeOffset,x
+                    sta   :exit_offset
+                    sta   LastPatchOffset            ; Cache as a flag for later
+
+                    txa                              ; StartXMod164 - 1
+                    clc
+                    adc   ScreenWidth
+                    cmp   #164                       ; Keep the value in range
+                    bcc   *+5
+                    sbc   #164
+
+                    tax
+                    lda   Col2CodeOffset-1,x
+                    and   #$FF00
+                    ora   #$00AF
+                    sta   :opcode
+
+                    lda   Col2CodeOffset-2,x
+                    sta   :odd_entry_offset
+
+; Main loop
+
+                    phb                              ; Save the existing bank
+                    tsc
+                    sta   :stk_save
+
+:odd_loop
+                    ldx   :virt_line_x2
+
+                    ldal  BTableHigh,x               ; Get the bank
+                    pha
+                    plb
+
+                    ldal  BTableLow,x                ; Get the address of the first code field line
+                    tay                              ; Save it to use as the base address
+
+                    txa                              ; Calculate number of lines to draw on this iteration
+                    and   #$001E
+                    eor   #$FFFF
+                    sec
+                    adc   #32
+                    min   :lines_left_x2
+                    sta   :draw_count_x2
+                    tax                              ; Use for the first iteration
+
+                    tya
+                    clc
+                    adc   :exit_offset               ; Add some offsets to get the base address in the code field line
+                    sta   :exit_address
+                    sty   :base_address
+
+; At this point y = :base_address, x = :draw_count_x2 and the accumulator is the exit_address
+
+                    SaveOpcodeAndOperand             ; X = :exit_address on return
+
+                    txy                              ; ldy :exit_address -- starting at this address
+                    ldx   :draw_count_x2             ; Do this many lines
+                    lda   :exit_bra                  ; Copy this value into all of the lines
+                    SetConst                         ; All registers are preserved
+
+; Now, patch in the opcode + code entry_offset
+
+                    ldy   :base_address
+                    lda   :opcode
+                    SetCodeEntryOpcode               ; All registers are preserved
+
+; The odd case need to do a bit of extra work
+
+                    sep   #$20
+                    lda   :odd_entry_offset
+                    SetOddCodeEntry                  ; All registers are preserved
+                    rep   #$21                       ; Clear the carry
+
+                    lda   :virt_line_x2              ; advance to the virtual line after
+                    adc   :draw_count_x2             ; filled in
+                    sta   :virt_line_x2
+
+                    lda   :lines_left_x2             ; subtract the number of lines we just completed
+                    sec
+                    sbc   :draw_count_x2
+                    sta   :lines_left_x2
+
+                    jne   :odd_loop
 
                     lda   :stk_save
                     tcs
@@ -413,18 +456,18 @@ _ApplyBG0XPos
 ; The two unrolled loop elements are:
 ;
 ; Even:
-;   lda:  $0000,x                 ; Load from BTableLow + exit_offset
+;   lda:  $0000,x                 ; Load from X = BTableLow + exit_offset
 ;   sta:  OPCODE_SAVE,y           ; Save the two byte in another area of the line code
-;   lda   :exit_bra
+;   lda   :exit_bra[n]
 ;   sta   $0000,x                 ; Replace the two bytes with a BRA instruction to exit the blitter
-;   lda   :opcode|:entry_offset
+;   lda   :opcode[n]
 ;   sta:  CODE_ENTRY_OPCODE,y     ; CODE_ENTRY_OPCODE and CODE_ENTRY are adjacent -- could make this a single 16-bit store
 ;
 ; Odd:
 ;   Same as above, plus...
-;   lda   :odd_entry_offset       ; Get back into the code after fixing up the odd edge
+;   lda   :odd_entry_offset[n]    ; [8-bit] Get back into the code after fixing up the odd edge
 ;   sta:  ODD_ENTRY,y
-;   lda:  $0002,x                 ; Save the high byte in case the last instruction is PEA and we need to load the top byte
+;   lda:  $0001,x                 ; Save the high word in case the last instruction is PEA and we need to load the top byte
 ;   sta:  OPCODE_HIGH_SAVE,y
 ; 
 _ApplyBG0XPosPerScanline
@@ -494,6 +537,21 @@ _ApplyBG0XPosPerScanline
                     plb
                     rts
 
+; Run through and build an array of scanline data and place it in temporary zero page space.  Need a total of 48 bytes.
+:BuildScanlineData
+
+; First step, run though and create the tables for the copy routine
+                    lda   StartXMod164Tbl,x
+                    bit   #$0001
+;                    bne   :bsd_odd
+
+                    tay
+                    lda   CodeFieldEvenBRA-2,y       ; The exit point comes after the left edge (reverse order due to stack)
+                    sta   :exit_bra,x
+                    lda   Col2CodeOffset-2,y
+                    sta   :exit_offset,x
+                    
+
 :DoScanlineRange
                     ldx   :virt_line_x2
 
@@ -503,31 +561,36 @@ _ApplyBG0XPosPerScanline
                     bit   #$0001
                     bne   :is_odd                    ; Quickly switch to specialized even/odd routines
 
+; For even offsets, the index is x - 2
+; For odd offsets, the index is x - 1
+;
+; So, for both we can do (x - 1) & $FFFE = dec / and #$FFFE = lsr / asl + clears the carry
+
 ; This is an even-aligned line
 
-                    dec                              ; Move to the previous address for entry (a - 1) % 164
-                    dec                              ; Optimization: Coule eliminate this with a double-width tbale for CodeFieldEvenBRA
-                    bpl   *+5
-                    lda   #162
+;                    dec                              ; Move to the previous address for entry (a - 1) % 164
+;                    dec                              ; Optimization: Coule eliminate this with a double-width tbale for CodeFieldEvenBRA
+;                    bpl   *+5
+;                    lda   #162
 
-;                    and   #$FFFE                    ; Must be even by construction
                     tay
-                    lda   CodeFieldEvenBRA,y
+                    lda   CodeFieldEvenBRA-2,y
                     sta   :exit_bra                  ; Store are exit_offset + 
-                    lda   Col2CodeOffset,y
+                    lda   Col2CodeOffset-2,y
                     sta   :exit_offset
 
-                    tya
-                    adc   ScreenWidth
-                    cmp   #164                       ; Keep the value in range
-                    bcc   *+5
-                    sbc   #164
-                    tay
+;                    tya
+;                    adc   ScreenWidth
+;                    cmp   #164                       ; Keep the value in range
+;                    bcc   *+5
+;                    sbc   #164
+;                    tay
 
-                    lda   Col2CodeOffset,y
-                    sta   :entry_offset
-;                    lda   #$004C                     ; set the entry_jmp opcode to JMP
-;                    sta   :opcode
+                    lda   Col2CodeOffset-2-1,y        ; -2 for even case , -1 to load value into high byte
+                    and   #$FF00
+;                    sta   :entry_offset
+                    ora   #$004C                     ; set the entry_jmp opcode to JMP
+                    sta   :opcode
 ;                    stz   :odd_entry_offset          ; mark as an even case
 
                     ldal  BTableLow,x                ; Get the address of the code field line
@@ -897,6 +960,119 @@ x02                 lda   $1000,x
                     sta   OPCODE_SAVE+$1000,y
 x01                 lda:  $0000,x
                     sta:  OPCODE_SAVE+$0000,y
+bottom
+                    <<<
+
+; SaveOpcodeAndOperand
+;
+; Save both the opcode and operand at the same time
+;
+; X = number of lines * 2, 0 to 32
+; Y = starting line * $1000
+; A = code field location * $1000
+SaveOpcodeAndOperand mac
+                    jmp   (dispTbl,x)
+dispTbl             da    bottom
+                    da    do01,do02,do03,do04
+                    da    do05,do06,do07,do08
+                    da    do09,do10,do11,do12
+                    da    do13,do14,do15,do16
+
+do15                tax
+                    jmp   x15
+do14                tax
+                    jmp   x14
+do13                tax
+                    jmp   x13
+do12                tax
+                    jmp   x12
+do11                tax
+                    jmp   x11
+do10                tax
+                    jmp   x10
+do09                tax
+                    jmp   x09
+do08                tax
+                    jmp   x08
+do07                tax
+                    jmp   x07
+do06                tax
+                    jmp   x06
+do05                tax
+                    jmp   x05
+do04                tax
+                    jmp   x04
+do03                tax
+                    jmp   x03
+do02                tax
+                    jmp   x02
+do01                tax
+                    jmp   x01
+do16                tax
+x16                 lda   $F000,x
+                    sta   OPCODE_SAVE+$F000,y
+                    lda   $F001,x
+                    sta   OPCODE_HIGH_SAVE+$F000,y
+x15                 lda   $E000,x
+                    sta   OPCODE_SAVE+$E000,y
+                    lda   $E001,x
+                    sta   OPCODE_HIGH_SAVE+$E000,y
+x14                 lda   $D000,x
+                    sta   OPCODE_SAVE+$D000,y
+                    lda   $D001,x
+                    sta   OPCODE_HIGH_SAVE+$D000,y
+x13                 lda   $C000,x
+                    sta   OPCODE_SAVE+$C000,y
+                    lda   $C001,x
+                    sta   OPCODE_HIGH_SAVE+$C000,y
+x12                 lda   $B000,x
+                    sta   OPCODE_SAVE+$B000,y
+                    lda   $B001,x
+                    sta   OPCODE_HIGH_SAVE+$B000,y
+x11                 lda   $A000,x
+                    sta   OPCODE_SAVE+$A000,y
+                    lda   $A001,x
+                    sta   OPCODE_HIGH_SAVE+$A000,y
+x10                 lda   $9000,x
+                    sta   OPCODE_SAVE+$9000,y
+                    lda   $9001,x
+                    sta   OPCODE_HIGH_SAVE+$9000,y
+x09                 lda   $8000,x
+                    sta   OPCODE_SAVE+$8000,y
+                    lda   $8001,x
+                    sta   OPCODE_HIGH_SAVE+$8000,y
+x08                 lda   $7000,x
+                    sta   OPCODE_SAVE+$7000,y
+                    lda   $7001,x
+                    sta   OPCODE_HIGH_SAVE+$7000,y
+x07                 lda   $6000,x
+                    sta   OPCODE_SAVE+$6000,y
+                    lda   $6001,x
+                    sta   OPCODE_HIGH_SAVE+$6000,y
+x06                 lda   $5000,x
+                    sta   OPCODE_SAVE+$5000,y
+                    lda   $5001,x
+                    sta   OPCODE_HIGH_SAVE+$5000,y
+x05                 lda   $4000,x
+                    sta   OPCODE_SAVE+$4000,y
+                    lda   $4001,x
+                    sta   OPCODE_HIGH_SAVE+$4000,y
+x04                 lda   $3000,x
+                    sta   OPCODE_SAVE+$3000,y
+                    lda   $3001,x
+                    sta   OPCODE_HIGH_SAVE+$3000,y
+x03                 lda   $2000,x
+                    sta   OPCODE_SAVE+$2000,y
+                    lda   $2001,x
+                    sta   OPCODE_HIGH_SAVE+$2000,y
+x02                 lda   $1000,x
+                    sta   OPCODE_SAVE+$1000,y
+                    lda   $1001,x
+                    sta   OPCODE_HIGH_SAVE+$1000,y
+x01                 lda:  $0000,x
+                    sta:  OPCODE_SAVE+$0000,y
+                    lda:  $0001,x
+                    sta:  OPCODE_HIGH_SAVE+$0000,y
 bottom
                     <<<
 

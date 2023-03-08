@@ -129,6 +129,7 @@ JTableOffset      ENT
 ;
 ; These tables are reversed to be parallel with the JTableOffset and Col2CodeOffset tables above.  The
 ; physical word index that each instruction is intended to be placed at is in the comment.
+                  bra   *-3         ; wrap around
 CodeFieldEvenBRA  ENT
                   bra   *+6         ; 81 -- need to skip over the JMP loop that passed control back
                   bra   *+9         ; 80
@@ -213,6 +214,7 @@ CodeFieldEvenBRA  ENT
                   bra   *-6         ; 1
                   bra   *-3         ; 0
 
+                  bra   *-6         ; wrap around
 CodeFieldOddBRA   ENT
                   bra   *+9         ; 81 -- need to skip over two JMP instructions
                   bra   *+12        ; 80
