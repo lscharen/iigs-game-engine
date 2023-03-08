@@ -438,7 +438,7 @@ _SortSprite
            ldy   _Sprites+SORTED_PREV,x
            bmi   :chk_fwd
            cmp   _Sprites+SPRITE_CLIP_TOP,y
-           bcc   :chk_bkwd                     ; The current node needs to move to an lower position
+           bcc   :scan_bkwd                     ; The current node needs to move to an lower position
 
 :chk_fwd
            ldy   _Sprites+SORTED_NEXT,x        ; If there is nothing ahead of the current node, we're done
@@ -502,12 +502,6 @@ _SortSprite
            sta  _Sprites+SORTED_NEXT,y
            rts
 
-:chk_bkwd
-           ldy   _Sprites+SORTED_PREV,x        ; If there is nothing behind the current node, we're done
-           bmi   :done
-           cmp   _Sprites+SPRITE_CLIP_TOP,y    ; If the current node is >= the previous node, we're done
-           bcs   :done
-
 ; Look to move the sprite into an earlier position
 :scan_bkwd
            lda   _Sprites+SORTED_PREV,y        ; Need to step backward; if we're at the beginning, then insert here
@@ -529,16 +523,16 @@ _SortSprite
            jsr  _OrphanNode
 
            tya
-           sta  _Sprites+SORTED_NEXT,x        ; Link X to Y
+           sta  _Sprites+SORTED_PREV,x    ; c <=> y <-- x --- d
 
-           lda  _Sprites+SORTED_PREV,y
-           sta  _Sprites+SORTED_PREV,x        ; Link X to C
+           lda  _Sprites+SORTED_NEXT,y    ; c <=> y <-- x --> d
+           sta  _Sprites+SORTED_NEXT,x
 
-           txa                                ; Link Y to X
-           sta  _Sprites+SORTED_PREV,y
+           txa
+           ldx  _Sprites+SORTED_NEXT,y
+           sta  _Sprites+SORTED_NEXT,y    ; c <=> y <=> x --> d
 
-           ldy  _Sprites+SORTED_PREV,x        ; Link C to X
-           sta  _Sprites+SORTED_NEXT,y
+           sta  _Sprites+SORTED_PREV,x    ; c <=> y <=> x <=> d
            rts
 
 ; Move X to the front of the list. Y points to the first element
@@ -559,7 +553,6 @@ _SortSprite
            sta  _Sprites+SORTED_PREV,x
            tya
            sta  _Sprites+SORTED_NEXT,x
-           rts
 
 :done
            rts
@@ -596,7 +589,6 @@ _InsertSprite
            cmp   _Sprites+SPRITE_CLIP_TOP,y
            bcs   :next
 
-:insert
            lda   _Sprites+SORTED_PREV,y
            sta   _Sprites+SORTED_PREV,x       ;  [p] <-- [c]     [n]
 
@@ -604,10 +596,10 @@ _InsertSprite
            sta   _Sprites+SORTED_NEXT,x       ;  [p] <-- [c] --> [n]
 
            txa
+           ldx   _Sprites+SORTED_PREV,y       ; get ref to the [p]revious node
            sta   _Sprites+SORTED_PREV,y       ;  [p] <-- [c] <=> [n]
 
-           ldy   _Sprites+SORTED_PREV,x
-           sta   _Sprites+SORTED_NEXT,y       ;  [p] <=> [c] <=> [n]
+           sta   _Sprites+SORTED_NEXT,x       ;  [p] <=> [c] <=> [n]
 
            rts
 
