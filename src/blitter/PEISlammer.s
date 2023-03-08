@@ -38,11 +38,6 @@ _PEISlam
                  tay                    ; get the number of lines in the y register
 
                  txa
-                 clc
-                 adc   ScreenY0         ; Adjust for the origin
-                 cmp   #201
-                 bcc   *+4
-                 brk   $A7
                  asl
                  tax
                  lda   RTable,x         ; This is the right visible byte, so add one to get the 
