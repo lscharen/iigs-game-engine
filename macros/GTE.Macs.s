@@ -132,6 +132,9 @@ _GTEGetAddress       MAC
 _GTECompileSpriteStamp MAC
                      UserTool  $2D00+GTEToolNum
                      <<<
+_GTESetAddress       MAC
+                     UserTool  $2E00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition

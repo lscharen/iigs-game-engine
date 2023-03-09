@@ -50,11 +50,7 @@ _RestoreBG0Opcodes
 
 :virt_line_x2       equ   tmp1
 :lines_left_x2      equ   tmp2
-:draw_count_x2      equ   tmp3
 :exit_offset        equ   tmp4
-:stk_save           equ   tmp5
-
-                    phb                              ; Save data bank
 
                     asl
                     sta   :virt_line_x2              ; Keep track of it
@@ -66,6 +62,14 @@ _RestoreBG0Opcodes
                     lda   LastPatchOffset            ; If zero, there are no saved opcodes
                     sta   :exit_offset
 
+_RestoreBG0OpcodesAlt
+:virt_line_x2       equ   tmp1
+:lines_left_x2      equ   tmp2
+:draw_count_x2      equ   tmp3
+:exit_offset        equ   tmp4
+:stk_save           equ   tmp5
+
+                    phb                              ; Save data bank
                     tsc
                     sta   :stk_save
 
@@ -144,18 +148,8 @@ _ApplyBG0XPosPre
                     rts
 
 _ApplyBG0XPos
-
-:stk_save           equ   tmp0
 :virt_line_x2       equ   tmp1
 :lines_left_x2      equ   tmp2
-:draw_count_x2      equ   tmp3
-:exit_offset        equ   tmp4
-:entry_offset       equ   tmp5
-:exit_bra           equ   tmp6
-:exit_address       equ   tmp7
-:base_address       equ   tmp8
-:opcode             equ   tmp9
-:odd_entry_offset   equ   tmp10
 
 ; If there are saved opcodes that have not been restored, do not run this routine
                     lda   LastPatchOffset
@@ -232,6 +226,21 @@ _ApplyBG0XPos
 ;  +-----------+
 
                     lda   StartXMod164
+
+; Alternate entry point if the virt_line_x2 and lines_left_x2 and XMod164 values are passed in externally
+_ApplyBG0XPosAlt
+:stk_save           equ   tmp0
+:virt_line_x2       equ   tmp1
+:lines_left_x2      equ   tmp2
+:draw_count_x2      equ   tmp3
+:exit_offset        equ   tmp4
+:entry_offset       equ   tmp5
+:exit_bra           equ   tmp6
+:exit_address       equ   tmp7
+:base_address       equ   tmp8
+:opcode             equ   tmp9
+:odd_entry_offset   equ   tmp10
+
                     bit   #$0001
                     jne   :odd_case                  ; Specialized routines for even/odd cases
 
@@ -368,7 +377,7 @@ _ApplyBG0XPos
                     sbc   #164
 
                     tax
-                    lda   Col2CodeOffset-1,x
+                    lda   Col2CodeOffset-1,x         ; Odd offset to get the value in the high byte
                     and   #$FF00
                     ora   #$00AF
                     sta   :opcode
@@ -445,360 +454,147 @@ _ApplyBG0XPos
                     plb
                     rts
 
+_RestoreScanlineBG0Opcodes
+:virt_line_x2       equ   tmp1
+:lines_left_x2      equ   tmp2
+:exit_offset        equ   tmp4
+
+; Avoid local var collisions
+:virt_line_pos_x2   equ   tmp11
+:total_left_x2      equ   tmp12
+:current_count_x2   equ   tmp13
+:ptr                equ   tmp14
+
+                    asl
+                    sta   :virt_line_pos_x2
+                    tay
+
+                    txa
+                    asl
+                    sta   :total_left_x2
+
+                    lda   StartXMod164Tbl
+                    sta   :ptr
+                    lda   StartXMod164Tbl+2
+                    sta   :ptr+2
+
+; Patch our the ranges from the StartXMod164Tbl array starting at the first virtual line
+:loop
+                    lda   [:ptr],y
+                    and   #$FF00                    ; Determine how many sequential lines to restore
+                    xba
+                    inc
+                    asl
+                    min   :total_left_x2            ; Don't draw more than the number of lines that are left to process
+                    sta   :current_count_x2         ; Save a copy for later
+
+                    sta   :lines_left_x2            ; Set the parameter
+                    sty   :virt_line_x2             ; Set the parameter
+                    lda   LastOffsetTbl,y
+                    sta   :exit_offset
+                    jsr   _RestoreBG0OpcodesAlt
+
+                    clc
+                    lda   :virt_line_pos_x2   
+                    adc   :current_count_x2
+                    cmp   #208*2                    ; Do the modulo check in this loop
+                    bcc   *+5
+                    sbc   #208*2
+                    sta   :virt_line_pos_x2
+                    tay
+
+                    lda   :total_left_x2
+                    sec
+                    sbc   :current_count_x2
+                    sta   :total_left_x2
+                    bne   :loop
+
+                    rts
+
 ; This is a variant of the above routine that allows each x-position to be set independently from a table of value.  This is
 ; quite a bit slower than the other routine since we cannot store constant values for each line.
 ;
-; We still want to perform operation in blocks of 16 to avoid repeatedly setting the data bank register for each line.  In
-; order to accomplish this, the even/odd cases are split into separate code blocks and the unrolled loop will patch up
-; all of the memory locations on each line, rather than doing each patch one at a time.  This may actually be more efficient
-; since it eliminates several jmp (abs,x) / tax instructions and removed some register reloading.
+; This routine operates at a higher level and does not try to be super optimized for the case where every line has a different
+; set of parameters.  Instead, we optimize for the case where there are a few large ranges of the screen moving at different
+; rates, e.g. a fixed status bar area on top, a slow-scrolling area in the middle and a fast are in the foreground.
 ;
-; The two unrolled loop elements are:
+; The table that drives this is dense and has the following format for each word
 ;
-; Even:
-;   lda:  $0000,x                 ; Load from X = BTableLow + exit_offset
-;   sta:  OPCODE_SAVE,y           ; Save the two byte in another area of the line code
-;   lda   :exit_bra[n]
-;   sta   $0000,x                 ; Replace the two bytes with a BRA instruction to exit the blitter
-;   lda   :opcode[n]
-;   sta:  CODE_ENTRY_OPCODE,y     ; CODE_ENTRY_OPCODE and CODE_ENTRY are adjacent -- could make this a single 16-bit store
+; Bits 0 - 7:  X mod 164 value
+; Bits 8 - 15: Number of scanline to persist this mod value
 ;
-; Odd:
-;   Same as above, plus...
-;   lda   :odd_entry_offset[n]    ; [8-bit] Get back into the code after fixing up the odd edge
-;   sta:  ODD_ENTRY,y
-;   lda:  $0001,x                 ; Save the high word in case the last instruction is PEA and we need to load the top byte
-;   sta:  OPCODE_HIGH_SAVE,y
-; 
-_ApplyBG0XPosPerScanline
-:stk_save           equ   tmp0
+; So, if the first 10 entries has a mod value of 5, they would look like: $0905, $0805, $0705, ... $0105, $0005 
+;
+; This allows the code to start an an arbitrary location and immeditely sync up with the modulo list. It also allows
+; the code to easily skip ranges of constant values using the existing _ApplyBG0XPos function as a subroutine.
+_ApplyScanlineBG0XPos
+
+; Copies of the local variables in _ApplyBG0XPos
 :virt_line_x2       equ   tmp1
 :lines_left_x2      equ   tmp2
-:draw_count_x2      equ   tmp3
 :exit_offset        equ   tmp4
-:entry_offset       equ   tmp5
-:exit_bra           equ   tmp6
-:exit_address       equ   tmp7
-:base_address       equ   tmp8
-:opcode             equ   tmp9
-:odd_entry_offset   equ   tmp10
 
-; If there are saved opcodes that have not been restored, do not run this routine
-                    lda   LastPatchOffset
-                    beq   :ok
+; Avoid local var collision with _ApplyBG0XPos
+:virt_line_pos_x2   equ   tmp11
+:total_left_x2      equ   tmp12
+:current_count_x2   equ   tmp13
+:ptr                equ   tmp14
+
+                    lda   StartXMod164Tbl
+                    sta   :ptr
+                    lda   StartXMod164Tbl+2
+                    sta   :ptr+2
+                    ora   :ptr
+                    bne   *+3                        ; null pointer check
                     rts
 
-; In this routine, basically every horizontal parameter is based off of the :virt_line_x2 index
-:ok
                     lda   StartYMod208               ; This is the base line of the virtual screen
                     asl
-                    sta   :virt_line_x2              ; Keep track of it
+                    sta   :virt_line_pos_x2
+                    tay
 
                     lda   ScreenHeight
                     asl
-                    sta   :lines_left_x2
+                    sta   :total_left_x2
 
-; Sketch out the core structural elements of the loop + bank management
-
-                    phb                              ; Save the existing bank
-                    tsc
-                    sta   :stk_save
-
+; Patch our the ranges from the StartXMod164Tbl array starting at the first virtual line
 :loop
-                    ldx   :virt_line_x2
-
-                    txa
-                    and   #$001E
-                    eor   #$FFFF
-                    sec
-                    adc   #2*16                      ; 2 * (16 - virt_line % 16).  This get us aligned to 16-line boundaries
-                    min   :lines_left_x2             ; Make sure we handle cases where lines_left < aligned remainder
-                    sta   :draw_count_x2             ; We are drawing this many lines on this iteration starting at _virt_line_x2
-
-                    ldal  BTableHigh,x               ; Set the bank
-                    pha
-                    plb
-
-                    jsr   :DoScanlineRange           ; Patch in the code field for this range (Bank is set)
-
-                    lda   :draw_count_x2
-                    clc                              ; advance to the virtual line after the segment we just
-                    adc   :virt_line_x2              ; filled in
-                    sta   :virt_line_x2
-
-                    lda   :lines_left_x2             ; subtract the number of lines we just completed
-                    sec
-                    sbc   :draw_count_x2
-                    sta   :lines_left_x2
-                    jne   :loop
-
-                    lda   :stk_save
-                    tcs
-                    plb
-                    rts
-
-; Run through and build an array of scanline data and place it in temporary zero page space.  Need a total of 48 bytes.
-:BuildScanlineData
-
-; First step, run though and create the tables for the copy routine
-                    lda   StartXMod164Tbl,x
-                    bit   #$0001
-;                    bne   :bsd_odd
-
-                    tay
-                    lda   CodeFieldEvenBRA-2,y       ; The exit point comes after the left edge (reverse order due to stack)
-                    sta   :exit_bra,x
-                    lda   Col2CodeOffset-2,y
-                    sta   :exit_offset,x
-                    
-
-:DoScanlineRange
-                    ldx   :virt_line_x2
-
-; First, calculate the exit point
-
-                    ldal  StartXMod164Tbl,x          ; Get the origin for this line
-                    bit   #$0001
-                    bne   :is_odd                    ; Quickly switch to specialized even/odd routines
-
-; For even offsets, the index is x - 2
-; For odd offsets, the index is x - 1
-;
-; So, for both we can do (x - 1) & $FFFE = dec / and #$FFFE = lsr / asl + clears the carry
-
-; This is an even-aligned line
-
-;                    dec                              ; Move to the previous address for entry (a - 1) % 164
-;                    dec                              ; Optimization: Coule eliminate this with a double-width tbale for CodeFieldEvenBRA
-;                    bpl   *+5
-;                    lda   #162
-
-                    tay
-                    lda   CodeFieldEvenBRA-2,y
-                    sta   :exit_bra                  ; Store are exit_offset + 
-                    lda   Col2CodeOffset-2,y
-                    sta   :exit_offset
-
-;                    tya
-;                    adc   ScreenWidth
-;                    cmp   #164                       ; Keep the value in range
-;                    bcc   *+5
-;                    sbc   #164
-;                    tay
-
-                    lda   Col2CodeOffset-2-1,y        ; -2 for even case , -1 to load value into high byte
-                    and   #$FF00
-;                    sta   :entry_offset
-                    ora   #$004C                     ; set the entry_jmp opcode to JMP
-                    sta   :opcode
-;                    stz   :odd_entry_offset          ; mark as an even case
-
-                    ldal  BTableLow,x                ; Get the address of the code field line
-                    tay                              ; Save it to use as the base address
-                    clc
-                    adc   :exit_offset               ; Add some offsets to get the base address in the code field line
+                    lda   [:ptr],y
                     tax
 
-                    clc
-; This is the core even patch loop. The y-register tracks the base address of the starting line.  Set the x-register
-; based on the per-line exit_offset and eveything else references other data
+                    and   #$FF00                    ; Determine how many sequential lines have this mod value
+                    xba
+                    inc
+                    asl
+                    min   :total_left_x2            ; Don't draw more than the number of lines that are left to process
+                    sta   :current_count_x2         ; Save a copy for later
 
-;                    tya
-;                    adc   :exit_offset+{]line*2}
-;                    tax
-;                    lda:  {]line*$1000},x
-;                    sta:  OPCODE_SAVE+{]line*$1000},y
-;                    lda   :exit_bra+{]line*2}         ; Copy this value into all of the lines
-;                    sta:  {]line*$1000},x
-;                    lda   :entry_offset+{]line*2}     ; Pre-merged with the appropriate opcode + offset
-;                    sta:  CODE_ENTRY_OPCODE+{]line*$1000},y
+                    sta   :lines_left_x2            ; Set the parameter
+                    sty   :virt_line_x2             ; Set the parameter
+                    txa                             ; Put the X mod 164 value in the accumulator
+                    and   #$00FF
+                    jsr   _ApplyBG0XPosAlt
 
-                    bra   :prep_complete
-
-; This is an odd-aligned line
-:is_odd
-                    dec                              ; Remove the least-significant byte (must stay positive)
-                    tay
-                    lda   CodeFieldOddBRA,y
-                    sta   :exit_bra
-                    lda   Col2CodeOffset,y
-                    sta   :exit_offset
+                    lda   :exit_offset              ; Get the direct address in the code field that was overwritten
+                    ldy   :virt_line_pos_x2   
+                    sta   LastOffsetTbl,y           ; Stash it for use by the per-scanline resotre function
 
                     tya
-                    adc   ScreenWidth
-                    cmp   #164                       ; Keep the value in range
-                    bcc   *+5
-                    sbc   #164
-                    tay
-                    lda   Col2CodeOffset,y
-                    sta   :entry_offset              ; Will be used to load the data
-                    lda   Col2CodeOffset-2,y
-                    sta   :odd_entry_offset          ; will be the actual location to jump to
-                    lda   #$00AF                     ; set the entry_jmp opcode to LDAL
-                    sta   :opcode
-
-:prep_complete
-                    ldal  BTableLow,x                ; Get the address of the code field line
-                    tay                              ; Save it to use as the base address
                     clc
-                    adc   :exit_offset               ; Add some offsets to get the base address in the code field line
+                    adc   :current_count_x2
+                    cmp   #208*2                    ; Do the modulo check in this loop
+                    bcc   *+5
+                    sbc   #208*2
+                    sta   :virt_line_pos_x2
+                    tay
 
-;                    sta   :exit_address
-;                    sty   :base_address
-
-
-;                    ldy   :base_address
-;                    ldx   :exit_address              ; Save from this location (not needed in fast mode)
-;                    SaveOpcode                       ; X = :exit_address on return
-                    tax
-                    lda:  $0000,x
-                    sta:  OPCODE_SAVE+$0000,y
-
-
-;                    txy                              ; ldy :exit_address -- starting at this address
-;                    ldx   :draw_count_x2             ; Do this many lines
-                    lda   :exit_bra                  ; Copy this value into all of the lines
-;                    SetConst                         ; All registers are preserved
-                    sta:  $0000,x
-
-; Next, patch in the CODE_ENTRY value, which is the low byte of a JMP instruction. This is an
-; 8-bit operation and, since the PEA code is bank aligned, we use the entry_offset value directly
-
-                    sep   #$20
-
-                    lda   :entry_offset
-;                    ldy   :base_address
-;                    SetCodeEntry                     ; All registers are preserved
-                    sta:  CODE_ENTRY+$0000,y
-
-; Now, patch in the opcode
-
-                    lda   :opcode
-;                    SetCodeEntryOpcode               ; All registers are preserved
-                    sta:  CODE_ENTRY_OPCODE+$0000,y
-
-; If this is an odd entry, also set the odd_entry low byte and save the operand high byte
-
-                    lda   :odd_entry_offset
-                    jeq   :not_odd
-
-;                    SetOddCodeEntry                  ; All registers are preserved
-                    sta:  ODD_ENTRY+$0000,y
-;                    SaveHighOperand  :exit_address   ; Only used once, so "inline" it
-                    ldx   :exit_address
-                    lda:  $0002,x
-                    sta:  OPCODE_HIGH_SAVE+$0000,y
-
-:not_odd
-                    rep   #$21                       ; clear the carry
-
-                    lda   :virt_line_x2              ; advance to the virtual line after
-                    adc   :draw_count_x2             ; filled in
-                    sta   :virt_line_x2
-
-                    lda   :lines_left_x2             ; subtract the number of lines we just completed
+                    lda   :total_left_x2
                     sec
-                    sbc   :draw_count_x2
-                    sta   :lines_left_x2
-                    
-                    jne   :loop
+                    sbc   :current_count_x2
+                    sta   :total_left_x2
+                    bne   :loop
 
                     rts
-
-
-; DoEvenRange
-;
-; Does all the core operations for an even range (16-bit accumulator and registers)
-;
-; X = number of lines * 2, 0 to 32
-; Y = starting line * $1000
-; A = code field location * $1000
-DoEvenRange         mac
-                    asl                     ; mult the offset by 2 and clear the carry at the same time
-                    adc   #dispTbl
-                    stal  patch+1
-patch               jmp   $0000
-dispTbl             jmp   bottom
-                    db    1
-                    jmp   x01
-                    db    1
-                    jmp   x02
-                    db    1
-                    jmp   x03
-                    db    1
-                    jmp   x04
-                    db    1
-                    jmp   x05
-                    db    1
-                    jmp   x06
-                    db    1
-                    jmp   x07
-                    db    1
-                    jmp   x08
-                    db    1
-                    jmp   x09
-                    db    1
-                    jmp   x10
-                    db    1
-                    jmp   x11
-                    db    1
-                    jmp   x12
-                    db    1
-                    jmp   x13
-                    db    1
-                    jmp   x14
-                    db    1
-                    jmp   x15
-                    db    1
-x16                 tya
-                    adc   :exit_offset+$1E
-                    tax
-                    lda:  $F000,x
-                    sta:  OPCODE_SAVE+$F000,y
-                    lda   :exit_bra+$1E
-                    sta:  $F000,x
-                    lda   :entry_offset+$1E                    ; Pre-merged with the appropriate opcode + offset
-                    sta:  CODE_ENTRY_OPCODE+$F000,y
-
-x15                 tya
-                    adc   :exit_offset+$1E
-                    tax
-                    lda:  $E000,x
-                    sta:  OPCODE_SAVE+$E000,y
-                    lda   :exit_bra+$1C
-                    sta:  $E000,x
-                    lda   :entry_offset+$1C
-                    sta:  CODE_ENTRY_OPCODE+$E000,y
-
-x14                 lda   $D002,x
-                    sta   OPCODE_HIGH_SAVE+$D000,y
-x13                 lda   $C002,x
-                    sta   OPCODE_HIGH_SAVE+$C000,y
-x12                 lda   $B002,x
-                    sta   OPCODE_HIGH_SAVE+$B000,y
-x11                 lda   $A002,x
-                    sta   OPCODE_HIGH_SAVE+$A000,y
-x10                 lda   $9002,x
-                    sta   OPCODE_HIGH_SAVE+$9000,y
-x09                 lda   $8002,x
-                    sta   OPCODE_HIGH_SAVE+$8000,y
-x08                 lda   $7002,x
-                    sta   OPCODE_HIGH_SAVE+$7000,y
-x07                 lda   $6002,x
-                    sta   OPCODE_HIGH_SAVE+$6000,y
-x06                 lda   $5002,x
-                    sta   OPCODE_HIGH_SAVE+$5000,y
-x05                 lda   $4002,x
-                    sta   OPCODE_HIGH_SAVE+$4000,y
-x04                 lda   $3002,x
-                    sta   OPCODE_HIGH_SAVE+$3000,y
-x03                 lda   $2002,x
-                    sta   OPCODE_HIGH_SAVE+$2000,y
-x02                 lda   $1002,x
-                    sta   OPCODE_HIGH_SAVE+$1000,y
-x01                 lda:  $0002,x
-                    sta:  OPCODE_HIGH_SAVE+$0000,y
-bottom              <<<
 
 ; SaveHighOperand
 ;

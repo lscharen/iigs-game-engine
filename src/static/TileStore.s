@@ -110,6 +110,10 @@ Col2CodeOffset    ENT
                   dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
 ]step             equ   ]step+1
                   --^
+                  lup   82          ; Make is a double-length table so we can add the ScreenWidth without testing for wrap-around
+                  dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
+]step             equ   ]step+1
+                  --^
                   dw    CODE_TOP+{81*PER_TILE_SIZE}
 
 ; A parallel table to Col2CodeOffset that holds the offset to the exception handler address for each column
@@ -386,6 +390,10 @@ BG1YOffsetTable   ENT
 
 ; Per-scanline offsets for BG0
 StartXMod164Tbl   ENT
+                  dw    0,0
+
+LastOffsetTbl     ENT
+                  ds    416
 
 ; Other Toolset variables
 OneSecondCounter  ENT
@@ -566,7 +574,7 @@ Scale15   dw $003C,$003C,$003C,$003E,$003E,$003E,$003E,$0040,$0040,$0040,$0040,$
 blt_return
 stk_save
 
-StartXMod164Arr ENT
-                ds 416*2
-LastPatchOffsetArr ENT
-                ds 416*2
+;StartXMod164Arr ENT
+;                ds 416*2
+;LastPatchOffsetArr ENT
+;                ds 416*2

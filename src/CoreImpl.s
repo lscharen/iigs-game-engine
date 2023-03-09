@@ -251,13 +251,13 @@ EngineReset
                   bne       :loop
 
 ; Set the scanline tables to reasonable default values
-                  ldx       #{416*2}-2
-                  lda       #0
-:sxm_loop         
-                  sta       StartXMod164Arr,x
-                  dex
-                  dex
-                  bpl       :sxm_loop
+;                  ldx       #{416*2}-2
+;                  lda       #0
+;:sxm_loop         
+;                  sta       StartXMod164Arr,x
+;                  dex
+;                  dex
+;                  bpl       :sxm_loop
 
                   rts
 

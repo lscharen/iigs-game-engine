@@ -99,6 +99,7 @@ _CallTable
                 adrl  _TSGetAddress-1
 
                 adrl  _TSCompileSpriteStamp-1
+                adrl  _TSSetAddress-1
 
 _CTEnd
 _GTEAddSprite        MAC
@@ -302,6 +303,12 @@ _TSRender
                 bra     :done
 
 :no_shadowing
+                bit     #RENDER_PER_SCANLINE
+                beq     :no_scanline
+                jsr     _RenderScanlines
+                bra     :done
+
+:no_scanline
                 jsr     _Render
 
 :done
@@ -865,26 +872,44 @@ _TSSetBG1Scale
                 sta     BG1Scaling
                 _TSExit #0;#2
 
+; Pointer GetAddress(tblId)
 _TSGetAddress
-:output         equ     FirstParam+0
-:tblId          equ     FirstParam+4
+:tblId          equ     FirstParam+0
+:output         equ     FirstParam+2
 
                 _TSEntry
                 lda     #0
                 sta     :output,s
                 sta     :output+2,s
 
-                lda     :value,s
+                lda     :tblId,s
                 cmp     #scanlineHorzOffset
                 bne     :out
 
-                lda     #StartXMod164Arr
+                lda     StartXMod164Tbl
                 sta     :output,s
-                lda     #^StartXMod164Arr
+                lda     StartXMod164Tbl+2
                 sta     :output+2,s
 
 :out
                 _TSExit #0;#2
+
+; SetAddress(tblId, Pointer)
+_TSSetAddress
+:ptr            equ     FirstParam+0
+:tblId          equ     FirstParam+4
+
+                _TSEntry
+                lda     :tblId,s
+                cmp     #scanlineHorzOffset
+                bne     :out
+
+                lda     :ptr,s
+                sta     StartXMod164Tbl
+                lda     :ptr+2,s
+                sta     StartXMod164Tbl+2
+:out
+                _TSExit #0;#6
 
 ; CompileSpriteStamp(spriteId, vbuffAddr)
 _TSCompileSpriteStamp
@@ -916,7 +941,7 @@ _TSCompileSpriteStamp
                 put     Sprite2.s
                 put     SpriteRender.s
                 put     Render.s
-                put     blitter/Scanline.s
+;                put     blitter/Scanline.s
                 put     render/Render.s
                 put     render/Fast.s
                 put     render/Slow.s

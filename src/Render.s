@@ -169,7 +169,17 @@ _RenderScanlines
 
 ;            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
-             jsr   _ScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
+             jsr   _ApplyScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
+
+            jsr   _BuildShadowList    ; Create the rages based on the sorted sprite y-values
+
+            jsr   _ShadowOff          ; Turn off shadowing and draw all the scanlines with sprites on them
+            jsr   _DrawShadowList
+            jsr   _DrawDirectSprites  ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
+
+            jsr   _ShadowOn           ; Turn shadowing back on
+;            jsr   _DrawComplementList ; Alternate drawing scanlines and PEI slam to expose the full fram
+            jsr   _DrawFinalPass
 
 ;            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
 
@@ -209,11 +219,11 @@ _RenderScanlines
 ;            jsr   _BltRange
 ;            bra   :done
 
-:no_ovrly
-            ldx   #0                  ; Blit the full virtual buffer to the screen
-            ldy   ScreenHeight
-            jsr   _BltRange
-:done
+;:no_ovrly
+;            ldx   #0                  ; Blit the full virtual buffer to the screen
+;            ldy   ScreenHeight
+;            jsr   _BltRange
+;:done
 
 ;            ldx   #0
 ;            ldy   ScreenHeight

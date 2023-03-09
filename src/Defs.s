@@ -102,7 +102,9 @@ RenderFlags            equ   124         ; Flags passed to the Render() function
 BG1Scaling             equ   126
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
-; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
+
+; Free space from 160 to 192
+
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 
 tmp8                   equ   224         ; another 16 bytes of temporary space to be used as scratch 
@@ -282,8 +284,8 @@ VBuffHorzTableSelect EXT
 BG1YCache         EXT
 ScalingTables     EXT
 
-StartXMod164Arr    EXT
-LastPatchOffsetArr EXT
+;StartXMod164Arr    EXT
+;LastPatchOffsetArr EXT
 
 _SortedHead EXT
 _ShadowListCount  EXT
@@ -294,6 +296,7 @@ _DirectListTop    EXT
 _DirectListBottom EXT
 
 StartXMod164Tbl   EXT
+LastOffsetTbl     EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

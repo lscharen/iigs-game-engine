@@ -104,6 +104,8 @@ extern pascal void GTEClearBG1Buffer(Word value) inline(0x29A0, tool_dispatcher)
 /* GTE Misc. Functions */
 extern pascal Word GTEReadControl(void) inline(0x09A0, tool_dispatcher);
 extern pascal Word GTEGetSeconds(void) inline(0x14A0, tool_dispatcher);
+extern pascal Pointer GTEGetAddress(Word tableId) inline(0x2CA0, tool_dispatcher);
+extern pascal void GTESetAddress(Word tableId, Pointer pointer) inline(0x2EA0, tool_dispatcher);
 
 
 /* GTE Timer Functions */

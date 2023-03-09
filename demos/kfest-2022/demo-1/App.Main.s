@@ -35,6 +35,7 @@ MaxGlobalX      equ   16
 MaxGlobalY      equ   18
 MaxBG0X         equ   20
 MaxBG0Y         equ   22
+frameCount      equ   24
 OldOneSecondCounter equ 26
 appTmp0         equ   28
 
@@ -74,6 +75,10 @@ appTmp0         equ   28
                 jsr   BG0SetUp
                 jsr   SetLimits
 
+                pea   #80
+                pei   MaxBG0Y
+                _GTESetBG0Origin
+
                 lda   #193                    ; Tile ID of '0'
                 jsr   InitOverlay             ; Initialize the status bar
                 pha
@@ -81,6 +86,18 @@ appTmp0         equ   28
                 pla
                 sta   OldOneSecondCounter
                 jsr   UdtOverlay
+
+; Set up the per-scanline rendering
+
+                lda   #0
+                jsr   InitOffsets
+                pea   #scanlineHorzOffset
+                pea   #^BG0Offsets
+                pea   #BG0Offsets
+                _GTESetAddress
+
+                pea   $0000                  ; one regular render to fill the screen with the tilemap
+                _GTERender
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
@@ -102,9 +119,11 @@ EvtLoop
                 bcc        *+5
                 brl        :do_render
                 inc        StartX
-                pei        StartX
-                pei        StartY
-                _GTESetBG0Origin
+                lda        StartX
+                jsr        SetOffsets
+;                pei        StartX
+;                pei        StartY
+;                _GTESetBG0Origin
                 brl        :do_render
 :not_d
 
@@ -114,9 +133,11 @@ EvtLoop
                 bne        *+5
                 brl        :do_render
                 dec        StartX
-                pei        StartX
-                pei        StartY
-                _GTESetBG0Origin
+                lda        StartX
+                jsr        SetOffsets
+;                pei        StartX
+;                pei        StartY
+;                _GTESetBG0Origin
                 brl        :do_render
 :not_a
 
@@ -144,7 +165,7 @@ EvtLoop
 :not_w
 
 :do_render
-                pea  $0000
+                pea  #RENDER_PER_SCANLINE
                 _GTERender
 
 ; Update the performance counters
@@ -234,7 +255,85 @@ SetLimits
 
                 rts
 
-frameCount      equ   24
+SetOffsets
+                and   #$00FF
+                brl   _SetOffsets
+
+InitOffsets
+                and   #$00FF
+                sta   appTmp0
+
+                ldx   #0
+                ldy   #80
+                jsr   _InitRange
+                ldx   #80
+                ldy   #80
+                jsr   _InitRange
+                ldx   #160
+                ldy   #48
+                jsr   _InitRange
+
+                lda   appTmp0
+_SetOffsets
+                ldx   #160
+                ldy   #48
+                jsr   _SetRange
+                lsr
+                ldx   #80
+                ldy   #80
+                jsr   _SetRange
+                lsr
+                ldx   #0
+                ldy   #80
+                jsr   _SetRange
+                rts
+
+_SetRange
+                pha
+
+                txa
+                asl
+                tax
+
+:loop2          lda   BG0Offsets,x
+                and   #$FF00
+                ora   1,s
+                sta   BG0Offsets,x
+
+                dey
+                beq   :done
+
+                inx
+                inx
+                cpx   #416
+                bcc   :loop2
+:done
+                pla
+                rts
+
+_InitRange
+                txa
+                asl
+                tax
+
+                tya
+                dec
+                and   #$00FF
+                xba
+
+:loop1          sta   BG0Offsets,x
+                sec
+                sbc   #$0100
+                dey
+                beq   :done
+                inx
+                inx
+                cpx   #416
+                bcc   :loop1
+:done
+                rts
+
+BG0Offsets      ds    416
 
                 PUT        ../StartUp.s
                 PUT        ../../shell/Overlay.s
