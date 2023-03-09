@@ -411,7 +411,8 @@ _AddSprite
             jsr   _PrecalcSpriteSize            ; Cache sprite property values
             jsr   _PrecalcSpriteBounds
 
-            jmp   _InsertSprite                 ; Insert it into the sorted list
+            jsr   _InsertSprite                 ; Insert it into the sorted list
+            jmp   _Validate
 
 ; _SortSprite
 ;
@@ -468,7 +469,7 @@ _SortSprite
 ; Into
 ;  a <=> b and c <=> x <=> y <=> d
 :insert_before
-           jsr  _OrphanNode
+           jsr  _ReleaseNode
 
            tya
            sta  _Sprites+SORTED_NEXT,x        ; Link X to Y
@@ -492,7 +493,7 @@ _SortSprite
 ; Into
 ;  a <=> b and y <=> x -> nil
 :insert_end
-           jsr  _OrphanNode
+           jsr  _ReleaseNode
 
            lda  #$FFFF
            sta  _Sprites+SORTED_NEXT,x
@@ -520,7 +521,7 @@ _SortSprite
 ; Into
 ;  a <=> b and c <=> y <=> x <=> d
 :insert_after
-           jsr  _OrphanNode
+           jsr  _ReleaseNode
 
            tya
            sta  _Sprites+SORTED_PREV,x    ; c <=> y <-- x --- d
@@ -544,7 +545,7 @@ _SortSprite
 ; Into
 ;  a <=> b and head -> x <=> y
 :insert_front
-           jsr  _OrphanNode
+           jsr  _ReleaseNode
 
            stx  _SortedHead
            txa
@@ -557,16 +558,10 @@ _SortSprite
 :done
            rts
 
-; Take the node pointed at X and remove it from the doubly-linked list.  Assumes it is not
-; at the beginning or end of the list
-_OrphanNode
+; Take the node pointed at X and remove it from the doubly-linked list.
+_ReleaseNode
            phy
-           ldy  _Sprites+SORTED_PREV,x        ; Remove X from between A and B
-           lda  _Sprites+SORTED_NEXT,x
-           sta  _Sprites+SORTED_NEXT,y
-           tay
-           lda  _Sprites+SORTED_PREV,x
-           sta  _Sprites+SORTED_PREV,y
+           jsr  _DeleteSprite
            ply
            rts
 
@@ -663,7 +658,42 @@ _DeleteSprite
            sta  _SortedHead
            rts
 
+; Validate the integrity of the linked list
+_Validate
+:prev      equ  tmp0
+:curr      equ  tmp1
 
+           ldy  #$FFFF
+           ldx  _SortedHead
+           bmi  :done
+:loop
+           sty  :prev
+           stx  :curr
+
+           lda  _Sprites+SORTED_PREV,x
+           cmp  :prev
+           beq  *+4
+           brk  $08
+
+           cpy  #$FFFF
+           beq  :skip
+           lda  _Sprites+SORTED_NEXT,y
+           cmp  :curr
+           beq  *+4
+           brk  $06
+
+           lda  _Sprites+SPRITE_CLIP_TOP,x
+           cmp  _Sprites+SPRITE_CLIP_TOP,y
+           bcs  *+4
+           brk  $0A
+:skip
+           txy
+           lda  _Sprites+SORTED_NEXT,x
+           tax
+           bpl  :loop
+
+:done
+           rts
 ; Macro to make the unrolled loop more concise
 ;
 ;   1. Load the tile store address from a fixed offset
@@ -1211,4 +1241,5 @@ _MoveSprite
             sta   _Sprites+SPRITE_STATUS,x
 
             jsr   _PrecalcSpriteBounds          ; Can be specialized to only update (x,y) values
-            jmp   _SortSprite                   ; Update the sprite's sorted position
+            jsr   _SortSprite                   ; Update the sprite's sorted position
+            jmp   _Validate
