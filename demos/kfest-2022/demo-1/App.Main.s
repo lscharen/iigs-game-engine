@@ -38,6 +38,9 @@ MaxBG0Y         equ   22
 frameCount      equ   24
 OldOneSecondCounter equ 26
 appTmp0         equ   28
+seg1x           equ   30
+seg2x           equ   32
+seg3x           equ   34
 
                 phk
                 plb
@@ -50,12 +53,6 @@ appTmp0         equ   28
 
                 lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode as a User Tool
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
-
-; Initialize local variables
-
-                stz   StartX
-                stz   StartY
-                stz   frameCount
 
 ; Load a tileset
 
@@ -72,11 +69,25 @@ appTmp0         equ   28
 
 ; Set up our level data
 
-                jsr   BG0SetUp
+;                jsr   BG0SetUp
+                pea   416
+                pea   30
+                pea   ^App_TileMapBG0
+                pea   App_TileMapBG0+{10*416}
+                _GTESetBG0TileMapInfo
+
                 jsr   SetLimits
 
-                pea   #80
-                pei   MaxBG0Y
+; Initialize local variables
+
+                lda   #56
+                sta   StartX
+                lda   #0
+                sta   StartY
+                stz   frameCount
+
+                pei   StartX
+                pei   StartY
                 _GTESetBG0Origin
 
                 lda   #193                    ; Tile ID of '0'
@@ -89,8 +100,9 @@ appTmp0         equ   28
 
 ; Set up the per-scanline rendering
 
-                lda   #0
+                lda   StartX
                 jsr   InitOffsets
+
                 pea   #scanlineHorzOffset
                 pea   #^BG0Offsets
                 pea   #BG0Offsets
@@ -114,13 +126,14 @@ EvtLoop
 :do_more
                 cmp        #'d'
                 bne        :not_d
-                lda        StartX
-                cmp        MaxBG0X
-                bcc        *+5
-                brl        :do_render
-                inc        StartX
-                lda        StartX
+;                lda        StartX
+;                cmp        MaxBG0X
+;                bcc        *+5
+;                brl        :do_render
+
+                jsr        DecRanges
                 jsr        SetOffsets
+
 ;                pei        StartX
 ;                pei        StartY
 ;                _GTESetBG0Origin
@@ -129,12 +142,13 @@ EvtLoop
 
                 cmp        #'a'
                 bne        :not_a
-                lda        StartX
-                bne        *+5
-                brl        :do_render
-                dec        StartX
-                lda        StartX
+;                lda        StartX
+;                bne        *+5
+;                brl        :do_render
+
+                jsr        IncRanges
                 jsr        SetOffsets
+
 ;                pei        StartX
 ;                pei        StartY
 ;                _GTESetBG0Origin
@@ -255,38 +269,99 @@ SetLimits
 
                 rts
 
-SetOffsets
-                and   #$00FF
-                brl   _SetOffsets
+DecRanges
+                lda   seg1x
+                bne   *+5
+                lda   #164
+                dec
+                sta   seg1x
+                bit   #1
+                bne   :out
+                lda   seg2x
+                bne   *+5
+                lda   #164
+                dec
+                sta   seg2x
+                bit   #1
+                bne   :out
+                lda   seg3x
+                bne   *+5
+                lda   #164
+                dec
+                sta   seg3x
+:out
+                rts
+
+IncRanges
+                lda   seg1x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg1x
+                bit   #1
+                bne   :out
+                lda   seg2x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg2x
+                bit   #1
+                bne   :out
+                lda   seg3x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg3x
+:out
+                rts
+
 
 InitOffsets
-                and   #$00FF
-                sta   appTmp0
+                pha
 
                 ldx   #0
+                ldy   #40
+                jsr   _InitRange
+                ldx   #40
                 ldy   #80
                 jsr   _InitRange
-                ldx   #80
-                ldy   #80
-                jsr   _InitRange
-                ldx   #160
-                ldy   #48
+                ldx   #120
+                ldy   #88
                 jsr   _InitRange
 
-                lda   appTmp0
-_SetOffsets
-                ldx   #160
-                ldy   #48
-                jsr   _SetRange
+                pla
+                sta   seg1x
+                jsr   SetOffset1
                 lsr
-                ldx   #80
+                sta   seg2x
+                jsr   SetOffset2
+                lsr
+                sta   seg3x
+                jmp   SetOffset3
+
+SetOffsets
+                lda   seg1x
+                jsr   SetOffset1
+                lda   seg2x
+                jsr   SetOffset2
+                lda   seg3x
+                jmp   SetOffset3
+
+SetOffset1
+                ldx   #120
+                ldy   #88
+                jmp   _SetRange
+SetOffset2
+                ldx   #40
                 ldy   #80
-                jsr   _SetRange
-                lsr
+                jmp   _SetRange
+SetOffset3
                 ldx   #0
-                ldy   #80
-                jsr   _SetRange
-                rts
+                ldy   #40
+                jmp   _SetRange
 
 _SetRange
                 pha
