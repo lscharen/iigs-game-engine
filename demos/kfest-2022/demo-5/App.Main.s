@@ -36,6 +36,7 @@ MaxGlobalX      equ   16
 MaxGlobalY      equ   18
 MaxBG0X         equ   20
 MaxBG0Y         equ   22
+frameCount  equ   24
 OldOneSecondCounter equ 26
 appTmp0         equ   28
 PlayerX         equ   30
@@ -277,8 +278,8 @@ do_render
                 pha
                 _GTEMoveSprite                    ; Move the sprite to this local position
 
-;                pea  #RENDER_WITH_SHADOWING
-                pea  $0000
+                pea  #RENDER_WITH_SHADOWING
+;                pea  $0000
                 _GTERender
 
 ; Update the performance counters
@@ -606,8 +607,6 @@ _GetVBLTicks
             pla
             plx
             rts
-
-frameCount  equ   24
 
 MusicFile   str        '1/overworld.ntp'
 
