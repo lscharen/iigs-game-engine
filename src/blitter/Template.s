@@ -94,7 +94,7 @@ entry_jmp          jmp   $0100
                                                     ; update the low-byte of the address, the means it takes only
                                                     ; an amortized 4-cycles per line to set the entry point break
 
-right_odd          bit   #$000B                     ; Check the bottom nibble to quickly identify a PEA instruction
+                   bit   #$000B                     ; Check the bottom nibble to quickly identify a PEA instruction
                    bne   r_is_not_pea               ; This costs 5 cycles in the fast-path
 
                    xba                              ; fast code for PEA
