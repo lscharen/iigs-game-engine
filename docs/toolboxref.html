@@ -92,7 +92,7 @@ style: toolref
           <td>Creates a sprite stamp from the tile set</td>
         </tr>
         <tr>
-          <td><a href="#GTECompileSpriteStamp">GTECompilepriteStamp</a></td>
+          <td><a href="#GTECompileSpriteStamp">GTECompileSpriteStamp</a></td>
           <td>Created a compiled sprite from a sprite stamp</td>
         </tr>
         <tr>
@@ -1211,9 +1211,24 @@ style: toolref
           <td>Offsets each column of the secondary background's vertical position. Unimplemented.</td>
         </tr>
         <tr>
-          <td>RENDER_BG1_ROTATIONT</td>
-          <td>$0004</td>
+          <td>RENDER_BG1_ROTATION</td>
+          <td>$0008</td>
           <td>Use the internal rotation tables to render the secondary background</td>
+        </tr>
+        <tr>
+          <td>RENDER_PER_SCANLINE</td>
+          <td>$0010</td>
+          <td>Set individual scanline properties for the primary and secondary backgrounds from a table.</td>
+        </tr>
+        <tr>
+          <td>RENDER_WITH_SHADOWING</td>
+          <td>$0020</td>
+          <td>Uses a rendering mode that does not draw sprites into the tiles but uses shadowing to draw sprites on top of the rendered background and then expose the final composited image.  This mode is required to use compiled sprites.</td>
+        </tr>
+        <tr>
+          <td>RENDER_SPRITES_SORTED</td>
+          <td>$0040</td>
+          <td>Draws the sprite in y-sorted order instead of sprite slot order.</td>
         </tr>
       </tbody>
     </table>
