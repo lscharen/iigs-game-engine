@@ -161,6 +161,7 @@ RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
 RENDER_PER_SCANLINE    equ   $0010
 RENDER_WITH_SHADOWING  equ   $0020
+RENDER_SPRITES_SORTED  equ   $0040
 
 ; Overlay flags
 OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first

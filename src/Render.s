@@ -156,7 +156,6 @@ _DoOverlay
 ; Use the per-scanline tables to set the screen.  This is really meant to be used without the built-in tilemap
 ; support and is more of a low-level way to control the background rendering
 _RenderScanlines
-
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
             jsr   _ApplyBG1YPos       ; Set the y-register values of the blitter
 
@@ -343,9 +342,6 @@ _RenderWithShadowing
 ; to create priority lists of scanline ranges.
 
             jsr   _BuildShadowList    ; Create the rages based on the sorted sprite y-values
-;            jsr   _MergeOverlay       ; Add the overlay range into the shadow list (treat it as a sprite)
-
-;            jsr   _ComplementList     ; Create the complement to identify non-sprite / non-overlay scanlines
 
             jsr   _ShadowOff          ; Turn off shadowing and draw all the scanlines with sprites on them
             jsr   _DrawShadowList
@@ -604,29 +600,54 @@ _DrawShadowList
 ; Run through the list of sprites that are not IS_OFFSCREEN and not OVERLAYS and draw them directly to the graphics screen.  We can use
 ; compiled sprites here, with limitations.
 _DrawDirectSprites
+            lda    RenderFlags
+            bit    #RENDER_SPRITES_SORTED
+            bne    :sorted
+
+; Shift through the sprites
+
+            lda    SpriteMap
+            beq    :empty
+            sta    tmp15
+            ldx    #0
+
+:iloop
+            lsr    tmp15
+            bcc    :next
+            jsr    :render
+
+:next       inx
+            inx
+            lda    tmp15
+            bne    :iloop
+            rts
+
+:sorted
             ldx    _SortedHead
             bmi    :empty
 
 :loop
-            lda    _Sprites+SPRITE_ID,x
-            bit    #SPRITE_OVERLAY
-            bne    :next
-            lda    _Sprites+SPRITE_STATUS,x
-            bit    #SPRITE_STATUS_HIDDEN
-            bne    :next
-
-            phx
-            jsr    _DrawStampToScreen
-            plx
-            bra    :next
-
-:next
+            jsr    :render
             lda    _Sprites+SORTED_NEXT,x        ; If there another sprite in the list?
             tax
             bpl    :loop 
-
 :empty
             rts
+
+:render
+            lda    _Sprites+SPRITE_ID,x
+            bit    #SPRITE_OVERLAY
+            beq    *+3
+            rts
+            lda    _Sprites+SPRITE_STATUS,x
+            bit    #SPRITE_STATUS_HIDDEN
+            beq    *+3
+            rts
+            phx
+            jsr    _DrawStampToScreen
+            plx
+            rts
+
 
 ; Run through the sorted list and perform a final render the jumps between calling _PEISlam for shadowed lines,
 ; _BltRange for clean backgrounds and Overlays as needed.
@@ -653,7 +674,7 @@ _DrawFinalPass
             bmi    :empty
 
             lda    _Sprites+SPRITE_CLIP_TOP,x      ; Load the first object's top edge
-            sta    :curr_top
+;            sta    :curr_top
             beq    :loop                          ; If it's at the top edge of the screen, proceed. Othrewise _BltRange the top range
 
             ldx    #0
@@ -669,7 +690,7 @@ _DrawFinalPass
             lda    _Sprites+SPRITE_CLIP_TOP,x
             sta    :curr_top
             lda    _Sprites+SPRITE_CLIP_BOTTOM,x   ; Optimistically set the end of the segment to the bottom of this object
-            inc                                   ; Clip values are on the scanline, so add one to make it a proper interval
+            inc                                    ; Clip values are on the scanline, so add one to make it a proper interval
 
 :update
             sta    :curr_bottom
@@ -762,6 +783,8 @@ _DrawFinalPass
             lda   ScreenAddr,x
             clc
             adc   ScreenX0
+            ldx   :curr_top
+            ldy   :curr_bottom
 :disp       jsl   $000000
             rts
 

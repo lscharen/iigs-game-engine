@@ -26,16 +26,35 @@ DTile           equ   14
 Tmp2            equ   16
 ScreenWidth     equ   18
 ScreenHeight    equ   20
+SpriteFlags     equ   22
+frameCount      equ   24
+OldOneSecondCounter equ 26
+SpriteAddr      equ   28
+RenderMode      equ   30
+
+; Control modes
+DefaultMode     equ   RENDER_WITH_SHADOWING
+SlowSprites     equ   0
 
 ; Typical init
                 phk
                 plb
 
                 sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
+                tdc
+                sta   MyDirectPage            ; Keep a copy for the overlay callback
+
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER
+                lda   #ENGINE_MODE_USER_TOOL   ; +ENGINE_MODE_TWO_LAYER
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
+
+; Init local variables
+
+                stz   frameCount
+
+                lda   #DefaultMode
+                sta   RenderMode
 
 ; Initialize the graphics screen to a 256x160 playfield
 
@@ -46,7 +65,7 @@ ScreenHeight    equ   20
 ; Load a tileset
 
                 pea   0
-                pea   120
+                pea   360
                 pea   #^TSZelda
                 pea   #TSZelda
                 _GTELoadTileSet
@@ -59,12 +78,37 @@ ScreenHeight    equ   20
 
                 jsr   SetLimits
 
+                lda   #193                    ; Tile ID of '0'
+                jsr   InitOverlay             ; Initialize the status bar
+                pha
+                _GTEGetSeconds
+                pla
+                sta   OldOneSecondCounter
+                jsr   UdtOverlay
+
 ; Create stamps for the sprites we are going to use
 HERO_SPRITE     equ   SPRITE_16X16+1
 
                 pea   HERO_SPRITE                   ; sprint id
                 pea   VBUFF_SPRITE_START            ; vbuff address
                 _GTECreateSpriteStamp
+
+                DO    SlowSprites
+                lda   #SPRITE_16X16
+                sta   SpriteFlags
+                lda   #VBUFF_SPRITE_START
+                sta   SpriteAddr
+                ELSE
+                lda   #SPRITE_16X16+SPRITE_COMPILED
+                sta   SpriteFlags
+
+                pha                                ; Space for result
+                pea   SPRITE_16X16
+                pea   VBUFF_SPRITE_START
+                _GTECompileSpriteStamp
+                pla
+                sta   SpriteAddr
+                FIN
 
 ; Create sprites
                 stz   Tmp0
@@ -73,8 +117,8 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 ldx   Tmp0
 :sloop
                 pei   Tmp1                          ; Put the sprite in this slot
-                pea   SPRITE_16X16                  ; with these flags (h/v flip)
-                pea   VBUFF_SPRITE_START
+                pei   SpriteFlags                   ; with these flags (h/v flip)
+                pei   SpriteAddr
                 lda   PlayerX,x
                 pha
                 lda   PlayerY,x
@@ -92,10 +136,6 @@ HERO_SPRITE     equ   SPRITE_16X16+1
 ; Manually fill in the 41x26 tiles of the TileStore with a test pattern of trees
 
                 jsr   _fillTileStore
-
-; Initialize the frame counter
-
-                stz   FrameCount
 
 ; Set the screen coordinates
 
@@ -118,49 +158,60 @@ HERO_SPRITE     equ   SPRITE_16X16+1
                 brl   :do_render
 :do_more
                 and   #$007F
-                cmp   #'a'
+                cmp   #'a'                         ; Put in single-step advance mode
                 bne   :skip_a
+:a_loop
+                jsr   :next_frame
+:a_spin
+                pha                           ; space for result, with pattern
+                _GTEReadControl
+                pla
+                bit   #PAD_KEY_DOWN
+                bne   :a_spin
+                and   #$007F
+                cmp   #'r'                     ; resume?
+                beq   :do_render
+                cmp   #'s'
+                beq   :toggle_sort
+                cmp   #'a'
+                beq   :a_loop
+                bra   :a_spin
+:toggle_sort    lda   RenderMode
+                eor   #RENDER_SPRITES_SORTED
+                sta   RenderMode
+                pei   RenderMode
+                _GTERender
+                bra   :a_spin
+:skip_a
+ 
+:do_render      jsr   :next_frame
+                brl   :evt_loop
+
+:next_frame
+                jsr  _moveSprites
+
                 inc   ScreenX
+                inc   ScreenY
                 pei   ScreenX
                 pei   ScreenY
                 _GTESetBG0Origin
-                brl   :do_render
-:skip_a
-                cmp   #'z'
-                bne   :skip_z
-                inc   PlayerX
-                pea   0
-                lda   PlayerX
-                pha
-                lda   PlayerY
-                pha
-                _GTEMoveSprite 
-:skip_z
- 
-:do_render
-                jsr  _moveSprites
 
-                pea  #RENDER_WITH_SHADOWING
+                pei   RenderMode
                 _GTERender
 
 ; Update the performance counters
 
-                inc   FrameCount
+                inc   frameCount
                 pha
                 _GTEGetSeconds
                 pla
-                cmp   LastSecond
-                beq   :no_fps
-                sta   LastSecond
-
-;                lda   FrameCount
-;                ldx   #0
-;                ldy   #$FFFF
-;                jsr   DrawWord
-
-                stz   FrameCount
-:no_fps
-                brl   :evt_loop
+                cmp   OldOneSecondCounter
+                beq   :noudt
+                sta   OldOneSecondCounter
+                jsr   UdtOverlay
+                stz   frameCount
+:noudt
+                rts
 
 ; Shut down everything
 Exit
@@ -170,11 +221,17 @@ qtRec           adrl       $0000
                 da         $00
 
 ; Array of sprite positions and velocities
+         DO  1
 PlayerX  dw  8,14,29,34,45,67,81,83,92,101,39,22,7,74,111,9
 PlayerY  dw  72,24,13,56,35,72,23,8,93,123,134,87,143,14,46,65
 PlayerU  dw  1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4
 PlayerV  dw  1,1,1,1,2,2,2,4,3,3,3,3,4,4,4,4
-
+         ELSE
+PlayerX  dw  2,12,22,32,42,52,62,72,2,12,22,32,42,52,62,72,
+PlayerY  dw  24,24,24,24,24,24,24,24,44,44,44,44,44,44,44,44
+PlayerU  dw  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+PlayerV  dw  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+         FIN
 _moveSprites
                 stz   Tmp0
 :loop
@@ -280,15 +337,15 @@ _fillTileStore
                 jsr    _drawTree
 
                 lda    Tmp1
-                inc
-                inc
+                clc
+                adc    #2
                 sta    Tmp1
                 cmp    #40
                 bcc    :iloop
 
                 lda    Tmp0
-                inc
-                inc
+                clc
+                adc    #2
                 sta    Tmp0
                 cmp    #25
                 bcc    :oloop
@@ -427,11 +484,12 @@ _drawTreeHV
                 _GTESetTile
                 rts
 
+MyDirectPage    ds    2
 MyUserId        ds    2
-FrameCount      ds    2
-LastSecond      dw    0
-palette         dw $0000,$08C1,$0C41,$0F93,$0777,$0FDA,$00A0,$0000,$0D20,$0FFF,$023E,$0,$0,$0,$0,$0
+palette         dw    $0000,$08C1,$0C41,$0F93,$0777,$0FDA,$00A0,$0000,$0D20,$0FFF,$0FD7,$0F59,$0000,$01CE,$0EDA,$0EEE
 
                 PUT        ../kfest-2022/StartUp.s
-                PUT        App.Msg.s
-                PUT        font.s
+                PUT        ../shell/Overlay.s
+
+;                PUT        App.Msg.s
+;                PUT        font.s
