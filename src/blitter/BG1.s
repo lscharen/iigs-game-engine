@@ -12,6 +12,7 @@ _InitBG1
 _CopyBinToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
+:src_flags                equ   tmp9
 
                           clc
                           adc   #8                        ; Advance over the header
@@ -21,10 +22,46 @@ _CopyBinToBG1
                           sta   :src_width
                           lda   #208
                           sta   :src_height
+                          stz   :src_flags
 
                           pla
                           jmp   _CopyToBG1
 
+; Reset the BG1 Y-table depending on the rendering mode
+;
+; A = mode
+;     0 = default   (base = $1800, stride = 256)
+;     1 = scanline  (base = $A0, stride = 324)
+_ResetBG1YTable
+:base    equ  tmp0
+:stride  equ  tmp1
+                          cmp   #1                 ; scanline mode?
+                          bne   :default
+                          lda   #$A0
+                          sta   :base
+                          lda   #324
+                          sta   :stride
+                          bra   :begin
+:default
+                          lda   #$1800
+                          sta   :base
+                          lda   #256
+                          sta   :stride
+:begin
+                          ldx   #0
+                          lda   :base
+:loop
+                          sta   BG1YTable,x
+                          sta   BG1YTable+{208*2},x
+
+                          clc
+                          adc   :stride
+
+                          inx
+                          inx
+                          cpx   #{208*2}
+                          bcc   :loop
+                          rts
 
 ; Copy a IIgs $C1 picture into BG1.  Assumes the file is the correct size (320 x 200)
 ;
@@ -35,6 +72,7 @@ _CopyPicToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
 :src_stride               equ   tmp8
+:src_flags                equ   tmp9
 
                           pha
                           lda    #160
@@ -43,6 +81,7 @@ _CopyPicToBG1
                           lda    #200
                           sta    :src_height
                           pla
+                          stz    :src_flags
                           jmp    _CopyToBG1
 
 ; Generic routine to copy image data into BG1
@@ -54,39 +93,52 @@ _CopyToBG1
 :src_width                equ   tmp6
 :src_height               equ   tmp7
 :src_stride               equ   tmp8
+:src_flags                equ   tmp9
+:dstptr2                  equ   tmp10
 
                           sta   :srcptr
                           stx   :srcptr+2
                           sty   :dstptr+2                 ; Everything goes into this bank
+                          sty   :dstptr2+2
+
+                          lda   #$00A0
+                          sta   :dstptr
+                          clc
+                          adc   #164                      ; leave a 4-byte gap in the middle
+                          sta   :dstptr2
+
+; "Normal" BG1 mode as a stride of 164 bytes and mirrors the BG0 size (328 x 208)
+; In "Scanline" mode, the BG1 is treated as a 320x200 bitfield with each horizontal line doubled
+
+                          lda   :src_width
+                          min   #160
+                          sta   :src_width
+
+                          lda   :src_height
+                          min   #200
+                          sta   :src_height
 
                           stz   :line_cnt
 :rloop
-                          lda   :line_cnt                 ; get the pointer to the code field line
-                          asl
-                          tax
-
-                          lda   BG1YTable,x
-                          sta   :dstptr
-
                           ldy   #0                        ; move forward in the image data and image data
 :cloop
                           lda   [:srcptr],y
                           sta   [:dstptr],y
+                          sta   [:dstptr2],y
 
+:skip
                           iny
                           iny
 
                           cpy   :src_width
                           bcc   :cloop
 
-                          ldy   #164
-                          lda   [:srcptr]                 ; Duplicate the last couple of words in the extra space at the end of the line
-                          sta   [:dstptr],y
-
-                          ldy   #2
-                          lda   [:srcptr],y
-                          ldy   #166
-                          sta   [:dstptr],y
+                          lda   :dstptr
+                          clc
+                          adc   #324
+                          sta   :dstptr
+                          adc   #164
+                          sta   :dstptr2
 
                           lda   :srcptr
                           clc
@@ -138,6 +190,34 @@ _ApplyBG1XPosPre
                           lda   BG1StartX                 ; This is the starting byte offset (0 - 163)
                           jsr   Mod164
                           sta   BG1StartXMod164
+                          rts
+
+; Save as _ApplyBG1XPos, but we pretend that StartXMod164 is always zero and deal with the per-line offset adjustment in
+; _ApplyScanlineBG1YPos.  The tweak here is that the buffer is only 160 bytes wide in scanine mode, instead of 164 bytes wide
+_ApplyScanlineBG1XPos
+                          lda   BG1StartXMod164           ; How far into the BG1 buffer is the left edge?
+                          tay
+
+                          phd                             ; save the direct page because we are going to switch to the
+                          lda   BlitterDP                 ; blitter direct page space and fill in the addresses
+                          tcd
+
+                          ldx   #0
+                          tya
+:loop
+                          sta   00,x                      ; store the value
+                          inc
+                          inc
+                          cmp   #164
+                          bcc   *+5
+                          sbc   #164
+
+                          inx
+                          inx
+                          cpx   #164
+                          bcc   :loop
+
+                          pld
                           rts
 
 _ApplyBG1XPos
@@ -195,6 +275,155 @@ _ClearBG1Buffer
 
                           plb
                           rts
+
+; Variation to take care of horizontal adjustments within the BG1 buffer to compensate for the
+; per-scanline BG0 displacement.  It is up to the caller to manage the memeory layout to make
+; this visually work.
+;
+; In the scanline mode we have to be able to adjust the base address of each BG1 line up to
+; a full screen, so scanline mode treats bank as a 640x200 pixel bitmap (64000 byte).
+;
+; This is just a limitation of scanline displacement mode that there is no extra vertical space.
+_ApplyScanlineBG1YPos
+:stk_save           equ   tmp0
+:virt_line_x2       equ   tmp1
+:lines_left_x2      equ   tmp2
+:draw_count_x2      equ   tmp3
+:ytbl_idx_x2        equ   tmp4
+:shift_value        equ   tmp5
+
+; Avoid local var collision
+:ytbl_idx_pos_x2    equ   tmp10
+:virt_line_pos_x2   equ   tmp11
+:total_left_x2      equ   tmp12
+:current_count_x2   equ   tmp13
+:ptr                equ   tmp14
+
+                    lda   StartXMod164Tbl
+                    sta   :ptr
+                    lda   StartXMod164Tbl+2
+                    sta   :ptr+2
+                    ora   :ptr
+
+                    lda   BG1StartY
+                    jsr   Mod208
+                    sta   BG1StartYMod208
+                    asl
+                    sta   :ytbl_idx_pos_x2            ; Start copying from the first entry in the table
+
+                    lda   StartYMod208               ; This is the base line of the virtual screen
+                    asl
+                    sta   :virt_line_pos_x2
+                    tay
+
+                    lda   ScreenHeight
+                    asl
+                    sta   :total_left_x2
+
+:loop0
+                    lda   [:ptr],y
+                    tax
+
+                    and   #$FF00                    ; Determine how many sequential lines have this mod value
+                    xba
+                    inc
+                    asl
+                    min   :total_left_x2            ; Don't draw more than the number of lines that are left to process
+                    sta   :current_count_x2         ; Save a copy for later
+
+                    sta   :lines_left_x2            ; Set the parameter
+                    lda   :ytbl_idx_pos_x2          ; Set the parameter
+                    sta   :ytbl_idx_x2
+                    sty   :virt_line_x2             ; Set the parameter
+                    txa                             ; Put the X mod 164 value in the offset value
+                    and   #$00FF
+                    sta   :shift_value
+
+                    jsr   :_ApplyConstBG1YPos       ; Shift this range by a constant amount
+
+                    clc
+                    lda   :virt_line_pos_x2   
+                    adc   :current_count_x2
+                    cmp   #208*2                    ; Do the modulo check in this loop
+                    bcc   *+5
+                    sbc   #208*2
+                    sta   :virt_line_pos_x2
+                    tay
+
+                    clc
+                    lda   :ytbl_idx_pos_x2
+                    adc   :current_count_x2
+                    sta   :ytbl_idx_pos_x2
+
+                    lda   :total_left_x2
+                    sec
+                    sbc   :current_count_x2
+                    sta   :total_left_x2
+                    bne   :loop0
+
+                    rts
+
+:_ApplyConstBG1YPos
+                    lda   #164
+                    sec
+                    sbc   :shift_value
+;                    bpl   *+6
+;                    clc
+;                    adc   #160
+;                    clc
+;                    adc   :shift_value
+                    sta   :shift_value
+;                    cmp   #160
+;                    beq   *+4
+;                    brk   $55
+
+                    phb                              ; Save the existing bank
+                    tsc
+                    sta   :stk_save
+
+:loop
+                    ldx   :virt_line_x2
+
+                    ldal  BTableHigh,x               ; Get the bank
+                    pha
+                    plb
+
+                    ldal  BTableLow,x                ; Get the address of the first code field line
+                    tay
+
+                    txa                              ; Calculate number of lines to draw on this iteration
+                    and   #$001E
+                    eor   #$FFFF
+                    sec
+                    adc   #32
+                    min   :lines_left_x2
+                    sta   :draw_count_x2
+                    tax
+
+                    lda   :ytbl_idx_x2                 ; Read from this location in the BG1YTable
+                    clc
+                    CopyBG1YTableToBG1Addr3 :shift_value
+;                    jsr   CopyBG1YTableToBG1Addr
+
+                    lda   :virt_line_x2              ; advance to the virtual line after
+                    adc   :draw_count_x2             ; filled in
+                    sta   :virt_line_x2
+
+                    lda   :ytbl_idx_x2
+                    adc   :draw_count_x2
+                    sta   :ytbl_idx_x2
+
+                    lda   :lines_left_x2             ; subtract the number of lines we just completed
+                    sec
+                    sbc   :draw_count_x2
+                    sta   :lines_left_x2
+
+                    jne   :loop
+
+                    lda   :stk_save
+                    tcs
+                    plb
+                    rts
 
 ; Everytime either BG1 or BG0 Y-position changes, we have to update the Y-register
 ; value in all of the code fields (within the visible screen)
@@ -353,8 +582,103 @@ CopyBG1YTableToBG1Addr
                           sta:  BG1_ADDR+$0000,y
 :none                     rts
 
+; Unrolled copy routine to move BG1YTable entries into BG1_ADDR position
+; with a constant shift applied
+;
+; A = index into the BG1YTable array (x2)
+; Y = starting line * $1000
+; X = number of lines (x2)
+; ]1 = offset
+CopyBG1YTableToBG1Addr3   mac
+                          jmp   (tbl,x)
+tbl                       da    none
+                          da    do01,do02,do03,do04
+                          da    do05,do06,do07,do08
+                          da    do09,do10,do11,do12
+                          da    do13,do14,do15,do16
+do15                      tax
+                          jmp   x15
+do14                      tax
+                          jmp   x14
+do13                      tax
+                          jmp   x13
+do12                      tax
+                          jmp   x12
+do11                      tax
+                          jmp   x11
+do10                      tax
+                          jmp   x10
+do09                      tax
+                          jmp   x09
+do08                      tax
+                          jmp   x08
+do07                      tax
+                          jmp   x07
+do06                      tax
+                          jmp   x06
+do05                      tax
+                          jmp   x05
+do04                      tax
+                          jmp   x04
+do03                      tax
+                          jmp   x03
+do02                      tax
+                          jmp   x02
+do01                      tax
+                          jmp   x01
+do16                      tax
+                          ldal  BG1YTable+30,x
+                          adc   ]1
+                          sta   BG1_ADDR+$F000,y
+x15                       ldal  BG1YTable+28,x
+                          adc   ]1
+                          sta   BG1_ADDR+$E000,y
+x14                       ldal  BG1YTable+26,x
+                          adc   ]1
+                          sta   BG1_ADDR+$D000,y
+x13                       ldal  BG1YTable+24,x
+                          adc   ]1
+                          sta   BG1_ADDR+$C000,y
+x12                       ldal  BG1YTable+22,x
+                          adc   ]1
+                          sta   BG1_ADDR+$B000,y
+x11                       ldal  BG1YTable+20,x
+                          adc   ]1
+                          sta   BG1_ADDR+$A000,y
+x10                       ldal  BG1YTable+18,x
+                          adc   ]1
+                          sta   BG1_ADDR+$9000,y
+x09                       ldal  BG1YTable+16,x
+                          adc   ]1
+                          sta   BG1_ADDR+$8000,y
+x08                       ldal  BG1YTable+14,x
+                          adc   ]1
+                          sta   BG1_ADDR+$7000,y
+x07                       ldal  BG1YTable+12,x
+                          adc   ]1
+                          sta   BG1_ADDR+$6000,y
+x06                       ldal  BG1YTable+10,x
+                          adc   ]1
+                          sta   BG1_ADDR+$5000,y
+x05                       ldal  BG1YTable+08,x
+                          adc   ]1
+                          sta:  BG1_ADDR+$4000,y
+x04                       ldal  BG1YTable+06,x
+                          adc   ]1
+                          sta   BG1_ADDR+$3000,y
+x03                       ldal  BG1YTable+04,x
+                          adc   ]1
+                          sta   BG1_ADDR+$2000,y
+x02                       ldal  BG1YTable+02,x
+                          adc   ]1
+                          sta   BG1_ADDR+$1000,y
+x01                       ldal  BG1YTable+00,x
+                          adc   ]1
+                          sta:  BG1_ADDR+$0000,y
+none                      <<<
+
 ; Unrolled copy routine to move BG1YTable entries into BG1_ADDR position with an additional
-; shift.  This has to be split into two 
+; shifton every line.  This has to be split into two 
 ;
 ; A = index into the BG1YTable array (x2)
 ; Y = starting line * $1000

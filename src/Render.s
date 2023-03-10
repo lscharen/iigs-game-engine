@@ -156,8 +156,16 @@ _DoOverlay
 ; Use the per-scanline tables to set the screen.  This is really meant to be used without the built-in tilemap
 ; support and is more of a low-level way to control the background rendering
 _RenderScanlines
+            lda   BG1YTable                   ; Make sure we're in the right mode
+            cmp   #$00A0
+            beq   :ytbl_ok
+            lda   #1
+            jsr   _ResetBG1YTable
+            lda   BG1YTable
+:ytbl_ok
+
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
-            jsr   _ApplyBG1YPos       ; Set the y-register values of the blitter
+            jsr   _ApplyScanlineBG1YPos       ; Set the y-register values of the blitter
 
 ; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
 ; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
@@ -170,6 +178,7 @@ _RenderScanlines
 ;            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
              jsr   _ApplyScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
+             jsr   _ApplyScanlineBG1XPos
 
             jsr   _BuildShadowList    ; Create the rages based on the sorted sprite y-values
 

@@ -41,6 +41,7 @@ appTmp0         equ   28
 seg1x           equ   30
 seg2x           equ   32
 seg3x           equ   34
+seg4x           equ   36    ; BG1 x-pos
 
                 phk
                 plb
@@ -51,8 +52,14 @@ seg3x           equ   34
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode as a User Tool
+                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER  ; Engine in Fast Mode as a User Tool
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
+
+; Initialize the graphics screen playfield
+
+                pea   #160
+                pea   #200
+                _GTESetScreenMode
 
 ; Load a tileset
 
@@ -67,6 +74,9 @@ seg3x           equ   34
                 pea   #TileSetPalette
                 _GTESetPalette
 
+                pea   $0
+                _GTEClearBG1Buffer
+
 ; Set up our level data
 
 ;                jsr   BG0SetUp
@@ -76,7 +86,13 @@ seg3x           equ   34
                 pea   App_TileMapBG0+{10*416}
                 _GTESetBG0TileMapInfo
 
+                stz   seg1x
+                stz   seg2x
+                stz   seg3x
+                stz   seg4x
+
                 jsr   SetLimits
+                jsr   DoLoadBG1
 
 ; Initialize local variables
 
@@ -315,6 +331,14 @@ IncRanges
                 bcc   *+5
                 lda   #0
                 sta   seg3x
+                bit   #1
+                bne   :out
+                lda   seg4x
+                inc
+                cmp   #160
+                bcc   *+5
+                lda   #0
+                sta   seg4x
 :out
                 rts
 
@@ -348,7 +372,13 @@ SetOffsets
                 lda   seg2x
                 jsr   SetOffset2
                 lda   seg3x
-                jmp   SetOffset3
+                jsr   SetOffset3
+                
+                pei   seg4x
+                pea   0
+                _GTESetBG1Origin
+
+                rts
 
 SetOffset1
                 ldx   #120
@@ -408,6 +438,24 @@ _InitRange
 :done
                 rts
 
+; Load a binary file in the BG1 buffer
+DoLoadBG1
+                jsr   AllocBank               ; Alloc 64KB for Load/Unpack
+                sta   BankLoad                ; Store "Bank Pointer"
+                ldx   #BG1DataFile            ; Load the background file into the bank
+                jsr   LoadFile
+
+                pea   #164                    ; Fill everything
+                pea   #200
+                pea   #256
+                lda   BankLoad
+                pha
+                pea   $0000
+                pea   $0000                   ; default flags
+                _GTECopyPicToBG1
+                rts
+
+BG1DataFile     strl  '1/bg1.bin'
 BG0Offsets      ds    416
 
                 PUT        ../StartUp.s

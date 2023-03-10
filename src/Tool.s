@@ -500,6 +500,7 @@ _TSCopyPicToBG1
 :src_width      equ    tmp6
 :src_height     equ    tmp7
 :src_stride     equ    tmp8
+:src_flags      equ    tmp9
 
                 lda    :width,s
                 sta    :src_width
@@ -509,7 +510,8 @@ _TSCopyPicToBG1
                 sta    :src_stride
 
                 ldy    BG1DataBank              ; Pick the target data bank
-;                lda    :flags,s
+                lda    :flags,s
+                sta    :src_flags
 ;                bit    #$0001
 ;                beq    *+4
 ;                ldy    BG1AltBank
