@@ -307,6 +307,7 @@ _ApplyScanlineBG1YPos
 :shift_value        equ   tmp5
 
 ; Avoid local var collision
+:ptr2               equ   tmp8
 :ytbl_idx_pos_x2    equ   tmp10
 :virt_line_pos_x2   equ   tmp11
 :total_left_x2      equ   tmp12
@@ -317,7 +318,12 @@ _ApplyScanlineBG1YPos
                     sta   :ptr
                     lda   StartXMod164Tbl+2
                     sta   :ptr+2
-                    ora   :ptr
+
+                    lda   BG1StartXMod164Tbl
+                    sta   :ptr2
+                    lda   BG1StartXMod164Tbl+2
+                    sta   :ptr2+2
+                    ora   :ptr2
 
                     lda   BG1StartY
                     jsr   Mod208
@@ -379,30 +385,19 @@ _ApplyScanlineBG1YPos
 
 :_ApplyConstBG1YPos
                      
-                     lda   #164
-                     sec
-                     sbc   :shift_value
-                     clc
-                     adc   BG1StartXMod164
-                     cmp   #164+1
-                     bcc   *+5
-                     sbc   #164
+                    lda   #164
+                    sec
+                    sbc   :shift_value
+                    clc
+                    adc   BG1StartXMod164
+                    cmp   #164+1
+                    bcc   *+5
+                    sbc   #164
+                    sta   :shift_value               ; Base shift value
 
-;                    sec
-;                    sbc   BG1StartXMod164
-;                    bpl   *+6
-;                    clc
-;                    adc   #164
-;                    cmp   #164
-;                    bcc   *+3
-;                    sbc   #164
-
-;                    clc
-;                    adc   :shift_value
-                    sta   :shift_value
-;                    cmp   #160
-;                    beq   *+4
-;                    brk   $55
+                    cmp   #165
+                    bcc   *+4
+                    brk   $04
 
                     phb                              ; Save the existing bank
                     tsc
@@ -428,9 +423,9 @@ _ApplyScanlineBG1YPos
                     tax
 
                     lda   :ytbl_idx_x2                 ; Read from this location in the BG1YTable
-                    clc
-                    CopyBG1YTableToBG1Addr3 :shift_value
-;                    jsr   CopyBG1YTableToBG1Addr
+;                    clc
+;                    CopyBG1YTableToBG1Addr3 :shift_value
+                    CopyBG1YTableToBG1Addr4 :shift_value;blttmp
 
                     lda   :virt_line_x2              ; advance to the virtual line after
                     adc   :draw_count_x2             ; filled in
@@ -704,8 +699,43 @@ x01                       ldal  BG1YTable+00,x
                           sta:  BG1_ADDR+$0000,y
 none                      <<<
 
+; Copy routine to move BG1YTable entries into BG1_ADDR position with an additional
+; shift on every line form the user-provided BG1StartXMod164Tbl.
+;
+; A = index into the BG1YTable array (x2)
+; Y = starting line * $1000
+; X = number of lines (x2)
+;
+; ]1 = constant shift value
+; ]2 = temp storage space
+CopyBG1YTableToBG1Addr4   mac
+                          phy                             ; save the registers
+                          phx
+                          phb
+                          pha
+                          jsr   _SetDataBank              ; Set to toolbox data bank
+
+                          clc
+                          lda   1,s                       ; virtual_index_x2
+                          adc   BG1StartXMod164Tbl        ; Get the starting address in the array for this chunk
+                          tay
+
+                          lda   BG1StartXMod164Tbl+1      ; Set the bank to the array location
+                          pha
+                          plb
+                          plb
+
+                          pla                             ; POp back the original value 
+                          ApplyBG1ModXToShift ]1;]2       ; Copy the array into direct page storage and apply the shift
+
+                          plb                             ; Restore the code field bank
+                          plx                             ; x is used directly in this routine
+                          ply
+                          ApplyBG1ShiftToCode ]2
+                          <<<
+
 ; Unrolled copy routine to move BG1YTable entries into BG1_ADDR position with an additional
-; shifton every line.  This has to be split into two 
+; shift on every line.  This has to be split into two 
 ;
 ; A = index into the BG1YTable array (x2)
 ; Y = starting line * $1000
@@ -855,3 +885,105 @@ ApplyBG1OffsetValues
 :do01                     ldal  BG1YCache+00
                           sta:  BG1_ADDR+$0000,y
 :none                     rts
+
+; Apply the per-scanline shift from the BG1StartXMod164Tbl pointer. Save the relevant values to the
+; direct page since the array could be in any bank.
+;
+; This does bounds checking to make sure the shift value remains in the valid range
+;
+; ]1 = source array offset
+; ]2 = constant shift value
+; ]3 = destination address
+_BG1ShiftTemplate         mac
+                          lda   ]1,y                          ; Load the value from the array
+                          adc   ]2                            ; Add to the direct page shift_value
+                          cmp   #165                          ; If below this value, we're good
+                          bcc   *+6
+                          sbc   #164
+                          clc
+                          adcl  BG1YTable+]1,x
+                          sta   ]3+]1
+                          <<<
+
+AToX                      mac
+                          tax
+                          brl   ]1
+                          <<<
+
+ApplyBG1ModXToShift       mac
+                          jmp   (agmxts_tbl,x)
+agmxts_tbl                da    none
+                          da    do01,do02,do03,do04
+                          da    do05,do06,do07,do08
+                          da    do09,do10,do11,do12
+                          da    do13,do14,do15,do16
+do16                      AToX  o16
+do15                      AToX  o15
+do14                      AToX  o14
+do13                      AToX  o13
+do12                      AToX  o12
+do11                      AToX  o11
+do10                      AToX  o10
+do09                      AToX  o09
+do08                      AToX  o08
+do07                      AToX  o07
+do06                      AToX  o06
+do05                      AToX  o05
+do04                      AToX  o04
+do03                      AToX  o03
+do02                      AToX  o02
+do01                      AToX  o01
+
+o16                       _BG1ShiftTemplate 30;]1;]2
+o15                       _BG1ShiftTemplate 28;]1;]2
+o14                       _BG1ShiftTemplate 26;]1;]2
+o13                       _BG1ShiftTemplate 24;]1;]2
+o12                       _BG1ShiftTemplate 22;]1;]2
+o11                       _BG1ShiftTemplate 20;]1;]2
+o10                       _BG1ShiftTemplate 18;]1;]2
+o09                       _BG1ShiftTemplate 16;]1;]2
+o08                       _BG1ShiftTemplate 14;]1;]2
+o07                       _BG1ShiftTemplate 12;]1;]2
+o06                       _BG1ShiftTemplate 10;]1;]2
+o05                       _BG1ShiftTemplate 8;]1;]2
+o04                       _BG1ShiftTemplate 6;]1;]2
+o03                       _BG1ShiftTemplate 4;]1;]2
+o02                       _BG1ShiftTemplate 2;]1;]2
+o01                       _BG1ShiftTemplate 0;]1;]2
+none                      <<<
+
+; After the values are saved, the data bank can be repointed at the current code bank and the values copied in
+; from the direct page
+;
+; ]1 = offset in temp buffer
+; ]2 = address of temp buffer
+; ]3 = 4k offset in code buffer
+_BG1ShiftToCodeTemplate   mac
+                          lda   ]2+]1
+                          sta:  BG1_ADDR+]3,y
+                          <<<
+
+ApplyBG1ShiftToCode       mac
+                          jmp   (abstc_tbl,x)
+abstc_tbl                 da    none
+                          da    do01,do02,do03,do04
+                          da    do05,do06,do07,do08
+                          da    do09,do10,do11,do12
+                          da    do13,do14,do15,do16
+do16                     _BG1ShiftToCodeTemplate 30;]1;$F000
+do15                     _BG1ShiftToCodeTemplate 28;]1;$E000
+do14                     _BG1ShiftToCodeTemplate 26;]1;$D000
+do13                     _BG1ShiftToCodeTemplate 24;]1;$C000
+do12                     _BG1ShiftToCodeTemplate 22;]1;$B000
+do11                     _BG1ShiftToCodeTemplate 20;]1;$A000
+do10                     _BG1ShiftToCodeTemplate 18;]1;$9000
+do09                     _BG1ShiftToCodeTemplate 16;]1;$8000
+do08                     _BG1ShiftToCodeTemplate 14;]1;$7000
+do07                     _BG1ShiftToCodeTemplate 12;]1;$6000
+do06                     _BG1ShiftToCodeTemplate 10;]1;$5000
+do05                     _BG1ShiftToCodeTemplate 8;]1;$4000
+do04                     _BG1ShiftToCodeTemplate 6;]1;$3000
+do03                     _BG1ShiftToCodeTemplate 4;]1;$2000
+do02                     _BG1ShiftToCodeTemplate 2;]1;$1000
+do01                     _BG1ShiftToCodeTemplate 0;]1;$0000
+none                     <<<
