@@ -886,13 +886,23 @@ _TSGetAddress
 
                 lda     :tblId,s
                 cmp     #scanlineHorzOffset
-                bne     :out
+                bne     :next_1
 
                 lda     StartXMod164Tbl
                 sta     :output,s
                 lda     StartXMod164Tbl+2
                 sta     :output+2,s
+                bra     :out
 
+:next_1         cmp     #scanlineHorzOffset2
+                bne     :next_2
+
+                lda     BG1StartXMod164Tbl
+                sta     :output,s
+                lda     BG1StartXMod164Tbl+2
+                sta     :output+2,s
+                bra     :out
+:next_2
 :out
                 _TSExit #0;#2
 
@@ -904,12 +914,24 @@ _TSSetAddress
                 _TSEntry
                 lda     :tblId,s
                 cmp     #scanlineHorzOffset
-                bne     :out
+                bne     :next_1
 
                 lda     :ptr,s
                 sta     StartXMod164Tbl
                 lda     :ptr+2,s
                 sta     StartXMod164Tbl+2
+                bra     :out
+
+:next_1
+                cmp     #scanlineHorzOffset2
+                bne     :next_2
+
+                lda     :ptr,s
+                sta     BG1StartXMod164Tbl
+                lda     :ptr+2,s
+                sta     BG1StartXMod164Tbl+2
+                bra     :out
+:next_2
 :out
                 _TSExit #0;#6
 

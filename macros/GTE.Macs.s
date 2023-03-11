@@ -174,6 +174,7 @@ OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprite
 
 ; GetAddress table IDs
 scanlineHorzOffset     equ   $0001
+scanlineHorzOffset2    equ   $0002
 
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000

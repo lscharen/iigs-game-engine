@@ -388,12 +388,16 @@ BG1YOffsetTable   ENT
 ;                  dw     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
                   --^
 
-; Per-scanline offsets for BG0
+; Pointer to per-scanline offsets for BG0
 StartXMod164Tbl   ENT
                   dw    0,0
 
 LastOffsetTbl     ENT
                   ds    416
+
+; Pointer to per-scanline offsets for BG1
+BG1StartXMod164Tbl ENT
+                  dw    0,0
 
 ; Other Toolset variables
 OneSecondCounter  ENT

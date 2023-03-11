@@ -195,7 +195,8 @@ DIRTY_BIT_BG1_REFRESH  equ   $0020
 DIRTY_BIT_SPRITE_ARRAY equ   $0040
 
 ; GetAddress table IDs
-scanlineHorzOffset     equ   $0001        ; table of 416 words, a double-array of scanline offset values. Must be 0, 163
+scanlineHorzOffset     equ   $0001        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
+scanlineHorzOffset2    equ   $0002        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 
 ; Script definition
 YIELD                  equ   $8000
@@ -297,6 +298,7 @@ _DirectListBottom EXT
 
 StartXMod164Tbl   EXT
 LastOffsetTbl     EXT
+BG1StartXMod164Tbl EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10
