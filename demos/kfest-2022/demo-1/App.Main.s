@@ -42,6 +42,7 @@ seg1x           equ   30
 seg2x           equ   32
 seg3x           equ   34
 seg4x           equ   36    ; BG1 x-pos
+frameCountTotal equ   38
 
                 phk
                 plb
@@ -101,6 +102,7 @@ seg4x           equ   36    ; BG1 x-pos
                 lda   #0
                 sta   StartY
                 stz   frameCount
+                stz   frameCountTotal
 
                 pei   StartX
                 pei   StartY
@@ -124,6 +126,11 @@ seg4x           equ   36    ; BG1 x-pos
                 pea   #BG0Offsets
                 _GTESetAddress
 
+                pea   #scanlineHorzOffset2
+                pea   #^BG1Offsets
+                pea   #BG1Offsets
+                _GTESetAddress
+
                 pea   $0000                  ; one regular render to fill the screen with the tilemap
                 _GTERender
 
@@ -142,32 +149,15 @@ EvtLoop
 :do_more
                 cmp        #'d'
                 bne        :not_d
-;                lda        StartX
-;                cmp        MaxBG0X
-;                bcc        *+5
-;                brl        :do_render
-
                 jsr        DecRanges
                 jsr        SetOffsets
-
-;                pei        StartX
-;                pei        StartY
-;                _GTESetBG0Origin
                 brl        :do_render
 :not_d
 
                 cmp        #'a'
                 bne        :not_a
-;                lda        StartX
-;                bne        *+5
-;                brl        :do_render
-
                 jsr        IncRanges
                 jsr        SetOffsets
-
-;                pei        StartX
-;                pei        StartY
-;                _GTESetBG0Origin
                 brl        :do_render
 :not_a
 
@@ -195,12 +185,16 @@ EvtLoop
 :not_w
 
 :do_render
+                jsr  SetBG1Animation                ; Update the per-scanline BG1 offsets
+
                 pea  #RENDER_PER_SCANLINE
+;                pea  #0
                 _GTERender
 
 ; Update the performance counters
 
                 inc   frameCount
+                inc   frameCountTotal
                 pha
                 _GTEGetSeconds
                 pla
@@ -335,7 +329,7 @@ IncRanges
                 bne   :out
                 lda   seg4x
                 inc
-                cmp   #160
+                cmp   #164
                 bcc   *+5
                 lda   #0
                 sta   seg4x
@@ -355,6 +349,7 @@ InitOffsets
                 ldx   #120
                 ldy   #88
                 jsr   _InitRange
+                jsr   _InitBG1
 
                 pla
                 sta   seg1x
@@ -364,7 +359,9 @@ InitOffsets
                 jsr   SetOffset2
                 lsr
                 sta   seg3x
-                jmp   SetOffset3
+                jsr   SetOffset3
+                jsr   SetBG1Offsets
+                rts
 
 SetOffsets
                 lda   seg1x
@@ -373,11 +370,22 @@ SetOffsets
                 jsr   SetOffset2
                 lda   seg3x
                 jsr   SetOffset3
-                
+
+SetBG1Offsets
                 pei   seg4x
                 pea   0
                 _GTESetBG1Origin
+                rts
 
+SetBG1Animation
+                pea   #scanlineHorzOffset2
+                pea   #^BG1Offsets
+                lda   frameCountTotal
+                and  #$000F
+                asl
+                adc   #BG1Offsets
+                pha
+                _GTESetAddress
                 rts
 
 SetOffset1
@@ -414,6 +422,24 @@ _SetRange
                 bcc   :loop2
 :done
                 pla
+                rts
+
+_offsets dw 0,0,0,1,1,2,3,3,4,4,4,3,3,2,1,1
+_InitBG1
+                ldx   #0
+                ldy   #0
+:loop           lda   _offsets,y
+                sta   BG1Offsets,x
+                iny
+                iny
+                cpy   #31
+                bcc   *+5
+                ldy   #0
+
+                inx
+                inx
+                cpx   #448
+                bcc   :loop
                 rts
 
 _InitRange
@@ -457,6 +483,7 @@ DoLoadBG1
 
 BG1DataFile     strl  '1/bg1.bin'
 BG0Offsets      ds    416
+BG1Offsets      ds    448     ; Make this a bit larger so we can just update a pointer
 
                 PUT        ../StartUp.s
                 PUT        ../../shell/Overlay.s
