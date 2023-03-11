@@ -37,9 +37,9 @@ _ResetBG1YTable
 :stride  equ  tmp1
                           cmp   #1                 ; scanline mode?
                           bne   :default
-                          lda   #$A0
+                          lda   #0
                           sta   :base
-                          lda   #324
+                          lda   #327
                           sta   :stride
                           bra   :begin
 :default
@@ -96,22 +96,25 @@ _CopyToBG1
 :src_flags                equ   tmp9
 :dstptr2                  equ   tmp10
 
+; scanline mode is tricky -- there's not enough space to make two full copies of a 328x200 bitmap buffer, but we can 
+; *barely* fit a (164 + 163) x 200 buffer.  And, since the zero offset could use either end, this covers all of the cases.
+
                           sta   :srcptr
                           stx   :srcptr+2
                           sty   :dstptr+2                 ; Everything goes into this bank
                           sty   :dstptr2+2
 
-                          lda   #$00A0
+                          lda   #0                        ; Start a byte 1 because odd offsets might go back 1 byte and don't want to wrap around
                           sta   :dstptr
                           clc
-                          adc   #164                      ; leave a 4-byte gap in the middle
+                          adc   #164                      ; The first part is 1-byte short, the second part is a full 164 bytes
                           sta   :dstptr2
 
 ; "Normal" BG1 mode as a stride of 164 bytes and mirrors the BG0 size (328 x 208)
 ; In "Scanline" mode, the BG1 is treated as a 320x200 bitfield with each horizontal line doubled
 
                           lda   :src_width
-                          min   #160
+                          min   #164
                           sta   :src_width
 
                           lda   :src_height
@@ -121,12 +124,22 @@ _CopyToBG1
                           stz   :line_cnt
 :rloop
                           ldy   #0                        ; move forward in the image data and image data
+; Handle first word as a special case
+
+                          lda   [:srcptr],y
+                          sta   [:dstptr2],y              ; copy directly into the 164-byte buffer
+                          iny
+                          xba
+                          sep   #$20
+                          sta   [:dstptr],y               ; only copy the high byte because the previous line occupies the low byte
+                          rep   #$20
+                          iny
+
 :cloop
                           lda   [:srcptr],y
                           sta   [:dstptr],y
                           sta   [:dstptr2],y
 
-:skip
                           iny
                           iny
 
@@ -135,7 +148,7 @@ _CopyToBG1
 
                           lda   :dstptr
                           clc
-                          adc   #324
+                          adc   #327
                           sta   :dstptr
                           adc   #164
                           sta   :dstptr2
@@ -203,7 +216,8 @@ _ApplyScanlineBG1XPos
                           tcd
 
                           ldx   #0
-                          tya
+;                          tya
+                          lda   #0
 :loop
                           sta   00,x                      ; store the value
                           inc
@@ -364,12 +378,25 @@ _ApplyScanlineBG1YPos
                     rts
 
 :_ApplyConstBG1YPos
-                    lda   #164
-                    sec
-                    sbc   :shift_value
+                     
+                     lda   #164
+                     sec
+                     sbc   :shift_value
+                     clc
+                     adc   BG1StartXMod164
+                     cmp   #164+1
+                     bcc   *+5
+                     sbc   #164
+
+;                    sec
+;                    sbc   BG1StartXMod164
 ;                    bpl   *+6
 ;                    clc
-;                    adc   #160
+;                    adc   #164
+;                    cmp   #164
+;                    bcc   *+3
+;                    sbc   #164
+
 ;                    clc
 ;                    adc   :shift_value
                     sta   :shift_value
