@@ -198,6 +198,10 @@ DIRTY_BIT_SPRITE_ARRAY equ   $0040
 scanlineHorzOffset     equ   $0001        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 scanlineHorzOffset2    equ   $0002        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 
+; CopyPicToBG1 flags
+COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
+COPY_PIC_SCANLINE      equ   $0001        ; Copy in a way to support BG1 + RENDER_PER_SCANLINE.  Pixmap is double-width, 327x200 with stride of 327
+
 ; Script definition
 YIELD                  equ   $8000
 JUMP                   equ   $4000

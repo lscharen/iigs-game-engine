@@ -176,6 +176,10 @@ OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprite
 scanlineHorzOffset     equ   $0001
 scanlineHorzOffset2    equ   $0002
 
+; CopyPicToBG1 flags
+COPY_PIC_NORMAL        equ   $0000      ; Copy into BG1 buffer in "normal mode"
+COPY_PIC_SCANLINE      equ   $0001      ; Copy in a way to support BG1 + RENDER_PER_SCANLINE.
+
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
@@ -186,7 +190,6 @@ TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
 TILE_ID_MASK           equ   $01FF
 TILE_CTRL_MASK         equ   $FE00
-
 
 ; Sprite constants
 SPRITE_COMPILED        equ   $4000                   ; This is a compiled sprite

@@ -22,7 +22,8 @@ _CopyBinToBG1
                           sta   :src_width
                           lda   #208
                           sta   :src_height
-                          stz   :src_flags
+                          lda   #COPY_PIC_NORMAL
+                          sta   :src_flags
 
                           pla
                           jmp   _CopyToBG1
@@ -31,7 +32,7 @@ _CopyBinToBG1
 ;
 ; A = mode
 ;     0 = default   (base = $1800, stride = 256)
-;     1 = scanline  (base = $A0, stride = 324)
+;     1 = scanline  (base = $0, stride = 327)
 _ResetBG1YTable
 :base    equ  tmp0
 :stride  equ  tmp1
@@ -80,8 +81,9 @@ _CopyPicToBG1
                           sta    :src_stride
                           lda    #200
                           sta    :src_height
+                          lda    #COPY_PIC_NORMAL
+                          sta    :src_flags
                           pla
-                          stz    :src_flags
                           jmp    _CopyToBG1
 
 ; Generic routine to copy image data into BG1
@@ -104,14 +106,26 @@ _CopyToBG1
                           sty   :dstptr+2                 ; Everything goes into this bank
                           sty   :dstptr2+2
 
+; "Normal" BG1 mode as a stride of 164 bytes and mirrors the BG0 size (328 x 208)
+; In "Scanline" mode, the BG1 is treated as a 328x200 bitfield with each horizontal line doubled
+
+                          lda   :src_flags
+                          cmp   #COPY_PIC_NORMAL
+                          bne   *+5
+                          jmp   :_CopyToBG1Normal
+
+                          cmp   #COPY_PIC_SCANLINE
+                          bne   *+5
+                          jmp   :_CopyToBG1SCanline
+
+                          rts                             ; Flag do not match a known copy mode
+
+:_CopyToBG1SCanline
                           lda   #0                        ; Start a byte 1 because odd offsets might go back 1 byte and don't want to wrap around
                           sta   :dstptr
                           clc
                           adc   #164                      ; The first part is 1-byte short, the second part is a full 164 bytes
                           sta   :dstptr2
-
-; "Normal" BG1 mode as a stride of 164 bytes and mirrors the BG0 size (328 x 208)
-; In "Scanline" mode, the BG1 is treated as a 320x200 bitfield with each horizontal line doubled
 
                           lda   :src_width
                           min   #164
@@ -162,6 +176,49 @@ _CopyToBG1
                           lda   :line_cnt
                           cmp   :src_height
                           bcc   :rloop
+                          rts
+
+:_CopyToBG1Normal
+                          stz   :line_cnt
+:rloop2
+                          lda   :line_cnt                 ; get the pointer to the code field line
+                          asl
+                          tax
+
+                          lda   BG1YTable,x
+                          sta   :dstptr
+                          clc
+                          adc   #164
+                          sta   :dstptr2
+
+                          ldy   #0                        ; move forward in the image data and image data
+:cloop2
+                          lda   [:srcptr],y
+                          sta   [:dstptr],y
+
+                          iny
+                          iny
+
+                          cpy   :src_width
+                          bcc   :cloop2
+
+                          ldy   #0
+                          lda   [:dstptr],y               ; Duplicate the last couple of words in the extra space at the end of the line
+                          sta   [:dstptr2],y
+
+                          ldy   #2
+                          lda   [:dstptr],y
+                          sta   [:dstptr2],y
+
+                          lda   :srcptr
+                          clc
+                          adc   :src_stride
+                          sta   :srcptr
+
+                          inc   :line_cnt
+                          lda   :line_cnt
+                          cmp   :src_height
+                          bcc   :rloop2
                           rts
 
 _SetBG1XPos

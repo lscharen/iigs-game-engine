@@ -135,6 +135,23 @@ extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
 #define RENDER_BG1_HORZ_OFFSET     0x0002
 #define RENDER_BG1_VERT_OFFSET     0x0004
 #define RENDER_BG1_ROTATION        0x0008
+#define RENDER_PER_SCANLINE        0x0010
+#define RENDER_WITH_SHADOWING      0x0020
+#define RENDER_SPRITES_SORTED      0x0040
+
+/* Overlay flags */
+#define OVERLAY_MASKED             0x0000       /* Overlay has a mask, so the background must be draw first */
+#define OVERLAY_SOLID              0x8000       /* Overlay covers the scan line and is fully opaque */
+#define OVERLAY_ABOVE              0x0000       /* Overlay is drawn above scanline sprites */
+#define OVERLAY_BELOW              0x4000       /* Overlay is drawn below scanline sprites */
+
+/* GetAddress table IDs */
+#define scanlineHorzOffset         0x0001
+#define scanlineHorzOffset2        0x0002
+
+/* CopyPicToBG1 flags */
+#define COPY_PIC_NORMAL            0x0000       /* Copy into BG1 buffer in "normal mode" */
+#define COPY_PIC_SCANLINE          0x0001       /* Copy in a way to support BG1 + RENDER_PER_SCANLINE. */
 
 /* GTE Tile Constants */
 #define TILE_PRIORITY_BIT          0x4000                  /* Put tile on top of sprite */
@@ -147,6 +164,7 @@ extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
 #define TILE_CTRL_MASK             0xFE00
 
 /* GTE Sprite Constants */
+#define GTE_SPRITE_COMPILES        0x4000
 #define GTE_SPRITE_HIDE            0x2000
 #define GTE_SPRITE_16X16           0x1800
 #define GTE_SPRITE_16X8            0x1000
@@ -154,7 +172,6 @@ extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
 #define GTE_SPRITE_8X8             0x0000
 #define GTE_SPRITE_VFLIP           0x0400
 #define GTE_SPRITE_HFLIP           0x0200
-
 
 /* GTE Sprint Stamp Storage Parameters */
 #define GTE_VBUFF_STRIDE_BYTES     (12 * 4)                            /* Each line has 4 slots of 16 pixels + 8 buffer pixels */

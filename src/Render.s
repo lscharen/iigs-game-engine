@@ -156,12 +156,10 @@ _DoOverlay
 ; Use the per-scanline tables to set the screen.  This is really meant to be used without the built-in tilemap
 ; support and is more of a low-level way to control the background rendering
 _RenderScanlines
-            lda   BG1YTable                   ; Make sure we're in the right mode
-            cmp   #$00A0
+            lda   BG1YTable                   ; Make sure we're in the right mode (0 = scanline mode, $1800 = normal mode)
             beq   :ytbl_ok
             lda   #1
             jsr   _ResetBG1YTable
-            lda   BG1YTable
 :ytbl_ok
 
             jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
@@ -173,12 +171,8 @@ _RenderScanlines
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
 
-;            jsr   _RenderSprites      ; Once the BG0 X and Y positions are committed, update sprite data
-
-;            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
-
-             jsr   _ApplyScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
-             jsr   _ApplyScanlineBG1XPos
+            jsr   _ApplyScanlineBG0XPos    ; Patch the code field instructions with exit BRA opcode            
+            jsr   _ApplyScanlineBG1XPos
 
             jsr   _BuildShadowList    ; Create the rages based on the sorted sprite y-values
 
@@ -187,56 +181,7 @@ _RenderScanlines
             jsr   _DrawDirectSprites  ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
 
             jsr   _ShadowOn           ; Turn shadowing back on
-;            jsr   _DrawComplementList ; Alternate drawing scanlines and PEI slam to expose the full fram
             jsr   _DrawFinalPass
-
-;            jsr   _ApplyBG1XPos       ; Update the direct page value based on the horizontal position
-
-; The code fields are locked in now and ready to be rendered. See if there is an overlay or any
-; other reason to render with shadowing off.  Otherwise, just do things quickly.
-
-;            lda   Overlays
-;            beq   :no_ovrly
-
-;            jsr   _ShadowOff
-
-; Shadowing is turned off. Render all of the scan lines that need a second pass. One
-; optimization that can be done here is that the lines can be rendered in any order
-; since it is not shown on-screen yet.
-
-;            ldx   Overlays+2                  ; Blit the full virtual buffer to the screen
-;            ldy   Overlays+4
-;            jsr   _BltRange
-
-; Turn shadowing back on
-
-;            jsr   _ShadowOn
-
-; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
-
-;            ldx   #0
-;            ldy   Overlays+2
-;            beq   :skip
-;            jsr   _BltRange
-:skip
-;            jsr   _DoOverlay
-
-;            ldx   Overlays+4
-;            cpx   ScreenHeight
-;            beq   :done
-;            ldy   ScreenHeight
-;            jsr   _BltRange
-;            bra   :done
-
-;:no_ovrly
-;            ldx   #0                  ; Blit the full virtual buffer to the screen
-;            ldy   ScreenHeight
-;            jsr   _BltRange
-;:done
-
-;            ldx   #0
-;            ldy   ScreenHeight
-;            jsr   _BltSCB
 
             lda   StartYMod208              ; Restore the fields back to their original state
             ldx   ScreenHeight
@@ -693,7 +638,6 @@ _DrawFinalPass
             bmi    :empty
 
             lda    _Sprites+SPRITE_CLIP_TOP,x      ; Load the first object's top edge
-;            sta    :curr_top
             beq    :loop                          ; If it's at the top edge of the screen, proceed. Othrewise _BltRange the top range
 
             ldx    #0
@@ -761,6 +705,7 @@ _DrawFinalPass
             tax
             ldy   _Sprites+SPRITE_CLIP_TOP,x      ; Draw the background in between
             ldx   :curr_bottom
+;            brk   $34
             jsr   _BltRange
             plx
             bra    :loop
@@ -804,6 +749,8 @@ _DrawFinalPass
             adc   ScreenX0
             ldx   :curr_top
             ldy   :curr_bottom
+;            brk   $33
+
 :disp       jsl   $000000
             rts
 
@@ -826,8 +773,6 @@ _DrawComplementList
             lda   _DirectListTop,x
             ldy   _DirectListBottom,x
             tax
-;            lda   #0
-;            jsr   DebugSCBs
             jsr   _BltRange
             plx
 
@@ -841,8 +786,6 @@ _DrawComplementList
             phx
             ldy   _DirectListTop,x
             tax
-;            lda   #1
-;            jsr   DebugSCBs
             jsr   _PEISlam
             plx
             bra   :blt_range
@@ -852,13 +795,11 @@ _DrawComplementList
             bcs   :out                                  ; screen, then expose that range
             tax
             ldy   ScreenHeight
-;            lda   #1
-;            jsr   DebugSCBs
             jsr   _PEISlam
 :out
             rts
 
-; Helper to set a palette index on a range of SCBs to help show whicih actions are applied to which lines
+; Helper to set a palette index on a range of SCBs to help show which actions are applied to which lines
 DebugSCBs
             phx
             phy
