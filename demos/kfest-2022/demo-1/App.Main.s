@@ -43,6 +43,10 @@ seg2x           equ   32
 seg3x           equ   34
 seg4x           equ   36    ; BG1 x-pos
 frameCountTotal equ   38
+PlayerX         equ   40
+PlayerY         equ   42
+PlayerXVel      equ   44
+PlayerYVel      equ   46
 
                 phk
                 plb
@@ -116,6 +120,41 @@ frameCountTotal equ   38
                 sta   OldOneSecondCounter
                 jsr   UdtOverlay
 
+; Create some sprites
+                lda   #16
+                sta   PlayerX
+
+                lda   MaxGlobalY
+                sec
+                sbc   #48                     ; 32 for tiles, 16 for sprite
+                lda   #48                     ; 32 for tiles, 16 for sprite
+                sta   PlayerY
+                stz   PlayerXVel
+                stz   PlayerYVel
+
+HERO_SIZE       equ   {SPRITE_16X16}
+HERO_FLAGS      equ   HERO_SIZE                                 ; no extra H/V bits for now
+HERO_FRAME_1    equ   HERO_SIZE+145
+HERO_VBUFF_1    equ   VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
+HERO_SLOT       equ   1
+
+                pea   HERO_FRAME_1
+                pea   HERO_VBUFF_1
+                _GTECreateSpriteStamp
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_1
+                _GTECompileSpriteStamp
+                pla
+
+                pea   HERO_SLOT                    ; Put the player in slot 1
+                pea   HERO_FLAGS+SPRITE_COMPILED   ;  mark this as a compiled sprite (can only use in RENDER_WITH_SHADOWING mode)
+                pha                                ;  pass in the token of the compiled stamp
+                pei   PlayerX
+                pei   PlayerY
+                _GTEAddSprite
+
 ; Set up the per-scanline rendering
 
                 lda   StartX
@@ -131,7 +170,7 @@ frameCountTotal equ   38
                 pea   #BG1Offsets
                 _GTESetAddress
 
-                pea   $0000                  ; one regular render to fill the screen with the tilemap
+                pea   #RENDER_WITH_SHADOWING                  ; one regular render to fill the screen with the tilemap
                 _GTERender
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
@@ -187,6 +226,17 @@ EvtLoop
 :do_render
                 jsr  SetBG1Animation                ; Update the per-scanline BG1 offsets
 
+                jsr   _GetVBLTicks
+                and   #$00FC
+                lsr
+                lsr
+                sta   PlayerX
+
+                pea   HERO_SLOT
+                pei   PlayerX
+                pei   PlayerY
+                _GTEMoveSprite                    ; Move the sprite to this local position
+
                 pea  #RENDER_PER_SCANLINE
 ;                pea  #0
                 _GTERender
@@ -220,6 +270,13 @@ qtRec           adrl  $0000
 
 ; Color palette
 MyDirectPage    ds    2
+
+_GetVBLTicks
+            PushLong  #0
+            _GetTick
+            pla
+            plx
+            rts
 
 SetLimits
                 pha                       ; Allocate space for width (in tiles), height (in tiles), pointer
@@ -477,7 +534,7 @@ DoLoadBG1
                 lda   BankLoad
                 pha
                 pea   $0000
-                pea   $0000                   ; default flags
+                pea   COPY_PIC_SCANLINE       ; Copy in a mode that supports per-scanline offsets
                 _GTECopyPicToBG1
                 rts
 
