@@ -11,28 +11,28 @@
 
 ; 64KB Tile Memory
 
-            ASM   static\TileData.s
+            ASM   static/TileData.s
             KND   #$1001               ; Type and Attributes ($10=Static,$01=Data)
             ALI   BANK
             SNA   TDATA
 
 ; 64KB Sprite Plane Data
 
-            ASM   static\SprData.s
+            ASM   static/SprData.s
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   SDATA
 
 ; 64KB Sprite Mask Data
 
-            ASM   static\SprMask.s
+            ASM   static/SprMask.s
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   SMASK
 
 ; 64KB Tile Store
 
-            ASM   static\TileStore.s
+            ASM   static/TileStore.s
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   TSTORE
@@ -43,3 +43,10 @@
             KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   ROTDATA
+
+; Additional code
+
+            ASM   FastCopies.s
+            KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
+            ALI   BANK
+            SNA   FASTCPY

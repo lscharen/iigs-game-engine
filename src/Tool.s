@@ -96,6 +96,11 @@ _CallTable
 
                 adrl  _TSClearBG1Buffer-1
                 adrl  _TSSetBG1Scale-1
+                adrl  _TSGetAddress-1
+
+                adrl  _TSCompileSpriteStamp-1
+                adrl  _TSSetAddress-1
+
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -162,7 +167,9 @@ zpToUse         =    userId+4
 
 ; SetWAP(userOrSystem, tsNum, waptPtr)
 
-                pea     #$8000             ; $8000 = user tool set
+                lda     EngineMode         ; $0000 = system tool, $8000 = user tool set
+                and     #$8000
+                pha
                 pei     ToolNum            ; Push the tool number from the direct page
                 pea     $0000              ; High word of WAP is zero (bank 0)
                 phd                        ; Low word of WAP is the direct page
@@ -187,7 +194,9 @@ _TSShutDown
                 jsr     _CoreShutDown      ; Shut down the library
                 plb
 
-                pea     $8000
+                lda     EngineMode         ; $0000 = system tool, $8000 = user tool set
+                and     #$8000
+                pha
                 pei     ToolNum
                 pea     $0000              ; Set WAP to null
                 pea     $0000
@@ -233,14 +242,14 @@ _TSReserved
 
 ; SetScreenMode(width, height)
 _TSSetScreenMode
-height          equ     FirstParam
-width           equ     FirstParam+2
+:height         equ     FirstParam
+:width          equ     FirstParam+2
 
                 _TSEntry
 
-                lda     height,s
+                lda     :height,s
                 tay
-                lda     width,s
+                lda     :width,s
                 tax
                 jsr     _SetScreenMode
 
@@ -294,7 +303,21 @@ _TSRender
 
                 _TSEntry
                 lda     :flags,s
+                bit     #RENDER_WITH_SHADOWING
+                beq     :no_shadowing
+                jsr     _RenderWithShadowing
+                bra     :done
+
+:no_shadowing
+                bit     #RENDER_PER_SCANLINE
+                beq     :no_scanline
+                jsr     _RenderScanlines
+                bra     :done
+
+:no_scanline
                 jsr     _Render
+
+:done
                 _TSExit #0;#2
 
 
@@ -307,18 +330,27 @@ _TSRenderDirty
                 jsr     _RenderDirty
                 _TSExit #0;#2
 
-; LoadTileSet(Pointer)
+; LoadTileSet(Start, Finish, Pointer)
 _TSLoadTileSet
-TSPtr           equ     FirstParam
+:TSPtr          equ     FirstParam
+:finish         equ     FirstParam+4
+:start          equ     FirstParam+6
 
                 _TSEntry
 
-                lda     TSPtr+2,s
+                lda     :TSPtr+2,s               ; stuff the pointer in the direct page
+                sta     tmp1
+                lda     :TSPtr,s
+                sta     tmp0
+
+                lda     :start,s                 ; put the range in the registers
                 tax
-                lda     TSPtr,s
+                lda     :finish,s
+                tay
+
                 jsr     _LoadTileSet
 
-                _TSExit #0;#4
+                _TSExit #0;#8
 
 ; CreateSpriteStamp(spriteDescriptor: Word, vbuffAddr: Word)
 _TSCreateSpriteStamp
@@ -334,7 +366,7 @@ _TSCreateSpriteStamp
 
                 _TSExit #0;#4
 
-; AddSprite(spriteSlot, spriteFlags, vbuff, spriteX, spriteY)
+; AddSprite(spriteSlot, spriteFlags, vbuff | cbuff, spriteX, spriteY)
 _TSAddSprite
 :spriteY        equ    FirstParam+0
 :spriteX        equ    FirstParam+2
@@ -344,13 +376,13 @@ _TSAddSprite
 
                 _TSEntry
 
-                lda    :spriteY,s
-                and    #$00FF
-                xba
-                sta    :spriteY,s
                 lda    :spriteX,s
                 and    #$00FF
-                ora    :spriteY,s
+                xba
+                sta    :spriteX,s
+                lda    :spriteY,s
+                and    #$00FF
+                ora    :spriteX,s
                 tay
 
                 lda    :spriteSlot,s
@@ -474,6 +506,7 @@ _TSCopyPicToBG1
 :src_width      equ    tmp6
 :src_height     equ    tmp7
 :src_stride     equ    tmp8
+:src_flags      equ    tmp9
 
                 lda    :width,s
                 sta    :src_width
@@ -484,9 +517,10 @@ _TSCopyPicToBG1
 
                 ldy    BG1DataBank              ; Pick the target data bank
                 lda    :flags,s
-                bit    #$0001
-                beq    *+4
-                ldy    BG1AltBank
+                sta    :src_flags
+;                bit    #$0001
+;                beq    *+4
+;                ldy    BG1AltBank
                 
                 lda    :ptr+2,s
                 tax
@@ -679,6 +713,11 @@ _TSStartScript
 
                 _TSExit #0;#6
 ; SetOverlay(top, bottom, proc)
+;
+; Overlays are handled as quasi-sprites.  They need to be included in the y-sorted list of "stuff", but they are not drawn like
+; sprites.  As such, they set a special flag in the SPRITE_ID field which allows them to be ignored for other purposes.  Also,
+; they are not added into the "normal" sprite range on 0 - 15, but are stored in locations 16 and up to further seggregate them from
+; the rest of the system.  A lot of the SPRITE_* locations are repurposed for Overlay-specific information.
 _TSSetOverlay
 :proc           equ     FirstParam+0
 :bottom         equ     FirstParam+4
@@ -686,16 +725,48 @@ _TSSetOverlay
 
                 _TSEntry
 
-                lda     #1
-                sta     Overlays
+                ldx     #0                              ; Always just use the first spot
+                lda     #SPRITE_OVERLAY
+                sta     Overlays+OVERLAY_ID,x
+                stz     Overlays+OVERLAY_FLAGS,x
+
                 lda     :top,s
-                sta     Overlays+2
+                sta     Overlays+OVERLAY_TOP,x
                 lda     :bottom,s
-                sta     Overlays+4
+                dec
+                sta     Overlays+OVERLAY_BOTTOM,x
+                sec
+                sbc     :top,s
+                inc
+                sta     Overlays+OVERLAY_HEIGHT,x
+
                 lda     :proc,s
-                sta     Overlays+6
+                sta     Overlays+OVERLAY_PROC,x
                 lda     :proc+2,s
-                sta     Overlays+8
+                sta     Overlays+OVERLAY_PROC+2,x
+
+                ldx     #{MAX_SPRITES+0}*2              ; Adjust to call the generic routings
+                jsr     _InsertSprite
+ 
+                _TSExit #0;#8
+
+_TSUpdateOverlay
+:proc           equ     FirstParam+0
+:bottom         equ     FirstParam+4
+:top            equ     FirstParam+6
+
+                _TSEntry
+                
+                ldx     #0
+                stz     Overlays+OVERLAY_FLAGS,x
+                lda     :top,s
+                sta     Overlays+OVERLAY_TOP
+                lda     :bottom,s
+                sta     Overlays+OVERLAY_BOTTOM
+                lda     :proc,s
+                sta     Overlays+OVERLAY_PROC
+                lda     :proc+2,s
+                sta     Overlays+OVERLAY_PROC+2
 
                 _TSExit #0;#8
 
@@ -809,6 +880,83 @@ _TSSetBG1Scale
                 sta     BG1Scaling
                 _TSExit #0;#2
 
+; Pointer GetAddress(tblId)
+_TSGetAddress
+:tblId          equ     FirstParam+0
+:output         equ     FirstParam+2
+
+                _TSEntry
+                lda     #0
+                sta     :output,s
+                sta     :output+2,s
+
+                lda     :tblId,s
+                cmp     #scanlineHorzOffset
+                bne     :next_1
+
+                lda     StartXMod164Tbl
+                sta     :output,s
+                lda     StartXMod164Tbl+2
+                sta     :output+2,s
+                bra     :out
+
+:next_1         cmp     #scanlineHorzOffset2
+                bne     :next_2
+
+                lda     BG1StartXMod164Tbl
+                sta     :output,s
+                lda     BG1StartXMod164Tbl+2
+                sta     :output+2,s
+                bra     :out
+:next_2
+:out
+                _TSExit #0;#2
+
+; SetAddress(tblId, Pointer)
+_TSSetAddress
+:ptr            equ     FirstParam+0
+:tblId          equ     FirstParam+4
+
+                _TSEntry
+                lda     :tblId,s
+                cmp     #scanlineHorzOffset
+                bne     :next_1
+
+                lda     :ptr,s
+                sta     StartXMod164Tbl
+                lda     :ptr+2,s
+                sta     StartXMod164Tbl+2
+                bra     :out
+
+:next_1
+                cmp     #scanlineHorzOffset2
+                bne     :next_2
+
+                lda     :ptr,s
+                sta     BG1StartXMod164Tbl
+                lda     :ptr+2,s
+                sta     BG1StartXMod164Tbl+2
+                bra     :out
+:next_2
+:out
+                _TSExit #0;#6
+
+; CompileSpriteStamp(spriteId, vbuffAddr)
+_TSCompileSpriteStamp
+:vbuff          equ     FirstParam
+:spriteId       equ     FirstParam+2
+:output         equ     FirstParam+4
+
+                _TSEntry
+
+                lda     :vbuff,s
+                tax
+                lda     :spriteId,s
+                jsr     _CompileStampSet
+                sta     :output,s
+
+                _TSExit  #0;#4
+
 ; Insert the GTE code
 
                 put     Math.s
@@ -823,6 +971,7 @@ _TSSetBG1Scale
                 put     Sprite2.s
                 put     SpriteRender.s
                 put     Render.s
+;                put     blitter/Scanline.s
                 put     render/Render.s
                 put     render/Fast.s
                 put     render/Slow.s
@@ -841,3 +990,4 @@ _TSSetBG1Scale
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
                 put     blitter/Blitter.s
+                put     blitter/PEISlammer.s

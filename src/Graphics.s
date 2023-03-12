@@ -4,12 +4,14 @@ InitGraphics
                  jsr   _ShadowOn
                  jsr   _GrafOn
                  lda   #0
-                 jsr   _ClearToColor
-                 lda   #0
                  jsr   _SetSCBs
                  ldx   #DefaultPalette
                  lda   #0
                  jsr   _SetPalette
+
+                 ldx   #SHR_LINE_WIDTH
+                 ldy   #SHR_SCREEN_HEIGHT
+                 jsr   _SetScreenMode
 
                  jsr   _InitBG0             ; Initialize the background layer
 

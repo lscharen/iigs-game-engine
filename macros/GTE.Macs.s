@@ -126,6 +126,15 @@ _GTEClearBG1Buffer   MAC
 _GTESetBG1Scale      MAC
                      UserTool  $2B00+GTEToolNum
                      <<<
+_GTEGetAddress       MAC
+                     UserTool  $2C00+GTEToolNum
+                     <<<
+_GTECompileSpriteStamp MAC
+                     UserTool  $2D00+GTEToolNum
+                     <<<
+_GTESetAddress       MAC
+                     UserTool  $2E00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -146,12 +155,30 @@ PAD_KEY_DOWN           equ   $0400
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004
+ENGINE_MODE_USER_TOOL  equ   $8000       ; Communicate if GTE is loaded as a system tool, or a user tool
 
 ; Render flags
 RENDER_ALT_BG1         equ   $0001
 RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
+RENDER_PER_SCANLINE    equ   $0010
+RENDER_WITH_SHADOWING  equ   $0020
+RENDER_SPRITES_SORTED  equ   $0040
+
+; Overlay flags
+OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first
+OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fully opaque
+OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
+OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
+
+; GetAddress table IDs
+scanlineHorzOffset     equ   $0001
+scanlineHorzOffset2    equ   $0002
+
+; CopyPicToBG1 flags
+COPY_PIC_NORMAL        equ   $0000      ; Copy into BG1 buffer in "normal mode"
+COPY_PIC_SCANLINE      equ   $0001      ; Copy in a way to support BG1 + RENDER_PER_SCANLINE.
 
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000
@@ -164,8 +191,8 @@ TILE_HFLIP_BIT         equ   $0200
 TILE_ID_MASK           equ   $01FF
 TILE_CTRL_MASK         equ   $FE00
 
-
 ; Sprite constants
+SPRITE_COMPILED        equ   $4000                   ; This is a compiled sprite
 SPRITE_HIDE            equ   $2000
 SPRITE_16X16           equ   $1800
 SPRITE_16X8            equ   $1000

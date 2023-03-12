@@ -45,13 +45,14 @@ CopyDynamicTile
 ; populating the code field and snippet space
 DynamicOver
             lda     TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora     #SNIPPET_ENTRY_2
             sta     _JTBL_CACHE
 
             lda     TileStore+TS_TILE_ID,x       ; Get the original tile descriptor
-            and     #$007F             ; clamp to < (32 * 4)
+            and     #$007F                       ; clamp to < (32 * 4)
             ora     #$B500
             xba
-            sta     _OP_CACHE          ; This is the 2-byte opcode for to load the data
+            sta     _OP_CACHE                    ; This is the 2-byte opcode for to load the data
 
             lda   TileStore+TS_CODE_ADDR_HIGH,x
             pha
@@ -91,6 +92,7 @@ DynamicOver
 
 DynamicUnder
             lda     TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora     #SNIPPET_ENTRY_3
             sta     _JTBL_CACHE
 
             lda     TileStore+TS_TILE_ID,x       ; Get the original tile descriptor
@@ -164,6 +166,7 @@ _DynFillJmpOpcode
 CopyDynamicTileTwoLyr
 
             ldal  TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_4
             sta   _JTBL_CACHE
 
             ldal  TileStore+TS_WORD_OFFSET,x
@@ -215,9 +218,10 @@ CopyDynamicTileTwoLyr
 
             jmp   _DynFillJmpOpcode
 
-; Render a sprite on top of a dyamic tile with transparent areas shwing the second background
+; Render a sprite on top of a dyamic tile with transparent areas showing the second background
 DynamicOverTwoLyr
             lda   TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_1
             sta   _JTBL_CACHE
 
             lda   TileStore+TS_WORD_OFFSET,x
@@ -275,9 +279,19 @@ DynamicOverTwoLyr
             plb
             rts
 
-; Render a sprite on top of a dyamic tile with transparent areas shwing the second background
+; Render a sprite under a dyamic tile with transparent areas showing the second background
+;
+; This is a special case where we cannot fit the code into the fixed snippet structure.  As such,
+; any tile drawn with this routine will set a DAMAGED flag on the TileStore flags.  If another
+; tile blitter in the TwoLayer function set sees that a tile is marked as DAMAGED, it must
+; restore the original code structure before proceeding.
+;
+; The damages area is not too bad -- just the 10 bytes from [2, 10] are overwritten and must be
+; restored.  This is actually less work than a lot of the snippet macros were doing before 
+; applying the fixed snippet optimization.
 DynamicUnderTwoLyr
             lda   TileStore+TS_JMP_ADDR,x      ; Get the address of the exception handler
+            ora   #SNIPPET_ENTRY_1
             sta   _JTBL_CACHE
 
             lda   TileStore+TS_WORD_OFFSET,x
@@ -290,6 +304,8 @@ DynamicUnderTwoLyr
 ; perform and EOR #$2080 to covert the opcode and operand in one instruction
 
             lda   TileStore+TS_TILE_ID,x       ; Get the original tile descriptor
+            ora   #TILE_DAMAGED_BIT            ; Set the DAMAGED bit here since we have to load TILE_ID anyway
+            sta   TileStore+TS_TILE_ID,x
             and   #$007F                       ; clamp to < (32 * 4)
             ora   #$3580                       ; Pre-calc the AND $80,x opcode + operand
             xba
@@ -368,18 +384,12 @@ mixed       cmp   #$FFFF         ; All 1's in the mask is a fully transparent sp
             lda   _OP_CACHE       ; Get the LDA dp,x instruction for this column
             sta:  $0000,x
 
-            lda   #$0029          ; AND #SPRITE_MASK
-            sta:  $0002,x
             lda   tmp_sprite_mask+{]1}
             sta:  $0003,x
 
-            lda   #$0009          ; ORA #SPRITE_DATA
-            sta:  $0005,x
             lda   tmp_sprite_data+{]1}
             sta:  $0006,x
 
-            lda   #$0D80          ; branch to the prologue (BRA *+15)
-            sta:  $0008,x
             bra   next
 
 ; This is a transparent word, so just show the dynamic data
@@ -410,10 +420,8 @@ CopyDynUnder MAC
             lda   _JTBL_CACHE     ; Get the offset to the exception handler for this column
             ora   #{]2&$7000}     ; adjust for the current row offset
             sta:  {]2}+1,y
-            tax         ; This becomes the new address that we use to patch in
+            tax                   ; This becomes the new address that we use to patch in
 
-            lda   #$00A9          ; LDA #DATA
-            sta:  $0000,x
             lda   tmp_sprite_data+{]1}
             sta:  $0001,x
 
@@ -421,9 +429,6 @@ CopyDynUnder MAC
             sta:  $0003,x         ; AND $80,x
             eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
             sta:  $0005,x         ; ORA $00,x
-
-            lda   #$0E80          ; branch to the prologue (BRA *+16)
-            sta:  $0007,x
             eom
 
 ; Masked renderer for a dynamic tile. What's interesting about this renderer is that the mask
@@ -449,37 +454,31 @@ CopyMaskedDWord MAC
             lda   _JTBL_CACHE
             ora   #{{]1}&$7000}     ; adjust for the current row offset
             sta:  {]1}+1,y
-
             tax                   ; This becomes the new address that we use to patch in
+
             lda   _OP_CACHE
             sta:  $0000,x         ; LDA (00),y
             lda   _OP_CACHE2
             sta:  $0002,x         ; AND $80,x
             eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
             sta:  $0004,x         ; ORA $00,x
-            lda   #$0F80          ; branch to the prologue (BRA *+17)
-            sta:  $0006,x
             eom
 
-
-; Masked renderer for a masked dynamic tile with sprite data overlaid.
+; Version 2 will set the JMP to Entry Point 1 and set the Opcode at Entry Point 2 to a ora $00,x.  Also
+; the mask transparency check can be performed earlier.
 ;
-; ]1 : sprite plane offset
-; ]2 : code field offset
+;            lda   #$004C                         ; JMP to handler
+;            sta:  {]2},y
+;            lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
+;            ora   #{]2&$7000}                    ; adjust for the current row offset
+;            sta:  {]2}+1,y
+;            tax                                  ; This becomes the new address that we use to patch in
+;            lda   OP_CACHE_2                     ; switch from AND to ORA instruction cached in setup
+;            sta:  $0004,x                        ; ORA $00,x
+
 CopyDynMaskedSpriteWord MAC
-
-; Need to fill in the first 14 bytes of the JMP handler with the following code sequence where
-; the data and mask from from the sprite plane
-;
-;            lda  ($00),y
-;            and  $80,x
-;            ora  $00,x
-;            and  #MASK
-;            ora  #DATA
-;            bra  *+15
-;
 ; If MASK == 0, then we can do a PEA.  If MASK == $FFFF, then fall back to the simple Dynamic Tile
-; code and eliminate the constanct AND/ORA instructions.
+; code and eliminate the constant AND/ORA instructions.
 
             lda   tmp_sprite_mask+{]1}           ; load the mask value
             bne   mixed                          ; a non-zero value may be mixed
@@ -491,9 +490,12 @@ CopyDynMaskedSpriteWord MAC
             sta:  {]2}+1,y                       ; PEA operand
             bra   next
 
-; We will always do a JMP to the exception handler, so set that up, then check for sprite
-; transparency
+; We will always do a JMP to the exception handler, but the entry point changes depending on
+; whether the mask is transparent or not
 mixed
+            cmp   #$FFFF
+            beq   transparent
+
             lda   #$004C                         ; JMP to handler
             sta:  {]2},y
             lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
@@ -501,36 +503,36 @@ mixed
             sta:  {]2}+1,y
             tax                                  ; This becomes the new address that we use to patch in
 
+            lda   _OP_CACHE2
+            sta:  $0002,x                        ; AND $80,x
+            eor   #$8020                         ; Switch the opcode to an ORA and remove the high bit of the operand
+            sta:  $0004,x                        ; ORA $00,x
+
+            lda   tmp_sprite_mask+{]1} 
+            sta:  $0007,x
+
+            lda   tmp_sprite_data+{]1}
+            sta:  $000A,x
+
+            bra   next
+
+; This is a transparent word, so just show the dynamic data overlaid on layer 2
+transparent
+            lda   #$004C                         ; JMP to handler
+            sta:  {]2},y
+            lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
+            ora   #{]2&$7000}.SNIPPET_ENTRY_4    ; adjust for the current row offset and OR in the offset since snippets are 32-byte aligned
+            sta:  {]2}+1,y
+            tax
+
             lda   _OP_CACHE
             sta:  $0000,x                        ; LDA (00),y
             lda   _OP_CACHE2
             sta:  $0002,x                        ; AND $80,x
             eor   #$8020                         ; Switch the opcode to an ORA and remove the high bit of the operand
             sta:  $0004,x                        ; ORA $00,x
-
-            lda   #$0029                         ; AND #SPRITE_MASK
-            sta:  $0006,x
-            lda   tmp_sprite_mask+{]1} 
-            cmp   #$FFFF                         ; All 1's in the mask is a fully transparent sprite word
-            beq   transparent
-            sta:  $0007,x
-
-            lda   #$0009                         ; ORA #SPRITE_DATA
-            sta:  $0009,x
-            lda   tmp_sprite_data+{]1}
-            sta:  $000A,x
-
-            lda   #$0980                         ; branch to the prologue (BRA *+11)
-            sta:  $000C,x
-            bra   next
-
-; This is a transparent word, so just show the dynamic data
-transparent
-            lda   #$0F80                         ; branch to the epilogue (BRA *+17)
-            sta:  $0006,x
 next
             eom
-
 
 ; Masked renderer for a masked dynamic tile with sprite data underlaid.
 ;
@@ -546,7 +548,12 @@ CopyDynPrioMaskedSpriteWord MAC
 ;            ora  #DATA
 ;            and  $80,x
 ;            ora  $00,x
-;            bra  *+15
+
+; This macro has different targets based on the transparency
+
+            lda   tmp_sprite_mask+{]1}
+            cmp   #$FFFF          ; All 1's in the mask is a fully transparent sprite word
+            beq   transparent
 
             lda   #$004C          ; JMP to handler
             sta:  {]2},y
@@ -555,15 +562,10 @@ CopyDynPrioMaskedSpriteWord MAC
             sta:  {]2}+1,y
             tax                   ; This becomes the new address that we use to patch in
 
-            lda   _OP_CACHE
-            sta:  $0000,x         ; LDA (00),y
-
             lda   #$0029          ; AND #SPRITE_MASK
             sta:  $0002,x
 
             lda   tmp_sprite_mask+{]1}
-            cmp   #$FFFF          ; All 1's in the mask is a fully transparent sprite word
-            beq   transparent     ; so we can use the Tile00011 method
             sta:  $0003,x
 
             lda   #$0009          ; ORA #SPRITE_DATA
@@ -576,19 +578,22 @@ CopyDynPrioMaskedSpriteWord MAC
             eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
             sta:  $000A,x         ; ORA $00,x
 
-            lda   #$0980          ; branch to the prologue (BRA *+11)
-            sta:  $000C,x
             bra   next
-
-; This is a transparent word, so just show the dynamic data
 transparent
-            lda   _OP_CACHE2
-            sta:  $0002,x         ; AND $80,x
-            eor   #$8020          ; Switch the opcode to an ORA and remove the high bit of the operand
-            sta:  $0004,x         ; ORA $00,x
+; This is a transparent word, so just show the dynamic data
+            lda   #$004C                         ; JMP to handler
+            sta:  {]2},y
+            lda   _JTBL_CACHE                    ; Get the offset to the exception handler for this column
+            ora   #{]2&$7000}.SNIPPET_ENTRY_4    ; adjust for the current row offset and OR in the offset since snippets are 32-byte aligned
+            sta:  {]2}+1,y
+            tax
 
-            lda   #$0F80          ; branch to the epilogue (BRA *+17)
-            sta:  $0006,x
+            lda   _OP_CACHE
+            sta:  $0000,x                        ; LDA (00),y
+            lda   _OP_CACHE2
+            sta:  $0002,x                        ; AND $80,x
+            eor   #$8020                         ; Switch the opcode to an ORA and remove the high bit of the operand
+            sta:  $0004,x                        ; ORA $00,x
 next
             eom
 

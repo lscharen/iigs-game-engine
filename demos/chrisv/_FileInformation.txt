@@ -1,0 +1,1 @@
+App=Type(B3),AuxType(0000),VersionCreate(70),MinVersion(BE),Access(E3)

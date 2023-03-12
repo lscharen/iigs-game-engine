@@ -36,6 +36,7 @@ MaxGlobalX      equ   16
 MaxGlobalY      equ   18
 MaxBG0X         equ   20
 MaxBG0Y         equ   22
+frameCount  equ   24
 OldOneSecondCounter equ 26
 appTmp0         equ   28
 PlayerX         equ   30
@@ -49,6 +50,10 @@ LastHFlip       equ   44
 SpriteFrame     equ   46
 SpriteToggle    equ   48
 SpriteCount     equ   50
+PlayerX1        equ   52
+PlayerY1        equ   54
+PlayerX2        equ   56
+PlayerY2        equ   58
 
                 phk
                 plb
@@ -59,10 +64,11 @@ SpriteCount     equ   50
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #0                      ; Engine in Fast Mode
+                lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
-                jsr   SoundStartUp
-                jsr   StartMusic
+                
+;                jsr   SoundStartUp
+;                jsr   StartMusic
 
 ; Initialize local variables
 
@@ -81,6 +87,8 @@ SpriteCount     equ   50
 
 ; Load a tileset
 
+                pea   #0
+                pea   #511
                 pea   #^tiledata
                 pea   #tiledata
                 _GTELoadTileSet
@@ -108,14 +116,27 @@ SpriteCount     equ   50
                 lda   #16
                 sta   PlayerGlobalX
                 sta   PlayerX
+                sta   PlayerX1
+                sta   PlayerX2
+
                 lda   MaxGlobalY
                 sec
                 sbc   #48                     ; 32 for tiles, 16 for sprite
+                lda   #48                     ; 32 for tiles, 16 for sprite
                 sta   PlayerGlobalY
                 sta   PlayerY
+                sta   PlayerY1
+                sta   PlayerY2
 
                 stz   PlayerXVel
                 stz   PlayerYVel
+
+; Set the screen to the bottom-left
+
+                pea   $0000
+                lda   MaxBG0Y
+                pha
+                _GTESetBG0Origin
 
 ; Create the sprites
 
@@ -130,6 +151,8 @@ HERO_VBUFF_3    equ   VBUFF_SPRITE_START+2*VBUFF_SPRITE_STEP
 HERO_FRAME_4    equ   HERO_SIZE+151
 HERO_VBUFF_4    equ   VBUFF_SPRITE_START+3*VBUFF_SPRITE_STEP
 HERO_SLOT       equ   1
+
+; Create stamps of each sprite
 
                 pea   HERO_FRAME_1
                 pea   HERO_VBUFF_1
@@ -147,11 +170,37 @@ HERO_SLOT       equ   1
                 pea   HERO_VBUFF_4
                 _GTECreateSpriteStamp
 
+; Compile the sprite stamps and hold the compilation token
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_1
+                _GTECompileSpriteStamp
+                pla
+
                 pea   HERO_SLOT                    ; Put the player in slot 1
-                pea   HERO_FLAGS
-                pea   HERO_VBUFF_1                 ; and use this stamp
+                pea   HERO_FLAGS+SPRITE_COMPILED   ;  mark this as a compiled sprite (can only use in RENDER_WITH_SHADOWING mode)
+                pha                                ;  pass in the token of the compiled stamp
                 pei   PlayerX
                 pei   PlayerY
+                _GTEAddSprite
+
+;                brl   Exit
+
+; Repeat for each stamp.  _GTECompileSpriteStamp will return an error if it runs out of memory
+
+                pea   HERO_SLOT+1                   ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1                 ; and use this stamp
+                pei   PlayerX1
+                pei   PlayerY1
+                _GTEAddSprite
+
+                pea   HERO_SLOT+2                   ; Put the player in slot 1
+                pea   HERO_FLAGS
+                pea   HERO_VBUFF_1                 ; and use this stamp
+                pei   PlayerX2
+                pei   PlayerY2
                 _GTEAddSprite
 
 EvtLoop
@@ -207,7 +256,30 @@ do_render
                 pei   PlayerY
                 _GTEMoveSprite                    ; Move the sprite to this local position
 
-                pea  $0000
+                pea   HERO_SLOT+1
+                lda   PlayerX1
+                sec
+                sbc   StartX
+                pha
+                lda   PlayerY1
+                sec
+                sbc   StartY
+                pha
+                _GTEMoveSprite                    ; Move the sprite to this local position
+
+                pea   HERO_SLOT+2
+                lda   PlayerX2
+                sec
+                sbc   StartX
+                pha
+                lda   PlayerY2
+                sec
+                sbc   StartY
+                pha
+                _GTEMoveSprite                    ; Move the sprite to this local position
+
+                pea  #RENDER_WITH_SHADOWING
+;                pea  $0000
                 _GTERender
 
 ; Update the performance counters
@@ -226,7 +298,7 @@ do_render
 
 ; Exit code
 Exit
-                jsr   SoundShutDown
+;                jsr   SoundShutDown
                 _GTEShutDown
 Quit
                 _QuitGS    qtRec
@@ -383,6 +455,17 @@ UpdatePlayerPos
 
 ApplyCollisions
 
+; Move coordinates down the list
+            lda  PlayerX1
+            sta  PlayerX2
+            lda  PlayerY1
+            sta  PlayerY2
+
+            lda  PlayerGlobalX
+            sta  PlayerX1
+            lda  PlayerGlobalY
+            sta  PlayerY1
+
 ; Convert global to local coordinates
 
             lda  PlayerGlobalX
@@ -468,10 +551,10 @@ ApplyCollisions
             tax
 :frame
 
-            pea   HERO_SLOT
-            pei   LastHFlip
-            phx
-            _GTEUpdateSprite
+;            pea   HERO_SLOT
+;            pei   LastHFlip
+;            phx
+;            _GTEUpdateSprite
             
             rts
 
@@ -524,8 +607,6 @@ _GetVBLTicks
             pla
             plx
             rts
-
-frameCount  equ   24
 
 MusicFile   str        '1/overworld.ntp'
 

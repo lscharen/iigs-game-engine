@@ -49,7 +49,7 @@ appTmp2         equ   32
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #ENGINE_MODE_TWO_LAYER+ENGINE_MODE_DYN_TILES
+                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER ; +ENGINE_MODE_DYN_TILES
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
 
 ; Initialize local variables
@@ -60,12 +60,14 @@ appTmp2         equ   32
 
 ; Initialize the graphics screen playfield
 
-                pea   #320
+                pea   #160
                 pea   #200
                 _GTESetScreenMode
 
 ; Load a tileset
 
+                pea   #0
+                pea   #511
                 pea   #^tiledata
                 pea   #tiledata
                 _GTELoadTileSet

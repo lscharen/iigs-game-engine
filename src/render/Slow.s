@@ -7,8 +7,8 @@
 ; GenericUnderSlow : Places the TileStore's tile on top of tmp_sprite_data
 
 ConstTile0Slow
-            jsr   FillPEAOpcode
-            jmp   ConstTile0Fast
+            jsr   FillPEAOpcode                    ; Could these be slightly faster to do PEA ConstTile0Fast-1 ; JMP FillPEAOpcode?
+            jmp   ConstTile0Fast                   ; Currently it's 6 + 6 + 3 + 6, improved would be 5 + 3 + 6 + 6 = 1 cycle saved. :(
 
 SpriteOverASlow
             lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
@@ -77,12 +77,6 @@ FillPEAOpcode
 ]line       equ   ]line+1
             --^
             rep   #$20
-            rts
-
-; This is a stub; will be removed eventually
-_FillPEAOpcode
-            jsr   FillPEAOpcode
-            plb                                    ; Restore the TileStore bank
             rts
 
 CopyTileASlow

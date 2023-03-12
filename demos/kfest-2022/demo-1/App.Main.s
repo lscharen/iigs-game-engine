@@ -35,8 +35,18 @@ MaxGlobalX      equ   16
 MaxGlobalY      equ   18
 MaxBG0X         equ   20
 MaxBG0Y         equ   22
+frameCount      equ   24
 OldOneSecondCounter equ 26
 appTmp0         equ   28
+seg1x           equ   30
+seg2x           equ   32
+seg3x           equ   34
+seg4x           equ   36    ; BG1 x-pos
+frameCountTotal equ   38
+PlayerX         equ   40
+PlayerY         equ   42
+PlayerXVel      equ   44
+PlayerYVel      equ   46
 
                 phk
                 plb
@@ -47,14 +57,8 @@ appTmp0         equ   28
 
                 _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
-                lda   #0                      ; Engine in Fast Mode
+                lda   #ENGINE_MODE_USER_TOOL+ENGINE_MODE_TWO_LAYER  ; Engine in Fast Mode as a User Tool
                 jsr   GTEStartUp              ; Load and install the GTE User Tool
-
-; Initialize local variables
-
-                stz   StartX
-                stz   StartY
-                stz   frameCount
 
 ; Initialize the graphics screen playfield
 
@@ -64,6 +68,8 @@ appTmp0         equ   28
 
 ; Load a tileset
 
+                pea   0
+                pea   256
                 pea   #^tiledata
                 pea   #tiledata
                 _GTELoadTileSet
@@ -73,10 +79,38 @@ appTmp0         equ   28
                 pea   #TileSetPalette
                 _GTESetPalette
 
+                pea   $0
+                _GTEClearBG1Buffer
+
 ; Set up our level data
 
-                jsr   BG0SetUp
+;                jsr   BG0SetUp
+                pea   416
+                pea   30
+                pea   ^App_TileMapBG0
+                pea   App_TileMapBG0+{10*416}
+                _GTESetBG0TileMapInfo
+
+                stz   seg1x
+                stz   seg2x
+                stz   seg3x
+                stz   seg4x
+
                 jsr   SetLimits
+                jsr   DoLoadBG1
+
+; Initialize local variables
+
+                lda   #56
+                sta   StartX
+                lda   #0
+                sta   StartY
+                stz   frameCount
+                stz   frameCountTotal
+
+                pei   StartX
+                pei   StartY
+                _GTESetBG0Origin
 
                 lda   #193                    ; Tile ID of '0'
                 jsr   InitOverlay             ; Initialize the status bar
@@ -85,6 +119,59 @@ appTmp0         equ   28
                 pla
                 sta   OldOneSecondCounter
                 jsr   UdtOverlay
+
+; Create some sprites
+                lda   #16
+                sta   PlayerX
+
+                lda   MaxGlobalY
+                sec
+                sbc   #48                     ; 32 for tiles, 16 for sprite
+                lda   #48                     ; 32 for tiles, 16 for sprite
+                sta   PlayerY
+                stz   PlayerXVel
+                stz   PlayerYVel
+
+HERO_SIZE       equ   {SPRITE_16X16}
+HERO_FLAGS      equ   HERO_SIZE                                 ; no extra H/V bits for now
+HERO_FRAME_1    equ   HERO_SIZE+145
+HERO_VBUFF_1    equ   VBUFF_SPRITE_START+0*VBUFF_SPRITE_STEP
+HERO_SLOT       equ   1
+
+                pea   HERO_FRAME_1
+                pea   HERO_VBUFF_1
+                _GTECreateSpriteStamp
+
+                pha                                ; Space for result
+                pea   HERO_SIZE
+                pea   HERO_VBUFF_1
+                _GTECompileSpriteStamp
+                pla
+
+                pea   HERO_SLOT                    ; Put the player in slot 1
+                pea   HERO_FLAGS+SPRITE_COMPILED   ;  mark this as a compiled sprite (can only use in RENDER_WITH_SHADOWING mode)
+                pha                                ;  pass in the token of the compiled stamp
+                pei   PlayerX
+                pei   PlayerY
+                _GTEAddSprite
+
+; Set up the per-scanline rendering
+
+                lda   StartX
+                jsr   InitOffsets
+
+                pea   #scanlineHorzOffset
+                pea   #^BG0Offsets
+                pea   #BG0Offsets
+                _GTESetAddress
+
+                pea   #scanlineHorzOffset2
+                pea   #^BG1Offsets
+                pea   #BG1Offsets
+                _GTESetAddress
+
+                pea   #RENDER_WITH_SHADOWING                  ; one regular render to fill the screen with the tilemap
+                _GTERender
 
 ; Set up a very specific test.  First, we draw a sprite into the sprite plane, and then
 ; leave it alone.  We are just testing the ability to merge sprite plane data into 
@@ -101,26 +188,15 @@ EvtLoop
 :do_more
                 cmp        #'d'
                 bne        :not_d
-                lda        StartX
-                cmp        MaxBG0X
-                bcc        *+5
-                brl        :do_render
-                inc        StartX
-                pei        StartX
-                pei        StartY
-                _GTESetBG0Origin
+                jsr        DecRanges
+                jsr        SetOffsets
                 brl        :do_render
 :not_d
 
                 cmp        #'a'
                 bne        :not_a
-                lda        StartX
-                bne        *+5
-                brl        :do_render
-                dec        StartX
-                pei        StartX
-                pei        StartY
-                _GTESetBG0Origin
+                jsr        IncRanges
+                jsr        SetOffsets
                 brl        :do_render
 :not_a
 
@@ -148,12 +224,27 @@ EvtLoop
 :not_w
 
 :do_render
-                pea  $0000
+                jsr  SetBG1Animation                ; Update the per-scanline BG1 offsets
+
+                jsr   _GetVBLTicks
+                and   #$00FC
+                lsr
+                lsr
+                sta   PlayerX
+
+                pea   HERO_SLOT
+                pei   PlayerX
+                pei   PlayerY
+                _GTEMoveSprite                    ; Move the sprite to this local position
+
+                pea  #RENDER_PER_SCANLINE
+;                pea  #0
                 _GTERender
 
 ; Update the performance counters
 
                 inc   frameCount
+                inc   frameCountTotal
                 pha
                 _GTEGetSeconds
                 pla
@@ -179,6 +270,13 @@ qtRec           adrl  $0000
 
 ; Color palette
 MyDirectPage    ds    2
+
+_GetVBLTicks
+            PushLong  #0
+            _GetTick
+            pla
+            plx
+            rts
 
 SetLimits
                 pha                       ; Allocate space for width (in tiles), height (in tiles), pointer
@@ -238,7 +336,211 @@ SetLimits
 
                 rts
 
-frameCount      equ   24
+DecRanges
+                lda   seg1x
+                bne   *+5
+                lda   #164
+                dec
+                sta   seg1x
+                bit   #1
+                bne   :out
+                lda   seg2x
+                bne   *+5
+                lda   #164
+                dec
+                sta   seg2x
+                bit   #1
+                bne   :out
+                lda   seg3x
+                bne   *+5
+                lda   #164
+                dec
+                sta   seg3x
+:out
+                rts
+
+IncRanges
+                lda   seg1x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg1x
+                bit   #1
+                bne   :out
+                lda   seg2x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg2x
+                bit   #1
+                bne   :out
+                lda   seg3x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg3x
+                bit   #1
+                bne   :out
+                lda   seg4x
+                inc
+                cmp   #164
+                bcc   *+5
+                lda   #0
+                sta   seg4x
+:out
+                rts
+
+
+InitOffsets
+                pha
+
+                ldx   #0
+                ldy   #40
+                jsr   _InitRange
+                ldx   #40
+                ldy   #80
+                jsr   _InitRange
+                ldx   #120
+                ldy   #88
+                jsr   _InitRange
+                jsr   _InitBG1
+
+                pla
+                sta   seg1x
+                jsr   SetOffset1
+                lsr
+                sta   seg2x
+                jsr   SetOffset2
+                lsr
+                sta   seg3x
+                jsr   SetOffset3
+                jsr   SetBG1Offsets
+                rts
+
+SetOffsets
+                lda   seg1x
+                jsr   SetOffset1
+                lda   seg2x
+                jsr   SetOffset2
+                lda   seg3x
+                jsr   SetOffset3
+
+SetBG1Offsets
+                pei   seg4x
+                pea   0
+                _GTESetBG1Origin
+                rts
+
+SetBG1Animation
+                pea   #scanlineHorzOffset2
+                pea   #^BG1Offsets
+                lda   frameCountTotal
+                and  #$000F
+                asl
+                adc   #BG1Offsets
+                pha
+                _GTESetAddress
+                rts
+
+SetOffset1
+                ldx   #120
+                ldy   #88
+                jmp   _SetRange
+SetOffset2
+                ldx   #40
+                ldy   #80
+                jmp   _SetRange
+SetOffset3
+                ldx   #0
+                ldy   #40
+                jmp   _SetRange
+
+_SetRange
+                pha
+
+                txa
+                asl
+                tax
+
+:loop2          lda   BG0Offsets,x
+                and   #$FF00
+                ora   1,s
+                sta   BG0Offsets,x
+
+                dey
+                beq   :done
+
+                inx
+                inx
+                cpx   #416
+                bcc   :loop2
+:done
+                pla
+                rts
+
+_offsets dw 0,0,0,1,1,2,3,3,4,4,4,3,3,2,1,1
+_InitBG1
+                ldx   #0
+                ldy   #0
+:loop           lda   _offsets,y
+                sta   BG1Offsets,x
+                iny
+                iny
+                cpy   #31
+                bcc   *+5
+                ldy   #0
+
+                inx
+                inx
+                cpx   #448
+                bcc   :loop
+                rts
+
+_InitRange
+                txa
+                asl
+                tax
+
+                tya
+                dec
+                and   #$00FF
+                xba
+
+:loop1          sta   BG0Offsets,x
+                sec
+                sbc   #$0100
+                dey
+                beq   :done
+                inx
+                inx
+                cpx   #416
+                bcc   :loop1
+:done
+                rts
+
+; Load a binary file in the BG1 buffer
+DoLoadBG1
+                jsr   AllocBank               ; Alloc 64KB for Load/Unpack
+                sta   BankLoad                ; Store "Bank Pointer"
+                ldx   #BG1DataFile            ; Load the background file into the bank
+                jsr   LoadFile
+
+                pea   #164                    ; Fill everything
+                pea   #200
+                pea   #256
+                lda   BankLoad
+                pha
+                pea   $0000
+                pea   COPY_PIC_SCANLINE       ; Copy in a mode that supports per-scanline offsets
+                _GTECopyPicToBG1
+                rts
+
+BG1DataFile     strl  '1/bg1.bin'
+BG0Offsets      ds    416
+BG1Offsets      ds    448     ; Make this a bit larger so we can just update a pointer
 
                 PUT        ../StartUp.s
                 PUT        ../../shell/Overlay.s

@@ -27,7 +27,7 @@ DirtyTiles     ENT
 
                ds  \,$00             ; pad to the next page boundary
 _Sprites       ENT
-               ds  SPRITE_REC_SIZE*MAX_SPRITES
+               ds  SPRITE_REC_SIZE*MAX_ELEMENTS
 
 ;-------------------------------------------------------------------------------------
 ;
@@ -110,6 +110,10 @@ Col2CodeOffset    ENT
                   dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
 ]step             equ   ]step+1
                   --^
+                  lup   82          ; Make is a double-length table so we can add the ScreenWidth without testing for wrap-around
+                  dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
+]step             equ   ]step+1
+                  --^
                   dw    CODE_TOP+{81*PER_TILE_SIZE}
 
 ; A parallel table to Col2CodeOffset that holds the offset to the exception handler address for each column
@@ -129,6 +133,7 @@ JTableOffset      ENT
 ;
 ; These tables are reversed to be parallel with the JTableOffset and Col2CodeOffset tables above.  The
 ; physical word index that each instruction is intended to be placed at is in the comment.
+                  bra   *-3         ; wrap around
 CodeFieldEvenBRA  ENT
                   bra   *+6         ; 81 -- need to skip over the JMP loop that passed control back
                   bra   *+9         ; 80
@@ -213,6 +218,7 @@ CodeFieldEvenBRA  ENT
                   bra   *-6         ; 1
                   bra   *-3         ; 0
 
+                  bra   *-6         ; wrap around
 CodeFieldOddBRA   ENT
                   bra   *+9         ; 81 -- need to skip over two JMP instructions
                   bra   *+12        ; 80
@@ -382,6 +388,17 @@ BG1YOffsetTable   ENT
 ;                  dw     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
                   --^
 
+; Pointer to per-scanline offsets for BG0
+StartXMod164Tbl   ENT
+                  dw    0,0
+
+LastOffsetTbl     ENT
+                  ds    416
+
+; Pointer to per-scanline offsets for BG1
+BG1StartXMod164Tbl ENT
+                  dw    0,0
+
 ; Other Toolset variables
 OneSecondCounter  ENT
                   dw        0
@@ -389,9 +406,10 @@ OldOneSecVec      ENT
                   ds        4
 Timers            ENT
                   ds        TIMER_REC_SIZE*MAX_TIMERS
-Overlays          ENT
-                  dw        0     ; count
-                  ds        8     ; only support one or now (start_line, end_line, function call)
+
+;Overlays          ENT
+;                  dw        0     ; count
+;                  ds        10    ; only support one for now (flags, start_line, end_line, function call)
 
 ; From the IIgs ref 
 DefaultPalette   ENT
@@ -503,6 +521,29 @@ _SpriteBits      ENT
 _SpriteBitsNot   ENT
                  dw $FFFE,$FFFD,$FFFB,$FFF7,$FFEF,$FFDF,$FFBF,$FF7F,$FEFF,$FDFF,$FBFF,$F7FF,$EFFF,$DFFF,$BFFF,$7FFF
 
+; Doubly linked list that allows the sprites to be traversed in SPRITE_CLIP_TOP order. The prev/next
+; index links are stored in the parallel _Sprites structure; just the extra head and tail index values
+; are stored here.  A negative value is used as a setinel
+_SortedHead     ENT
+                dw  $FFFF
+
+; Array of screen ranges covered by the sprites.  Adjacent sprites are merged. Used in the shadowing renderer
+_ShadowListCount  ENT
+                  ds 2
+_ShadowListTop    ENT
+                  ds {2*{MAX_ELEMENTS}}   ; space for all of the sprites + overlay range
+_ShadowListBottom ENT
+                  ds {2*{MAX_ELEMENTS}}
+
+; Complement of the Shadow List.  Can have one more segment than that list
+_DirectListCount  ENT
+                  ds 2
+_DirectListTop    ENT
+                  ds {2*{MAX_ELEMENTS+1}}
+_DirectListBottom ENT
+                  ds {2*{MAX_ELEMENTS+1}}
+
+
 ; Steps to the different sprite stamps
 _stamp_step      ENT
                  dw  0,12,24,36
@@ -542,3 +583,8 @@ Handles    ENT
 
 blt_return
 stk_save
+
+;StartXMod164Arr ENT
+;                ds 416*2
+;LastPatchOffsetArr ENT
+;                ds 416*2

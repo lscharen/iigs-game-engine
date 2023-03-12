@@ -6,13 +6,20 @@
 ; slammer, note that page-aligned addresses repeat every 8 scan lines and some lines would need
 ; to be split into two slams to keep the direct page aligned.
 ;
-; At best, this saves 1 cycles per word, or 80 cycles for a full screen -- which is only about
+; At best, this saves 1 cycles per word, or 80 cycles for a full scanline -- which is only about
 ; 12 additional instructions, so this is an optimization that is unlikely to lead to a net
 ; improvement.
 ;
 ; X = first line (inclusive), valid range of 0 to 199
 ; Y = last line  (exclusive), valid range >X up to 200
 _PEISlam
+                 cpx   #201
+                 bcc   *+4
+                 brk   $A9
+                 cpy   #201
+                 bcc   *+4
+                 brk   $A8
+
                  lda   ScreenWidth
                  dec
                  stal  :screen_width_1  ; save the width-1 outside of the direct page

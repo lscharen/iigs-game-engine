@@ -1,20 +1,29 @@
 ; Basic tile functions
 
 ; Copy tileset data from a pointer in memory to the tiledata back
-; X = high word
-; A = low word
+; 
+; tmp0 = Pointer to tile data
+; X = first tile
+; Y = last tile
+;
+; To copy in three tiles starting at tile 5, for example, X = 5 and Y = 9
 _LoadTileSet
-                sta  tmp0
-                stx  tmp1
+                txa
+                _Mul128                   ; Jump to the target location
+                tax
+                tya
+                _Mul128
+                sta  tmp2                 ; This is the terminating byte
+
                 ldy  #0
-                tyx
 :loop           lda  [tmp0],y
                 stal tiledata,x
-                dex
-                dex
-                dey
-                dey
-                bne  :loop
+                inx
+                inx
+                iny
+                iny
+                cpx  tmp2
+                bne  :loop                ; Use BNE so when Y=512 => $0000, we wait for wrap-around
                 rts
 
 
@@ -259,7 +268,7 @@ _SetNormalTileProcs
                  brl  :pickDynProc
 
 :pickTwoLyrProc  ldy  #TwoLyrProcs
-                 pla                          ; pull of the proc index
+                 pla                          ; pull off the proc index
                  jmp  _SetTileProcs
 
 ; Specialized check for when the engine is in "Fast" mode. If is a simple decision tree based on whether
@@ -436,16 +445,16 @@ _SetTileProcs
 ; TileProcTables
 ;
 ; Tables of tuples used to populate the K_TS_* dispatch arrays for different combinations. This is
-; easier to maintain than a bunch of conditional code.  Each etry hold three addresses.
+; easier to maintain than a bunch of conditional code.  Each entry holds three addresses.
 ;
 ; First address:  Draw a tile directly into the code buffer (no sprites)
 ; Second address: Draw a tile merged with sprite data from the direct page
 ; Third address:  Specialize routine to draw a tile merged with one sprite
 ;
 ; There are unique tuples of routines for all of the different combinations of tile properties
-; and engine modes.  This is an extesive number of combinations, but it simplified the development
-; and maintainence of the rendering subroutines.  Also, the difference subroutines can be written
-; in any way and can make use of their on subroutines to reduce code size.
+; and engine modes.  This is an extensive number of combinations, but it simplifies the development
+; and maintainence of the rendering subroutines.  Also, the different subroutines can be written
+; in any way and can make use of their own subroutines to reduce code size.
 ;
 ; Properties:
 ;
@@ -497,6 +506,12 @@ DynUnder     dw   CopyDynamicTile,DynamicUnder,OneSpriteDynamicUnder
 ; the TILE_SOLID_BIT hint bit can be set to indicate that a tile
 ; has no transparency.  This allows one of the faster routines
 ; to be selected from the other Proc tables
+;
+; FUTURE: An optimization that can be done is to have the snippets
+; code layout fixed based on the EngineFlags and then the Two Layer
+; routines should only need to update the DATA and MASK operands in
+; the snippet at a fixed location rather than rebuild the ~20 bytes
+; of data.
 TwoLyrProcs
 TwoLyrOverZA   dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr
 TwoLyrOverZV   dw   Tile0TwoLyr,SpriteOver0TwoLyr,OneSpriteOver0TwoLyr

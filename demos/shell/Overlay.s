@@ -105,7 +105,7 @@ InitOverlay
              ldx    #r_line+{CHAR_WIDTH*4}
              jsr    _DrawChar
 
-             pea    $0000
+             pea    $0000                  ; logical lines for the overlay bar
              pea    $0008
              pea    #^StatusBar
              pea    #StatusBar
@@ -174,6 +174,8 @@ oneSecondCounter ds 2
 
 ; Draw the overlay
 ;  A = address of the left edge of the screen
+;  X = top line to start drawing the overlay (typically 0)
+;  Y = bottom line to stop drawing the overlayer (typically the overlay height set during call to _SetOverlay)
 StatusBar    phb                                     ; Called via JSL
              phd                                     ; save the direct page register
 

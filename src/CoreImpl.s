@@ -225,6 +225,8 @@ EngineReset
                   stz       BG1TileMapPtr
                   stz       BG1TileMapPtr+2
 
+                  stz       CompileBankTop
+
                   stz       SCBArrayPtr
                   stz       SCBArrayPtr+2
 
@@ -238,6 +240,7 @@ EngineReset
                   sta       tmp15
                   stz       tmp14
 
+; Rebuild all of the bank blitters
 :loop
                   ldx       #BlitBuff
                   lda       #^BlitBuff
@@ -251,6 +254,15 @@ EngineReset
 
                   dec       tmp15
                   bne       :loop
+
+; Set the scanline tables to reasonable default values
+;                  ldx       #{416*2}-2
+;                  lda       #0
+;:sxm_loop         
+;                  sta       StartXMod164Arr,x
+;                  dex
+;                  dex
+;                  bpl       :sxm_loop
 
                   rts
 

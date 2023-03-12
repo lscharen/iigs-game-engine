@@ -150,7 +150,7 @@ ROW_BYTES  equ 384                                 ; VBUFF_TILE_ROW_BYTES
 ;          a. If it is not marked in the DirtyTile list
 ;             * Clear its bit from the TileStore's TS_SPRITE_FLAG
 ;             * Add the tile to the DirtyTile list
-;t
+;
 ; 2. If a sprite is marked as SPRITE_STATUS_REMOVED, then
 ;    A. Clear its bit from the SpriteBits bitmap
 ;    B. For each tile the sprite overlaps with:
@@ -223,10 +223,11 @@ _DoPhase1
             trb   SpriteMap
             lda   #SPRITE_STATUS_EMPTY            ; Mark as empty so no error if we try to Add a sprite here again
             sta   _Sprites+SPRITE_STATUS,y
-            jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
-
+            tyx
+            jsr   _DeleteSprite                   ; Remove sprite from linked list
+            txy                                   ; Restore y-register
 :hidden
-            jmp   _ClearSpriteFromTileStore
+            jmp   _ClearSpriteFromTileStore       ; Clear the tile flags, add to the dirty tile list and done
 
 :no_clear
 
@@ -330,7 +331,7 @@ phase1      dw    :phase1_0
 ; the stamp every time.  So this allows users to create stamps in advance and then
 ; assign them to the sprites as needed.
 ;
-; Note that the user had full freedom to create a stamp at any VBUFF address, however,
+; Note that the user has full freedom to create a stamp at any VBUFF address, however,
 ; without leaving a buffer around each stamp, graphical corruption will occur.  It is
 ; recommended that the defines for VBUFF_SPRITE_START, VBUFF_TILE_ROW_BYTES and
 ; VBUFF_TILE_COL_BYTES to calculate tile-aligned corner locations to lay out the 
@@ -361,8 +362,8 @@ _CreateSpriteStamp
 ;   01 - 8x16 (1x2 tiles)
 ;   10 - 16x8 (2x1 tiles)
 ;   11 - 16x16 (2x2 tiles)
-; Bit 13       : Show/Hid sprite
-; Bit 14       : Reserved. Must be zero.
+; Bit 13       : Show/Hide sprite during rendering
+; Bit 14       : Mark sprite as a compile sprite.  SPRITE_DISP is treated as a compilation token.
 ; Bit 15       : Reserved. Must be zero.
 ; TBD: Bit 15       : Low Sprite priority. Draws behind high priority tiles.
 ;
@@ -370,7 +371,7 @@ _CreateSpriteStamp
 ; the vertical tiles are taken from tileId + 32.  This is why tile sheets should be saved
 ; with a width of 256 pixels.
 ;
-; A = vbuffAddress
+; A = Sprite ID / Flags
 ; Y = High Byte = x-pos, Low Byte = y-pos
 ; X = Sprite Slot (0 - 15)
 _AddSprite
@@ -383,10 +384,11 @@ _AddSprite
 
             sta   _Sprites+SPRITE_ID,x          ; Keep a copy of the full descriptor
 
-            lda   #SPRITE_STATUS_ADDED
+            lda   #SPRITE_STATUS_ADDED          ; Used to initialize the SPRITE_STATUS
             sta   _Sprites+SPRITE_STATUS,x
 
-            stz   _Sprites+VBUFF_ADDR,x         ; Clear the VBUFF address, just to initialize it
+            lda   #$FFFF
+            sta   _Sprites+VBUFF_ADDR,x         ; Clear the VBUFF address, just to initialize it
  
             phy
             tya
@@ -397,8 +399,6 @@ _AddSprite
             and   #$00FF
             sta   _Sprites+SPRITE_X,x           ; X coordinate
 
-            jsr   _PrecalcAllSpriteInfo         ; Cache sprite property values (simple stuff)
-
 ; Mark the dirty bit to indicate that the active sprite list needs to be rebuilt in the next
 ; render call
 
@@ -408,8 +408,292 @@ _AddSprite
             lda   _SpriteBits,x                 ; Get the bit flag for this sprite slot
             tsb   SpriteMap                     ; Mark it in the sprite map bit field
 
-            rts
+            jsr   _PrecalcSpriteSize            ; Cache sprite property values
+            jsr   _PrecalcSpriteBounds
 
+            jsr   _InsertSprite                 ; Insert it into the sorted list
+            jmp   _Validate
+
+; _SortSprite
+;
+; Given a sprite's index, i, update the sprite permutation array such that p[j] = i where
+; the sprite is the j.th sprite ordered by the SPRITE_CLIP_TOP value.  It is important to
+; note that the sorted sprite order does not impact rendering order (that is determined by
+; the sprite index position), but is only used to calculate region of the screen to update
+; and, in the future, may be useful for isometric perspectives where sorting order *is*
+; determined by y-position
+;
+; X = current sprite index
+;
+; The sorting strategy is to
+;
+; a) check if the current slot's y-pos is greater than the next item. If yes, then search forward
+; b) check if the current slot's y-pos is less than the prev item.  If yes, then search in reverse
+; c) sprite is in the correct location
+;
+; The heuristic in play here is that, usually sprites will only move one position in the sorted order
+; between frames, if at all.
+_SortSprite
+           lda   _Sprites+SPRITE_CLIP_TOP,x
+
+           ldy   _Sprites+SORTED_PREV,x
+           bmi   :chk_fwd
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcc   :scan_bkwd                     ; The current node needs to move to an lower position
+
+:chk_fwd
+           ldy   _Sprites+SORTED_NEXT,x        ; If there is nothing ahead of the current node, we're done
+           bmi   :early_out
+           cmp   _Sprites+SPRITE_CLIP_TOP,y    ; If the current node is <= the next node, we're done
+           bcc   :early_out
+           bne   :scan_fwd
+
+:early_out
+           rts
+
+; Look to move the sprite into a later position
+:scan_fwd
+           lda   _Sprites+SORTED_NEXT,y        ; Need to step forward; if we're at the end, then insert here
+           bmi   :insert_end
+           tay
+           lda   _Sprites+SPRITE_CLIP_TOP,y    ; Check against the next node. If it's less that current, keep going
+           cmp   _Sprites+SPRITE_CLIP_TOP,x
+           bcc   :scan_fwd
+
+; Put X before Y
+;
+; Change
+;  a <=> x <=> b
+;  c <=> y <=> d
+;
+; Into
+;  a <=> b and c <=> x <=> y <=> d
+:insert_before
+           jsr  _ReleaseNode
+
+           tya
+           sta  _Sprites+SORTED_NEXT,x        ; Link X to Y
+
+           lda  _Sprites+SORTED_PREV,y
+           sta  _Sprites+SORTED_PREV,x        ; Link X to C
+
+           txa                                ; Link Y to X
+           sta  _Sprites+SORTED_PREV,y
+
+           ldy  _Sprites+SORTED_PREV,x        ; Link C to X
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+; Move X to the end of the list. Y point to the last element
+;
+; ; Change
+;  a <=> x <=> b
+;  y -> nil
+;
+; Into
+;  a <=> b and y <=> x -> nil
+:insert_end
+           jsr  _ReleaseNode
+
+           lda  #$FFFF
+           sta  _Sprites+SORTED_NEXT,x
+           tya
+           sta  _Sprites+SORTED_PREV,x
+           txa
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+; Look to move the sprite into an earlier position
+:scan_bkwd
+           lda   _Sprites+SORTED_PREV,y        ; Need to step backward; if we're at the beginning, then insert here
+           bmi   :insert_front
+           tay
+           lda   _Sprites+SPRITE_CLIP_TOP,x    ; Check against the next node. If it's less that current, keep going
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcc   :scan_bkwd
+
+; Put X after Y
+;
+; Change
+;  a <=> x <=> b
+;  c <=> y <=> d
+;
+; Into
+;  a <=> b and c <=> y <=> x <=> d
+:insert_after
+           jsr  _ReleaseNode
+
+           tya
+           sta  _Sprites+SORTED_PREV,x    ; c <=> y <-- x --- d
+
+           lda  _Sprites+SORTED_NEXT,y    ; c <=> y <-- x --> d
+           sta  _Sprites+SORTED_NEXT,x
+
+           txa
+           ldx  _Sprites+SORTED_NEXT,y
+           sta  _Sprites+SORTED_NEXT,y    ; c <=> y <=> x --> d
+
+           sta  _Sprites+SORTED_PREV,x    ; c <=> y <=> x <=> d
+           rts
+
+; Move X to the front of the list. Y points to the first element
+;
+; ; Change
+;  a <=> x <=> b
+;  head -> y
+;
+; Into
+;  a <=> b and head -> x <=> y
+:insert_front
+           jsr  _ReleaseNode
+
+           stx  _SortedHead
+           txa
+           sta  _Sprites+SORTED_PREV,y
+           lda  #$FFFF
+           sta  _Sprites+SORTED_PREV,x
+           tya
+           sta  _Sprites+SORTED_NEXT,x
+
+:done
+           rts
+
+; Take the node pointed at X and remove it from the doubly-linked list.
+_ReleaseNode
+           phy
+           jsr  _DeleteSprite
+           ply
+           rts
+
+; Add a new sprite into the sorted double-linked list
+_InsertSprite
+           lda   _SortedHead                   ; If the list is empty, just insert the sprite index
+           bmi   :empty
+
+           tay                                 ; Check the first item
+           lda   _Sprites+SPRITE_CLIP_TOP,x
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcc   :insert_head
+
+:next
+           lda   _Sprites+SORTED_NEXT,y
+           bmi   :insert_tail
+
+           tay
+           lda   _Sprites+SPRITE_CLIP_TOP,x
+           cmp   _Sprites+SPRITE_CLIP_TOP,y
+           bcs   :next
+
+           lda   _Sprites+SORTED_PREV,y
+           sta   _Sprites+SORTED_PREV,x       ;  [p] <-- [c]     [n]
+
+           tya
+           sta   _Sprites+SORTED_NEXT,x       ;  [p] <-- [c] --> [n]
+
+           txa
+           ldx   _Sprites+SORTED_PREV,y       ; get ref to the [p]revious node
+           sta   _Sprites+SORTED_PREV,y       ;  [p] <-- [c] <=> [n]
+
+           sta   _Sprites+SORTED_NEXT,x       ;  [p] <=> [c] <=> [n]
+
+           rts
+
+:insert_head
+           stx   _SortedHead
+           lda   #$FFFF
+           sta   _Sprites+SORTED_PREV,x
+           tya
+           sta   _Sprites+SORTED_NEXT,x
+           txa
+           sta   _Sprites+SORTED_PREV,y
+           rts
+
+:insert_tail
+           txa
+           sta   _Sprites+SORTED_NEXT,y
+           tya
+           sta   _Sprites+SORTED_PREV,x
+           lda   #$FFFF
+           sta   _Sprites+SORTED_NEXT,x
+           rts
+
+:empty
+           sta  _Sprites+SORTED_NEXT,x
+           sta  _Sprites+SORTED_PREV,x
+           stx  _SortedHead
+           rts
+
+; Remove a sprite from the double-linked list
+_DeleteSprite
+           ldy  _Sprites+SORTED_NEXT,x
+           bmi  :remove_tail
+
+           cpx  _SortedHead
+           beq  :remove_head
+
+           lda  _Sprites+SORTED_PREV,x
+           sta  _Sprites+SORTED_PREV,y
+
+           tay
+           lda  _Sprites+SORTED_NEXT,x
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+:remove_head
+           sty  _SortedHead
+           lda  #$FFFF
+           sta  _Sprites+SORTED_PREV,y
+           rts
+
+:remove_tail
+           ldy  _Sprites+SORTED_PREV,x
+           bmi  :make_empty
+
+           lda  #$FFFF
+           sta  _Sprites+SORTED_NEXT,y
+           rts
+
+:make_empty
+           lda  #$FFFF
+           sta  _SortedHead
+           rts
+
+; Validate the integrity of the linked list
+_Validate
+:prev      equ  tmp0
+:curr      equ  tmp1
+
+           ldy  #$FFFF
+           ldx  _SortedHead
+           bmi  :done
+:loop
+           sty  :prev
+           stx  :curr
+
+           lda  _Sprites+SORTED_PREV,x
+           cmp  :prev
+           beq  *+4
+           brk  $08
+
+           cpy  #$FFFF
+           beq  :skip
+           lda  _Sprites+SORTED_NEXT,y
+           cmp  :curr
+           beq  *+4
+           brk  $06
+
+           lda  _Sprites+SPRITE_CLIP_TOP,x
+           cmp  _Sprites+SPRITE_CLIP_TOP,y
+           bcs  *+4
+           brk  $0A
+:skip
+           txy
+           lda  _Sprites+SORTED_NEXT,x
+           tax
+           bpl  :loop
+
+:done
+           rts
 ; Macro to make the unrolled loop more concise
 ;
 ;   1. Load the tile store address from a fixed offset
@@ -643,25 +927,131 @@ _CacheSpriteBanks
             
             rts
 
-; Precalculate some cached values for a sprite.  These are *only* to make other part of code,
+; Precalculate some cached values for a sprite.  These are *only* to make other parts of code,
 ; specifically the draw/erase routines more efficient.
 ;
-; There are variations of this routine based on whether we are adding a new sprite, updating
-; it's tile information, or changing its position.
-;
 ; X = sprite index
-_PrecalcAllSpriteInfo
-            lda   _Sprites+SPRITE_ID,x 
-;            and   #$3E00
+_PrecalcSpriteVBuff
+            lda   _Sprites+SPRITE_ID,x               ; Compiled sprites use the SPRITE_DISP as a fixed address to compiled code
+            bit   #SPRITE_COMPILED
+            bne   :compiled
+
             xba
             and   #$0006
-
             tay
             lda   _Sprites+VBUFF_ADDR,x
             clc
             adc   _stamp_step,y
-            sta   _Sprites+SPRITE_DISP,x
+            sta   _Sprites+SPRITE_DISP,x            ; Interpreted as an address in the VBUFF bank
+            rts
 
+:compiled
+            xba
+            and   #$0006                            ; Pick the address from the table of 4 values.  Can use this value directly
+            clc                                     ; as an index
+            adc   _Sprites+VBUFF_ADDR,x
+            tay
+            lda   [CompileBank0],y
+            sta   _Sprites+SPRITE_DISP,x            ; Interpreted as an address in the CompileBank
+            rts
+
+; Compile the four stamps and keep a reference to the addresses.  We take the current CompileBankTop address and allocate 8 bytes
+; of memory.  Then compile each stamp and save the compilation address in the header area.  Finally, the DISP_ADDR is set
+; to that value and the SPRITE_COMPILED bit is set in the SPRITE_ID word.
+;
+; A = sprite Id
+; X = vbuff base address
+_CompileStampSet
+:height     equ   tmp8
+:width      equ   tmp9
+:base       equ   tmp10
+:output     equ   tmp11
+:addrs      equ   tmp12            ; 4 words (tmp12, tmp13, tmp14 and tmp15)
+
+; Save the base address
+            stx   :base
+
+; Initialize the height and width based on the sprite flags
+
+            ldy   #8
+            sty   :height
+            ldx   #4
+            stx   :width
+
+            bit   #$1000                              ; wide flag
+            beq   :skinny
+            ldx   #8
+            stx   :width
+:skinny
+
+            bit   #$0800                              ; tall flag
+            beq   :short
+            ldy   #16
+            sty   :height
+:short
+
+            lda   CompileBankTop
+            sta   :output                         ; Save the current address as the return value
+
+            clc
+            adc   #8
+            sta   CompileBankTop                ; Allocate space for the 4 addresses return by _CompileStamp
+
+;            ldy   :height                      ; X and Y are already set for the first call
+;            ldx   :width
+            lda   :base
+            jsr   _CompileStamp                 ; Compile into the bank
+            sta   :addrs                        ; Save the address temporarily
+
+            ldy   :height
+            ldx   :width
+            clc
+            lda   :base
+            adc   _stamp_step+2
+            jsr   _CompileStamp
+            sta   :addrs+2
+
+            ldy   :height
+            ldx   :width
+            clc
+            lda   :base
+            adc   _stamp_step+4
+            jsr   _CompileStamp
+            sta   :addrs+4
+
+            ldy   :height
+            ldx   :width
+            clc
+            lda   :base
+            adc   _stamp_step+6
+            jsr   _CompileStamp
+            sta   :addrs+6
+
+; Now the sprite stamps are all compiled.  Set the bank to the compilation bank and fill in the header
+
+            phb
+
+            ldy   :output
+            pei   CompileBank
+            plb
+
+            lda   :addrs
+            sta:  0,y
+            lda   :addrs+2
+            sta:  2,y
+            lda   :addrs+4
+            sta:  4,y
+            lda   :addrs+6
+            sta:  6,y
+
+            plb
+            plb
+
+            tya                             ; Put the output value into the accumulator
+            clc                             ; No error
+            rts
+
+_PrecalcSpriteSize
 ; Set the sprite's width and height
             lda   #4
             sta   _Sprites+SPRITE_WIDTH,x
@@ -681,10 +1071,11 @@ _PrecalcAllSpriteInfo
             lda   #16
             sta   _Sprites+SPRITE_HEIGHT,x
 :height_8
+            rts
 
 ; Clip the sprite's bounding box to the play field size and also set a flag if the sprite
 ; is fully off-screen or not
-
+_PrecalcSpriteBounds
             lda   _Sprites+SPRITE_X,x
             bpl   :pos_x
             lda   #0
@@ -760,14 +1151,14 @@ _RemoveSprite
             ora   #SPRITE_STATUS_REMOVED
             sta   _Sprites+SPRITE_STATUS,x
 
-            rts
+            rts                                   ; The _DeleteSprite call is made in _DoPhase1 during the next render
 
 ; Update the sprite's flags. We do not allow the size of a sprite to be changed.  That requires
 ; the sprite to be removed and re-added.
 ;
 ; A = Sprite slot
 ; X = New Sprite Flags
-; Y = New Sprite Stamp Address
+; Y = New Sprite Stamp Address | New Compiled Sprite Token
 _UpdateSprite
             cmp   #MAX_SPRITES
             bcc   :ok
@@ -813,7 +1204,7 @@ _UpdateSprite
             ora   #SPRITE_STATUS_UPDATED
             sta   _Sprites+SPRITE_STATUS,x
 
-            jmp   _PrecalcAllSpriteInfo         ; Cache stuff and return
+            jmp   _PrecalcSpriteVBuff           ; Cache stuff and return
 
 ; Move a sprite to a new location.  If the tile ID of the sprite needs to be changed, then
 ; a full remove/add cycle needs to happen
@@ -849,4 +1240,6 @@ _MoveSprite
             ora   #SPRITE_STATUS_MOVED
             sta   _Sprites+SPRITE_STATUS,x
 
-            jmp   _PrecalcAllSpriteInfo         ; Can be specialized to only update (x,y) values
+            jsr   _PrecalcSpriteBounds          ; Can be specialized to only update (x,y) values
+            jsr   _SortSprite                   ; Update the sprite's sorted position
+            jmp   _Validate

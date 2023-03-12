@@ -40,12 +40,12 @@ EngineMode             equ   20          ; Defined the mode/capabilities that ar
                                          ;  bit 2: 0 = No static buffer, 1 = Allocation Bank 00 space for a static screen buffer
 DirtyBits              equ   22          ; Identify values that have changed between frames
 
-BG1DataBank            equ   24          ; Data bank that holds BG1 layer data
-BG1AltBank             equ   26          ; Alternate BG1 bank
+CompileBank0           equ   24          ; Always zero to allow [CompileBank0],y addressing
+CompileBank            equ   26          ; Data bank that holds compiled sprite code
 
-BlitterDP              equ   28          ; Direct page address the holder blitter data
+BlitterDP              equ   28          ; Direct page address that holds blitter data
 
-OldStartX              equ   30
+OldStartX              equ   30          ; Used to track deltas between frames
 OldStartY              equ   32
 
 LastPatchOffset        equ   34          ; Offset into code field that was patched with BRA instructions
@@ -61,7 +61,7 @@ BG1StartYMod208        equ   46
 OldBG1StartX           equ   48
 OldBG1StartY           equ   50
 
-BG1OffsetIndex         equ   52
+BG1OffsetIndex         equ   52          ; Utility index for scanline effect in BG1
 
 BG0TileOriginX         equ   54          ; Coordinate in the tile map that corresponds to the top-left corner
 BG0TileOriginY         equ   56
@@ -73,22 +73,22 @@ BG1TileOriginY         equ   64
 OldBG1TileOriginX      equ   66
 OldBG1TileOriginY      equ   68
 
-TileMapWidth           equ   70
+TileMapWidth           equ   70          ; Pointer to memory holding the tile map for the primary background
 TileMapHeight          equ   72
 TileMapPtr             equ   74
 FringeMapPtr           equ   78
 
 BG1TileMapWidth        equ   82
 BG1TileMapHeight       equ   84
-BG1TileMapPtr          equ   86
+BG1TileMapPtr          equ   86          ; Pointer to memory holding the tile map for the secondary background
 
 SCBArrayPtr            equ   90          ; Used for palette binding
 SpriteBanks            equ   94          ; Bank bytes for the sprite data and sprite mask
 LastRender             equ   96          ; Record which render function was last executed
-; gap
+CompileBankTop         equ   98          ; First free byte i nthe compile bank.  Grows upward in memeory.
 SpriteMap              equ   100         ; Bitmap of open sprite slots.
 ActiveSpriteCount      equ   102
-BankLoad               equ   104
+BG1DataBank            equ   104          ; Data bank that holds BG1 layer data
 TileStoreBankAndBank01 equ   106
 TileStoreBankAndTileDataBank equ 108
 TileStoreBankDoubled   equ   110
@@ -102,7 +102,9 @@ RenderFlags            equ   124         ; Flags passed to the Render() function
 BG1Scaling             equ   126
 
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
-; tiletmp                equ   178         ; 16 bytes of temp storage for the tile renderers
+
+; Free space from 160 to 192
+
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 
 tmp8                   equ   224         ; another 16 bytes of temporary space to be used as scratch 
@@ -166,12 +168,22 @@ SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuf
 ENGINE_MODE_TWO_LAYER  equ   $0001
 ENGINE_MODE_DYN_TILES  equ   $0002
 ENGINE_MODE_BNK0_BUFF  equ   $0004
+ENGINE_MODE_USER_TOOL  equ   $8000       ; Communicate if GTE is loaded as a system tool, or a user tool
 
 ; Render flags
 RENDER_ALT_BG1         equ   $0001
 RENDER_BG1_HORZ_OFFSET equ   $0002
 RENDER_BG1_VERT_OFFSET equ   $0004
 RENDER_BG1_ROTATION    equ   $0008
+RENDER_PER_SCANLINE    equ   $0010
+RENDER_WITH_SHADOWING  equ   $0020
+RENDER_SPRITES_SORTED  equ   $0040      ; Draw the sprites in y-sorted order.  Otherwise, use the index.
+
+; Overlay flags
+OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first
+OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fully opaque
+OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
+OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
 
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
@@ -181,6 +193,14 @@ DIRTY_BIT_BG1_Y        equ   $0008
 DIRTY_BIT_BG0_REFRESH  equ   $0010
 DIRTY_BIT_BG1_REFRESH  equ   $0020
 DIRTY_BIT_SPRITE_ARRAY equ   $0040
+
+; GetAddress table IDs
+scanlineHorzOffset     equ   $0001        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
+scanlineHorzOffset2    equ   $0002        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
+
+; CopyPicToBG1 flags
+COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
+COPY_PIC_SCANLINE      equ   $0001        ; Copy in a way to support BG1 + RENDER_PER_SCANLINE.  Pixmap is double-width, 327x200 with stride of 327
 
 ; Script definition
 YIELD                  equ   $8000
@@ -197,25 +217,27 @@ PAD_BUTTON_A           equ   $0200
 PAD_KEY_DOWN           equ   $0400
 
 ; Tile constants
-; TILE_RESERVED_BIT      equ   $8000
-TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
+TILE_DAMAGED_BIT       equ   $8000                  ; Mark a tile as damaged (internal only)
+TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite (unimplemented)
 TILE_FRINGE_BIT        equ   $2000                  ; Unused
 TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
 TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400
 TILE_HFLIP_BIT         equ   $0200
 TILE_ID_MASK           equ   $01FF
-TILE_CTRL_MASK         equ   $FE00
-; TILE_PROC_MASK         equ   $F800                  ; Select tile proc for rendering
+TILE_CTRL_MASK         equ   $7E00
+; TILE_PROC_MASK         equ   $7800                  ; Select tile proc for rendering
 
 ; Sprite constants
-SPRITE_HIDE            equ   $2000
+SPRITE_OVERLAY         equ   $8000                    ; This is an overlay record.  Stored as a sprite for render ordering purposes
+SPRITE_COMPILED        equ   $4000                    ; This is a compiled sprite (SPRITE_DISP points to a routine in the compiled cache bank)
+SPRITE_HIDE            equ   $2000                    ; Do not render the sprite
 SPRITE_16X16           equ   $1800                    ; 16 pixels wide x 16 pixels tall
 SPRITE_16X8            equ   $1000                    ; 16 pixels wide x 8 pixels tall
 SPRITE_8X16            equ   $0800                    ; 8 pixels wide x 16 pixels tall
 SPRITE_8X8             equ   $0000                    ; 8 pixels wide x 8 pixels tall
-SPRITE_VFLIP           equ   $0400
-SPRITE_HFLIP           equ   $0200
+SPRITE_VFLIP           equ   $0400                    ; Flip the sprite vertically
+SPRITE_HFLIP           equ   $0200                    ; Flip the sprite horizontally
 
 ; Stamp storage parameters
 VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
@@ -263,11 +285,26 @@ VBuffArray        EXT
 _stamp_step       EXT
 VBuffVertTableSelect EXT
 VBuffHorzTableSelect EXT
-Overlays          EXT
+; Overlays          EXT
 BG1YCache         EXT
 ScalingTables     EXT
 NumHandles        EXT
 Handles           EXT
+
+;StartXMod164Arr    EXT
+;LastPatchOffsetArr EXT
+
+_SortedHead EXT
+_ShadowListCount  EXT
+_ShadowListTop    EXT
+_ShadowListBottom EXT
+_DirectListCount  EXT
+_DirectListTop    EXT
+_DirectListBottom EXT
+
+StartXMod164Tbl   EXT
+LastOffsetTbl     EXT
+BG1StartXMod164Tbl EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

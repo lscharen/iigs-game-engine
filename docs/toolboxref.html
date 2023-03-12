@@ -89,7 +89,11 @@ style: toolref
         </tr>
         <tr>
           <td><a href="#GTECreateSpriteStamp">GTECreateSpriteStamp</a></td>
-          <td> Creates a sprite stamp from the tile set</td>
+          <td>Creates a sprite stamp from the tile set</td>
+        </tr>
+        <tr>
+          <td><a href="#GTECompileSpriteStamp">GTECompileSpriteStamp</a></td>
+          <td>Created a compiled sprite from a sprite stamp</td>
         </tr>
         <tr>
           <td><a href="#GTEAddSprite">GTEAddSprite</a></td>
@@ -794,12 +798,12 @@ style: toolref
           <tr>
             <td class="bot">width</td>
             <td><em></em></td>
-            <td><em>Word</em>&mdash;Width of the playfield in pixels. Must be even.</td>
+            <td><em>Word</em>&mdash;Width of the playfield in bytes. Must be even.</td>
           </tr>
           <tr>
             <td class="bot">height</td>
             <td><em></em></td>
-            <td><em>Word</em>&mdash;Height of the playfield in pixels.</td>
+            <td><em>Word</em>&mdash;Height of the playfield in scanlines.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1207,9 +1211,24 @@ style: toolref
           <td>Offsets each column of the secondary background's vertical position. Unimplemented.</td>
         </tr>
         <tr>
-          <td>RENDER_BG1_ROTATIONT</td>
-          <td>$0004</td>
+          <td>RENDER_BG1_ROTATION</td>
+          <td>$0008</td>
           <td>Use the internal rotation tables to render the secondary background</td>
+        </tr>
+        <tr>
+          <td>RENDER_PER_SCANLINE</td>
+          <td>$0010</td>
+          <td>Set individual scanline properties for the primary and secondary backgrounds from a table.</td>
+        </tr>
+        <tr>
+          <td>RENDER_WITH_SHADOWING</td>
+          <td>$0020</td>
+          <td>Uses a rendering mode that does not draw sprites into the tiles but uses shadowing to draw sprites on top of the rendered background and then expose the final composited image.  This mode is required to use compiled sprites.</td>
+        </tr>
+        <tr>
+          <td>RENDER_SPRITES_SORTED</td>
+          <td>$0040</td>
+          <td>Draws the sprite in y-sorted order instead of sprite slot order.</td>
         </tr>
       </tbody>
     </table>
@@ -1234,8 +1253,17 @@ style: toolref
     </p>
     <p>
       A tile set is an array of (up to) 512 tile definitions and each tile definition is 128 bytes.  The tile definition
-      is comprised of four, 32-byte tiles; a normal tile, its mask, a horizontally flipped versio of the tile and its mask.
+      is comprised of four, 32-byte tiles; a normal tile, its mask, a horizontally flipped version of the tile and its mask.
       The first 128 bytes of a tileset must be set to zero.
+    </p>
+    <p>
+      The <em>start</em> and <em>finish</em> parameters define a subset of tiles to be copied into the GTE memory
+      buffer. This is most commonly used to load a small number of tiles to avoid needing to store a full set of 512
+      tiles that are mostly unushed.  For eample, loading in 16 tiles can be performed as <tt>GTELoadTileSet(0, 17, tilePtr)</tt>.
+    </p>
+    <p>
+      This function can also be used to swap out subsets of tiles on the fly.  Any tiles that are replaced which may
+      be on-screen are not automatically refreshed.
     </p>
     <div class="section">
       <h5>Parameters</h5>
@@ -1251,6 +1279,16 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">start</td>
+            <td></td>
+            <td><em>Word</em>&mdash;index of the first tile to copy</td>
+          </tr>
+          <tr>
+            <td class="bot">finish</td>
+            <td></td>
+            <td><em>Word</em>&mdash;terminating index.  This tile is not copied.</td>
           </tr>
           <tr>
             <td class="bot">tileSetPtr</td>
@@ -1292,7 +1330,9 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTELoadTileSet(tileSetPtr)</tt></p>
+      <p><tt>extern pascal void GTELoadTileSet(start, finish, tileSetPtr)</tt></p>
+      <p><tt>Word     start;</tt></p>
+      <p><tt>Word     finish;</tt></p>
       <p><tt>Pointer  tileSetPtr;</tt></p>
     </div>
   </div>
@@ -1404,6 +1444,90 @@ style: toolref
   </div>
 
   <div class="api">
+    <h4 class="tn">$2DXX</h4>
+    <h4 id="GTECompileSpriteStamp">GTECompileSpriteStamp</h4>
+    <p>
+      Creates a compiled sprite in a special compilation buffer from an existing sprite stamp.  The return value
+      is an address token that can be passed into the AddSprite function in place of the vBuffAddr parameter as
+      long as the `SPRITE_COMPILED` flag is set.
+    </p>
+    <div class="section">
+      <h5>Parameters</h5>
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack before call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">wordspace</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Space for result</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteIdent</td>
+            <td></td>
+            <td><em>Word</em>&mdash;sprite identifier word</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Location in the sprite vitual buffer.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="stack">
+        <colgroup>
+          <col class="col-1">
+          <col class="col-2">
+          <col class="col-3">
+        </colgroup>
+        <tbody>
+          <tr>
+            <th>Stack after call</th>
+          </tr>
+          <tr>
+            <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">addr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Location in the sprite compilation buffer.</td>
+          </tr>
+          <tr>
+            <td class="bot"></td>
+            <td><em>←</em></td>
+            <td><em>SP</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h5>Errors</h5>
+      <p>None</p>
+    </div>
+    <div class="section">
+      <h5>C</h5>
+      <p><tt>extern pascal Word GTECompileSpriteStamp(spriteIdent, vBuffAddr)</tt></p>
+      <p><tt>Word     spriteIdent;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
+    </div>
+  </div>
+
+  <div class="api">
     <h4 class="tn">$10XX</h4>
     <h4 id="GTEAddSprite">GTEAddSprite</h4>
     <p>
@@ -1430,9 +1554,19 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
-            <td class="bot">spriteDescriptor</td>
+            <td class="bot">spriteSlot</td>
             <td></td>
-            <td><em>Word</em>&mdash;Sprite descriptor word that is used to set the status bits.</td>
+            <td><em>Word</em>&mdash;The slot to assign the sprite to.  There are 16 slots and sprites in lower slots are drawn above the sprites in higher slots.</td>
+          </tr>
+          <tr>
+            <td class="bot">spriteFlags</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite flags that define the sprite's properties.</td>
+          </tr>
+          <tr>
+            <td class="bot">vBuffAddr</td>
+            <td></td>
+            <td><em>Word</em>&mdash;Sprite address in the VBUFF space, or a compiled sprite address</td>
           </tr>
           <tr>
             <td class="bot">x</td>
@@ -1443,11 +1577,6 @@ style: toolref
             <td class="bot">y</td>
             <td></td>
             <td><em>Word</em>&mdash;Signed vertical sprite position on the playfield.</td>
-          </tr>
-          <tr>
-            <td class="bot">spriteSlot</td>
-            <td></td>
-            <td><em>Word</em>&mdash;The slot to assign the sprite to.  There are 16 slots and sprites in lower slots are drawn above the sprites in higher slots.</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -1484,11 +1613,12 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
-      <p><tt>extern pascal void GTEAddSprite(spriteDescriptor, x, y, spriteSlot)</tt></p>
+      <p><tt>extern pascal void GTEAddSprite(spriteSlot, spriteFlags, vBuffAddr, x, y)</tt></p>
+      <p><tt>Word     spriteSlot;</tt></p>
       <p><tt>Word     spriteDescriptor;</tt></p>
+      <p><tt>Word     vBuffAddr;</tt></p>
       <p><tt>Word     x;</tt></p>
       <p><tt>Word     y;</tt></p>
-      <p><tt>Word     spriteSlot;</tt></p>
     </div>
     <div class="example">
       <h5>Sprite Descriptor</h5>
@@ -3023,7 +3153,7 @@ style: toolref
   <div class="api">
     <h4 class="tn">$24XX</h4>
     <h4 id="GTEGetTileDataAddr">GTEGetTileDataAddr</h4>
-    <p>This API is under active development at this time.</p>
+    <p>Returns a pointer to the bottom of the internal tile data memory.  The data for each tile can be found at offset <tt>N * 128</tt></p>
     <div class="section">
       <h5>Parameters</h5>
       <table class="stack">
@@ -3038,6 +3168,11 @@ style: toolref
           </tr>
           <tr>
             <td class="top">previous contents</td>
+          </tr>
+          <tr>
+            <td class="bot">longspace</td>
+            <td></td>
+            <td><em>Long</em>&mdash;Space for result</td>
           </tr>
           <tr>
             <td class="bot"></td>
@@ -3061,6 +3196,11 @@ style: toolref
             <td class="top">previous contents</td>
           </tr>
           <tr>
+            <td class="bot">tileDataPtr</td>
+            <td></td>
+            <td><em>Long</em>&mdash;<span class="sc">pointer</span> to the tile data</td>
+          </tr>
+          <tr>
             <td class="bot"></td>
             <td><em>←</em></td>
             <td><em>SP</em></td>
@@ -3074,6 +3214,7 @@ style: toolref
     </div>
     <div class="section">
       <h5>C</h5>
+      <p><tt>extern pascal Pointer GTEGetTileDataAddr()</tt></p>
     </div>
   </div>
 

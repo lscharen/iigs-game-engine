@@ -72,7 +72,7 @@ Counter            equ   tmp3
                    rts
 
 
-; Patch an 8-bit or 16-bit valueS into the bank.  These are a set up unrolled loops to 
+; Patch an 8-bit or 16-bit valueS into the bank.  These are set up as unrolled loops to 
 ; quickly patch in a constant value, or a value from an array into a given set of 
 ; templates.
 ;
@@ -87,14 +87,14 @@ Counter            equ   tmp3
 ; A = value
 ;
 ; Set M to 0 or 1
-SetConst                                            ; Need a blank line here, otherwise the :tbl local variable resolveds backwards
-                   jmp   (:tbl,x)
-:tbl               da    :bottom-00,:bottom-03,:bottom-06,:bottom-09
-                   da    :bottom-12,:bottom-15,:bottom-18,:bottom-21
-                   da    :bottom-24,:bottom-27,:bottom-30,:bottom-33
-                   da    :bottom-36,:bottom-39,:bottom-42,:bottom-45
-                   da    :bottom-48
-:top               sta   $F000,y
+SetConst           mac
+                   jmp   (dispTbl,x)
+dispTbl            da    bottom-00,bottom-03,bottom-06,bottom-09
+                   da    bottom-12,bottom-15,bottom-18,bottom-21
+                   da    bottom-24,bottom-27,bottom-30,bottom-33
+                   da    bottom-36,bottom-39,bottom-42,bottom-45
+                   da    bottom-48
+                   sta   $F000,y
                    sta   $E000,y
                    sta   $D000,y
                    sta   $C000,y
@@ -110,7 +110,8 @@ SetConst                                            ; Need a blank line here, ot
                    sta   $2000,y
                    sta   $1000,y
                    sta:  $0000,y
-:bottom            rts
+bottom
+                   <<<
 
 ; SetDPAddrs
 ;
@@ -244,8 +245,8 @@ BuildBank
                    plb
                    plb
 
-; Change the patched value to one of DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based on the capabilities
-; that the engine needs.
+; Change the patched value to one of BANK_ENTRY, DP_ENTRY, TWO_LYR_ENTRY or ONE_LYR_ENTRY based
+; on the capabilities that the engine needs.
 
                    lda   #DP_ENTRY
                    sta   :entryOffset

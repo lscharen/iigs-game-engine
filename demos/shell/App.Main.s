@@ -301,9 +301,12 @@ DoLoadBG1
                     ldx        #BG1AltDataFile
                     jsr        LoadFile
 
+                    lda        altBG1Bank
+                    jsl        SetBG1Bank
+
                     ldx        BankLoad
                     lda        #0
-                    ldy        BG1AltBank
+                    ldy        BG1DataBank
                     jsl        CopyBinToBG1
 
                     rts
