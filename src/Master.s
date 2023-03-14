@@ -46,7 +46,7 @@
 
 ; Additional code
 
-            ASM   FastCopies.s
-            KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
-            ALI   BANK
-            SNA   FASTCPY
+;            ASM   FastCopies.s
+;            KND   #$1001               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
+;            ALI   BANK
+;            SNA   FASTCPY

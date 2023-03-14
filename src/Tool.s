@@ -965,7 +965,6 @@ _TSCompileSpriteStamp
                 put     Sprite2.s
                 put     SpriteRender.s
                 put     Render.s
-;                put     blitter/Scanline.s
                 put     render/Render.s
                 put     render/Fast.s
                 put     render/Slow.s
