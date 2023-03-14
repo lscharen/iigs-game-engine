@@ -219,7 +219,7 @@ PAD_KEY_DOWN           equ   $0400
 ; Tile constants
 TILE_DAMAGED_BIT       equ   $8000                  ; Mark a tile as damaged (internal only)
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite (unimplemented)
-TILE_FRINGE_BIT        equ   $2000                  ; Unused
+TILE_USER_BIT          equ   $2000                  ; User-defined tile.  Execute registered callback.
 TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
 TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400
