@@ -275,6 +275,17 @@ r_ovrly
             --^
             jmp   r_ovrly_rtn                       ; In R1W1, so can't use the stack
 
+r_ovrly2
+]idx        equ   0
+            lup   R_CHAR_COUNT
+            lda   r_line+]idx,x
+            sta   ]idx
+            lda   r_line+]idx+2,x
+            sta   ]idx+2
+]idx        equ   ]idx+4
+            --^
+            jmp   r_ovrly_rtn                       ; In R1W1, so can't use the stack
+
 l_ovrly
 ]idx        equ   0
             lup   L_CHAR_COUNT
@@ -289,11 +300,23 @@ l_ovrly
 ]idx        equ   ]idx+4
             --^
             jmp   l_ovrly_rtn
- 
+
+l_ovrly2
+]idx        equ   0
+            lup   L_CHAR_COUNT
+            lda   l_line+]idx,x
+            sta   ]idx
+            lda   l_line+]idx+2,x
+            sta   ]idx+2
+]idx        equ   ]idx+4
+            --^
+            jmp   l_ovrly_rtn
+
 ; Single TSB slam
 m_line
 ]idx        equ   $9E
             lup   80                    ; 80 words max for a full-width screen
+;            sta   ]idx
             tsb   ]idx
 ]idx        equ   ]idx-2
             --^

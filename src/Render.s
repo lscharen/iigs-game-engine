@@ -135,6 +135,7 @@ _Render
 :no_removal
             rts
 
+; Small helper function to draw a single overlay
 _DoOverlay
             lda   Overlays+OVERLAY_PROC
             stal  :disp+1
@@ -162,11 +163,8 @@ _RenderScanlines
             jsr   _ResetBG1YTable
 :ytbl_ok
 
-            jsr   _ApplyBG0YPos       ; Set stack addresses for the virtual lines to the physical screen
+            jsr   _ApplyBG0YPos               ; Set stack addresses for the virtual lines to the physical screen
             jsr   _ApplyScanlineBG1YPos       ; Set the y-register values of the blitter
-
-; _ApplyBG0Xpos need to be split because we have to set the offsets, then draw in any updated tiles, and
-; finally patch out the code field.  Right now, the BRA operand is getting overwritten by tile data.
 
             jsr   _ApplyBG0XPosPre
             jsr   _ApplyBG1XPosPre
@@ -233,7 +231,7 @@ _RenderScanlines
 ;       i.   Draw the overlay
 ;       ii.  Change the sprite segment to start after the overlay
 ;       iii. Go to [1]
-_DrawFinalPass2
+_DrawFinalPass
 :cursor     equ    tmp8
 :bottom     equ    tmp9
 
@@ -306,9 +304,10 @@ _DrawFinalPass2
 
 :_somerge
             phxy
-            ldx    :cursor
             ldy    _Sprites+SPRITE_CLIP_TOP,x    ; PEI Slam to the top of the overlay (:bottom is greater than this value)
+            ldx    :cursor
             sty    :cursor
+;            brk    $44
             jsr    _PEISlam
             lda    3,s                           ; Retrieve the sprite index
             tax
@@ -370,112 +369,6 @@ _DrawFinalPass2
             lda    :bottom
             sta    :cursor
             brl    :_so_loop
-
-_DrawFinalPass
-:cursor     equ    tmp8
-
-            stz    :cursor                        ; Current mark in the sweep down the screen
-
-            ldy    ObjectListHead                 ; If there are no items, just _BltRange the rest of the screen and return
-            jmi    :finish
-
-:loop
-            ldx    :cursor
-            lda    ObjectList+OL_SPRITE_TOP,y
-            sta    :cursor
-            jsr    :_BltRange3                    ; Expose from the cursor to the top and update the cursor
-
-            lda    ObjectList+OL_SPRITE_ID,y      ; See if we are processing an overlay or a sprite region
-            bit    #SPRITE_OVERLAY
-            jne    :obj_is_overlay
-
-:obj_is_sprite
-            ldx    ObjectList+OL_NEXT,y
-            jmi    :sprite_complete
-
-; Look at the next item, if it's below the current sprite range, do a slam and move on to the next item
-
-            lda    ObjectList+OL_CLIP_BOTTOM,y
-            cmp    ObjectList+OL_CLIP_TOP,x
-            bcs    :sprite_overlap
-
-            txy                   ; Move to the next sprite
-            ldx    :cursor
-            sta    :cursor        ; A = bottom, x = :cursor
-            jsr    _PEISlam
-            bra    :loop          ; Loop back and do the BltRange up to the top of the next sprite
-
-; Now we know that the next item must be an overlay (because sprite ranges are already combined), so go ahead
-; and PEI slam up to the top of the overlay
-:sprite_overlap
-            lda    ObjectList+OL_CLIP_TOP,x
-            ldx    :cursor
-            sta    :cursor
-            jsr    _PEISlam
-
-            lda    ObjectList+OL_CLIP_BOTTOM,x           ; If the overlay is fully within the sprite, do extra work.
-            cmp    ObjectList+OL_CLIP_BOTTOM,y           ; Otherwise continue knowing we are currently handling an overlay
-            bcc    :split
-
-            txy
-            bra    :overlay_next
-
-:split
-            jsr    split
-            bra    :obj_is_sprite
-
-; Do a similar process for the overlays
-:obj_is_overlay
-            ldx    ObjectList+OL_NEXT,y
-            bmi    :ovrly_complete
-
-; Look at the next item, if it's below the current overlay range, draw the overlay and move on to the next item
-
-            lda    ObjectList+OL_CLIP_BOTTOM,y
-            cmp    ObjectList+OL_CLIP_TOP,x
-            bcs    :ovrly_overlap
-
-            jsr    DrawOverlayY
-            txy                   ; Move to the next item
-            bra    :loop          ; Loop back and do the BltRange up to the top of the next sprite
-
-; Now we know that the next item must be a sprite.  Skip any sprite that are completely covered by the overlay.  If
-; a sprite is split by the overlay, then reduce the top value
-:ovrly_overlap
-            lda    ObjectList+OL_CLIP_TOP,x
-            ldx    :cursor
-            sta    :cursor
-            jsr    PEISlam
-
-            lda    ObjectList+OL_CLIP_BOTTOM,x           ; If the next 
-            cmp    ObjectList+OL_CLIP_BOTTOM,y           ; Otherwise continue knowing we are currently handling an overlay
-            bcc    :split
-
-            txy
-            bra    :overlay_next
-
-
-; When a sprite is the last item before the end of the screen, jump here
-:sprite_complete
-            ldx   :cursor
-            lda   ObjectList+OL_CLIP_BOTTOM,y
-            sta   :cursor
-            tay
-            jsr   PEISlam
-
-; Jump here when there are no items left to process.
-:finish
-            ldx   :cursor
-            ldy   ScreenHeight
-            jmp   _BltRange
-
-
-            lda    ObjectList+OL_CLIP_BOTTOM,x           ; If the overlay is fully within the sprite, do extra work.
-            cmp    ObjectList+OL_CLIP_BOTTOM,y           ; Otherwise continue knowing we are currently handling an overlay
-            bcc    :split
-
-            txy
-            bra    :overlay_next
 
 ; Run through all of the tiles on the DirtyTile list and render them
 _ApplyTiles
@@ -575,96 +468,13 @@ _RenderWithShadowing
 ; At this point, everything in the background has been rendered into the code field.  Next, we need
 ; to create priority lists of scanline ranges.
 
-;            jsr   _BuildShadowList    ; Create the ranges based on the sorted sprite y-values
 
-            jsr   _ShadowOff          ; Turn off shadowing and draw all the scanlines with sprites on them
+            jsr   _ShadowOff                ; Turn off shadowing and draw all the scanlines with sprites on them
             jsr   _DrawShadowList
-            jsr   _DrawDirectSprites  ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
+            jsr   _DrawDirectSprites        ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
 
-            jsr   _ShadowOn           ; Turn shadowing back on
+            jsr   _ShadowOn                 ; Turn shadowing back on
             jsr   _DrawFinalPass
-
-;
-; The objects that need to be reasoned about are
-;
-; 1. Sprites
-; 2. Overlays
-;    a. Solid High Priority
-;    b. Solid Low Priority
-;    c. Masked High Priority
-;    d. Masked Low Priority
-; 3. Background
-;
-; Notes:
-;
-;  A High Priority overlay is rendered above the sprites
-;  A Low Priority overlay is rendered below the sprites
-;  A Solid High Priority overlay obscured everything and if the only thing drawn on the scanline
-;
-; The order of draw oprations is:
-;
-; 1. Turn off shadowing
-; 2. Draw the background for scanlines with (Sprites OR a Masked Low Priority overlay) AND NOT a Solid Low Priority overlay
-; 3. Draw the Solid Low Priority overlays
-; 4. Draw the Sprites
-; 5. Draw the Masked Low Priority overlays
-; 6. Turn on shadowing
-; 7. Draw, in top-to-bottom order
-;    a. Background lines not drawn yet
-;    b. PEI Slam lines with (Sprites OR a Masked Low Priority Overlay) AND NOT a High Priority overlay
-;    c. High Priority overlays
-;
-; The work of this routine is to quickly build a sorted list of scanline ranges that can call the appropriate
-; sub-renderer
-
-;            jsr   BuildShadowSegments
-;
-; The trick is to create a bit-field mapping for the different actions to define 
-
-;            lda   Overlays
-;            beq   :no_ovrly
-;
-;            jsr   _ShadowOff
-
-; Shadowing is turned off. Render all of the scan lines that need a second pass. One
-; optimization that can be done here is that the lines can be rendered in any order
-; since it is not shown on-screen yet.
-
-;            ldx   Overlays+OVERLAY_TOP                  ; Blit the full virtual buffer to the screen
-;            ldy   Overlays+OVERLAY_BOTTOM
-;            jsr   _BltRange
-
-; Turn shadowing back on
-
-;            jsr   _ShadowOn
-
-; Now render all of the remaining lines in top-to-bottom (or bottom-to-top) order
-
-;            ldx   #0
-;            ldy   Overlays+OVERLAY_TOP
-;            beq   :skip
-;            jsr   _BltRange
-;:skip
-;            jsr   _DoOverlay
-
-;            ldx   Overlays+OVERLAY_BOTTOM
-;            cpx   ScreenHeight
-;            beq   :done
-;            ldy   ScreenHeight
-;            jsr   _BltRange
-;            bra   :done
-
-;:no_ovrly
-
-;            ldx   #0                  ; Blit the full virtual buffer to the screen
-;            ldy   ScreenHeight
-;            jsr   _BltRange
-
-;:done
-
- ;           ldx   #0
- ;           ldy   ScreenHeight
- ;           jsr   _BltSCB
 
             lda   StartYMod208              ; Restore the fields back to their original state
             ldx   ScreenHeight
@@ -688,95 +498,6 @@ _RenderWithShadowing
             lda   #DIRTY_BIT_SPRITE_ARRAY
             sta   DirtyBits
 :no_removal
-            rts
-
-; Look at the overlay list and the sprite list and figure out which scanline ranges need to be 
-; blitted in what order.  We try to build all of the scan line segments lists because that 
-; saves the work of re-scanning the lists.
-;
-; The semgent list definitions are:
-;
-;   BLIT_W_SHADOW_OF
-BuildShadowSegments
-;            ldx   _SortedHead
-;            bmi   :no_sprite
-;:loop
-;            lda   _Sprites+CLIP_TOP,x
-;            lda   _Sprites+SORTED_NEXT,x
-;            tax
-;            bpl   :loop
-;
-;            lda   #0                            ; Start at the top of the 
-
-            rts
-
-; Function go through the object list and draw the background for areas that will need to draw
-; additional items on top
-_DrawShadowBkgnd
-            ldx   _SortedHead
-            bmi   :empty                        ; If there is nothing, do nothing
-
-            lda   _Sprites+SPRITE_ID,x
-
-
-:empty
-            rts
-
-; Function to iterate through the object list and build a merged scanline list of areas of the screen that
-; need to be drawn with shadowing off.
-_BuildShadowList
-
-            ldy    #0                           ; This is the index into the list of shadow segments
-
-            ldx    _SortedHead
-
-:preloop
-            bmi    :empty                       ; If the list is empty / skipped, do nothing
-            lda    _Sprites+SPRITE_ID,x
-            bit    #SPRITE_HIDE                 ; Make sure we don't do extra work for hidden objects
-            beq    :insert
-            lda    _Sprites+SORTED_NEXT,x
-            tax
-            bra    :preloop
-
-; Start of loop
-:advance
-            iny
-            iny
-
-:insert
-            lda   _Sprites+SPRITE_CLIP_TOP,x      ; Load the sprite's top line
-            sta   _ShadowListTop,y                ; Set the top entry of the list to the sprite top
-
-            lda   _Sprites+SPRITE_CLIP_BOTTOM,x   ; Optimistically set the end of the segment to the bottom of this sprite
-            inc                                   ; Clip values are on the scanline, so add one to make it a proper interval
-
-:replace
-            sta   _ShadowListBottom,y
-:skip
-            lda   _Sprites+SORTED_NEXT,x          ; If there another sprite in the list?
-            bmi   :no_more_sprites                ; If not, we can finish up
-
-            tax
-            lda    _Sprites+SPRITE_ID,x
-            bit    #SPRITE_HIDE
-            bne    :skip
-
-            lda   _ShadowListBottom,y             ; If the bottom of the current sprite is _less than_ the top of the next 
-            cmp   _Sprites+SPRITE_CLIP_TOP,x      ; sprite, then there is a gap and we create a new entry
-            bcc   :advance
-
-            lda   _Sprites+SPRITE_CLIP_BOTTOM,x   ; Get the bottom value of the next sprite.
-            inc
-            cmp   _ShadowListBottom,y             ; If it extends the segment then replace the value, otherwise skip
-            bcc   :skip
-            bra   :replace
-
-:no_more_sprites
-            iny                                 ; Set the list count to N * 2
-            iny
-:empty
-            sty   _ShadowListCount
             rts
 
 ; Iterate through the shadow list and call _BltRange on each
@@ -882,12 +603,6 @@ _DrawDirectSprites
 ;
 ; We can't alter that actual sorted list of items, so we create a reduced list which allows items to be filtered and
 ; to keep a simple, single-linked list
-isNotHidden mac
-            bit    #SPRITE_OVERLAY
-            bne    ]1
-            bit    #SPRITE_HIDE
-            beq    ]1
-
 EOL         equ    $FFFF
 
 
@@ -1009,9 +724,6 @@ _DrawObjShadow
 ;:empty
 ;            rts
 
-; Walk the object list and call _BltRange for the sprite 
-_DrawShadowRanges
-
 
 ; Split
 ;
@@ -1023,21 +735,21 @@ _DrawShadowRanges
 split
 :prev       equ    tmp15
 
-            lda    ObjectList+OL_CLIP_BOTTOM,x           ; If the next item is fully within the current one, split
-            cmp    ObjectList+OL_CLIP_BOTTOM,y
+            lda    ObjectList+OL_SPRITE_BOTTOM,x           ; If the next item is fully within the current one, split
+            cmp    ObjectList+OL_SPRITE_BOTTOM,y
             bcc    :do_split
             rts
 
 :do_split
-            sta    ObjectList+OL_CLIP_TOP,y              ; Set the top of the current item past the bottom of the next item
+            sta    ObjectList+OL_SPRITE_TOP,y              ; Set the top of the current item past the bottom of the next item
 
 :split_lp
             lda    ObjectList+OL_NEXT,x                  ; search to find the spot in the linked list that we should 
             bmi    :insert_after                         ; move the fragment forward to
             stx    :prev
             tax
-            lda    ObjectList+OL_CLIP_TOP,y
-            cmp    ObjectList+OL_CLIP_TOP,x
+            lda    ObjectList+OL_SPRITE_TOP,y
+            cmp    ObjectList+OL_SPRITE_TOP,x
             bcc    :insert_before                        ; If the modified node's top value is <= the node we are inspecting,
             beq    :insert_before                        ; then it can be inserted here
             bra    :split_lp
@@ -1064,12 +776,6 @@ split
             tay
             jsr   _BltRange
             ply
-            plx
-            rts
-
-_BltRange2
-            phx
-            jsr    _BltRange
             plx
             rts
 
@@ -1103,14 +809,6 @@ DrawOverlayY
             phx
             jsr   _DrawOverlay
 
-            ply
-            plx
-            rts
-
-DrawOverlayX
-            phx
-            phy
-            jsr   _DrawOverlay
             ply
             plx
             rts

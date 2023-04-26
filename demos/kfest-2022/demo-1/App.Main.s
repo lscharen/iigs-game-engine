@@ -47,6 +47,7 @@ PlayerX         equ   40
 PlayerY         equ   42
 PlayerXVel      equ   44
 PlayerYVel      equ   46
+OverlayTop      equ   48
 
                 phk
                 plb
@@ -107,6 +108,7 @@ PlayerYVel      equ   46
                 sta   StartY
                 stz   frameCount
                 stz   frameCountTotal
+                stz   OverlayTop
 
                 pei   StartX
                 pei   StartY
@@ -222,7 +224,21 @@ EvtLoop
                 _GTESetBG0Origin
                 bra        :do_render
 :not_w
+                cmp        #' '
+                bne        :not_space
+                lda        OverlayTop
+                inc
+                and        #$3F
+                sta        OverlayTop
+                pha
+                clc
+                adc        #8
+                pha
+                pea    #^StatusBar
+                pea    #StatusBar
+                _GTEUpdateOverlay
 
+:not_space
 :do_render
                 jsr  SetBG1Animation                ; Update the per-scanline BG1 offsets
 

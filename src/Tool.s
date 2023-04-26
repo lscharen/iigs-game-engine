@@ -729,11 +729,11 @@ _TSSetOverlay
                 lda     :top,s
                 sta     Overlays+OVERLAY_TOP,x
                 lda     :bottom,s
-                dec
+;                dec
                 sta     Overlays+OVERLAY_BOTTOM,x
                 sec
                 sbc     :top,s
-                inc
+;                inc
                 sta     Overlays+OVERLAY_HEIGHT,x
 
                 lda     :proc,s
@@ -759,11 +759,11 @@ _TSUpdateOverlay
                 lda     :top,s
                 sta     Overlays+OVERLAY_TOP
                 lda     :bottom,s
-                dec
+;                dec
                 sta     Overlays+OVERLAY_BOTTOM
                 sec
                 sbc     :top,s
-                inc
+;                inc
                 sta     Overlays+OVERLAY_HEIGHT,x
                 
                 lda     :proc,s
