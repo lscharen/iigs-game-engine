@@ -407,6 +407,7 @@ OldOneSecVec      ENT
 Timers            ENT
                   ds        TIMER_REC_SIZE*MAX_TIMERS
 
+; Keep a count of the different overlays
 ;Overlays          ENT
 ;                  dw        0     ; count
 ;                  ds        10    ; only support one for now (flags, start_line, end_line, function call)
@@ -542,6 +543,14 @@ _DirectListTop    ENT
                   ds {2*{MAX_ELEMENTS+1}}
 _DirectListBottom ENT
                   ds {2*{MAX_ELEMENTS+1}}
+
+; List of filtered objects
+ObjectListCount    ENT
+                  ds  2
+ObjectListHead    ENT
+                  ds  2
+ObjectList        ENT
+                  ds  {10*{MAX_ELEMENTS+2}}   ; Extra space at the end for a sentinel marker
 
 
 ; Steps to the different sprite stamps

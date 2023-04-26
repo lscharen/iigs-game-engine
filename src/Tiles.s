@@ -374,6 +374,12 @@ _SetTile
 :changed         sta  oldTileId
                  lda  newTileId
                  sta  TileStore+TS_TILE_ID,x        ; Value is different, store it.
+
+; If the user bit is set, then skip most of the setup and just fill in the TileProcs with the user callback
+; target
+                 bit  #TILE_USER_BIT
+                 bne  :set_user_tile
+
                  jsr  _GetTileAddr
                  sta  TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
 
@@ -396,6 +402,26 @@ _SetTile
                  lda  newTileId
                  jsr  _SetNormalTileProcs
                  jmp  _PushDirtyTileX
+
+:set_user_tile
+                 lda  #UserTileDispatch
+                 stal K_TS_BASE_TILE_DISP,x
+                 lda  #UserTileDispatch
+                 stal K_TS_SPRITE_TILE_DISP,x
+                 lda  #UserTileDispatch
+                 stal K_TS_ONE_SPRITE,x
+                 jmp  _PushDirtyTileX
+
+; Trampoline / Dispatch table for user-defined tiles.  If the user calls the GTESetCustomTileCallback toolbox routine,
+; then this value is patched out.  Calling GTESetCustomTileCallback with NULL will disconnect the user's routine.
+UserTileDispatch
+                 ldal TileStore+TS_TILE_ID,x      ; Replace the tile data address (unset) with the tile id
+_UTDPatch        jsl  UserHook1                   ; Call the users code
+                 plb                              ; Restore the data bank
+                 rts
+
+; Stub to have a valid address for initialization / reset
+UserHook1        rtl
 
 ; X = Tile Store offset
 ; Y = Engine Mode Base Table address
@@ -745,7 +771,7 @@ b_15_3     endbit 15;3;]4
 ; Store some tables in the K bank that will be used exclusively for jmp (abs,x) dispatch
 
 K_TS_BASE_TILE_DISP   ds TILE_STORE_SIZE      ; draw the tile without a sprite
-K_TS_COPY_TILE_DATA   ds TILE_STORE_SIZE      ; copy/merge the tile into temp storage
+;K_TS_COPY_TILE_DATA   ds TILE_STORE_SIZE      ; copy/merge the tile into temp storage
 K_TS_SPRITE_TILE_DISP ds TILE_STORE_SIZE      ; select the sprite routine for this tile
 K_TS_ONE_SPRITE       ds TILE_STORE_SIZE      ; specialized sprite routine when only one sprite covers the tile
-K_TS_APPLY_TILE_DATA  ds TILE_STORE_SIZE      ; move tile from temp storage into code field
+;K_TS_APPLY_TILE_DATA  ds TILE_STORE_SIZE      ; move tile from temp storage into code field

@@ -100,6 +100,7 @@ _CallTable
 
                 adrl  _TSCompileSpriteStamp-1
                 adrl  _TSSetAddress-1
+                adrl  _TSUpdateOverlay-1
 
 _CTEnd
 _GTEAddSprite        MAC
@@ -721,6 +722,7 @@ _TSSetOverlay
 
                 ldx     #0                              ; Always just use the first spot
                 lda     #SPRITE_OVERLAY
+;                lda     #SPRITE_OVERLAY+SPRITE_HIDE     ; Type 2 overlays re-use the HIDE bit
                 sta     Overlays+OVERLAY_ID,x
                 stz     Overlays+OVERLAY_FLAGS,x
 
@@ -739,7 +741,7 @@ _TSSetOverlay
                 lda     :proc+2,s
                 sta     Overlays+OVERLAY_PROC+2,x
 
-                ldx     #{MAX_SPRITES+0}*2              ; Adjust to call the generic routings
+                ldx     #{MAX_SPRITES+0}*2              ; Adjust to call the generic routine
                 jsr     _InsertSprite
  
                 _TSExit #0;#8
@@ -753,14 +755,24 @@ _TSUpdateOverlay
                 
                 ldx     #0
                 stz     Overlays+OVERLAY_FLAGS,x
+
                 lda     :top,s
                 sta     Overlays+OVERLAY_TOP
                 lda     :bottom,s
+                dec
                 sta     Overlays+OVERLAY_BOTTOM
+                sec
+                sbc     :top,s
+                inc
+                sta     Overlays+OVERLAY_HEIGHT,x
+                
                 lda     :proc,s
                 sta     Overlays+OVERLAY_PROC
                 lda     :proc+2,s
                 sta     Overlays+OVERLAY_PROC+2
+
+                ldx     #{MAX_SPRITES+0}*2              ; Adjust to call the generic routings
+                jsr     _UpdateSprite
 
                 _TSExit #0;#8
 

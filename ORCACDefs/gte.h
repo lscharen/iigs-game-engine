@@ -155,7 +155,7 @@ extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
 
 /* GTE Tile Constants */
 #define TILE_PRIORITY_BIT          0x4000                  /* Put tile on top of sprite */
-#define TILE_FRINGE_BIT            0x2000                  /* Unused */
+#define TILE_USER_BIT              0x2000                  /* User-defined tile */
 #define TILE_SOLID_BIT             0x1000                  /* Hint bit used in TWO_LAYER_MODE to optimize rendering */
 #define TILE_DYN_BIT               0x0800                  /* Is this a Dynamic Tile? */
 #define TILE_VFLIP_BIT             0x0400

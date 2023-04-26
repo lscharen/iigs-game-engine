@@ -93,3 +93,43 @@ Possibilities
    lda  0000,y
    lda  0002,y
    ...
+
+= HOWTO: Custom tiles =
+
+   pea  #^MyTileRenderer         ; Define the callback function
+   pea  #MyTileRenderer
+   _GTESetCustomTileCallback
+
+   pea  0                        ; Put tiles with the TILE_USER_BIT set
+   pea  0
+   pea  TILE_ID+TILE_USER_BIT
+   _GTESetTile
+
+; On entry
+;
+; A = Tile Id. Use this to select what to draw
+; Y = Address of tile in the code field
+; X = Tile Store array offset
+; B = code field bank
+;
+; Use absolute addressing to fill in the code bank and address offsets $0000, $0003, $1000, $1003, ..., $7000, $7003. If
+; code needs to create snippets, it can be loaded from the tile store array by using the address returned from 
+; GTEGetAddress(tileStoreJmpAddr)
+;
+; User-defined tiles are always marked as damaged.
+
+MyTileRenderer
+   lda   #00A3                   ; Inserts LDA 00,s / PHA code to show a static background from Bank 0
+   sta:  $0000,y
+   sta:  $0003,y
+   sta:  $1000,y
+   sta:  $1003,y
+   ...
+   lda   #$4800
+   sta:  $0001,y
+   sta:  $0004,y
+   sta:  $1001,y
+   sta:  $1004,y
+   ...
+   rtl                           ; Must do a long return
+ 

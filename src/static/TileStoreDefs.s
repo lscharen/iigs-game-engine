@@ -31,6 +31,13 @@ SPRITE_REC_SIZE        equ 42
 MAX_OVERLAYS           equ 2
 MAX_ELEMENTS           equ {MAX_SPRITES+MAX_OVERLAYS}
 
+; Object list used in  renderer
+OL_SPRITE_ID           equ 0                     ; Usual parallel arrays
+OL_SPRITE_TOP          equ {2*{MAX_ELEMENTS+1}}
+OL_SPRITE_BOTTOM       equ {4*{MAX_ELEMENTS+1}}
+OL_NEXT                equ {6*{MAX_ELEMENTS+1}}
+OL_INDEX               equ {8*{MAX_ELEMENTS+1}}  ; Reference to the index in the _Sprites array
+
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
 ; A REMOVED sprite if removed from the sprite list during the Render call, so it's ID is not

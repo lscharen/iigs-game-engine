@@ -147,6 +147,10 @@ _DrawStampToScreen
              lda    _Sprites+IS_OFF_SCREEN,x        ; If the sprite is off-screen, don't draw it
              bne    _DSTSOut
 
+             lda    _Sprites+SPRITE_ID,x            ; If the sprite is hidden or an overlay, don't draw it
+             bit    #SPRITE_OVERLAY+SPRITE_HIDE
+             bne    _DSTSOut
+
              lda    _Sprites+SPRITE_CLIP_WIDTH,x    ; If the sprite is clipped to the playfield, don't draw it
              cmp    _Sprites+SPRITE_WIDTH,x
              bne    _DSTSOut

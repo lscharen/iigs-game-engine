@@ -6,8 +6,13 @@
 ; 
 ; This is about as fast of a rotation as we can do.
 ;
-; When possible, off-screen locations are calculate to produce an address of $FFFE, so that the last two bytes
+; When possible, off-screen locations are calculated to produce an address of $FFFE, so that the last two bytes
 ; of the BG1 data buffer provides the "fill value".
+;
+; Having a fixed table of addresses is limiting due to the size an inability to control what happens at the
+; boundaries. Consider generating some pre-processed step + error parameters that can be used in a fast
+; DDA stepper to allow a more compact representation or different (scale, angle) pairs.  This could allow for
+; a full range of 256 rotation angles + multiple scalings.
 
 ANGLEBNK                   EXT
 _ApplyBG1XPosAngle

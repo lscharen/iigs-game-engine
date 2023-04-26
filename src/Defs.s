@@ -179,12 +179,6 @@ RENDER_PER_SCANLINE    equ   $0010
 RENDER_WITH_SHADOWING  equ   $0020
 RENDER_SPRITES_SORTED  equ   $0040      ; Draw the sprites in y-sorted order.  Otherwise, use the index.
 
-; Overlay flags
-OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first
-OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fully opaque
-OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
-OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
-
 ; DirtyBits definitions
 DIRTY_BIT_BG0_X        equ   $0001
 DIRTY_BIT_BG0_Y        equ   $0002
@@ -197,6 +191,7 @@ DIRTY_BIT_SPRITE_ARRAY equ   $0040
 ; GetAddress table IDs
 scanlineHorzOffset     equ   $0001        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 scanlineHorzOffset2    equ   $0002        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
+tileStore              equ   $0003
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
@@ -238,6 +233,12 @@ SPRITE_8X16            equ   $0800                    ; 8 pixels wide x 16 pixel
 SPRITE_8X8             equ   $0000                    ; 8 pixels wide x 8 pixels tall
 SPRITE_VFLIP           equ   $0400                    ; Flip the sprite vertically
 SPRITE_HFLIP           equ   $0200                    ; Flip the sprite horizontally
+
+; Overlay bits (aliases of SPRITE_ID bits)
+OVERLAY_MASKED         equ   $0000      ; Overlay has a mask, so the background must be draw first
+OVERLAY_SOLID          equ   $4000      ; Overlay covers the scan line and is fully opaque
+OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
+OVERLAY_BELOW          equ   $2000      ; Overlay is drawn below scanline sprites
 
 ; Stamp storage parameters
 VBUFF_STRIDE_BYTES     equ {12*4}                        ; Each line has 4 slots of 16 pixels + 8 buffer pixels
@@ -299,7 +300,9 @@ _ShadowListBottom EXT
 _DirectListCount  EXT
 _DirectListTop    EXT
 _DirectListBottom EXT
-
+ObjectListCount   EXT
+ObjectListHead    EXT
+ObjectList        EXT
 StartXMod164Tbl   EXT
 LastOffsetTbl     EXT
 BG1StartXMod164Tbl EXT

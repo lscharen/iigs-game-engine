@@ -135,6 +135,9 @@ _GTECompileSpriteStamp MAC
 _GTESetAddress       MAC
                      UserTool  $2E00+GTEToolNum
                      <<<
+_GTEUpdateOverlay    MAC
+                     UserTool  $2F00+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -183,7 +186,7 @@ COPY_PIC_SCANLINE      equ   $0001      ; Copy in a way to support BG1 + RENDER_
 ; Tile constants
 ; TILE_RESERVED_BIT      equ   $8000
 TILE_PRIORITY_BIT      equ   $4000                  ; Put tile on top of sprite
-TILE_FRINGE_BIT        equ   $2000                  ; Unused
+TILE_USER_BIT          equ   $2000                  ; User-defined tile.  Execute registered callback.
 TILE_SOLID_BIT         equ   $1000                  ; Hint bit used in TWO_LAYER_MODE to optimize rendering
 TILE_DYN_BIT           equ   $0800                  ; Is this a Dynamic Tile?
 TILE_VFLIP_BIT         equ   $0400

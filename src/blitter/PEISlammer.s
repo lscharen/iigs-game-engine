@@ -13,19 +13,26 @@
 ; X = first line (inclusive), valid range of 0 to 199
 ; Y = last line  (exclusive), valid range >X up to 200
 _PEISlam
-                 cpx   #201
-                 bcc   *+4
-                 brk   $A9
+                 cpx   #200
+                 bcc   *+3
+                 rts
                  cpy   #201
-                 bcc   *+4
-                 brk   $A8
+                 bcc   *+3
+                 rts
+
+                 txa
+                 stal  :screen_width_1
+                 tya
+                 cmpl  :screen_width_1
+                 bcs   *+3
+                 rts
+
 
                  lda   ScreenWidth
                  dec
                  stal  :screen_width_1  ; save the width-1 outside of the direct page
 
                  lda   #:pei_end        ; patch the PEI entry address
-                 and   #$FFFE           ; should always be even, but....
                  sec
                  sbc   ScreenWidth
                  stal  :inner+1

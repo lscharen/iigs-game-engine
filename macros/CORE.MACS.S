@@ -93,6 +93,16 @@ _PullReg2       mac
                 pla
                 <<<
 
+phxy            mac
+                phx
+                phy
+                <<<
+
+plyx            mac
+                ply
+                plx
+                <<<
+
 jne             mac
                 beq   *+5
                 jmp   ]1
@@ -100,6 +110,16 @@ jne             mac
 
 jeq             mac
                 bne   *+5
+                jmp   ]1
+                <<<
+
+jmi             mac
+                bpl   *+5
+                jmp   ]1
+                <<<
+
+jpl             mac
+                bmi   *+5
                 jmp   ]1
                 <<<
 
@@ -112,6 +132,12 @@ jcs             mac
                 bcc   *+5
                 jmp   ]1
                 <<<
+
+max             mac
+                cmp   ]1
+                bcs   mout
+                lda   ]1
+mout            <<<
 
 min             mac
                 cmp   ]1

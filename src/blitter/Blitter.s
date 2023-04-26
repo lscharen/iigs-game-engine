@@ -13,6 +13,11 @@ _BltRange
 :exit_ptr       equ   tmp0
 :jmp_low_save   equ   tmp2
 
+                sty   :jmp_low_save  ; Steal some temp space and check for empty ranges
+                cpx   :jmp_low_save  ; This makes it simpler for some callers
+                bcc   *+3
+                rts
+
                 phb                  ; preserve the bank register
                 clc`
 
