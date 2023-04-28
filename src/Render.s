@@ -724,61 +724,8 @@ _DrawObjShadow
 ;:empty
 ;            rts
 
-
-; Split
-;
-; Y = current item
-; X = next item
-;
-; Compares the bottom values of X and Y.  If the current item extends past the next item, then this splits off the 
-; bottom ortion of Y and inserts it into the appropriate position in the linked list
-split
-:prev       equ    tmp15
-
-            lda    ObjectList+OL_SPRITE_BOTTOM,x           ; If the next item is fully within the current one, split
-            cmp    ObjectList+OL_SPRITE_BOTTOM,y
-            bcc    :do_split
-            rts
-
-:do_split
-            sta    ObjectList+OL_SPRITE_TOP,y              ; Set the top of the current item past the bottom of the next item
-
-:split_lp
-            lda    ObjectList+OL_NEXT,x                  ; search to find the spot in the linked list that we should 
-            bmi    :insert_after                         ; move the fragment forward to
-            stx    :prev
-            tax
-            lda    ObjectList+OL_SPRITE_TOP,y
-            cmp    ObjectList+OL_SPRITE_TOP,x
-            bcc    :insert_before                        ; If the modified node's top value is <= the node we are inspecting,
-            beq    :insert_before                        ; then it can be inserted here
-            bra    :split_lp
-
-:insert_before
-            ldx    :prev
-            lda    ObjectList+OL_NEXT,x
-
-; Insert Y node after X node. A = OL_NEXT,x
-:insert_after
-            sta    ObjectList+OL_NEXT,y
-            tya
-            sta    ObjectList+OL_NEXT,x
-            tyx
-
-            rts
-
-; X = top
-; A = bottom
-; Preserve X, Y
-:_BltRange3
-            phx
-            phy
-            tay
-            jsr   _BltRange
-            ply
-            plx
-            rts
-
+; Helper function to only return object from the sorted list if they are relevant for
+; display.
 _GetNextItem
             cpx    #EOL                     ; early out if we're at the end of the list
             bne    *+3
