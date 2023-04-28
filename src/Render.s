@@ -468,9 +468,10 @@ _RenderWithShadowing
 ; At this point, everything in the background has been rendered into the code field.  Next, we need
 ; to create priority lists of scanline ranges.
 
+            jsr   _FilterObjectList        ; Walk the sorted list and create an array of objects that need to be rendered
 
             jsr   _ShadowOff                ; Turn off shadowing and draw all the scanlines with sprites on them
-            jsr   _DrawShadowList
+            jsr   _DrawObjShadow           ; Draw the background 
             jsr   _DrawDirectSprites        ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
 
             jsr   _ShadowOn                 ; Turn shadowing back on
@@ -498,27 +499,6 @@ _RenderWithShadowing
             lda   #DIRTY_BIT_SPRITE_ARRAY
             sta   DirtyBits
 :no_removal
-            rts
-
-; Iterate through the shadow list and call _BltRange on each
-_DrawShadowList
-            ldx   #0
-            bra   :start
-
-:loop
-            phx                                         ; Save the index
-            lda   _ShadowListTop,x
-            ldy   _ShadowListBottom,x
-            tax
-            jsr   _BltRange
-
-            plx
-            inx
-            inx
-:start
-            cpx   _ShadowListCount
-            bcc   :loop
-
             rts
 
 ; Run through the list of sprites that are not OFFSCREEN and not OVERLAYS and draw them directly to the graphics screen.  We can use
