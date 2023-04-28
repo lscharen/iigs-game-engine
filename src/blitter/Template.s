@@ -150,17 +150,17 @@ jmp_rtn_1          jmp   l_jmp_rtn-base             ; Could inline the code and 
 ; 8 or 16 lines in order to give the system time to handle interrupts.
 enable_int         ldal  stk_save+1                 ; restore the stack
                    tcs
-                   sep   #$20                       ; 8-bit mode
-                   ldal  STATE_REG                  ; Read Bank 0 / Write Bank 0
-                   and   #$CF
+                   sep   #$30                       ; 8-bit mode
+                   ldal  STATE_REG
+                   tax                              ; Save the value
+                   and   #$CF                       ; Read Bank 0 / Write Bank 0
                    stal  STATE_REG
                    cli
                    nop                              ; Give a couple of cycles
                    sei
-                   ldal  STATE_REG
-                   ora   #$10                       ; Read Bank 0 / Write Bank 1
+                   txa                              ; Restore the state
                    stal  STATE_REG
-                   rep   #$20
+                   rep   #$30
                    bra   entry_1
 
 ; This is the spot that needs to be page-aligned. In addition to simplifying the entry address
