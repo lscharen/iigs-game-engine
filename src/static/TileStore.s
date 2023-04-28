@@ -550,7 +550,7 @@ ObjectListCount    ENT
 ObjectListHead    ENT
                   ds  2
 ObjectList        ENT
-                  ds  {10*{MAX_ELEMENTS+2}}   ; Extra space at the end for a sentinel marker
+                  ds  {2*{MAX_ELEMENTS+2}}   ; Extra space at the end for a sentinel marker
 
 
 ; Steps to the different sprite stamps

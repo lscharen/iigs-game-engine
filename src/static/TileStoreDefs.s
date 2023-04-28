@@ -15,12 +15,7 @@ TS_WORD_OFFSET        equ  {TILE_STORE_SIZE*6}      ; const value, word offset v
 TS_JMP_ADDR           equ  {TILE_STORE_SIZE*7}      ; const value, address of the 32-byte snippet space for this tile
 TS_SCREEN_ADDR        equ  {TILE_STORE_SIZE*8}      ; cached value of on-screen location of tile. Used for DirtyRender.
 
-; TODO: Move these arrays into the K bank to support direct dispatch via jmp (abs,x)
-; TS_BASE_TILE_COPY     equ  {TILE_STORE_SIZE*9}      ; derived from TS_TILE_ID to optimize tile copy to support sprite rendering
-; TS_BASE_TILE_DISP     equ  {TILE_STORE_SIZE*10}     ; derived from TS_TILE_ID to optimize base (non-sprite) tile dispatch in the Render function
-; TS_DIRTY_TILE_DISP    equ  {TILE_STORE_SIZE*11}     ; derived from TS_TILE_ID to optimize dirty tile dispatch in the Render function
-
-TILE_STORE_NUM        equ  12                     ; Need this many parallel arrays
+TILE_STORE_NUM        equ  9                        ; Need this many parallel arrays
 
 ; Sprite data structures.  We cache quite a few pieces of information about the sprite
 ; to make calculations faster, so this is hidden from the caller.
@@ -28,15 +23,11 @@ TILE_STORE_NUM        equ  12                     ; Need this many parallel arra
 MAX_SPRITES            equ 16
 SPRITE_REC_SIZE        equ 42
 
-MAX_OVERLAYS           equ 2
+MAX_OVERLAYS           equ 3
 MAX_ELEMENTS           equ {MAX_SPRITES+MAX_OVERLAYS}
 
 ; Object list used in  renderer
-OL_SPRITE_ID           equ 0                     ; Usual parallel arrays
-OL_SPRITE_TOP          equ {2*{MAX_ELEMENTS+1}}
-OL_SPRITE_BOTTOM       equ {4*{MAX_ELEMENTS+1}}
-OL_NEXT                equ {6*{MAX_ELEMENTS+1}}
-OL_INDEX               equ {8*{MAX_ELEMENTS+1}}  ; Reference to the index in the _Sprites array
+OL_INDEX               equ {0*{MAX_ELEMENTS+1}}  ; Reference to the index in the _Sprites array
 
 ; Mark each sprite as ADDED, UPDATED, MOVED, REMOVED depending on the actions applied to it
 ; on this frame.  Quick note, the same Sprite ID cannot be removed and added in the same frame.
