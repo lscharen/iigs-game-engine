@@ -428,22 +428,22 @@ UserHook1        rtl
 ; A = Table proc index
 ;
 ; see TileProcTables in static/TileStore.s
-tblPtr  equ  blttmp
 _SetTileProcs
+:tblPtr  equ  blttmp
 
 ; Multiple the proc index by 6 to get the correct table entry offset
 
                  asl
-                 sta  tblPtr
+                 sta  :tblPtr
                  asl
-                 adc  tblPtr
-                 sta  tblPtr
+                 adc  :tblPtr
+                 sta  :tblPtr
 
 ; Add this offset to the base table address
 
                  tya
-                 adc  tblPtr
-                 sta  tblPtr
+                 adc  :tblPtr
+                 sta  :tblPtr
 
 ; Set the pointer to this bank
 
@@ -451,20 +451,20 @@ _SetTileProcs
                  phk
                  pla
                  and  #$00FF
-                 sta  tblPtr+2
+                 sta  :tblPtr+2
 
 ; Lookup the tile procedures
 
                  ldy  #0
-                 lda  [tblPtr],y
+                 lda  [:tblPtr],y
                  stal K_TS_BASE_TILE_DISP,x
 
                  ldy  #2
-                 lda  [tblPtr],y
+                 lda  [:tblPtr],y
                  stal K_TS_SPRITE_TILE_DISP,x
 
                  ldy  #4
-                 lda  [tblPtr],y
+                 lda  [:tblPtr],y
                  stal K_TS_ONE_SPRITE,x
                  rts
 

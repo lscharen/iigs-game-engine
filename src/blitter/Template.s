@@ -240,14 +240,14 @@ epilogue_1         tsc
 ;        its passed state, because having the carry bit clear prevents evaluation of
 ;        the V bit.
 ;
-; Version 2: In order to improve performance, especially for two-layer tiles + sprites, the
-;            snippet code was revised to have a fixed structure so that the constant DATA and
-;            MASK values always exist in the same location, regarless of the tile type.  The
-;            tradeoff is that there is a different entry point into the snippet based on the 
-;            tile type, but that is significantly cheaper to lookup and patch into the code
-;            field JMP instruction than it is to rebuild 20+ bytes of code each time.
+; In order to improve performance, especially for two-layer tiles + sprites, the
+; snippet code has a fixed structure so that the constant DATA and MASK values
+; always exist in the same location, regarless of the tile type.  The
+; tradeoff is that there is a different entry point into the snippet based on the 
+; tile type, but that is significantly cheaper to lookup and patch into the code
+; field JMP instruction than it is to rebuild 20+ bytes of code each time.
 ;
-;            There are different snippet templates + offset tables based on the EngineMode
+; There are different snippet templates + offset tables based on the EngineMode
 ;
 ; EngineMode 
 ;

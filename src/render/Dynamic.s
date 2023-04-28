@@ -286,7 +286,7 @@ DynamicOverTwoLyr
 ; tile blitter in the TwoLayer function set sees that a tile is marked as DAMAGED, it must
 ; restore the original code structure before proceeding.
 ;
-; The damages area is not too bad -- just the 10 bytes from [2, 10] are overwritten and must be
+; The damaged area is not too bad -- just the 10 bytes from [2, 10] are overwritten and must be
 ; restored.  This is actually less work than a lot of the snippet macros were doing before 
 ; applying the fixed snippet optimization.
 DynamicUnderTwoLyr
