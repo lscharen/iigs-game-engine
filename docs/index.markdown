@@ -5,6 +5,4 @@
 layout: home
 ---
 
-* Live Samples
-* Tutorials
-* Examples
+* [Getting Started]({{ site.baseurl }}/getting-started.html)
