@@ -117,6 +117,7 @@ extern pascal Word GTEStartScript(Word numTicks, Pointer scriptAddr) inline(0x21
 /* GTE Overlay Functions */
 extern pascal Word GTESetOverlay(Word top, Word bottom, Pointer procPtr) inline(0x22A0, tool_dispatcher);
 extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
+extern pascal void GTEUpdateOverlay(Word top, Word bottom, Pointer procPtr) inline(0x2FA0, tool_dispatcher);
 
 
 /* ReadControl return value bits */
@@ -164,7 +165,7 @@ extern pascal Word GTEClearOverlay() inline(0x23A0, tool_dispatcher);
 #define TILE_CTRL_MASK             0xFE00
 
 /* GTE Sprite Constants */
-#define GTE_SPRITE_COMPILES        0x4000
+#define GTE_SPRITE_COMPILED        0x4000
 #define GTE_SPRITE_HIDE            0x2000
 #define GTE_SPRITE_16X16           0x1800
 #define GTE_SPRITE_16X8            0x1000

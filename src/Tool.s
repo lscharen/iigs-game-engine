@@ -746,6 +746,7 @@ _TSSetOverlay
  
                 _TSExit #0;#8
 
+; UpdateOverlay(top, bottom, proc)
 _TSUpdateOverlay
 :proc           equ     FirstParam+0
 :bottom         equ     FirstParam+4
