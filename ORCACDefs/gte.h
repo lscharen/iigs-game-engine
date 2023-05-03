@@ -22,20 +22,17 @@
 #include <types.h>
 
 /*
- GTE_IS_SYSTEM_TOOLS_INSTALL is a boolean toggle for controlling what the application assumes about the location of the GTE tool.
+ GTE_IS_USER_TOOL is a boolean toggle for controlling what the application assumes about the location of
+ the GTE tool.
 
- If GTE is installed in System:Tools, GTE_IS_SYSTEM_TOOLS_INSTALL must be defined.
- Otherwise, GTE_IS_SYSTEM_TOOLS_INSTALL must be undefined.
-
- This will control which header file is used as well as the calls used to load the tool during application startup.
+ If GTE is NOT installed in System:Tools, GTE_IS_USER_TOOL must be defined and the calling program
+ is responsible for loading and initializing the toolset using InitialLoad and SetTSPtr.
 */
-// #define GTE_IS_SYSTEM_TOOLS_INSTALL 1
-
-#ifdef GTE_IS_SYSTEM_TOOLS_INSTALL
-#define tool_dispatcher dispatcher
-#else
+#ifdef GTE_IS_USER_TOOL
 #define tool_dispatcher 0xE10008L
-#endif // GTE_IS_SYSTEM_TOOLS_INSTALL
+#else
+#define tool_dispatcher dispatcher
+#endif // GTE_IS_USER_TOOL
 
 typedef struct TileMapInfo {
     Word width;
@@ -121,6 +118,7 @@ extern pascal void GTEUpdateOverlay(Word top, Word bottom, Pointer procPtr) inli
 
 
 /* ReadControl return value bits */
+#define PAD_KEY_CODE               0x007F
 #define PAD_BUTTON_B               0x0100
 #define PAD_BUTTON_A               0x0200
 #define PAD_KEY_DOWN               0x0400
@@ -182,5 +180,12 @@ extern pascal void GTEUpdateOverlay(Word top, Word bottom, Pointer procPtr) inli
 #define GTE_VBUFF_SPRITE_START     (GTE_VBUFF_TILE_ROW_BYTES+4)        /* Start at an offset so $0000 can be used as an empty value */
 #define GTE_VBUFF_SLOT_COUNT       (48)                                /* Have space for this many stamps */
 
+#define GTE_TILE_SIZE_BYTES        128
+#define GTE_TILE_STORE_WIDTH       41
+#define GTE_TILE_STORE_HEIGHT      26
 
+/* Tile helper macros */
+#define STATIC_TILE(x) _TILE_DATA(x),_TILE_DATA(0),_TILE_DATA(x),_TILE_DATA(0)
+#define _TILE_DATA(x) _ROW(x),_ROW(x),_ROW(x),_ROW(x),_ROW(x),_ROW(x),_ROW(x),_ROW(x)
+#define _ROW(x) x,x,x,x
 #endif /* _GTE_HEADER_INCLUDE_ */
