@@ -4,3 +4,5 @@
 
 layout: home
 ---
+
+* [Getting Started]({{ site.baseurl }}/getting-started.html)

@@ -30,8 +30,12 @@ github_username:  lscharen
 
 # Build settings
 theme: minima
-plugins:
-  - jekyll-feed
+#plugins:
+#  - jekyll-feed
+
+markdown: kramdown
+highlighter: rogue
+input: GFM
 
 # Exclude from processing.
 # The following items will not be processed, by default.
