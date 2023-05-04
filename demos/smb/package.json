@@ -7,11 +7,14 @@
     "merlin32": "C:\\Programs\\IIgsXDev\\bin\\Merlin32-1.1.10.exe",
     "cadius": "C:\\Programs\\IIgsXDev\\bin\\Cadius.exe",
     "gsport": "C:\\Programs\\gsport\\gsport_0.31\\GSPort.exe",
-    "macros": "C:\\Programs\\BrutalDeluxe\\Merlin32\\Library",
+    "macros": "../../macros",
     "crossrunner": "C:\\Programs\\Crossrunner\\Crossrunner.exe"
   },
   "scripts": {
-    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s"
+    "test": "npm run build && npm run build:image && npm run gsport",
+    "gsport": "%npm_package_config_gsport%",
+    "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
+    "build:image": "build-image.bat %npm_package_config_cadius%"
   },
   "repository": {
     "type": "git",

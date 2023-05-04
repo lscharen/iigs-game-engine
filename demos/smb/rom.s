@@ -667,11 +667,13 @@ GameOverModeValue           =     3
 ;                             .index  8
 ;                             .mem    8
 
-                            org   $8000
-
 ;-------------------------------------------------------------------------------------
                             mx    %11
 ; External wrapper is responsible for setting the stack
+
+                            put   chr.s
+                            ds    $6000
+SMBStart ENT
 Start
 ;                            sei                              ;pretty standard 6502 type init here
 ;                            cld
@@ -739,11 +741,11 @@ VRAM_Buffer_Offset
                             db    <VRAM_Buffer1_Offset,<VRAM_Buffer2_Offset
 
 ; This is the actual entry point (60 times per second to keep speeed). Uncomment hardware
-; stuf that doesn't need to be communicated to the GTE wrapper
+; stuff that doesn't need to be communicated to the GTE wrapper
 NonMaskableInterrupt
-;                            lda   Mirror_PPU_CTRL_REG1       ;disable NMIs in mirror reg
-;                            and   #%01111111                 ;save all other bits
-;                            sta   Mirror_PPU_CTRL_REG1
+                            lda   Mirror_PPU_CTRL_REG1       ;disable NMIs in mirror reg
+                            and   #%01111111                 ;save all other bits
+                            sta   Mirror_PPU_CTRL_REG1
                             and   #%01111110                 ;alter name table address to be $2800
                             sta   PPU_CTRL_REG1              ;(essentially $2000) but save other bits
                             lda   Mirror_PPU_CTRL_REG2       ;disable OAM and background display by default
@@ -16355,27 +16357,3 @@ BrickShatterEnvData
                             dw    NonMaskableInterrupt
                             dw    Start
                             dw    $fff0                      ;unused
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
