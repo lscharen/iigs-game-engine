@@ -887,7 +887,7 @@ _TSSetBG1Scale
                 sta     BG1Scaling
                 _TSExit #0;#2
 
-; Pointer GetAddress(tblId)
+; Pointer GetAddress(addrId)
 _TSGetAddress
 :tblId          equ     FirstParam+0
 :output         equ     FirstParam+2
@@ -919,7 +919,7 @@ _TSGetAddress
 :out
                 _TSExit #0;#2
 
-; SetAddress(tblId, Pointer)
+; SetAddress(addrId, Pointer)
 _TSSetAddress
 :ptr            equ     FirstParam+0
 :tblId          equ     FirstParam+4
@@ -944,7 +944,27 @@ _TSSetAddress
                 lda     :ptr+2,s
                 sta     BG1StartXMod164Tbl+2
                 bra     :out
-:next_2
+
+:next_2         cmp     #vblCallback
+                bne     :next_3
+
+                lda     :ptr,s
+                ora     :ptr+2,s
+                beq     :vbl_restore
+
+                lda     :ptr,s
+                stal    _VblTaskPatch+1         ; long addressing because we're patching code in the K bank
+                lda     :ptr+1,s
+                stal    _VblTaskPatch+2
+                bra     :out
+
+:vbl_restore
+                lda     #_TaskStub
+                stal    _VblTaskPatch+1
+                lda     #>_TaskStub
+                stal    _VblTaskPatch+2
+                bra     :out
+:next_3
 :out
                 _TSExit #0;#6
 

@@ -175,9 +175,11 @@ OVERLAY_SOLID          equ   $8000      ; Overlay covers the scan line and is fu
 OVERLAY_ABOVE          equ   $0000      ; Overlay is drawn above scanline sprites
 OVERLAY_BELOW          equ   $4000      ; Overlay is drawn below scanline sprites
 
-; GetAddress table IDs
+; GetAddress IDs
 scanlineHorzOffset     equ   $0001
 scanlineHorzOffset2    equ   $0002
+tileStore              equ   $0003
+vblCallback            equ   $0004
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000      ; Copy into BG1 buffer in "normal mode"

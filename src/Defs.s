@@ -192,6 +192,7 @@ DIRTY_BIT_SPRITE_ARRAY equ   $0040
 scanlineHorzOffset     equ   $0001        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 scanlineHorzOffset2    equ   $0002        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 tileStore              equ   $0003
+vblCallback            equ   $0004        ; User routine to be called by VBL interrupt.  Set to $000000 to disconnect
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256

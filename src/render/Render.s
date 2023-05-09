@@ -4,7 +4,7 @@ _RenderTile
             lda   TileStore+TS_SPRITE_FLAG,x       ; any sprites on this tile?
             bne   _HasSprites
 
-; Probably best to rework this to just jump to the tile routine directly, event if there
+; Probably best to rework this to just jump to the tile routine directly, even if there
 ; is some boilerplate code because it is useful to be able to access the data bank before
 ; switching to the code field bank.
 

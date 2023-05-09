@@ -6,7 +6,7 @@
 ; X = first tile
 ; Y = last tile
 ;
-; To copy in three tiles starting at tile 5, for example, X = 5 and Y = 9
+; To copy in four tiles starting at tile 5, for example, X = 5 and Y = 9
 _LoadTileSet
                 txa
                 _Mul128                   ; Jump to the target location

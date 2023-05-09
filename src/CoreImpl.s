@@ -166,8 +166,14 @@ OneSecHandler     mx        %11
 
 ; This is OK, it's referenced by a long address
 VBLTASK           hex       00000000
-                  dw        0
+TaskCnt           dw        1
                   hex       5AA5
+VblTaskCode       mx        %11
+                  lda       #1
+                  stal      TaskCnt            ; Reset the task count
+_VblTaskPatch     jml       _TaskStub          ; Just something to catch the interrupt
+_TaskStub         rtl
+                  mx        %00
 
 ; Reset the engine to a known state
 ; Blitter initialization
