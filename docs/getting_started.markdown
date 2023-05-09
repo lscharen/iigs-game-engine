@@ -9,7 +9,6 @@ layout: page
   * Linux
   * Native
 
-
 This tutorial page will walk through the process of setting up your computer to build Apple IIgs applications
 that leverage the GTE toolset.  
 ## Set Up
@@ -26,6 +25,10 @@ are several ways of getting the file onto your system.
  1. Use the [NetDisk](https://sheumann.github.io/NetDisk/) utility to mount to the remote disk image directly from GS/OS and copy the Tool160 file
  1. Use [ADTPro](https://adtpro.com/index.html) to transfer the disk image to the apple IIgs and write it onto a physical floppy disk
 
+## Installing GTE
+
+Copy the `Tool160` file into the `System:Tools` folder of your GS/OS boot volume.  It is also possible to load the toolset from the application's folder (or any file system location), which will be covered later.
+
 ## Your First Program
 
 ```c
@@ -35,8 +38,8 @@ are several ways of getting the file onto your system.
 #include <misctool.h>
 #include <gte.h>
 
-/* tile data stored in tiles.c */
-extern Byte tiles[];
+/* create two solid tiles */
+extern Byte tiles[] = { STATIC_TILE(0x00), STATIC_TILE(0xFF) };
 
 /* define a couple of key codes for the arrow keys */
 #define LEFT_ARROW  0x08
