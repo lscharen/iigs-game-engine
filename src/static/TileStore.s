@@ -560,6 +560,9 @@ _stamp_step      ENT
 BG1YCache        ENT
                  ds  32
 
+ExtSpriteRenderer ENT
+                 dw  0,0
+
 ; Scaling tables for the BG1 rotation tables.
 ScalingTables    ENT
                  dw  Scale0,Scale1,Scale2,Scale3

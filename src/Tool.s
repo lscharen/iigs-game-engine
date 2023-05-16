@@ -298,6 +298,9 @@ _TSRender
 
                 _TSEntry
                 lda     :flags,s
+                cmp     #$FFFF                            ; Hack! Special mode...
+                beq     :nes
+
                 bit     #RENDER_WITH_SHADOWING
                 beq     :no_shadowing
                 jsr     _RenderWithShadowing
@@ -311,6 +314,10 @@ _TSRender
 
 :no_scanline
                 jsr     _Render
+                bra     :done
+
+:nes
+                jsr     _RenderNES
 
 :done
                 _TSExit #0;#2
@@ -915,7 +922,16 @@ _TSGetAddress
                 lda     BG1StartXMod164Tbl+2
                 sta     :output+2,s
                 bra     :out
-:next_2
+
+:next_2         cmp     #rawDrawTile
+                bne     :next_3
+
+                lda     #_DrawTileToScreen
+                sta     :output,s
+                lda     #^_DrawTileToScreen
+                sta     :output+2,s
+                bra     :out
+:next_3
 :out
                 _TSExit #0;#2
 
@@ -933,7 +949,7 @@ _TSSetAddress
                 sta     StartXMod164Tbl
                 lda     :ptr+2,s
                 sta     StartXMod164Tbl+2
-                bra     :out
+                brl     :out
 
 :next_1
                 cmp     #scanlineHorzOffset2
@@ -943,7 +959,7 @@ _TSSetAddress
                 sta     BG1StartXMod164Tbl
                 lda     :ptr+2,s
                 sta     BG1StartXMod164Tbl+2
-                bra     :out
+                brl     :out
 
 :next_2         cmp     #vblCallback
                 bne     :next_3
@@ -956,15 +972,25 @@ _TSSetAddress
                 stal    _VblTaskPatch+1         ; long addressing because we're patching code in the K bank
                 lda     :ptr+1,s
                 stal    _VblTaskPatch+2
-                bra     :out
+                brl     :out
 
 :vbl_restore
                 lda     #_TaskStub
                 stal    _VblTaskPatch+1
                 lda     #>_TaskStub
                 stal    _VblTaskPatch+2
+                brl     :out
+
+:next_3         cmp     #extSpriteRenderer
+                bne     :next_4
+
+                lda     :ptr,s
+                sta     ExtSpriteRenderer
+                lda     :ptr+2,s
+                sta     ExtSpriteRenderer+2
                 bra     :out
-:next_3
+
+:next_4 
 :out
                 _TSExit #0;#6
 

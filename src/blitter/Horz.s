@@ -153,11 +153,11 @@ _ApplyBG0XPos
 
 ; If there are saved opcodes that have not been restored, do not run this routine
                     lda   LastPatchOffset
-                    beq   :ok
+                    beq   *+3
                     rts
 
 ; This code is fairly succinct.  See the corresponding code in Vert.s for more detailed comments.
-:ok
+
                     lda   StartYMod208               ; This is the base line of the virtual screen
                     asl
                     sta   :virt_line_x2              ; Keep track of it
@@ -228,7 +228,8 @@ _ApplyBG0XPos
                     lda   StartXMod164
 
 ; Alternate entry point if the virt_line_x2 and lines_left_x2 and XMod164 values are passed in externally
-_ApplyBG0XPosAlt
+
+_RestoreBG0OpcodesAlt
 :stk_save           equ   tmp0
 :virt_line_x2       equ   tmp1
 :lines_left_x2      equ   tmp2

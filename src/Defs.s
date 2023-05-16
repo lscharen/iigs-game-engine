@@ -193,6 +193,8 @@ scanlineHorzOffset     equ   $0001        ; Table of 416 words, a double-array o
 scanlineHorzOffset2    equ   $0002        ; Table of 416 words, a double-array of scanline offset values. Values must be in range [0, 163]
 tileStore              equ   $0003
 vblCallback            equ   $0004        ; User routine to be called by VBL interrupt.  Set to $000000 to disconnect
+extSpriteRenderer      equ   $0005
+rawDrawTile            equ   $0006
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
@@ -307,6 +309,7 @@ ObjectList        EXT
 StartXMod164Tbl   EXT
 LastOffsetTbl     EXT
 BG1StartXMod164Tbl EXT
+ExtSpriteRenderer EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

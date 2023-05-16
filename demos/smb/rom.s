@@ -668,23 +668,79 @@ GameOverModeValue           =     3
 ;                             .mem    8
 
 ;-------------------------------------------------------------------------------------
-                            mx    %11
-; External wrapper is responsible for setting the stack
 
-                            put   chr.s
-                            ds    $6000
+; External wrapper is responsible for setting the stack
+PPUCTRL_WRITE    EXT
+PPUMASK_WRITE    EXT
+PPUSTATUS_READ   EXT
+PPUSTATUS_READ_X EXT
+OAMADDR_WRITE    EXT
+PPUSCROLL_WRITE  EXT
+PPUADDR_WRITE    EXT
+PPUDATA_READ     EXT
+PPUDATA_WRITE    EXT
+PPUDMA_WRITE     EXT
+
+ROMBase  ENT
+                            ds    $8000-14-50
+
+; Hooks to call back to the GTE harness for PPU memory-mapped accesses
+                            mx    %11
+PPU_CTRL_W
+            jsl  PPUCTRL_WRITE
+            rts
+PPU_MASK_W
+            jsl  PPUMASK_WRITE
+            rts
+PPU_STATUS_R
+            jsl  PPUSTATUS_READ
+            rts
+PPU_STATUS_RX
+            jsl  PPUSTATUS_READ_X
+            rts
+OAM_ADDR_W
+            jsl  OAMADDR_WRITE
+            rts
+PPU_SCROLL_W
+            jsl  PPUSCROLL_WRITE
+            rts
+PPU_ADDRESS_W
+            jsl  PPUADDR_WRITE
+            rts
+PPU_DATA_R
+            jsl  PPUDATA_READ
+            rts
+PPU_DATA_W
+            jsl  PPUDATA_WRITE
+            rts
+SPR_DMA_W
+            jsl  PPUDMA_WRITE
+            rts
+
+; Enter via a JML. X = target address, Stack and Direct page set up properly. B = ROM bank. Called in 16-bit native mode
+                            mx    %00
+
+ExtRtn   EXT
+ExtIn    ENT
+          stx  :patch+1
+          sep  #$30
+:patch    jsr  $0000
+          rep  #$30
+          jml  ExtRtn
+
+                            mx    %11
 SMBStart ENT
 Start
 ;                            sei                              ;pretty standard 6502 type init here
 ;                            cld
                             lda   #%00010000                 ;init PPU control register 1 
-                            sta   PPU_CTRL_REG1
+                            jsr   PPU_CTRL_W
 ;                            ldx   #$ff                       ;reset stack pointer
 ;                            txs
-VBlank1                     lda   PPU_STATUS                 ;wait two frames
-                            bpl   VBlank1
-VBlank2                     lda   PPU_STATUS
-                            bpl   VBlank2
+;VBlank1                     jsr   PPU_STATUS_R                 ;wait two frames
+;                            bpl   VBlank1
+;VBlank2                     jsr   PPU_STATUS_R
+;                            bpl   VBlank2
                             ldy   #ColdBootOffset            ;load default cold boot pointer
                             ldx   #$05                       ;this is where we check for a warm boot
 WBootCheck                  lda   TopScoreDisplay,x          ;check each score digit in the top score
@@ -696,7 +752,8 @@ WBootCheck                  lda   TopScoreDisplay,x          ;check each score d
                             cmp   #$a5                       ;another location has a specific value
                             bne   ColdBoot
                             ldy   #WarmBootOffset            ;if passed both, load warm boot pointer
-ColdBoot                    jsr   InitializeMemory           ;clear memory using pointer in Y
+ColdBoot
+                            jsr   InitializeMemory           ;clear memory using pointer in Y
                             sta   SND_DELTA_REG+1            ;reset delta counter load register
                             sta   OperMode                   ;reset primary mode of operation
                             lda   #$a5                       ;set warm boot flag
@@ -705,7 +762,7 @@ ColdBoot                    jsr   InitializeMemory           ;clear memory using
                             lda   #%00001111
                             sta   SND_MASTERCTRL_REG         ;enable all sound channels except dmc
                             lda   #%00000110
-                            sta   PPU_CTRL_REG2              ;turn off clipping for OAM and background
+                            jsr   PPU_MASK_W                 ;turn off clipping for OAM and background
                             jsr   MoveAllSpritesOffscreen
                             jsr   InitializeNameTables       ;initialize both name tables
                             inc   DisableScreenFlag          ;set flag to disable screen output
@@ -713,41 +770,41 @@ ColdBoot                    jsr   InitializeMemory           ;clear memory using
                             ora   #%10000000                 ;enable NMIs
                             jsr   WritePPUReg1
 ; EndlessLoop                 jmp   EndlessLoop                ;endless loop, need I say more?
-                            rtl                              ; GTE - Return to caller
-
+InternalRts                 rts                              ; GTE - Return to caller
+                            ds    17                          ; Add back inthe bytes we commented out
 ;-------------------------------------------------------------------------------------
 ;$00 - vram buffer address table low, also used for pseudorandom bit
 ;$01 - vram buffer address table high
 
 VRAM_AddrTable_Low
-                            db    <VRAM_Buffer1,<WaterPaletteData,
-                            db    <UndergroundPaletteData,<CastlePaletteData,
-                            db    <VRAM_Buffer2,<VRAM_Buffer2,
-                            db    <DaySnowPaletteData,<NightSnowPaletteData,
-                            db    <MarioThanksMessage,<LuigiThanksMessage,
-                            db    <PrincessSaved1,<PrincessSaved2,
-                            db    <WorldSelectMessage2
+                            db <VRAM_Buffer1, <WaterPaletteData, <GroundPaletteData
+                            db <UndergroundPaletteData, <CastlePaletteData, <VRAM_Buffer1_Offset
+                            db <VRAM_Buffer2, <VRAM_Buffer2, <BowserPaletteData
+                            db <DaySnowPaletteData, <NightSnowPaletteData, <MushroomPaletteData
+                            db <MarioThanksMessage, <LuigiThanksMessage, <MushroomRetainerSaved
+                            db <PrincessSaved1, <PrincessSaved2, <WorldSelectMessage1
+                            db <WorldSelectMessage2
 
 VRAM_AddrTable_High
-                            db    >VRAM_Buffer1,>WaterPaletteData,
-                            db    >UndergroundPaletteData,>CastlePaletteData,
-                            db    >VRAM_Buffer2,>VRAM_Buffer2,
-                            db    >DaySnowPaletteData,>NightSnowPaletteData,
-                            db    >MarioThanksMessage,>LuigiThanksMessage,
-                            db    >PrincessSaved1,>PrincessSaved2,
-                            db    >WorldSelectMessage2
+                            db >VRAM_Buffer1, >WaterPaletteData, >GroundPaletteData
+                            db >UndergroundPaletteData, >CastlePaletteData, >VRAM_Buffer1_Offset
+                            db >VRAM_Buffer2, >VRAM_Buffer2, >BowserPaletteData
+                            db >DaySnowPaletteData, >NightSnowPaletteData, >MushroomPaletteData
+                            db >MarioThanksMessage, >LuigiThanksMessage, >MushroomRetainerSaved
+                            db >PrincessSaved1, >PrincessSaved2, >WorldSelectMessage1
+                            db >WorldSelectMessage2
 
 VRAM_Buffer_Offset
                             db    <VRAM_Buffer1_Offset,<VRAM_Buffer2_Offset
 
 ; This is the actual entry point (60 times per second to keep speeed). Uncomment hardware
 ; stuff that doesn't need to be communicated to the GTE wrapper
-NonMaskableInterrupt
+NonMaskableInterrupt        ENT
                             lda   Mirror_PPU_CTRL_REG1       ;disable NMIs in mirror reg
                             and   #%01111111                 ;save all other bits
                             sta   Mirror_PPU_CTRL_REG1
                             and   #%01111110                 ;alter name table address to be $2800
-                            sta   PPU_CTRL_REG1              ;(essentially $2000) but save other bits
+                            jsr   PPU_CTRL_W                 ;(essentially $2000) but save other bits
                             lda   Mirror_PPU_CTRL_REG2       ;disable OAM and background display by default
                             and   #%11100110
                             ldy   DisableScreenFlag          ;get screen disable flag
@@ -756,13 +813,13 @@ NonMaskableInterrupt
                             ora   #%00011110
 ScreenOff                   sta   Mirror_PPU_CTRL_REG2       ;save bits for later but not in register at the moment
                             and   #%11100111                 ;disable screen for now
-                            sta   PPU_CTRL_REG2
-                            ldx   PPU_STATUS                 ;reset flip-flop and reset scroll registers to zero
+                            jsr   PPU_MASK_W
+                            jsr   PPU_STATUS_RX              ;reset flip-flop and reset scroll registers to zero
                             lda   #$00
                             jsr   InitScroll
-                            sta   PPU_SPR_ADDR               ;reset spr-ram address register
+                            jsr   OAM_ADDR_W                 ;reset spr-ram address register
                             lda   #$02                       ;perform spr-ram DMA access on $0200-$02ff
-                            sta   SPR_DMA
+                            jsr   SPR_DMA_W
                             ldx   VRAM_Buffer_AddrCtrl       ;load control for pointer to buffer contents
                             lda   VRAM_AddrTable_Low,x       ;set indirect at $00 to pointer
                             sta   $00
@@ -780,8 +837,12 @@ InitBuffer                  ldx   VRAM_Buffer_Offset,y
                             sta   VRAM_Buffer1,x
                             sta   VRAM_Buffer_AddrCtrl       ;reinit address control to $0301
                             lda   Mirror_PPU_CTRL_REG2       ;copy mirror of $2001 to register
-                            sta   PPU_CTRL_REG2
-                            jsr   SoundEngine                ;play sound
+                            jsr   PPU_MASK_W
+
+;                            jsr   SoundEngine                ;play sound
+                            bra   *+3
+                            ds    1
+
                             jsr   ReadJoypads                ;read joypads
                             jsr   PauseRoutine               ;handle pause
                             jsr   UpdateTopScore
@@ -821,37 +882,49 @@ RotPRandomBit               ror   PseudoRandomBitReg,x       ;rotate carry into 
                             bne   RotPRandomBit
                             lda   Sprite0HitDetectFlag       ;check for flag here
                             beq   SkipSprite0
-Sprite0Clr                  lda   PPU_STATUS                 ;wait for sprite 0 flag to clear, which will
-                            and   #%01000000                 ;not happen until vblank has ended
-                            bne   Sprite0Clr
+
+; With the GTE wrapper we render the status screen directly from the NES RAM area
+; into a native output, so no need to busy-wait on Sprite 0 hit detection since
+; there is no split-screen
+
+;Sprite0Clr                  lda   PPU_STATUS                 ;wait for sprite 0 flag to clear, which will
+;                            and   #%01000000                 ;not happen until vblank has ended
+;                            bne   Sprite0Clr
+                            bra   *+7
+                            ds    5
+
                             lda   GamePauseStatus            ;if in pause mode, do not bother with sprites at all
                             lsr
                             bcs   Sprite0Hit
                             jsr   MoveSpritesOffscreen
                             jsr   SpriteShuffler
-Sprite0Hit                  lda   PPU_STATUS                 ;do sprite #0 hit detection
-                            and   #%01000000
-                            beq   Sprite0Hit
-                            ldy   #$14                       ;small delay, to wait until we hit horizontal blank time
-HBlankDelay                 dey
-                            bne   HBlankDelay
+Sprite0Hit
+;                            lda   PPU_STATUS                 ;do sprite #0 hit detection
+;                            and   #%01000000
+;                            beq   Sprite0Hit
+;                            ldy   #$14                       ;small delay, to wait until we hit horizontal blank time
+;HBlankDelay                 dey
+;                            bne   HBlankDelay
+                            bra   *+12
+                            ds    10
+
 SkipSprite0                 lda   HorizontalScroll           ;set scroll registers from variables
-                            sta   PPU_SCROLL_REG
+                            jsr   PPU_SCROLL_W
                             lda   VerticalScroll
-                            sta   PPU_SCROLL_REG
+                            jsr   PPU_SCROLL_W
                             lda   Mirror_PPU_CTRL_REG1       ;load saved mirror of $2000
                             pha
-                            sta   PPU_CTRL_REG1
+                            jsr   PPU_CTRL_W
                             lda   GamePauseStatus            ;if in pause mode, do not perform operation mode stuff
                             lsr
                             bcs   SkipMainOper
                             jsr   OperModeExecutionTree      ;otherwise do one of many, many possible subroutines
-SkipMainOper                lda   PPU_STATUS                 ;reset flip-flop
+SkipMainOper                jsr   PPU_STATUS_R               ;reset flip-flop
                             pla
                             ora   #%10000000                 ;reactivate NMIs
-                            sta   PPU_CTRL_REG1
+                            jsr   PPU_CTRL_W
 ;                            rti                              ;we are done until the next frame!
-                            rtl
+                            rts
 
 ;-------------------------------------------------------------------------------------
 
@@ -1595,15 +1668,15 @@ DrawTitleScreen
                             lda   OperMode                   ;are we in title screen mode?
                             bne   IncModeTask_B              ;if not, exit
                             lda   #>TitleScreenDataOffset    ;load address $1ec0 into
-                            sta   PPU_ADDRESS                ;the vram address register
+                            jsr   PPU_ADDRESS_W               ;the vram address register
                             lda   #<TitleScreenDataOffset
-                            sta   PPU_ADDRESS
+                            jsr   PPU_ADDRESS_W
                             lda   #$03                       ;put address $0300 into
                             sta   $01                        ;the indirect at $00
                             ldy   #$00
                             sty   $00
-                            lda   PPU_DATA                   ;do one garbage read
-OutputTScr                  lda   PPU_DATA                   ;get title screen from chr-rom
+                            jsr   PPU_DATA_R                 ;do one garbage read
+OutputTScr                  jsr   PPU_DATA_R                 ;get title screen from chr-rom
                             sta   ($00),y                    ;store 256 bytes into buffer
                             iny
                             bne   ChkHiByte                  ;if not past 256 bytes, do not increment
@@ -2125,10 +2198,10 @@ RemBridge                   lda   BlockGfxData,x             ;write top left and
 ;METATILE GRAPHICS TABLE
 
 MetatileGraphics_Low
-                            db    <Palette0_MTiles,<Palette1_MTiles,
+                            db    <Palette0_MTiles, <Palette1_MTiles, <Palette2_MTiles, <Palette3_MTiles
 
 MetatileGraphics_High
-                            db    >Palette0_MTiles,>Palette1_MTiles,
+                            db    >Palette0_MTiles, >Palette1_MTiles, >Palette2_MTiles, >Palette3_MTiles
 
 Palette0_MTiles
                             db    $24,$24,$24,$24            ;blank
@@ -2384,15 +2457,21 @@ JumpEngine
                             iny
                             lda   ($04),y                    ;load pointer from indirect
                             sta   $06                        ;note that if an RTS is performed in next routine
+                            sta   :je_patch+1
                             iny                              ;it will return to the execution before the sub
                             lda   ($04),y                    ;that called this routine
                             sta   $07
-                            jmp   ($06)                      ;jump to the address we loaded
+                            sta   :je_patch+2
+;                            jmp   ($06)                      ;jump to the address we loaded
+
+; GTE Note: We run in a different bank with a direct page != 0, so jmp (abs) cannot work, but we're in RAM now
+; so self-modifying code to the rescue
+:je_patch                   jmp   $0000
 
 ;-------------------------------------------------------------------------------------
 
 InitializeNameTables
-                            lda   PPU_STATUS                 ;reset flip-flop
+                            jsr   PPU_STATUS_R                 ;reset flip-flop
                             lda   Mirror_PPU_CTRL_REG1       ;load mirror of ppu reg $2000
                             ora   #%00010000                 ;set sprites for first 4k and background for second 4k
                             and   #%11110000                 ;clear rest of lower nybble, leave higher alone
@@ -2400,13 +2479,13 @@ InitializeNameTables
                             lda   #$24                       ;set vram address to start of name table 1
                             jsr   WriteNTAddr
                             lda   #$20                       ;and then set it to name table 0
-WriteNTAddr                 sta   PPU_ADDRESS
+WriteNTAddr                 jsr   PPU_ADDRESS_W
                             lda   #$00
-                            sta   PPU_ADDRESS
+                            jsr   PPU_ADDRESS_W
                             ldx   #$04                       ;clear name table with blank tile #24
                             ldy   #$c0
                             lda   #$24
-InitNTLoop                  sta   PPU_DATA                   ;count out exactly 768 tiles
+InitNTLoop                  jsr   PPU_DATA_W                  ;count out exactly 768 tiles
                             dey
                             bne   InitNTLoop
                             dex
@@ -2415,7 +2494,7 @@ InitNTLoop                  sta   PPU_DATA                   ;count out exactly 
                             txa
                             sta   VRAM_Buffer1_Offset        ;init vram buffer 1 offset
                             sta   VRAM_Buffer1               ;init vram buffer 1
-InitATLoop                  sta   PPU_DATA
+InitATLoop                  jsr   PPU_DATA_W
                             dey
                             bne   InitATLoop
                             sta   HorizontalScroll           ;reset scroll variables
@@ -2424,7 +2503,7 @@ InitATLoop                  sta   PPU_DATA
 
 ;-------------------------------------------------------------------------------------
 ;$00 - temp joypad bit
-
+native_joy EXT
 ReadJoypads
                             lda   #$01                       ;reset and clear strobe of joypad ports
                             sta   JOYPAD_PORT
@@ -2433,17 +2512,20 @@ ReadJoypads
                             sta   JOYPAD_PORT
                             jsr   ReadPortBits
                             inx                              ;increment for joypad 2's port
-ReadPortBits                ldy   #$08
-PortLoop                    pha                              ;push previous bit onto stack
-                            lda   JOYPAD_PORT,x              ;read current bit on joypad port
-                            sta   $00                        ;check d1 and d0 of port output
-                            lsr                              ;this is necessary on the old
-                            ora   $00                        ;famicom systems in japan
-                            lsr
-                            pla                              ;read bits from stack
-                            rol                              ;rotate bit from carry flag
-                            dey
-                            bne   PortLoop                   ;count down bits left
+ReadPortBits
+;                            ldy   #$08
+;PortLoop                    pha                              ;push previous bit onto stack
+;                            lda   JOYPAD_PORT,x              ;read current bit on joypad port
+;                            sta   $00                        ;check d1 and d0 of port output
+;                            lsr                              ;this is necessary on the old
+;                            ora   $00                        ;famicom systems in japan
+;                            lsr
+;                            pla                              ;read bits from stack
+;                            rol                              ;rotate bit from carry flag
+;                            dey
+;                            bne   PortLoop                   ;count down bits left
+                            ldal  native_joy,x
+
                             sta   SavedJoypadBits,x          ;save controller status here always
                             pha
                             and   #%00110000                 ;check for select or start
@@ -2462,10 +2544,10 @@ Save8Bits                   pla
 ;$01 - vram buffer address table high
 
 WriteBufferToScreen
-                            sta   PPU_ADDRESS                ;store high byte of vram address
+                            jsr   PPU_ADDRESS_W               ;store high byte of vram address
                             iny
                             lda   ($00),y                    ;load next byte (second)
-                            sta   PPU_ADDRESS                ;store low byte of vram address
+                            jsr   PPU_ADDRESS_W               ;store low byte of vram address
                             iny
                             lda   ($00),y                    ;load next byte (third)
                             asl                              ;shift to left and save in stack
@@ -2486,7 +2568,7 @@ GetLength                   lsr                              ;shift back to the 
 OutputToVRAM                bcs   RepeatByte                 ;if carry set, repeat loading the same byte
                             iny                              ;otherwise increment Y to load next byte
 RepeatByte                  lda   ($00),y                    ;load more data from buffer and write to vram
-                            sta   PPU_DATA
+                            jsr   PPU_DATA_W
                             dex                              ;done writing?
                             bne   OutputToVRAM
                             sec
@@ -2497,23 +2579,23 @@ RepeatByte                  lda   ($00),y                    ;load more data fro
                             adc   $01
                             sta   $01
                             lda   #$3f                       ;sets vram address to $3f00
-                            sta   PPU_ADDRESS
+                            jsr   PPU_ADDRESS_W
                             lda   #$00
-                            sta   PPU_ADDRESS
-                            sta   PPU_ADDRESS                ;then reinitializes it for some reason
-                            sta   PPU_ADDRESS
-UpdateScreen                ldx   PPU_STATUS                 ;reset flip-flop
+                            jsr   PPU_ADDRESS_W
+                            jsr   PPU_ADDRESS_W              ;then reinitializes it for some reason
+                            jsr   PPU_ADDRESS_W
+UpdateScreen                jsr   PPU_STATUS_RX              ;reset flip-flop
                             ldy   #$00                       ;load first byte from indirect as a pointer
                             lda   ($00),y
                             bne   WriteBufferToScreen        ;if byte is zero we have no further updates to make here
-InitScroll                  sta   PPU_SCROLL_REG             ;store contents of A into scroll registers
-                            sta   PPU_SCROLL_REG             ;and end whatever subroutine led us here
+InitScroll                  jsr   PPU_SCROLL_W               ;store contents of A into scroll registers
+                            jsr   PPU_SCROLL_W               ;and end whatever subroutine led us here
                             rts
 
 ;-------------------------------------------------------------------------------------
 
 WritePPUReg1
-                            sta   PPU_CTRL_REG1              ;write contents of A to PPU register 1
+                            jsr   PPU_CTRL_W              ;write contents of A to PPU register 1
                             sta   Mirror_PPU_CTRL_REG1       ;and its mirror
                             rts
 
@@ -2763,8 +2845,8 @@ ISpr0Loop                   lda   Sprite0Data,y
                             sta   Sprite_Data,y
                             dey
                             bpl   ISpr0Loop
-                            jsr   DoNothing2                 ;these jsrs doesn't do anything useful
-                            jsr   DoNothing1
+;                            jsr   DoNothing2                 ;these jsrs doesn't do anything useful
+;                            jsr   DoNothing1
                             inc   Sprite0HitDetectFlag       ;set sprite #0 check flag
                             inc   OperMode_Task              ;increment to next task
                             rts
@@ -4329,8 +4411,8 @@ GetAreaObjYPosition
 ;$06-$07 - used to store block buffer address used as indirect
 
 BlockBufferAddr
-                            db    <Block_Buffer_1,           <Block_Buffer_2
-                            db    >Block_Buffer_1,           >Block_Buffer_2
+                            db    <Block_Buffer_1, <Block_Buffer_2
+                            db    >Block_Buffer_1, >Block_Buffer_2
 
 GetBlockBufferAddr
                             pha                              ;take value of A, save
@@ -4492,39 +4574,39 @@ EnemyAddrHOffsets
                             db    $1f,$06,$1c,$00
 
 EnemyDataAddrLow
-                            db    <E_CastleArea1,            <E_CastleArea2,
-                            db    <E_GroundArea1,            <E_GroundArea2,
-                            db    <E_GroundArea7,            <E_GroundArea8,
-                            db    <E_GroundArea13,           <E_GroundArea14,
-                            db    <E_GroundArea19,           <E_GroundArea20,
-                            db    <E_UndergroundArea2,       <E_UndergroundArea3,
+                            db <E_CastleArea1, <E_CastleArea2, <E_CastleArea3, <E_CastleArea4, <E_CastleArea5, <E_CastleArea6
+                            db <E_GroundArea1, <E_GroundArea2, <E_GroundArea3, <E_GroundArea4, <E_GroundArea5, <E_GroundArea6
+                            db <E_GroundArea7, <E_GroundArea8, <E_GroundArea9, <E_GroundArea10, <E_GroundArea11, <E_GroundArea12
+                            db <E_GroundArea13, <E_GroundArea14, <E_GroundArea15, <E_GroundArea16, <E_GroundArea17, <E_GroundArea18
+                            db <E_GroundArea19, <E_GroundArea20, <E_GroundArea21, <E_GroundArea22, <E_UndergroundArea1
+                            db <E_UndergroundArea2, <E_UndergroundArea3, <E_WaterArea1, <E_WaterArea2, <E_WaterArea3
 
 EnemyDataAddrHigh
-                            db    >E_CastleArea1,            >E_CastleArea2,
-                            db    >E_GroundArea1,            >E_GroundArea2,
-                            db    >E_GroundArea7,            >E_GroundArea8,
-                            db    >E_GroundArea13,           >E_GroundArea14,
-                            db    >E_GroundArea19,           >E_GroundArea20,
-                            db    >E_UndergroundArea2,       >E_UndergroundArea3,
+                            db >E_CastleArea1, >E_CastleArea2, >E_CastleArea3, >E_CastleArea4, >E_CastleArea5, >E_CastleArea6
+                            db >E_GroundArea1, >E_GroundArea2, >E_GroundArea3, >E_GroundArea4, >E_GroundArea5, >E_GroundArea6
+                            db >E_GroundArea7, >E_GroundArea8, >E_GroundArea9, >E_GroundArea10, >E_GroundArea11, >E_GroundArea12
+                            db >E_GroundArea13, >E_GroundArea14, >E_GroundArea15, >E_GroundArea16, >E_GroundArea17, >E_GroundArea18
+                            db >E_GroundArea19, >E_GroundArea20, >E_GroundArea21, >E_GroundArea22, >E_UndergroundArea1
+                            db >E_UndergroundArea2, >E_UndergroundArea3, >E_WaterArea1, >E_WaterArea2, >E_WaterArea3
 
 AreaDataHOffsets
                             db    $00,$03,$19,$1c
 
 AreaDataAddrLow
-                            db    <L_WaterArea1,             <L_WaterArea2,
-                            db    <L_GroundArea4,            <L_GroundArea5,
-                            db    <L_GroundArea10,           <L_GroundArea11,
-                            db    <L_GroundArea16,           <L_GroundArea17,
-                            db    <L_GroundArea22,           <L_UndergroundArea1,
-                            db    <L_CastleArea2,            <L_CastleArea3,
+                            db <L_WaterArea1, <L_WaterArea2, <L_WaterArea3, <L_GroundArea1, <L_GroundArea2, <L_GroundArea3
+                            db <L_GroundArea4, <L_GroundArea5, <L_GroundArea6, <L_GroundArea7, <L_GroundArea8, <L_GroundArea9
+                            db <L_GroundArea10, <L_GroundArea11, <L_GroundArea12, <L_GroundArea13, <L_GroundArea14, <L_GroundArea15
+                            db <L_GroundArea16, <L_GroundArea17, <L_GroundArea18, <L_GroundArea19, <L_GroundArea20, <L_GroundArea21
+                            db <L_GroundArea22, <L_UndergroundArea1, <L_UndergroundArea2, <L_UndergroundArea3, <L_CastleArea1
+                            db <L_CastleArea2, <L_CastleArea3, <L_CastleArea4, <L_CastleArea5, <L_CastleArea6
 
 AreaDataAddrHigh
-                            db    >L_WaterArea1,             >L_WaterArea2,
-                            db    >L_GroundArea4,            >L_GroundArea5,
-                            db    >L_GroundArea10,           >L_GroundArea11,
-                            db    >L_GroundArea16,           >L_GroundArea17,
-                            db    >L_GroundArea22,           >L_UndergroundArea1,
-                            db    >L_CastleArea2,            >L_CastleArea3,
+                            db >L_WaterArea1, >L_WaterArea2, >L_WaterArea3, >L_GroundArea1, >L_GroundArea2, >L_GroundArea3
+                            db >L_GroundArea4, >L_GroundArea5, >L_GroundArea6, >L_GroundArea7, >L_GroundArea8, >L_GroundArea9
+                            db >L_GroundArea10, >L_GroundArea11, >L_GroundArea12, >L_GroundArea13, >L_GroundArea14, >L_GroundArea15
+                            db >L_GroundArea16, >L_GroundArea17, >L_GroundArea18, >L_GroundArea19, >L_GroundArea20, >L_GroundArea21
+                            db >L_GroundArea22, >L_UndergroundArea1, >L_UndergroundArea2, >L_UndergroundArea3, >L_CastleArea1
+                            db >L_CastleArea2, >L_CastleArea3, >L_CastleArea4, >L_CastleArea5, >L_CastleArea6
 
 ;ENEMY OBJECT DATA
 
@@ -15987,16 +16069,16 @@ MusicHeaderData
                             db    Star_CloudHdr-MHD
                             db    SilenceHdr-MHD
 
-                            db    GroundLevelLeadInHdr-MHD   ;ground level music layout
-                            db    GroundLevelPart1Hdr-MHD,   GroundLevelPart1Hdr-MHD
-                            db    GroundLevelPart2AHdr-MHD,  GroundLevelPart2BHdr-MHD,
-                            db    GroundLevelPart2AHdr-MHD,  GroundLevelPart2BHdr-MHD,
-                            db    GroundLevelPart3AHdr-MHD,  GroundLevelPart3BHdr-MHD,
-                            db    GroundLevelPart1Hdr-MHD,   GroundLevelPart1Hdr-MHD
-                            db    GroundLevelPart4AHdr-MHD,  GroundLevelPart4BHdr-MHD,
-                            db    GroundLevelPart4AHdr-MHD,  GroundLevelPart4BHdr-MHD,
-                            db    GroundLevelPart3AHdr-MHD,  GroundLevelPart3BHdr-MHD,
-                            db    GroundLevelPart4AHdr-MHD,  GroundLevelPart4BHdr-MHD,
+                            db GroundLevelLeadInHdr-MHD  ;ground level music layout
+                            db GroundLevelPart1Hdr-MHD, GroundLevelPart1Hdr-MHD
+                            db GroundLevelPart2AHdr-MHD, GroundLevelPart2BHdr-MHD, GroundLevelPart2AHdr-MHD, GroundLevelPart2CHdr-MHD
+                            db GroundLevelPart2AHdr-MHD, GroundLevelPart2BHdr-MHD, GroundLevelPart2AHdr-MHD, GroundLevelPart2CHdr-MHD
+                            db GroundLevelPart3AHdr-MHD, GroundLevelPart3BHdr-MHD, GroundLevelPart3AHdr-MHD, GroundLevelLeadInHdr-MHD
+                            db GroundLevelPart1Hdr-MHD, GroundLevelPart1Hdr-MHD
+                            db GroundLevelPart4AHdr-MHD, GroundLevelPart4BHdr-MHD, GroundLevelPart4AHdr-MHD, GroundLevelPart4CHdr-MHD
+                            db GroundLevelPart4AHdr-MHD, GroundLevelPart4BHdr-MHD, GroundLevelPart4AHdr-MHD, GroundLevelPart4CHdr-MHD
+                            db GroundLevelPart3AHdr-MHD, GroundLevelPart3BHdr-MHD, GroundLevelPart3AHdr-MHD, GroundLevelLeadInHdr-MHD
+                            db GroundLevelPart4AHdr-MHD, GroundLevelPart4BHdr-MHD, GroundLevelPart4AHdr-MHD, GroundLevelPart4CHdr-MHD
 
 ;music headers
 ;header format is as follows 
@@ -16006,28 +16088,28 @@ MusicHeaderData
 ;1 byte - square 1 data offset
 ;1 byte - noise data offset (not used by secondary music)
 
-TimeRunningOutHdr           db    $08,                       <TimeRunOutMusData,
-Star_CloudHdr               db    $20,                       <Star_CloudMData,
-EndOfLevelMusHdr            db    $20,                       <WinLevelMusData,
-ResidualHeaderData          db    $20,$c4,$fc,$3f,$1d
-UndergroundMusHdr           db    $18,                       <UndergroundMusData,
-SilenceHdr                  db    $08,                       <SilenceData,
-CastleMusHdr                db    $00,                       <CastleMusData,
-VictoryMusHdr               db    $10,                       <VictoryMusData,
-GameOverMusHdr              db    $18,                       <GameOverMusData,
-WaterMusHdr                 db    $08,                       <WaterMusData,
-WinCastleMusHdr             db    $08,                       <EndOfCastleMusData,
-GroundLevelPart1Hdr         db    $18,                       <GroundM_P1Data,
-GroundLevelPart2AHdr        db    $18,                       <GroundM_P2AData,
-GroundLevelPart2BHdr        db    $18,                       <GroundM_P2BData,
-GroundLevelPart2CHdr        db    $18,                       <GroundM_P2CData,
-GroundLevelPart3AHdr        db    $18,                       <GroundM_P3AData,
-GroundLevelPart3BHdr        db    $18,                       <GroundM_P3BData,
-GroundLevelLeadInHdr        db    $18,                       <GroundMLdInData,
-GroundLevelPart4AHdr        db    $18,                       <GroundM_P4AData,
-GroundLevelPart4BHdr        db    $18,                       <GroundM_P4BData,
-GroundLevelPart4CHdr        db    $18,                       <GroundM_P4CData,
-DeathMusHdr                 db    $18,                       <DeathMusData,
+TimeRunningOutHdr    db $08, <TimeRunOutMusData, >TimeRunOutMusData, $27, $18
+Star_CloudHdr        db $20, <Star_CloudMData, >Star_CloudMData, $2e, $1a, $40
+EndOfLevelMusHdr     db $20, <WinLevelMusData, >WinLevelMusData, $3d, $21
+ResidualHeaderData   db $20, $c4, $fc, $3f, $1d
+UndergroundMusHdr    db $18, <UndergroundMusData, >UndergroundMusData, $00, $00
+SilenceHdr           db $08, <SilenceData, >SilenceData, $00
+CastleMusHdr         db $00, <CastleMusData, >CastleMusData, $93, $62
+VictoryMusHdr        db $10, <VictoryMusData, >VictoryMusData, $24, $14
+GameOverMusHdr       db $18, <GameOverMusData, >GameOverMusData, $1e, $14
+WaterMusHdr          db $08, <WaterMusData, >WaterMusData, $a0, $70, $68
+WinCastleMusHdr      db $08, <EndOfCastleMusData, >EndOfCastleMusData, $4c, $24
+GroundLevelPart1Hdr  db $18, <GroundM_P1Data, >GroundM_P1Data, $2d, $1c, $b8
+GroundLevelPart2AHdr db $18, <GroundM_P2AData, >GroundM_P2AData, $20, $12, $70
+GroundLevelPart2BHdr db $18, <GroundM_P2BData, >GroundM_P2BData, $1b, $10, $44
+GroundLevelPart2CHdr db $18, <GroundM_P2CData, >GroundM_P2CData, $11, $0a, $1c
+GroundLevelPart3AHdr db $18, <GroundM_P3AData, >GroundM_P3AData, $2d, $10, $58
+GroundLevelPart3BHdr db $18, <GroundM_P3BData, >GroundM_P3BData, $14, $0d, $3f
+GroundLevelLeadInHdr db $18, <GroundMLdInData, >GroundMLdInData, $15, $0d, $21
+GroundLevelPart4AHdr db $18, <GroundM_P4AData, >GroundM_P4AData, $18, $10, $7a
+GroundLevelPart4BHdr db $18, <GroundM_P4BData, >GroundM_P4BData, $19, $0f, $54
+GroundLevelPart4CHdr db $18, <GroundM_P4CData, >GroundM_P4CData, $1e, $12, $2b
+DeathMusHdr          db $18, <DeathMusData, >DeathMusData, $1e, $0f, $2d
 
 ;--------------------------------
 

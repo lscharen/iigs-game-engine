@@ -137,6 +137,33 @@ RTL_OPCODE       equ $6B
             lda    :rtnval                          ; Address in the compile memory
             rts
 
+; Draw a tile directly to the graphics screen as a sprite
+;
+; Y = screen address
+; X = tile address
+; A = $0001 = ignore mask
+
+_DrawTileToScreen
+            phb
+            pea    $0101
+            plb
+            plb
+
+]line       equ   0
+            lup   8
+            lda:  {]line*SHR_LINE_WIDTH}+2,y
+            andl  tiledata+{]line*4}+32+2,x
+            oral  tiledata+{]line*4}+2,x
+            sta:  {]line*SHR_LINE_WIDTH}+2,y
+            lda:  {]line*SHR_LINE_WIDTH},y
+            andl  tiledata+{]line*4}+32,x
+            oral  tiledata+{]line*4},x
+            sta:  {]line*SHR_LINE_WIDTH},y
+]line       equ   ]line+1
+            --^
+            plb
+            rtl                          ; special exit
+
 ; Draw a sprite directly to the graphics screen. If sprite is clipped at all, do not draw.
 ;
 ; X = sprite record index

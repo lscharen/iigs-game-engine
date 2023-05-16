@@ -60,7 +60,7 @@ _Render
 
 
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
-            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode            
+            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
 
             lda   #RENDER_BG1_ROTATION
             bit   RenderFlags
@@ -153,6 +153,87 @@ _DoOverlay
 :disp       jsl   $000000
             rts
 
+; Special NES renderer that externalizes the sprite rendreing in order to exceed the internal limit of 16 sprites
+_RenderNES
+            jsr   _ApplyBG0YPos
+            jsr   _ApplyBG0XPosPre
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
+;            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
+
+            stz   tmp1                ; virt_line_x2
+            lda   #16*2
+            sta   tmp2                ; lines_left_x2
+            lda   #0                  ; Xmod164
+            jsr   _ApplyBG0XPosAlt
+            lda   tmp4                ; :exit_offset
+            stal  nesTopOffset
+
+            lda   #16*2
+            sta   tmp1                ; virt_line_x2
+            lda   ScreenHeight
+            sec
+            sbc   #16
+            asl
+            sta   tmp2                ; lines_left_x2
+            lda   StartXMod164        ; Xmod164
+            jsr   _ApplyBG0XPosAlt
+            lda   tmp4
+            stal  nesBottomOffset
+
+            ldx   #0                  ; Blit the full virtual buffer to the screen
+            ldy   ScreenHeight
+            jsr   _BltRange
+
+            lda   ExtSpriteRenderer
+            ora   ExtSpriteRenderer+2
+            beq   :no_sprite
+
+            lda   ExtSpriteRenderer
+            stal  :patch+1
+            lda   ExtSpriteRenderer+1
+            stal  :patch+2
+:patch      jsl   $000000
+
+:no_sprite
+
+            stz  tmp1            ; :virt_line_x2
+            lda  #16*2
+            sta  tmp2            ; :lines_left_x2
+            ldal nesTopOffset
+            sta  tmp4            ; :exit_offset
+            jsr   _RestoreBG0OpcodesAlt
+
+            lda   #16*2
+            sta   tmp1                 ; :virt_line_x2
+            lda   ScreenHeight
+            sec
+            sbc   #16
+            asl
+            sta   tmp2                ; lines_left_x2
+            ldal  nesBottomOffset
+            sta   tmp4                ; :exit_offset
+            jsr   _RestoreBG0OpcodesAlt
+
+;            lda   StartYMod208              ; Restore the fields back to their original state
+;            ldx   ScreenHeight
+;            jsr   _RestoreBG0Opcodes
+
+            lda   StartY
+            sta   OldStartY
+            lda   StartX
+            sta   OldStartX
+
+            lda   BG1StartY
+            sta   OldBG1StartY
+            lda   BG1StartX
+            sta   OldBG1StartX
+
+            stz   DirtyBits
+            stz   LastRender                    ; Mark that a full render was just performed
+            rts
+
+nesTopOffset ds 2
+nesBottomOffset ds 2
 
 ; Use the per-scanline tables to set the screen.  This is really meant to be used without the built-in tilemap
 ; support and is more of a low-level way to control the background rendering
