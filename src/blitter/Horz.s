@@ -229,7 +229,7 @@ _ApplyBG0XPos
 
 ; Alternate entry point if the virt_line_x2 and lines_left_x2 and XMod164 values are passed in externally
 
-_RestoreBG0OpcodesAlt
+_ApplyBG0XPosAlt
 :stk_save           equ   tmp0
 :virt_line_x2       equ   tmp1
 :lines_left_x2      equ   tmp2

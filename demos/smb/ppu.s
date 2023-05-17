@@ -442,6 +442,7 @@ x_offset equ 16
 
 drawOAMSprites
 :tmp    equ  238
+
         phb
         php
 
@@ -455,6 +456,10 @@ drawOAMSprites
         lda   PPU_OAM+3,x   ; remove this test once we can clip sprites
         cmp   #241
         bcs   :hidden
+
+        lda  PPU_OAM+1,x    ; $FC is an empty tile, don't draw it
+        cmp  #$FC
+        beq  :hidden
 
         lda   PPU_OAM,x     ; Y-coordinate
         cmp   #200+y_offset-9
@@ -486,6 +491,7 @@ drawOAMSprites
         tay
 
         lda  PPU_OAM+2,x
+        pha
         bit  #$0040                  ; horizontal flip
         bne  :hflip
 
@@ -493,7 +499,7 @@ drawOAMSprites
         and  #$FF00
         lsr                          ; multiple by 128
         tax
-        bra  drawTilePatch
+        bra  :noflip
 
 :hflip
         lda  PPU_OAM,x               ; Loda the tile index into the high byte (x256)
@@ -502,10 +508,13 @@ drawOAMSprites
         adc  #64                     ; horizontal flip
         tax
 
+:noflip
+        pla
+        and   #$0080                 ; Set the vflip bit
+
 drawTilePatch
         jsl   $000000                ; Draw the tile on the graphics screen
 
-:hop
         sep   #$30
         plx
 

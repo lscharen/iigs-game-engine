@@ -327,7 +327,6 @@ CopyNametable
             asl
             asl
 
-;            lda   #$0000+{2*32}
             sta   Tmp2
             lda   #0
             sta   Tmp3
@@ -413,6 +412,13 @@ triggerNMI
 ; Expose joypad bits from GTE to the ROM: A-B-Select-Start-Up-Down-Left-Right
 native_joy  ENT
             db   0,0
+
+; X = address in the rom file
+; A = address to write
+;
+; This keeps the tile in 2-bit mode in a format that makes it easy to look up pixel data
+; based on a dynamic palette selection
+
 
 ; X = address in the rom file
 ; A = address to write
@@ -571,10 +577,16 @@ DLUT        dw    $00,$01,$10,$11    ; CHR_ROM[0] = xx, CHR_ROM[8] = 00
             dw    $20,$21,$30,$31    ; CHR_ROM[0] = xx, CHR_ROM[8] = 10
             dw    $22,$23,$32,$33    ; CHR_ROM[0] = xx, CHR_ROM[8] = 11
 
-MLUT        dw    $FF,$F0,$0F,$00
-            dw    $F0,$F0,$00,$00
-            dw    $0F,$00,$0F,$00
-            dw    $00,$00,$00,$00
+;MLUT        dw    $FF,$F0,$0F,$00
+;            dw    $F0,$F0,$00,$00
+;            dw    $0F,$00,$0F,$00
+;            dw    $00,$00,$00,$00
+
+; Inverted mask for using eor/and/eor rendering
+MLUT        dw    $00,$0F,$F0,$FF
+            dw    $0F,$0F,$FF,$FF
+            dw    $F0,$FF,$F0,$FF
+            dw    $FF,$FF,$FF,$FF
 
 ; Extracted tiles
 TileBuff    ds    128

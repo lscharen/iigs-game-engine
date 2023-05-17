@@ -682,10 +682,22 @@ PPUDATA_WRITE    EXT
 PPUDMA_WRITE     EXT
 
 ROMBase  ENT
-                            ds    $8000-14-50
+                            ds    $8000-14-50-14
 
 ; Hooks to call back to the GTE harness for PPU memory-mapped accesses
-                            mx    %11
+            mx    %11
+GteInitMem
+            php
+            rep  #$30
+            ldx  #$015E
+GteLoop                     stz  00,x
+            dex
+            dex
+            bpl  GteLoop
+            plp
+            rts
+
+            mx    %11
 PPU_CTRL_W
             jsl  PPUCTRL_WRITE
             rts
@@ -2870,8 +2882,11 @@ SkipByte                    dey
                             cpy   #$ff                       ;do this until all bytes in page have been erased
                             bne   InitByteLoop
                             dex                              ;go onto the next page
-                            bpl   InitPageLoop               ;do this until all pages of memory have been erased
-                            rts
+
+                            cpx   #$02                       ;GTE wrapper -- zero page and stack are in a different
+                            bcs   InitPageLoop               ;bank, so we provide a little help here
+;                            bpl   InitPageLoop               ;do this until all pages of memory have been erased
+                            jmp   GteInitMem
 
 ;-------------------------------------------------------------------------------------
 

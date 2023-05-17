@@ -137,11 +137,59 @@ RTL_OPCODE       equ $6B
             lda    :rtnval                          ; Address in the compile memory
             rts
 
+; 4 palettes for the sprite data.  Converts 4 pixels at a time from 0000 0000w wxxy yzz0 -> gggg hhhh iiii jjjj
+; each swizzle table is 512 bytes long, 2048 bytes for all four.  They need to be prec
+swizzle
 ; Draw a tile directly to the graphics screen as a sprite
 ;
 ; Y = screen address
 ; X = tile address
 ; A = $0001 = ignore mask
+;   = $0080 = vflip
+;   = $0600 = palette select
+* _DrawSwizzleTileToScreen
+* :palette    equ    240
+* ; Tile data must be 0000 000w wxxy yzz0
+* ; Tile mask is normal pixel data
+
+*             and   #$0600
+*             sta   :palette               ; cache the palette bits
+
+*             lda   #^swizzle
+*             sta   tmp+2
+
+*             ldal  tiledata+{]line*4},x
+*             ora   :palette
+*             sta   tmp
+*             lda:  {]line*SHR_LINE_WIDTH},y
+*             andl  tiledata+{]line*4}+32,x
+*             ora   [tmp]
+*             sta:  {]line*SHR_LINE_WIDTH},y
+
+*             tay
+*             lda   swizzle,y
+
+
+*             phb
+*             pea    $0101
+*             plb
+*             plb
+
+            
+* ]line       equ   0
+*             lup   8
+*             lda:  {]line*SHR_LINE_WIDTH}+2,y
+*             andl  tiledata+{]line*4}+32+2,x
+*             oral  tiledata+{]line*4}+2,x
+*             sta:  {]line*SHR_LINE_WIDTH}+2,y
+*             lda:  {]line*SHR_LINE_WIDTH},y
+*             andl  tiledata+{]line*4}+32,x
+*             oral  tiledata+{]line*4},x
+*             sta:  {]line*SHR_LINE_WIDTH},y
+* ]line       equ   ]line+1
+*             --^
+*             plb
+*             rtl                          ; special exit
 
 _DrawTileToScreen
             phb
@@ -149,15 +197,44 @@ _DrawTileToScreen
             plb
             plb
 
+            bit    #$0080
+            jne    _DrawTileToScreenV
+
 ]line       equ   0
             lup   8
             lda:  {]line*SHR_LINE_WIDTH}+2,y
+            eorl  tiledata+{]line*4}+2,x
+            eor   #$8888
             andl  tiledata+{]line*4}+32+2,x
-            oral  tiledata+{]line*4}+2,x
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
             sta:  {]line*SHR_LINE_WIDTH}+2,y
+
             lda:  {]line*SHR_LINE_WIDTH},y
+            eorl  tiledata+{]line*4},x
+            eor   #$8888
             andl  tiledata+{]line*4}+32,x
-            oral  tiledata+{]line*4},x
+            eor:  {]line*SHR_LINE_WIDTH},y
+            sta:  {]line*SHR_LINE_WIDTH},y
+]line       equ   ]line+1
+            --^
+            plb
+            rtl                          ; special exit
+
+_DrawTileToScreenV
+]line       equ   0
+            lup   8
+            lda:  {]line*SHR_LINE_WIDTH}+2,y
+            eorl  tiledata+{{7-]line}*4}+2,x
+            eor   #$8888
+            andl  tiledata+{{7-]line}*4}+32+2,x
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
+            sta:  {]line*SHR_LINE_WIDTH}+2,y
+
+            lda:  {]line*SHR_LINE_WIDTH},y
+            eorl  tiledata+{{7-]line}*4},x
+            eor   #$8888
+            andl  tiledata+{{7-]line}*4}+32,x
+            eor:  {]line*SHR_LINE_WIDTH},y
             sta:  {]line*SHR_LINE_WIDTH},y
 ]line       equ   ]line+1
             --^
