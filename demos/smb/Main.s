@@ -22,6 +22,7 @@ MyUserId    equ   0
 ROMStk      equ   2
 ROMZeroPg   equ   4
 LastScroll  equ   6
+RenderCtr   equ   8
 Tmp0        equ   240
 Tmp1        equ   242
 Tmp2        equ   244
@@ -33,10 +34,12 @@ Tmp3        equ   246
             _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
             stz   LastScroll
+            stz   RenderCtr
 
 ; The next two direct pages will be used by GTE, so get another 2 pages beyond that for the ROM.  We get
 ; 4K of DP/Stack space by default, so there is plenty to share
             tdc
+            sta   DPSave
             clc
             adc   #$300
             sta   ROMZeroPg
@@ -91,6 +94,8 @@ Tmp3        equ   246
 
             pea   #128
             pea   #200
+;            pea   #80
+;            pea   #144
             _GTESetScreenMode
 
             pea   $0000
@@ -175,15 +180,24 @@ Tmp3        equ   246
             jsr   romxfer
 
 EvtLoop
-:spin       lda   ppustatus             ; Set the bit that the VBL has started
-            bit   #$80
+:spin       lda   nmiCount
             beq   :spin
-            and   #$FF7F
-            sta   ppustatus
+            stz   nmiCount
 
-            jsr   triggerNMI
+;           lda   ppustatus             ; Set the bit that the VBL has started
+;            bit   #$80
+;            beq   :spin
+;            and   #$FF7F
+;            sta   ppustatus
 
-            lda   #$2000
+;            jsr   triggerNMI
+
+;            lda   RenderCtr
+;            bne   :no_render
+
+;            lda   #5
+;            sta   RenderCtr
+
             jsr   CopyNametable
 
             lda   ppuscroll+1
@@ -198,6 +212,9 @@ EvtLoop
 
             pea   $FFFF      ; NES mode
             _GTERender
+
+:no_render
+            dec   RenderCtr
 
             pha
             _GTEReadControl
@@ -277,6 +294,9 @@ Greyscale   dw    $0000,$5555,$AAAA,$FFFF
             dw    $0000,$5555,$AAAA,$FFFF
             dw    $0000,$5555,$AAAA,$FFFF
             dw    $0000,$5555,$AAAA,$FFFF
+
+nmiCount    dw    0
+DPSave      dw    0
 
 ; Copy the tile and attribute bytes into the GTE buffer
 ;
@@ -401,9 +421,9 @@ triggerNMI
             bit   #$80
             beq   :skip
 
-            lda   ppustatus             ; Set the bit that the VBL has started
+            ldal  ppustatus             ; Set the bit that the VBL has started
             ora   #$80
-            sta   ppustatus
+            stal  ppustatus
 
             ldx   #NonMaskableInterrupt
             jmp   romxfer
@@ -730,16 +750,24 @@ StkSave     lda   #$0000
 ; VBL Interrupt task (called in native 8-bit mode)
             mx    %11
 nmiTask
-            ldal  ppustatus             ; Set the bit that the VBL has started
-            ora   #$80
-            stal  ppustatus
-
-            ldal  ppuctrl
-            bit   #$80                  ; Should an NMI be generated with the VBL?
-            beq   :skip
+            ldal  nmiCount
+            inc
+            stal  nmiCount
 
             php
-;            jsr   triggerNMI
+            rep   #$30
+            phb
+            phd
+
+            phk
+            plb
+            lda   DPSave
+            tcd
+
+            jsr   triggerNMI
+
+            pld
+            plb
             plp
 :skip
             rtl

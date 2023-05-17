@@ -298,11 +298,13 @@ palTbl  dw   ppu_3F00,ppu_3F01,ppu_3F02,ppu_3F03
         dw   ppu_3F18,ppu_3F19,ppu_3F1A,ppu_3F1B
         dw   ppu_3F1C,ppu_3F1D,ppu_3F1E,ppu_3F1F
 
+; Background color
 ppu_3F00
         lda  PPU_MEM+$3F00
         ldx  #0
         brl  extra_out
 
+; Background Palette 0
 ppu_3F01
         lda  PPU_MEM+$3F01
         ldx  #2
@@ -318,75 +320,95 @@ ppu_3F03
         ldx  #6
         brl  extra_out
 
-ppu_3F05
-        lda  PPU_MEM+$3F05
-        ldx  #8
-        brl  extra_out
-
-ppu_3F06
-        lda  PPU_MEM+$3F06
-        ldx  #10
-        brl  extra_out
-
-ppu_3F07
-        lda  PPU_MEM+$3F07
-        ldx  #12
-        brl  extra_out
-
-ppu_3F09
-        lda  PPU_MEM+$3F05
-        ldx  #14
-        brl  extra_out
-
-ppu_3F0A
-        lda  PPU_MEM+$3F06
-        ldx  #16
-        brl  extra_out
-
-ppu_3F0B
-        lda  PPU_MEM+$3F07
-        ldx  #18
-        brl  extra_out
-
-ppu_3F0D
-        lda  PPU_MEM+$3F05
-        ldx  #20
-        brl  extra_out
-
-ppu_3F0E
-        lda  PPU_MEM+$3F06
-        ldx  #22
-        brl  extra_out
-
-ppu_3F0F
-        lda  PPU_MEM+$3F07
-        ldx  #24
-        brl  extra_out
-
+; Shadow for background color
 ppu_3F10
         lda  PPU_MEM+$3F10
         ldx  #0
         brl  extra_out
 
-ppu_3F04
-ppu_3F08
-ppu_3F0C
+; Sprite Palette 0
 ppu_3F11
-ppu_3F12
-ppu_3F13
-ppu_3F14
-ppu_3F15
-ppu_3F16
-ppu_3F17
-ppu_3F18
-ppu_3F19
-ppu_3F1A
-ppu_3F1B
-ppu_3F1C
-ppu_3F1D
-ppu_3F1E
-ppu_3F1F
+        lda  PPU_MEM+$3F11
+        ldx  #8
+        brl  extra_out
 
+ppu_3F12
+        lda  PPU_MEM+$3F12
+        ldx  #10
+        brl  extra_out
+
+ppu_3F13
+        lda  PPU_MEM+$3F13
+        ldx  #12
+        brl  extra_out
+
+; Sprite Palette 1
+ppu_3F15
+        lda  PPU_MEM+$3F15
+        ldx  #14
+        brl  extra_out
+
+ppu_3F16
+        lda  PPU_MEM+$3F16
+        ldx  #16
+        brl  extra_out
+
+ppu_3F17
+        lda  PPU_MEM+$3F17
+        ldx  #18
+        brl  extra_out
+
+; Sprite Palette 2
+ppu_3F19
+        lda  PPU_MEM+$3F19
+        ldx  #20
+        brl  extra_out
+
+ppu_3F1A
+        lda  PPU_MEM+$3F1A
+        ldx  #22
+        brl  extra_out
+
+ppu_3F1B
+        lda  PPU_MEM+$3F1B
+        ldx  #24
+        brl  extra_out
+
+; Sprite Palette 3
+ppu_3F1D
+        lda  PPU_MEM+$3F1D
+        ldx  #26
+        brl  extra_out
+
+ppu_3F1E
+        lda  PPU_MEM+$3F1E
+        ldx  #28
+        brl  extra_out
+
+ppu_3F1F
+        lda  PPU_MEM+$3F1F
+        ldx  #30
+        brl  extra_out
+
+ppu_3F04
+ppu_3F05
+ppu_3F06
+ppu_3F07
+
+ppu_3F08
+ppu_3F09
+ppu_3F0A
+ppu_3F0B
+
+ppu_3F0C
+ppu_3F0D
+ppu_3F0E
+ppu_3F0F
+
+ppu_3F14
+ppu_3F18
+ppu_3F1C
+        brl  no_pal
 ; Exit code to set a IIgs palette entry from the PPU memory
 ;
 ; A = NES palette value
@@ -400,6 +422,7 @@ extra_out
         ply
         stal $E19E00,x
 
+no_pal
         sep  #$30
         plx
         pla
@@ -443,6 +466,7 @@ x_offset equ 16
 drawOAMSprites
 :tmp    equ  238
 
+; 248 is reserved for the blitter
         phb
         php
 
@@ -510,7 +534,9 @@ drawOAMSprites
 
 :noflip
         pla
-        and   #$0080                 ; Set the vflip bit
+        asl
+;        and   #$0080                 ; Set the vflip bit
+        and   #$0106                 ; Set the vflip bit and palette select bits
 
 drawTilePatch
         jsl   $000000                ; Draw the tile on the graphics screen

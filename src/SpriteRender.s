@@ -191,27 +191,38 @@ swizzle
 *             plb
 *             rtl                          ; special exit
 
+pal_select  dw    $3333,$6666,$9999,$CCCC
+
 _DrawTileToScreen
+:palette    equ    248
             phb
             pea    $0101
             plb
             plb
 
-            bit    #$0080
+            bit    #$0100
             jne    _DrawTileToScreenV
+
+            phx
+            and    #$0006
+            tax
+            ldal   pal_select,x
+            sta    :palette
+            plx
+            clc
 
 ]line       equ   0
             lup   8
-            lda:  {]line*SHR_LINE_WIDTH}+2,y
-            eorl  tiledata+{]line*4}+2,x
-            eor   #$8888
+            ldal  tiledata+{]line*4}+2,x
+            adc   :palette
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
             andl  tiledata+{]line*4}+32+2,x
             eor:  {]line*SHR_LINE_WIDTH}+2,y
             sta:  {]line*SHR_LINE_WIDTH}+2,y
 
-            lda:  {]line*SHR_LINE_WIDTH},y
-            eorl  tiledata+{]line*4},x
-            eor   #$8888
+            ldal  tiledata+{]line*4},x
+            adc   :palette
+            eor:  {]line*SHR_LINE_WIDTH},y
             andl  tiledata+{]line*4}+32,x
             eor:  {]line*SHR_LINE_WIDTH},y
             sta:  {]line*SHR_LINE_WIDTH},y
@@ -221,18 +232,27 @@ _DrawTileToScreen
             rtl                          ; special exit
 
 _DrawTileToScreenV
+:palette    equ    248
+            phx
+            and    #$0006
+            tax
+            ldal   pal_select,x
+            sta    :palette
+            plx
+            clc
+
 ]line       equ   0
             lup   8
-            lda:  {]line*SHR_LINE_WIDTH}+2,y
-            eorl  tiledata+{{7-]line}*4}+2,x
-            eor   #$8888
+            ldal  tiledata+{{7-]line}*4}+2,x
+            eor   :palette
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
             andl  tiledata+{{7-]line}*4}+32+2,x
             eor:  {]line*SHR_LINE_WIDTH}+2,y
             sta:  {]line*SHR_LINE_WIDTH}+2,y
 
-            lda:  {]line*SHR_LINE_WIDTH},y
-            eorl  tiledata+{{7-]line}*4},x
-            eor   #$8888
+            ldal  tiledata+{{7-]line}*4},x
+            eor   :palette
+            eor:  {]line*SHR_LINE_WIDTH},y
             andl  tiledata+{{7-]line}*4}+32,x
             eor:  {]line*SHR_LINE_WIDTH},y
             sta:  {]line*SHR_LINE_WIDTH},y

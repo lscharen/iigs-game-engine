@@ -367,9 +367,9 @@ _SetTile
                  tax
 
                  lda  TileStore+TS_TILE_ID,x
-;                 cmp  newTileId                    ; Lift this up to the caller
-;                 bne  :changed
-;                 rts
+                 cmp  newTileId                    ; Lift this up to the caller
+                 bne  :changed
+                 rts
 
 :changed         sta  oldTileId
                  lda  newTileId
