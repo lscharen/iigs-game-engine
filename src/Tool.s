@@ -597,7 +597,9 @@ _TSSetBG1Origin
 _TSGetTileAt
 :y            equ     FirstParam
 :x            equ     FirstParam+2
-:output       equ     FirstParam+4
+:output_id    equ     FirstParam+4
+:output_x     equ     FirstParam+6
+:output_y     equ     FirstParam+8
 
                 _TSEntry
 
@@ -609,16 +611,23 @@ _TSGetTileAt
                 jsr  _GetTileAt
                 bcc  :ok
                 lda  #0
+                sta  :output_x,s
+                sta  :output_y,s
                 bra  :out
+
+:ok
+                txa
+                sta  :output_x,s
+                tya
+                sta  :output_y,s
 
 ; Load the tile at that tile store location
 
-:ok
                 jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
                 tax
                 lda  TileStore+TS_TILE_ID,x
 :out
-                sta  :output,s
+                sta  :output_id,s
 
                 _TSExit #0;#4
 
@@ -990,7 +999,16 @@ _TSSetAddress
                 sta     ExtSpriteRenderer+2
                 bra     :out
 
-:next_4 
+:next_4         cmp     #extBG0TileUpdate
+                bne     :next_5
+
+                lda     :ptr,s
+                sta     ExtUpdateBG0Tiles
+                lda     :ptr+2,s
+                sta     ExtUpdateBG0Tiles+2
+                bra     :out
+:next_5
+
 :out
                 _TSExit #0;#6
 

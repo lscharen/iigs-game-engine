@@ -168,6 +168,7 @@ PPUADDR_WRITE ENT
         plp
         rtl
 
+
 ; 2007 - PPUDATA (Read/Write)
 ;
 ; If reading from the $0000 - $3EFF range, the value from vram_buff is returned and the actual data is loaded
@@ -212,6 +213,10 @@ PPUDATA_READ ENT
         pla
         rtl
 
+nt_queue_front dw 0
+nt_queue_end dw 0
+nt_queue ds 2*{1024}
+
 PPUDATA_WRITE ENT
         php
         phb
@@ -230,16 +235,43 @@ PPUDATA_WRITE ENT
         adc  ppuincr
         sta  ppuaddr
 
+; Anything between $2000 and $3000, we need to add to the queue.  We can't reject updates here because we may not
+; actually update the GTE tile store for several game frames and the position of the tile within the tile store
+; may change if the screen is scrolling
+
+        cpx  #$3000
+        bcs  :nocache
+        cpx  #$2000
+        bcc  :nocache
+
+        phy
+        lda  nt_queue_end
+        tay
+        inc
+        inc
+        and  #{2*1024}-1
+        cmp  nt_queue_front
+        beq  :full
+
+        sta  nt_queue_end
+        txa
+        sta  nt_queue,y
+
+:full
+        ply
+
+:nocache
         cpx  #$3F00
         bcs  :extra
 
+:done
         sep  #$30
         plx
         pla
         plb
         plp
         rtl
-
+        
 ; Do some extra work to keep palette data in sync
 ;
 ; Based on the palette data that SMB uses, we map the NES palette entries as
@@ -526,7 +558,7 @@ drawOAMSprites
         bra  :noflip
 
 :hflip
-        lda  PPU_OAM,x               ; Loda the tile index into the high byte (x256)
+        lda  PPU_OAM,x               ; Load the tile index into the high byte (x256)
         and  #$FF00
         lsr                          ; multiple by 128
         adc  #64                     ; horizontal flip

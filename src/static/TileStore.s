@@ -562,6 +562,8 @@ BG1YCache        ENT
 
 ExtSpriteRenderer ENT
                  dw  0,0
+ExtUpdateBG0Tiles ENT
+                 dw  0,0
 
 ; Scaling tables for the BG1 rotation tables.
 ScalingTables    ENT

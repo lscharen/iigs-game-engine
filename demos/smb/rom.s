@@ -30,19 +30,20 @@ PPU_SCROLL_REG              =     $2005
 PPU_ADDRESS                 =     $2006
 PPU_DATA                    =     $2007
 
-SND_REGISTER                =     $4000
-SND_SQUARE1_REG             =     $4000
-SND_SQUARE2_REG             =     $4004
-SND_TRIANGLE_REG            =     $4008
-SND_NOISE_REG               =     $400c
-SND_DELTA_REG               =     $4010
-SND_MASTERCTRL_REG          =     $4015
+SND_REGISTER                =     $4000     ; Only accessed via abs,x addressing
+SND_SQUARE1_REG             =     $4000     ; Only accessed via abs addressing; sta, sty and stx
+SND_SQUARE2_REG             =     $4004     ; Only accessed via abs addressing; sta, sty and stx
+SND_TRIANGLE_REG            =     $4008     ; Only accessed via abs addressing; sta
+SND_NOISE_REG               =     $400c     ; Only accessed via abs addressing; sta, sty and stx
+SND_DELTA_REG               =     $4010     ; Only accessed via abs addressing; sta, sty
+SND_MASTERCTRL_REG          =     $4015     ; Only accessed via abs addressing; sta, stx
 
 SPR_DMA                     =     $4014
 JOYPAD_PORT                 =     $4016
 JOYPAD_PORT1                =     $4016
 JOYPAD_PORT2                =     $4017
 
+GTE_TMP                     =     $10       ; No zero page references in the assembly to this location
 ; GAME SPECIFIC DEFINES
 
 ObjectOffset                =     $08
@@ -271,13 +272,13 @@ Misc_SprDataOffset          =     $06f3
 SprDataOffset_Ctrl          =     $03ee
 
 Player_State                =     $1d
-Enemy_State                 =     $1e
+Enemy_State                 =     $1e   ; (11) Lots of ,y indexing on this variable
 Fireball_State              =     $24
 Block_State                 =     $26
-Misc_State                  =     $2a
+Misc_State                  =     $2a   ; (4) Lots of ,y indexing on this variable
 
 Player_MovingDir            =     $45
-Enemy_MovingDir             =     $46
+Enemy_MovingDir             =     $46    ; (1)
 
 SprObject_X_Speed           =     $57
 Player_X_Speed              =     $57
@@ -292,41 +293,41 @@ JumpspringForce             =     $06db
 
 SprObject_PageLoc           =     $6d
 Player_PageLoc              =     $6d
-Enemy_PageLoc               =     $6e
+Enemy_PageLoc               =     $6e     ; (6)
 Fireball_PageLoc            =     $74
-Block_PageLoc               =     $76
-Misc_PageLoc                =     $7a
+Block_PageLoc               =     $76     ; (1)
+Misc_PageLoc                =     $7a     ; (2)
 Bubble_PageLoc              =     $83
 
 SprObject_X_Position        =     $86
 Player_X_Position           =     $86
-Enemy_X_Position            =     $87
+Enemy_X_Position            =     $87    ; Fix ,y indexing (7)
 Fireball_X_Position         =     $8d
-Block_X_Position            =     $8f
-Misc_X_Position             =     $93
+Block_X_Position            =     $8f    ; (1)
+Misc_X_Position             =     $93    ; (2)
 Bubble_X_Position           =     $9c
 
 SprObject_Y_Speed           =     $9f
 Player_Y_Speed              =     $9f
-Enemy_Y_Speed               =     $a0
+Enemy_Y_Speed               =     $a0     ; (4)
 Fireball_Y_Speed            =     $a6
 Block_Y_Speed               =     $a8
-Misc_Y_Speed                =     $ac
+Misc_Y_Speed                =     $ac     ; (1)
 
 SprObject_Y_HighPos         =     $b5
 Player_Y_HighPos            =     $b5
-Enemy_Y_HighPos             =     $b6
+Enemy_Y_HighPos             =     $b6     ; (1)
 Fireball_Y_HighPos          =     $bc
 Block_Y_HighPos             =     $be
-Misc_Y_HighPos              =     $c2
+Misc_Y_HighPos              =     $c2     ; (1)
 Bubble_Y_HighPos            =     $cb
 
 SprObject_Y_Position        =     $ce
 Player_Y_Position           =     $ce
-Enemy_Y_Position            =     $cf
+Enemy_Y_Position            =     $cf     ; (11)
 Fireball_Y_Position         =     $d5
-Block_Y_Position            =     $d7
-Misc_Y_Position             =     $db
+Block_Y_Position            =     $d7     ; (1)
+Misc_Y_Position             =     $db     ; (2)
 Bubble_Y_Position           =     $e4
 
 SprObject_Rel_XPos          =     $03ad
@@ -374,8 +375,8 @@ Misc_BoundBoxCtrl           =     $04a2
 
 EnemyFrenzyBuffer           =     $06cb
 EnemyFrenzyQueue            =     $06cd
-Enemy_Flag                  =     $0f
-Enemy_ID                    =     $16
+Enemy_Flag                  =     $0f       ; (4)
+Enemy_ID                    =     $16       ; (7)
 
 PlayerGfxOffset             =     $06d5
 Player_XSpeedAbsolute       =     $0700
@@ -682,7 +683,11 @@ PPUDATA_WRITE    EXT
 PPUDMA_WRITE     EXT
 
 ROMBase  ENT
-                            ds    $8000-14-50-14
+                            ds    $7800-14-50-14
+
+; Macro to replace sta abs,y instructions that access zero page space with direct page
+; instruction to actually get the correct data on the direct page _and_ bank memory.
+; That way any lda 00,x or lda 0000,y will 
 
 ; Hooks to call back to the GTE harness for PPU memory-mapped accesses
             mx    %11
@@ -3708,12 +3713,23 @@ NoKillE                     dex                              ;do this until all 
 FrenzyIDData
                             db    FlyCheepCheepFrenzy,       BBill_CCheep_Frenzy,
 
-AreaFrenzy                  ldx   $00                        ;use area object identifier bit as offset
-                            lda   FrenzyIDData-8,x           ;note that it starts at 8, thus weird address here
-                            ldy   #$05
-FreCompLoop                 dey                              ;check regular slots of enemy object buffer
+;AreaFrenzy                  ldx   $00                        ;use area object identifier bit as offset
+;                            lda   FrenzyIDData-8,x           ;note that it starts at 8, thus weird address here
+;                            ldy   #$05
+;FreCompLoop                 dey                              ;check regular slots of enemy object buffer
+;                            bmi   ExitAFrenzy                ;if all slots checked and enemy object not found, branch to store
+;                            cmp   Enemy_ID,y                 ;check for enemy object in buffer versus frenzy object
+;                            bne   FreCompLoop
+;                            lda   #$00                       ;if enemy object already present, nullify queue and leave
+;ExitAFrenzy                 sta   EnemyFrenzyQueue           ;store enemy into frenzy queue
+;                            rts
+
+AreaFrenzy                  ldy   $00                        ;use area object identifier bit as offset
+                            lda   FrenzyIDData-8,y           ;note that it starts at 8, thus weird address here
+                            ldx   #$05
+FreCompLoop                 dex                              ;check regular slots of enemy object buffer
                             bmi   ExitAFrenzy                ;if all slots checked and enemy object not found, branch to store
-                            cmp   Enemy_ID,y                 ;check for enemy object in buffer versus frenzy object
+                            cmp   Enemy_ID,x                 ;check for enemy object in buffer versus frenzy object
                             bne   FreCompLoop
                             lda   #$00                       ;if enemy object already present, nullify queue and leave
 ExitAFrenzy                 sta   EnemyFrenzyQueue           ;store enemy into frenzy queue
@@ -6783,12 +6799,30 @@ Setup_Vine
                             sta   Enemy_ID,x                 ;store in buffer
                             lda   #$01
                             sta   Enemy_Flag,x               ;set flag for enemy object buffer
-                            lda   Block_PageLoc,y
-                            sta   Enemy_PageLoc,x            ;copy page location from previous object
-                            lda   Block_X_Position,y
-                            sta   Enemy_X_Position,x         ;copy horizontal coordinate from previous object
-                            lda   Block_Y_Position,y
+
+;                            lda   Block_PageLoc,y            ; FIXME
+;                            sta   Enemy_PageLoc,x            ;copy page location from previous object
+;                            lda   Block_X_Position,y         ; FIXME
+;                            sta   Enemy_X_Position,x         ;copy horizontal coordinate from previous object
+;                            lda   Block_Y_Position,y         ; FIXME
+;                            sta   Enemy_Y_Position,x         ;copy vertical coordinate from previous object
+                            stx   GTE_TMP
+                            tyx
+
+                            lda   Block_PageLoc,x            ; FIXME
+                            pha
+                            lda   Block_X_Position,x         ; FIXME
+                            pha
+                            lda   Block_Y_Position,x         ; FIXME
+                            
+                            ldx   GTE_TMP
                             sta   Enemy_Y_Position,x         ;copy vertical coordinate from previous object
+                            pla
+                            sta   Enemy_X_Position,x         ;copy horizontal coordinate from previous object
+                            pla
+                            sta   Enemy_PageLoc,x            ;copy page location from previous object
+
+
                             ldy   VineFlagOffset             ;load vine flag/offset to next available vine slot
                             bne   NextVO                     ;if set at all, don't bother to store vertical
                             sta   VineStart_Y_Position       ;otherwise store vertical coordinate here
@@ -6981,7 +7015,12 @@ SpawnHammerObj
                             lda   PseudoRandomBitReg+1
                             and   #%00001000                 ;get d3 from same part of LSFR
 SetMOfs                     tay                              ;use either d3 or d2-d0 for offset here
-                            lda   Misc_State,y               ;if any values loaded in
+
+;                            lda   Misc_State,y               ;if any values loaded in
+                            tyx
+                            lda   Misc_State,x
+;                           x is set immediately on both paths
+
                             bne   NoHammer                   ;$2a-$32 where offset is then leave with carry clear
                             ldx   HammerEnemyOfsData,y       ;get offset of enemy slot to check using Y as offset
                             lda   Enemy_Flag,x               ;check enemy buffer flag at offset
@@ -6990,7 +7029,13 @@ SetMOfs                     tay                              ;use either d3 or d
                             txa
                             sta   HammerEnemyOffset,y        ;save here
                             lda   #$90
-                            sta   Misc_State,y               ;save hammer's state here
+
+;                            sta   Misc_State,y               ;save hammer's state here
+                            phx
+                            tyx
+                            sta   Misc_State,x
+                            plx
+
                             lda   #$07
                             sta   Misc_BoundBoxCtrl,y        ;set something else entirely, here
                             sec                              ;return with carry set
@@ -7030,23 +7075,47 @@ ProcHammerObj
                             jmp   RunAllH                    ;branch to essential subroutines
 SetHSpd                     lda   #$fe
                             sta   Misc_Y_Speed,x             ;set hammer's vertical speed
-                            lda   Enemy_State,y              ;get enemy object state
+
+; No need to preserve x here because it's loaded afterward
+                            tyx
+;                            lda   Enemy_State,y              ;get enemy object state
+                            lda   Enemy_State,x
                             and   #%11110111                 ;mask out d3
-                            sta   Enemy_State,y              ;store new state
+;                            sta   Enemy_State,y              ;store new state
+                            sta   Enemy_State,x
+
                             ldx   Enemy_MovingDir,y          ;get enemy's moving direction
                             dex                              ;decrement to use as offset
                             lda   HammerXSpdData,x           ;get proper speed to use based on moving direction
                             ldx   ObjectOffset               ;reobtain hammer's buffer offset
                             sta   Misc_X_Speed,x             ;set hammer's horizontal speed
+
 SetHPos                     dec   Misc_State,x               ;decrement hammer's state
-                            lda   Enemy_X_Position,y         ;get enemy's horizontal position
+
+                            stx   GTE_TMP
+
+;                            lda   Enemy_X_Position,y         ;get enemy's horizontal position
+                            tyx
+                            lda   Enemy_X_Position,x
+                            ldx   GTE_TMP
+
                             clc
                             adc   #$02                       ;set position 2 pixels to the right
                             sta   Misc_X_Position,x          ;store as hammer's horizontal position
-                            lda   Enemy_PageLoc,y            ;get enemy's page location
+
+;                            lda   Enemy_PageLoc,y            ;get enemy's page location
+                            tyx
+                            lda   Enemy_PageLoc,x
+                            ldx   GTE_TMP
+
                             adc   #$00                       ;add carry
                             sta   Misc_PageLoc,x             ;store as hammer's page location
-                            lda   Enemy_Y_Position,y         ;get enemy's vertical position
+
+;                            lda   Enemy_Y_Position,y         ;get enemy's vertical position
+                            tyx
+                            lda   Enemy_Y_Position,x
+                            ldx   GTE_TMP
+
                             sec
                             sbc   #$0a                       ;move position 10 pixels upward
                             sta   Misc_Y_Position,x          ;store as hammer's vertical position
@@ -7066,50 +7135,98 @@ RunHSubs                    jsr   GetMiscOffscreenBits       ;get offscreen info
 
 CoinBlock
                             jsr   FindEmptyMiscSlot          ;set offset for empty or last misc object buffer slot
+;                            lda   Block_PageLoc,x            ;get page location of block object
+;                            sta   Misc_PageLoc,y             ;store as page location of misc object
+;                            lda   Block_X_Position,x         ;get horizontal coordinate of block object
+;                            ora   #$05                       ;add 5 pixels
+;                            sta   Misc_X_Position,y          ;store as horizontal coordinate of misc object
+;                            lda   Block_Y_Position,x         ;get vertical coordinate of block object
+;                            sbc   #$10                       ;subtract 16 pixels
+;                            sta   Misc_Y_Position,y          ;store as vertical coordinate of misc object
+
+                            stx   GTE_TMP
                             lda   Block_PageLoc,x            ;get page location of block object
-                            sta   Misc_PageLoc,y             ;store as page location of misc object
+                            tyx
+                            sta   Misc_PageLoc,x             ;store as page location of misc object
+                            ldx   GTE_TMP
                             lda   Block_X_Position,x         ;get horizontal coordinate of block object
                             ora   #$05                       ;add 5 pixels
-                            sta   Misc_X_Position,y          ;store as horizontal coordinate of misc object
+                            tyx
+                            sta   Misc_X_Position,x          ;store as horizontal coordinate of misc object
+                            ldx   GTE_TMP
                             lda   Block_Y_Position,x         ;get vertical coordinate of block object
                             sbc   #$10                       ;subtract 16 pixels
-                            sta   Misc_Y_Position,y          ;store as vertical coordinate of misc object
+                            tyx
+                            sta   Misc_Y_Position,x          ;store as vertical coordinate of misc object
+                            ldx   GTE_TMP
+
                             jmp   JCoinC                     ;jump to rest of code as applies to this misc object
 
 SetupJumpCoin
                             jsr   FindEmptyMiscSlot          ;set offset for empty or last misc object buffer slot
                             lda   Block_PageLoc2,x           ;get page location saved earlier
-                            sta   Misc_PageLoc,y             ;and save as page location for misc object
+;                            sta   Misc_PageLoc,y             ;and save as page location for misc object
+                            phx
+                            tyx
+                            sta   Misc_PageLoc,x
+
                             lda   $06                        ;get low byte of block buffer offset
                             asl
                             asl                              ;multiply by 16 to use lower nybble
                             asl
                             asl
                             ora   #$05                       ;add five pixels
-                            sta   Misc_X_Position,y          ;save as horizontal coordinate for misc object
+;                            sta   Misc_X_Position,y          ;save as horizontal coordinate for misc object
+                            sta   Misc_X_Position,X
+
                             lda   $02                        ;get vertical high nybble offset from earlier
                             adc   #$20                       ;add 32 pixels for the status bar
-                            sta   Misc_Y_Position,y          ;store as vertical coordinate
+;                            sta   Misc_Y_Position,y          ;store as vertical coordinate
+                            sta   Misc_Y_Position,x
+                            plx
+
 JCoinC                      lda   #$fb
-                            sta   Misc_Y_Speed,y             ;set vertical speed
+
+;                            sta   Misc_Y_Speed,y             ;set vertical speed
+                            phx
+                            tyx
+                            sta   Misc_Y_Speed,x
+
                             lda   #$01
-                            sta   Misc_Y_HighPos,y           ;set vertical high byte
-                            sta   Misc_State,y               ;set state for misc object
+;                            sta   Misc_Y_HighPos,y           ;set vertical high byte
+;                            sta   Misc_State,y               ;set state for misc object
+                            sta   Misc_Y_HighPos,x
+                            sta   Misc_State,x
+                            plx
+
+
                             sta   Square2SoundQueue          ;load coin grab sound
                             stx   ObjectOffset               ;store current control bit as misc object offset 
                             jsr   GiveOneCoin                ;update coin tally on the screen and coin amount variable
                             inc   CoinTallyFor1Ups           ;increment coin tally used to activate 1-up block flag
+
                             rts
 
 FindEmptyMiscSlot
-                            ldy   #$08                       ;start at end of misc objects buffer
-FMiscLoop                   lda   Misc_State,y               ;get misc object state
+;                            ldy   #$08                       ;start at end of misc objects buffer
+;FMiscLoop                   lda   Misc_State,y               ;get misc object state
+;                            beq   UseMiscS                   ;branch if none found to use current offset
+;                            dey                              ;decrement offset
+;                            cpy   #$05                       ;do this for three slots
+;                            bne   FMiscLoop                  ;do this until all slots are checked
+;                            ldy   #$08                       ;if no empty slots found, use last slot
+;UseMiscS                    sty   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
+                            phx
+                            ldx   #$08                       ;start at end of misc objects buffer
+FMiscLoop                   lda   Misc_State,x               ;get misc object state
                             beq   UseMiscS                   ;branch if none found to use current offset
-                            dey                              ;decrement offset
-                            cpy   #$05                       ;do this for three slots
+                            dex                              ;decrement offset
+                            cpx   #$05                       ;do this for three slots
                             bne   FMiscLoop                  ;do this until all slots are checked
-                            ldy   #$08                       ;if no empty slots found, use last slot
-UseMiscS                    sty   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
+                            ldx   #$08                       ;if no empty slots found, use last slot
+UseMiscS                    stx   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
+                            txy
+                            plx
                             rts
 
 ;-------------------------------------------------------------------------------------
@@ -7130,7 +7247,7 @@ MiscLoop                    stx   ObjectOffset               ;store misc object 
 ;$02 - used to set maximum speed
 
 ProcJumpCoin
-                            ldy   Misc_State,x               ;check misc object state
+                            ldy   Misc_State,x
                             dey                              ;decrement to see if it's set to 1
                             beq   JCoinRun                   ;if so, branch to handle jumping coin
                             inc   Misc_State,x               ;otherwise increment state to either start off or as timer
@@ -7880,9 +7997,17 @@ ChkAreaTsk                  lda   AreaParserTaskNum          ;check number of ta
 ChkBowserF                  pla                              ;get data from stack
                             and   #%00001111                 ;mask out high nybble
                             tay
-                            lda   Enemy_Flag,y               ;use as pointer and load same place with different offset
-                            bne   ExitELCore
+;                           lda   Enemy_Flag,y               ;use as pointer and load same place with different offset
+;                           bne   ExitELCore
+                            stx   GTE_TMP
+                            tyx
+                            lda   Enemy_Flag,x
+                            bne   ExitELCore2
+
+                            ldx   GTE_TMP
                             sta   Enemy_Flag,x               ;if second enemy flag not set, also clear first one
+ExitELCore2                 ldx   GTE_TMP
+
 ExitELCore                  rts
 
 ;--------------------------------
@@ -8384,7 +8509,13 @@ LakituAndSpinyHandler
                             lda   #$80                       ;set timer
                             sta   FrenzyEnemyTimer
                             ldy   #$04                       ;start with the last enemy slot
-ChkLak                      lda   Enemy_ID,y                 ;check all enemy slots to see
+ChkLak                      
+;                           lda   Enemy_ID,y                 ;check all enemy slots to see
+                            phx
+                            tyx
+                            lda   Enemy_ID,x
+                            plx
+
                             cmp   #Lakitu                    ;if lakitu is on one of them
                             beq   CreateSpiny                ;if so, branch out of this loop
                             dey                              ;otherwise check another slot
@@ -8415,15 +8546,31 @@ CreateSpiny
                             lda   Player_Y_Position          ;if player above a certain point, branch to leave
                             cmp   #$2c
                             bcc   ExLSHand
-                            lda   Enemy_State,y              ;if lakitu is not in normal state, branch to leave
+;                            lda   Enemy_State,y              ;if lakitu is not in normal state, branch to leave
+                            stx   GTE_TMP
+                            tyx
+                            lda   Enemy_State,x
+                            ldx   GTE_TMP
+
                             bne   ExLSHand
-                            lda   Enemy_PageLoc,y            ;store horizontal coordinates (high and low) of lakitu
+;                            lda   Enemy_PageLoc,y            ;store horizontal coordinates (high and low) of lakitu
+                            tyx
+                            lda   Enemy_PageLoc,x
+                            ldx   GTE_TMP
                             sta   Enemy_PageLoc,x            ;into the coordinates of the spiny we're going to create
-                            lda   Enemy_X_Position,y
+
+;                            lda   Enemy_X_Position,y
+                            tyx
+                            lda   Enemy_X_Position,x
+                            ldx   GTE_TMP
                             sta   Enemy_X_Position,x
                             lda   #$01                       ;put spiny within vertical screen unit
                             sta   Enemy_Y_HighPos,x
-                            lda   Enemy_Y_Position,y         ;put spiny eight pixels above where lakitu is
+
+;                            lda   Enemy_Y_Position,y         ;put spiny eight pixels above where lakitu is
+                            tyx
+                            lda   Enemy_Y_Position,x
+                            ldx   GTE_TMP
                             sec
                             sbc   #$08
                             sta   Enemy_Y_Position,x
@@ -8628,23 +8775,64 @@ InitBowser
 ;--------------------------------
 
 DuplicateEnemyObj
-                            ldy   #$ff                       ;start at beginning of enemy slots
-FSLoop                      iny                              ;increment one slot
-                            lda   Enemy_Flag,y               ;check enemy buffer flag for empty slot
-                            bne   FSLoop                     ;if set, branch and keep checking
-                            sty   DuplicateObj_Offset        ;otherwise set offset here
+;                            ldy   #$ff                       ;start at beginning of enemy slots
+;:FSLoop                     iny                              ;increment one slot
+;                            lda   Enemy_Flag,y               ;check enemy buffer flag for empty slot
+;                            bne   :FSLoop                     ;if set, branch and keep checking
+;                            sty   DuplicateObj_Offset        ;otherwise set offset here
+;                            txa                              ;transfer original enemy buffer offset
+;                            ora   #%10000000                 ;store with d7 set as flag in new enemy
+;                            sta   Enemy_Flag,y               ;slot as well as enemy offset
+;                            lda   Enemy_PageLoc,x
+;                            sta   Enemy_PageLoc,y            ;copy page location and horizontal coordinates
+;                            lda   Enemy_X_Position,x         ;from original enemy to new enemy
+;                            sta   Enemy_X_Position,y
+;                            lda   #$01
+;                            sta   Enemy_Flag,x               ;set flag as normal for original enemy
+;                            sta   Enemy_Y_HighPos,y          ;set high vertical byte for new enemy
+;                            lda   Enemy_Y_Position,x
+;                            sta   Enemy_Y_Position,y         ;copy vertical coordinate from original to new
+
+                            stx   GTE_TMP
+                            ldx   #$ff                       ;start at beginning of enemy slots
+:FSLoop                     inx                              ;increment one slot
+                            lda   Enemy_Flag,x               ;check enemy buffer flag for empty slot
+                            bne   :FSLoop                     ;if set, branch and keep checking
+                            stx   DuplicateObj_Offset        ;otherwise set offset here
+                            
+                            ldx   GTE_TMP
                             txa                              ;transfer original enemy buffer offset
                             ora   #%10000000                 ;store with d7 set as flag in new enemy
-                            sta   Enemy_Flag,y               ;slot as well as enemy offset
+;                            sta   Enemy_Flag,y               ;slot as well as enemy offset
+                            pha
+
                             lda   Enemy_PageLoc,x
-                            sta   Enemy_PageLoc,y            ;copy page location and horizontal coordinates
+;                            sta   Enemy_PageLoc,y            ;copy page location and horizontal coordinates
+                            pha
+
                             lda   Enemy_X_Position,x         ;from original enemy to new enemy
-                            sta   Enemy_X_Position,y
+;                            sta   Enemy_X_Position,y
+                            pha
+
                             lda   #$01
                             sta   Enemy_Flag,x               ;set flag as normal for original enemy
-                            sta   Enemy_Y_HighPos,y          ;set high vertical byte for new enemy
+;                            sta   Enemy_Y_HighPos,y          ;set high vertical byte for new enemy
+
                             lda   Enemy_Y_Position,x
-                            sta   Enemy_Y_Position,y         ;copy vertical coordinate from original to new
+;                            sta   Enemy_Y_Position,y         ;copy vertical coordinate from original to new
+
+                            tyx
+                            sta   Enemy_Y_Position,x
+                            lda   #$01
+                            sta   Enemy_Y_HighPos,x
+                            pla
+                            sta   Enemy_X_Position,x
+                            pla
+                            sta   Enemy_PageLoc,x
+                            pla
+                            sta   Enemy_Flag,x
+
+                            ldx   GTE_TMP
 FlmEx                       rts                              ;and then leave
 
 ;--------------------------------
@@ -8663,7 +8851,13 @@ InitBowserFlame
                             ora   #Sfx_BowserFlame           ;load bowser's flame sound into queue
                             sta   NoiseSoundQueue
                             ldy   BowserFront_Offset         ;get bowser's buffer offset
-                            lda   Enemy_ID,y                 ;check for bowser
+
+;                            lda   Enemy_ID,y                 ;check for bowser
+                            phx
+                            tyx
+                            lda   Enemy_ID,x
+                            plx
+
                             cmp   #Bowser
                             beq   SpawnFromMouth             ;branch if found
                             jsr   SetFlameTimer              ;get timer data based on flame counter
@@ -8692,13 +8886,27 @@ PutAtRightExtent
                             jmp   FinishFlame                ;skip this part to finish setting values
 
 SpawnFromMouth
-                            lda   Enemy_X_Position,y         ;get bowser's horizontal position
+;                            lda   Enemy_X_Position,y         ;get bowser's horizontal position
+                            stx   GTE_TMP
+                            tyx
+                            lda   Enemy_X_Position,x
+                            ldx   GTE_TMP
+
                             sec
                             sbc   #$0e                       ;subtract 14 pixels
                             sta   Enemy_X_Position,x         ;save as flame's horizontal position
-                            lda   Enemy_PageLoc,y
+;                            lda   Enemy_PageLoc,y
+                            tyx
+                            lda   Enemy_PageLoc,x
+                            ldx   GTE_TMP
+                            
                             sta   Enemy_PageLoc,x            ;copy page location from bowser to flame
-                            lda   Enemy_Y_Position,y
+
+;                            lda   Enemy_Y_Position,y
+                            tyx
+                            lda   Enemy_Y_Position,x
+                            ldx   GTE_TMP
+
                             clc                              ;add 8 pixels to bowser's vertical position
                             adc   #$08
                             sta   Enemy_Y_Position,x         ;save as flame's vertical position
@@ -8741,25 +8949,40 @@ InitFireworks
                             lda   #$20                       ;otherwise reset timer
                             sta   FrenzyEnemyTimer
                             dec   FireworksCounter           ;decrement for each explosion
-                            ldy   #$06                       ;start at last slot
-StarFChk                    dey
-                            lda   Enemy_ID,y                 ;check for presence of star flag object
+;                            ldy   #$06                       ;start at last slot
+;:StarFChk                   dey
+;                            lda   Enemy_ID,y                 ;check for presence of star flag object
+
+                            stx   GTE_TMP
+                            ldx   #$06                       ;start at last slot
+:StarFChk                   dex
+                            lda   Enemy_ID,x                 ;check for presence of star flag object
+
                             cmp   #StarFlagObject            ;if there isn't a star flag object,
-                            bne   StarFChk                   ;routine goes into infinite loop = crash
-                            lda   Enemy_X_Position,y
+                            bne   :StarFChk                   ;routine goes into infinite loop = crash
+
+;                            lda   Enemy_X_Position,y
+                            lda   Enemy_X_Position,x
                             sec                              ;get horizontal coordinate of star flag object, then
                             sbc   #$30                       ;subtract 48 pixels from it and save to
                             pha                              ;the stack
-                            lda   Enemy_PageLoc,y
+
+;                            lda   Enemy_PageLoc,y
+                            lda   Enemy_PageLoc,x
                             sbc   #$00                       ;subtract the carry from the page location
                             sta   $00                        ;of the star flag object
                             lda   FireworksCounter           ;get fireworks counter
                             clc
-                            adc   Enemy_State,y              ;add state of star flag object (possibly not necessary)
+
+;                            adc   Enemy_State,y              ;add state of star flag object (possibly not necessary)
+                            adc   Enemy_State,x
+                            ldx   GTE_TMP
+
                             tay                              ;use as offset
                             pla                              ;get saved horizontal coordinate of star flag - 48 pixels
                             clc
                             adc   FireworksXPosData,y        ;add number based on offset of fireworks counter
+
                             sta   Enemy_X_Position,x         ;store as the fireworks object horizontal coordinate
                             lda   $00
                             adc   #$00                       ;add carry and store as page location for
@@ -8832,18 +9055,35 @@ AddFBit                     ora   BitMFilter                 ;add bit to already
                             jmp   CheckpointEnemyID          ;process our new enemy object
 
 DoBulletBills
-                            ldy   #$ff                       ;start at beginning of enemy slots
-BB_SLoop                    iny                              ;move onto the next slot
-                            cpy   #$05                       ;branch to play sound if we've done all slots
+;                            ldy   #$ff                       ;start at beginning of enemy slots
+;BB_SLoop                    iny                              ;move onto the next slot
+;                            cpy   #$05                       ;branch to play sound if we've done all slots
+;                            bcs   FireBulletBill
+;                            lda   Enemy_Flag,y               ;if enemy buffer flag not set,
+;                            beq   BB_SLoop                   ;loop back and check another slot
+;                            lda   Enemy_ID,y
+;                            cmp   #BulletBill_FrenzyVar      ;check enemy identifier for
+;                            bne   BB_SLoop                   ;bullet bill object (frenzy variant)
+
+                            stx   GTE_TMP
+                            ldx   #$ff                       ;start at beginning of enemy slots
+:BB_SLoop                   inx                              ;move onto the next slot
+                            cpx   #$05                       ;branch to play sound if we've done all slots
                             bcs   FireBulletBill
-                            lda   Enemy_Flag,y               ;if enemy buffer flag not set,
-                            beq   BB_SLoop                   ;loop back and check another slot
-                            lda   Enemy_ID,y
+                            lda   Enemy_Flag,x               ;if enemy buffer flag not set,
+                            beq   :BB_SLoop                   ;loop back and check another slot
+                            lda   Enemy_ID,x
                             cmp   #BulletBill_FrenzyVar      ;check enemy identifier for
-                            bne   BB_SLoop                   ;bullet bill object (frenzy variant)
+                            bne   :BB_SLoop                   ;bullet bill object (frenzy variant)
+                            txy
+                            stx   GTE_TMP
+
 ExF17                       rts                              ;if found, leave
 
 FireBulletBill
+                            txy
+                            stx   GTE_TMP
+
                             lda   Square2SoundQueue
                             ora   #Sfx_Blast                 ;play fireworks/gunfire sound
                             sta   Square2SoundQueue
@@ -8954,14 +9194,23 @@ NoFrenzyCode
 ;--------------------------------
 
 EndFrenzy
-                            ldy   #$05                       ;start at last slot
-LakituChk                   lda   Enemy_ID,y                 ;check enemy identifiers
+                            phx
+;                            ldy   #$05                       ;start at last slot
+;:LakituChk                  lda   Enemy_ID,y                 ;check enemy identifiers
+                            ldx   #$05
+:LakituChk                  lda   Enemy_ID,x                 ;check enemy identifiers
                             cmp   #Lakitu                    ;for lakitu
-                            bne   NextFSlot
+                            bne   :NextFSlot
                             lda   #$01                       ;if found, set state
-                            sta   Enemy_State,y
-NextFSlot                   dey                              ;move onto the next slot
-                            bpl   LakituChk                  ;do this until all slots are checked
+;                            sta   Enemy_State,y
+;:NextFSlot                  dey                              ;move onto the next slot
+                            sta   Enemy_State,x
+:NextFSlot                  dex                              ;move onto the next slot
+                            bpl   :LakituChk                  ;do this until all slots are checked
+
+                            txy
+                            plx
+
                             lda   #$00
                             sta   EnemyFrenzyBuffer          ;empty enemy frenzy buffer
                             sta   Enemy_Flag,x               ;disable enemy buffer flag for this object
@@ -10083,11 +10332,20 @@ ChkLS                       lda   Enemy_State,x              ;if lakitu's enemy 
                             bne   SetLSpd                    ;load horizontal speed and do unconditional branch
 Fr12S                       lda   #Spiny
                             sta   EnemyFrenzyBuffer          ;set spiny identifier in frenzy buffer
-                            ldy   #$02
-LdLDa                       lda   LakituDiffAdj,y            ;load values
-                            sta   $0001,y                    ;store in zero page
-                            dey
-                            bpl   LdLDa                      ;do this until all values are stired
+
+;                            ldy   #$02
+;:LdLDa                       lda   LakituDiffAdj,y            ;load values
+;                            sta   $0001,y                    ;store in zero page
+;                            dey
+;                            bpl   :LdLDa                      ;do this until all values are stired
+                            phx
+                            ldx   #$02
+:LdLDa                      lda   LakituDiffAdj,x            ;load values
+                            sta   $01,x                      ;store in zero page
+                            dex
+                            bpl   :LdLDa                      ;do this until all values are stired
+                            plx
+
                             jsr   PlayerLakituDiff           ;execute sub to set speed and create spinys
 SetLSpd                     sta   LakituMoveSpeed,x          ;set movement speed returned from sub
                             ldy   #$01                       ;set moving direction to right by default
@@ -10157,7 +10415,13 @@ ChkSpinyO                   lda   Enemy_ID,x                 ;check for spiny ob
 ChkEmySpd                   lda   Enemy_Y_Speed,x            ;check vertical speed
                             bne   SubDifAdj                  ;branch if nonzero
                             ldy   #$00                       ;otherwise reinit offset
-SubDifAdj                   lda   $0001,y                    ;get one of three saved values from earlier
+SubDifAdj
+;                            lda   $0001,y                    ;get one of three saved values from earlier
+                            phx
+                            tyx
+                            lda   $01,x
+                            plx
+
                             ldy   $00                        ;get saved horizontal difference
 SPixelLak                   sec                              ;subtract one for each pixel of horizontal difference
                             sbc   #$01                       ;from one of three saved values
@@ -10376,15 +10640,36 @@ CopyFToR                    tya                              ;move bowser's rear
                             clc
                             adc   Enemy_X_Position,x         ;add to bowser's front object horizontal coordinate
                             ldy   DuplicateObj_Offset        ;get bowser's rear object offset
-                            sta   Enemy_X_Position,y         ;store A as bowser's rear horizontal coordinate
+
+                            stx   GTE_TMP
+;                            sta   Enemy_X_Position,y         ;store A as bowser's rear horizontal coordinate
+                            tyx
+                            sta   Enemy_X_Position,x         ;store A as bowser's rear horizontal coordinate
+                            ldx   GTE_TMP
+
                             lda   Enemy_Y_Position,x
                             clc                              ;add eight pixels to bowser's front object
                             adc   #$08                       ;vertical coordinate and store as vertical coordinate
-                            sta   Enemy_Y_Position,y         ;for bowser's rear
+                            
+;                            sta   Enemy_Y_Position,y         ;for bowser's rear
+                            tyx
+                            sta   Enemy_Y_Position,x
+                            ldx   GTE_TMP
+
                             lda   Enemy_State,x
-                            sta   Enemy_State,y              ;copy enemy state directly from front to rear
+;                            sta   Enemy_State,y              ;copy enemy state directly from front to rear
+                            tyx
+                            sta   Enemy_State,x
+                            ldx   GTE_TMP
+
+
                             lda   Enemy_MovingDir,x
-                            sta   Enemy_MovingDir,y          ;copy moving direction also
+;                            sta   Enemy_MovingDir,y          ;copy moving direction also
+                            tyx
+                            sta   Enemy_MovingDir,x
+                            ldx   GTE_TMP
+
+
                             lda   ObjectOffset               ;save enemy object offset of front to stack
                             pha
                             ldx   DuplicateObj_Offset        ;put enemy object offset of rear as current
@@ -10800,13 +11085,23 @@ MakePlatformFall
                             jmp   InitPlatformFall           ;make platforms fall
 
 ChkOtherForFall
-                            cmp   Enemy_Y_Position,y         ;check if other platform is above a certain point
+;                            cmp   Enemy_Y_Position,y         ;check if other platform is above a certain point
+                            phx
+                            tyx
+                            cmp   Enemy_Y_Position,x
+                            plx
+
                             bcc   ChkToMoveBalPlat           ;if not, branch elsewhere
                             cpx   $00                        ;if collision flag is set to same value as
                             beq   MakePlatformFall           ;enemy state, branch to make platforms fall
                             clc
                             adc   #$02                       ;otherwise add 2 pixels to vertical position
-                            sta   Enemy_Y_Position,y         ;of other platform and branch elsewhere
+;                            sta   Enemy_Y_Position,y         ;of other platform and branch elsewhere
+                            phx
+                            tyx
+                            sta   Enemy_Y_Position,x
+                            plx
+
                             jmp   StopPlatforms              ;jump to stop movement and do not return
 
 ChkToMoveBalPlat
@@ -10840,8 +11135,15 @@ DoOtherPlatform
                             sec
                             sbc   Enemy_Y_Position,x         ;get difference of old vs. new coordinate
                             clc
-                            adc   Enemy_Y_Position,y         ;add difference to vertical coordinate of other
-                            sta   Enemy_Y_Position,y         ;platform to move it in the opposite direction
+
+;                            adc   Enemy_Y_Position,y         ;add difference to vertical coordinate of other
+;                            sta   Enemy_Y_Position,y         ;platform to move it in the opposite direction
+                            phx
+                            tyx
+                            adc   Enemy_Y_Position,x
+                            sta   Enemy_Y_Position,x
+                            plx
+
                             lda   PlatformCollisionFlag,x    ;if no collision, skip this part here
                             bmi   DrawEraseRope
                             tax                              ;put offset which collision occurred here
@@ -10849,13 +11151,23 @@ DoOtherPlatform
 
 DrawEraseRope
                             ldy   ObjectOffset               ;get enemy object offset
-                            lda   Enemy_Y_Speed,y            ;check to see if current platform is
+;                            lda   Enemy_Y_Speed,y            ;check to see if current platform is
+                            phx
+                            tyx
+                            lda   Enemy_Y_Speed,x
+                            plx
+
                             ora   Enemy_Y_MoveForce,y        ;moving at all
                             beq   ExitRp                     ;if not, skip all of this and branch to leave
                             ldx   VRAM_Buffer1_Offset        ;get vram buffer offset
                             cpx   #$20                       ;if offset beyond a certain point, go ahead
                             bcs   ExitRp                     ;and skip this, branch to leave
-                            lda   Enemy_Y_Speed,y
+;                            lda   Enemy_Y_Speed,y
+                            phx
+                            tyx
+                            lda   Enemy_Y_Speed,x
+                            plx
+
                             pha                              ;save two copies of vertical speed to stack
                             pha
                             jsr   SetupPlatformRope          ;do a sub to figure out where to put new bg tiles
@@ -10865,8 +11177,12 @@ DrawEraseRope
                             sta   VRAM_Buffer1+1,x
                             lda   #$02                       ;set length for 2 bytes
                             sta   VRAM_Buffer1+2,x
-                            lda   Enemy_Y_Speed,y            ;if platform moving upwards, branch 
-                            bmi   EraseR1                    ;to do something else
+ ;                            lda   Enemy_Y_Speed,y
+                            phx
+                            tyx
+                            lda   Enemy_Y_Speed,x
+                            plx
+                           bmi   EraseR1                    ;to do something else
                             lda   #$a2
                             sta   VRAM_Buffer1+3,x           ;otherwise put tile numbers for left
                             lda   #$a3                       ;and right sides of rope in vram buffer
@@ -10877,7 +11193,12 @@ EraseR1                     lda   #$24                       ;put blank tiles in
                             sta   VRAM_Buffer1+4,x
 
 OtherRope
-                            lda   Enemy_State,y              ;get offset of other platform from state
+                            phx
+;                            lda   Enemy_State,y              ;get offset of other platform from state
+                            tyx
+                            lda   Enemy_State,x
+                            plx
+
                             tay                              ;use as Y here
                             pla                              ;pull second copy of vertical speed from stack
                             eor   #$ff                       ;invert bits to reverse speed
@@ -10909,7 +11230,12 @@ ExitRp                      ldx   ObjectOffset               ;get enemy object b
 
 SetupPlatformRope
                             pha                              ;save second/third copy to stack
-                            lda   Enemy_X_Position,y         ;get horizontal coordinate
+;                            lda   Enemy_X_Position,y         ;get horizontal coordinate
+                            phx
+                            tyx
+                            lda   Enemy_X_Position,x
+                            plx
+
                             clc
                             adc   #$08                       ;add eight pixels
                             ldx   SecondaryHardMode          ;if secondary hard mode flag set,
@@ -10917,7 +11243,12 @@ SetupPlatformRope
                             clc
                             adc   #$10                       ;otherwise add sixteen more pixels
 GetLRp                      pha                              ;save modified horizontal coordinate to stack
-                            lda   Enemy_PageLoc,y
+;                            lda   Enemy_PageLoc,y
+                            phx
+                            tyx
+                            lda   Enemy_PageLoc,x
+                            plx
+
                             adc   #$00                       ;add carry to page location
                             sta   $02                        ;and save here
                             pla                              ;pull modified horizontal coordinate
@@ -10953,7 +11284,12 @@ GetHRp                      txa                              ;move vertical coor
                             clc
                             adc   $00                        ;add to horizontal part saved here
                             sta   $00                        ;save as name table low byte
-                            lda   Enemy_Y_Position,y
+;                            lda   Enemy_Y_Position,y
+                            phx
+                            tyx
+                            lda   Enemy_Y_Position,x
+                            plx
+
                             cmp   #$e8                       ;if vertical position not below the
                             bcc   ExPRp                      ;bottom of the screen, we're done, branch to leave
                             lda   $00
@@ -10976,7 +11312,12 @@ InitPlatformFall
 
 StopPlatforms
                             jsr   InitVStf                   ;initialize vertical speed and low byte
-                            sta   Enemy_Y_Speed,y            ;for both platforms and leave
+;                            sta   Enemy_Y_Speed,y            ;for both platforms and leave
+                            phx
+                            tyx
+                            sta   Enemy_Y_Speed,x
+                            plx
+
                             sta   Enemy_Y_MoveForce,y
                             rts
 
@@ -11696,7 +12037,13 @@ ECLoop                      stx   $01                        ;save enemy object 
                             ldy   $01                        ;use second enemy offset for Y
                             bcc   NoEnemyCollision           ;if carry clear, no collision, branch ahead of this
                             lda   Enemy_State,x
-                            ora   Enemy_State,y              ;check both enemy states for d7 set
+
+;                            ora   Enemy_State,y              ;check both enemy states for d7 set
+                            phx
+                            tyx
+                            ora   Enemy_State,x
+                            plx
+
                             and   #%10000000
                             bne   YesEC                      ;branch if at least one of them is set
                             lda   Enemy_CollisionBits,y      ;load first enemy's collision-related bits
@@ -11725,7 +12072,12 @@ ExitECRoutine
                             rts                              ;leave
 
 ProcEnemyCollisions
-                            lda   Enemy_State,y              ;check both enemy states for d5 set
+;                            lda   Enemy_State,y              ;check both enemy states for d5 set
+                            stx   GTE_TMP
+                            tyx
+                            lda   Enemy_State,x
+                            ldx   GTE_TMP
+
                             ora   Enemy_State,x
                             and   #%00100000                 ;if d5 is set in either state, or both, branch
                             bne   ExitProcessEColl           ;to leave and do nothing else at this point
@@ -11735,7 +12087,12 @@ ProcEnemyCollisions
                             lda   Enemy_ID,x                 ;check second enemy identifier for hammer bro
                             cmp   #HammerBro                 ;if hammer bro found in alt state, branch to leave
                             beq   ExitProcessEColl
-                            lda   Enemy_State,y              ;check first enemy state for d7 set
+
+;                            lda   Enemy_State,y              ;check first enemy state for d7 set
+                            tyx
+                            lda   Enemy_State,x
+                            ldx   GTE_TMP
+
                             asl
                             bcc   ShellCollisions            ;branch if d7 is clear
                             lda   #$06
@@ -11760,10 +12117,20 @@ ExitProcessEColl
                             rts                              ;leave!!!
 
 ProcSecondEnemyColl
-                            lda   Enemy_State,y              ;if first enemy state < $06, branch elsewhere
+                            stx   GTE_TMP
+
+;                            lda   Enemy_State,y              ;if first enemy state < $06, branch elsewhere
+                            tyx
+                            lda   Enemy_State,x
+                            ldx   GTE_TMP
+
                             cmp   #$06
                             bcc   MoveEOfs
-                            lda   Enemy_ID,y                 ;check first enemy identifier for hammer bro
+;                            lda   Enemy_ID,y                 ;check first enemy identifier for hammer bro
+                            tyx
+                            lda   Enemy_ID,x
+                            ldx   GTE_TMP
+
                             cmp   #HammerBro                 ;if hammer bro found in alt state, branch to leave
                             beq   ExitProcessEColl
                             jsr   ShellOrBlockDefeat         ;otherwise, kill first enemy
@@ -16450,7 +16817,7 @@ BrickShatterEnvData
 
 ;-------------------------------------------------------------------------------------
 ;INTERRUPT VECTORS
-
+;                            ds    34
                             dw    NonMaskableInterrupt
                             dw    Start
                             dw    $fff0                      ;unused

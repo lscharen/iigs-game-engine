@@ -153,10 +153,24 @@ _DoOverlay
 :disp       jsl   $000000
             rts
 
-; Special NES renderer that externalizes the sprite rendreing in order to exceed the internal limit of 16 sprites
+; Special NES renderer that externalizes the sprite rendering in order to exceed the internal limit of 16 sprites
 _RenderNES
             jsr   _ApplyBG0YPos
             jsr   _ApplyBG0XPosPre
+
+; Callback to update the tilestore with any new tiles
+
+            lda   ExtUpdateBG0Tiles
+            ora   ExtUpdateBG0Tiles+2
+            beq   :no_tile
+
+            lda   ExtUpdateBG0Tiles
+            stal  :patch0+1
+            lda   ExtUpdateBG0Tiles+1
+            stal  :patch0+2
+:patch0     jsl   $000000
+:no_tile
+
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 ;            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
 

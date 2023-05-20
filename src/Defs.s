@@ -195,6 +195,7 @@ tileStore              equ   $0003
 vblCallback            equ   $0004        ; User routine to be called by VBL interrupt.  Set to $000000 to disconnect
 extSpriteRenderer      equ   $0005
 rawDrawTile            equ   $0006
+extBG0TileUpdate       equ   $0007
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
@@ -310,6 +311,7 @@ StartXMod164Tbl   EXT
 LastOffsetTbl     EXT
 BG1StartXMod164Tbl EXT
 ExtSpriteRenderer EXT
+ExtUpdateBG0Tiles  EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10

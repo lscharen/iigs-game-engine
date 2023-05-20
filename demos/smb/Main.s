@@ -22,11 +22,20 @@ MyUserId    equ   0
 ROMStk      equ   2
 ROMZeroPg   equ   4
 LastScroll  equ   6
-RenderCtr   equ   8
+TileX       equ   10                      ; GTE tile store coordinates that correspond to the PPUSCROLL edge
+TileY       equ   12
+ROMScreenEdge equ 14
+ROMScrollEdge equ 16
+ROMScrollDelta equ 18
+OldROMScrollEdge equ 20
+CurrScrollEdge equ 22
+
 Tmp0        equ   240
 Tmp1        equ   242
 Tmp2        equ   244
 Tmp3        equ   246
+Tmp4        equ   248
+Tmp5        equ   250
 
             phk
             plb
@@ -34,7 +43,12 @@ Tmp3        equ   246
             _MTStartUp                    ; GTE requires the miscellaneous toolset to be running
 
             stz   LastScroll
-            stz   RenderCtr
+            stz   TileX
+            stz   TileY
+            stz   ROMScreenEdge
+            stz   ROMScrollEdge
+            stz   ROMScrollDelta
+            stz   OldROMScrollEdge
 
 ; The next two direct pages will be used by GTE, so get another 2 pages beyond that for the ROM.  We get
 ; 4K of DP/Stack space by default, so there is plenty to share
@@ -77,6 +91,12 @@ Tmp3        equ   246
             pea   extSpriteRenderer
             pea   #^drawOAMSprites
             pea   #drawOAMSprites
+            _GTESetAddress
+
+; Install a custom callback to update the tile store as the screen scrolls
+            pea   extBG0TileUpdate
+            pea   #^UpdateFromPPU
+            pea   #UpdateFromPPU
             _GTESetAddress
 
 ; Get the address of a low-level routine that can be used to draw a tile directly to the graphics screen
@@ -133,42 +153,6 @@ Tmp3        equ   246
             cpx  #512*16
             bcc  :tloop
 
-; Put the tile set on the screen
-
-*             lda   #0
-*             stz   Tmp1
-* :yloop      stz   Tmp0
-* :xloop
-*             pha
-*             pei   Tmp0
-*             pei   Tmp1
-*             pha
-*             _GTESetTile
-*             pla
-*             inc
-
-*             inc   Tmp0
-*             ldx   Tmp0
-*             cpx   #32
-*             bcc   :xloop
-
-*             inc   Tmp1
-*             ldx   Tmp1
-*             cpx   #20
-*             bcc   :yloop
-
-* ; Render and wait for the user to continue
-*             pea   $0000
-*             _GTERender
-
-* :wait1
-*             pha
-*             _GTEReadControl
-*             pla
-*             and   #$007F
-*             cmp   #' '
-*             bne   :wait1
-
 ; Set an internal flag to tell the VBL interrupt handler that it is
 ; ok to start invoking the game logic.  The ROM code has to be run
 ; at 60 Hz because it controls the audio.  Bad audio is way worse
@@ -184,37 +168,59 @@ EvtLoop
             beq   :spin
             stz   nmiCount
 
-;           lda   ppustatus             ; Set the bit that the VBL has started
-;            bit   #$80
-;            beq   :spin
-;            and   #$FF7F
-;            sta   ppustatus
+; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
+; keeps track of the global coordinates of each level at
+;
+; ScreenEdge_PageLoc          =     $071a
+; ScreenEdge_X_Pos            =     $071c
+;
+; So we can keep our scrolling in sync with the game.  In order to efficiently update the
+; GTE tile store, we handle this in two stages
+;
+; 1. When new column(s) are exposed, set the tiles directly from the PPU nametable memory
+; 2. When the PPU nametable memory is updated in an area that is already on-screen, set the tile
 
-;            jsr   triggerNMI
+; Get the current global coordinates
 
-;            lda   RenderCtr
-;            bne   :no_render
+            sei
+            lda   ROMScrollEdge     ; This is set in the VBL IRQ
+            sta   CurrScrollEdge    ; Freeze it, then we can let the IRQs continue
+            cli
 
-;            lda   #5
-;            sta   RenderCtr
+            lsr
+            lsr
+            lsr
+            sta   ROMScreenEdge
 
-            jsr   CopyNametable
+; Calculate how many blocks have been scrolled into view
 
-            lda   ppuscroll+1
-            and   #$00FF
+            lda   CurrScrollEdge
+            sec
+            sbc   OldROMScrollEdge
+            sta   Tmp1             ; This is the raw number of pixels moved
+
+            lda   OldROMScrollEdge ; This is the number of partial pixels the old scroll position occupied
+            and   #7
+            sta   Tmp0
+            lda   #7
+            sec
+            sbc   Tmp0             ; This account for situations where going from 8 -> 9 reveals a new column
+            clc
+            adc   Tmp1
+            lsr
+            lsr
+            lsr
+            sta   ROMScrollDelta   ; This many columns have been revealed
+
+            lda   CurrScrollEdge
+            sta   OldROMScrollEdge ; Stash a copy for the next round through
             lsr
             pha
-            sta   LastScroll
-            lda   ppuscroll
-            and   #$00FF
-            pha
+            pea   $0000
             _GTESetBG0Origin
 
             pea   $FFFF      ; NES mode
             _GTERender
-
-:no_render
-            dec   RenderCtr
 
             pha
             _GTEReadControl
@@ -226,7 +232,8 @@ EvtLoop
             and   #PAD_BUTTON_A+PAD_BUTTON_B        ; bits 0x200 and 0x100
             lsr
             lsr
-            sta   native_joy 
+            sta   native_joy                        ; Put inputs on both controllers
+            sta   native_joy+1
             lda   1,s
             and   #$00FF
             cmp   #'n'
@@ -254,6 +261,7 @@ EvtLoop
             lda   #$0001
 :nes_merge  ora   native_joy 
             sta   native_joy 
+            sta   native_joy+1
 :nes_done
             pla
 ;            bit   #PAD_KEY_DOWN
@@ -262,23 +270,51 @@ EvtLoop
 
             and   #$007F
 
-            cmp   #'1'         ; Copy nametable 1
+            cmp   #'r'         ; Refresh
             bne   :not_1
-            lda   #$2000
+            jsr   CopyStatus
+
+            lda   ROMScreenEdge      ; global tile index
+            and   #$003F             ; mod the mirrored nametable size
+            ldx   #33
+            ldy   #0
             jsr   CopyNametable
             brl   EvtLoop
 :not_1
-
-            cmp   #'2'
-            bne   :not_2
-            lda   #$2400
+            cmp   #'1'
+            bne   :not_v
+            lda   ROMScreenEdge
+            clc
+            adc   #33
+            and   #$003F
+            ldx   #1
+            ldy   #33
             jsr   CopyNametable
-:not_2
+            brl   EvtLoop
 
-            cmp   #'s'         ; next step
-            bne   :not_n
-            jsr   triggerNMI
-:not_n
+:not_v
+
+            cmp   #'t'         ; test by placing markers on screen
+            bne   :not_t
+            pea   0
+            pea   #3
+            pea   $0150
+            _GTESetTile
+            pea   #31
+            pea   #3
+            pea   $0150
+            _GTESetTile
+            pea   #32
+            pea   #3
+            pea   $0150
+            _GTESetTile
+            pea   #39
+            pea   #3
+            pea   $0150
+            _GTESetTile
+
+            brl   EvtLoop
+:not_t
 
             cmp   #'q'
             beq   Exit
@@ -298,46 +334,234 @@ Greyscale   dw    $0000,$5555,$AAAA,$FFFF
 nmiCount    dw    0
 DPSave      dw    0
 
-; Copy the tile and attribute bytes into the GTE buffer
+; Take a PPU address and convert it to a tile store coordinate
 ;
-; A = Nametable address ($2000, $2400, $2800, or $2C00)
-CopyNametable
-            lda   ppuctrl
-            and   #$0003                  ; nametable select bits
-            xba
-            asl
-            asl
+; Inputs
+;   A = PPU address
+;   X = Global Address in GTE bytes
+
+; Outputs
+;   X = relative tile store column
+;   Y = relative tile store row
+PPUAddrToTileStore
+:PPUAddr    equ   Tmp0
+:PPUTopLeft equ   Tmp1
+
+            sta   :PPUAddr
+
+; Based on the global coordiate, figure out whhat the left column in the PPU RAM is
+            txa
+            lsr                        ; Convert from bytes to tiles
+            lsr
+            and   #$003F               ; Logically there are 64 tiles in the mirrored PPU RAM
+            sta   :PPUTopLeft
+
+; Now we have the PPU address of the column that corresponds to the left edge of the GTE
+; playfield.  Now, calculate the relative coordinates of the passed PPU address
+
+; The y-coordinate is easy. Since the top-left address is always on the top row (row = 0),
+; we just have to extract the row that the PPU address occupies.
+
+            lda   :PPUAddr
+            and   #$03E0               ; Take the middle 5 bits (ignore nametable)
+            lsr
+            lsr
+            lsr
+            lsr
+            lsr
+            tay                        ; Save the y-index here
+
+; The GTE playfield is positioned with the third PPU row as it's origin and is 25 tiles high.
+; If the PPU tile is in rows 0, 1, 27, 28 or 29 then we can ignore it
+
+            cpy  #2
+            bcc  :outOfRange
+            cpy  #27
+            bcs  :outOfRange
+
+; Adjust the relative position down by 2
+
+            dey
+            dey
+
+; The horizontal coordinate is a bit trickier. We need to add 32 to the horizontal
+; coordinate in it's in the second nametable
+
+            lda   :PPUAddr
+            and   #$041F               ; Project it to the top row
+            bit   #$0400
+            beq   *+5
+            ora   #$0020               ; Add 32
+            and   #$003F               ; Clamp to range of 0 - 63
+
+; If we're in the top two row, they don't scroll, so skip the displacement
+            cpy   #2
+            bcc   :noshift
+ 
+; Now calculate the difference between the PPUTopLeft index and this value
+
+            cmp   :PPUTopLeft
+            bcs   :ahead               ; If the provided address is > than the origin, just calc the difference
+            adc   #64                  ; Else distance is (a - 0) + (64 - b) = a + 64 - b
+            sec
+:ahead      sbc   :PPUTopLeft
+:noshift
+
+; If this value is larger than the payfield + 1, then we have the carry set or clear
+
+            tax
+            cmp   #33
+            rts
+
+:outOfRange
+            sec
+            rts
+
+; If there is some other reason to draw the full screen, this will empty the queue
+ClearNTQueue
+            stz   nt_queue_front
+            stz   nt_queue_end
+            rts
+
+; Scan through the queue of tiles that need to be updated before applying the scroll change
+DrainNTQueue
+:GTELeftEdge equ Tmp3
+:PPUAddr     equ Tmp4
+
+; Prep item -- get the logical block of the left edge of the scroll window
+
+            lda   CurrScrollEdge             ; Global position that the GTE playfield was set to
+            lsr 
+            sta   :GTELeftEdge
+
+            lda   nt_queue_front
+            cmp   nt_queue_end
+            beq   :out
+
+:loop
+            tax
+            phx                              ; Save the x register
+
+            lda   nt_queue,x                 ; get the PPU address that was stored
+            sta   :PPUAddr                   ; save for later if we draw this tile
+
+            ldx   :GTELeftEdge               ; get the global coordinate
+            jsr   PPUAddrToTileStore         ; convert the PPU address to realtive tile store coordinates
+            bcs   :skip                      ; if it's offscreen, no reason to draw it
+
+; Now we have the relative position from the left edge of the tile.  Add the origin
+; tile to it (uless we're in rows 0 or 1)
+
+            txa
+            cpy   #2
+            bcc   :toprow
             clc
-            adc   #2*32
-            sta   Tmp0                    ; base address offset into nametable memory
+            adc   TileX
+            cmp   #41
+            bcc   *+5
+            sbc   #41
+:toprow
+            pha                             ; Tile Store horizontal tile coordinate
 
-;            ora   #$2000
-;            clc
-;            adc   #PPU_MEM
-;            clc
-;            adc   #2*32
-;            sta   Tmp0                    ; base address
+            phy                             ; No translation needed for y
 
-; NES RAM $6D = page, $86 = player_x_in_page can be used to get a global position in the level, then subtracting the 
-; player's x coordinate will give us the global coordinate of the left edge of the screen and allow us to map between
-; the GTE tile buffer and the PPU nametables
+            ldx   :PPUAddr
+            lda   PPU_MEM,x
+            and   #$00FF
+            ora   #$0100
+            pha
+            _GTESetTile
 
-            lda   ppuscroll+1
+:skip
+            pla                             ; Pop the saved x-register into the accumulator
+            inc
+            inc
+            and   #{2*1024}-1
+            cmp   nt_queue_end
+            bne   :loop
+
+:out
+            sta   nt_queue_front
+            rts
+
+; Copy the necessary columns into the TileStore when setting a new scroll position
+UpdateFromPPU
+:StartXMod164 equ   36
+
+            phb
+            phd
+
+; Snag the StartXmod164 value from the GTE direct page so we can calulate the tile origin
+; ourselves
+
+            ldx  :StartXMod164
+
+            phk
+            plb
+            lda   DPSave
+            tcd
+
+            txa
             lsr
             lsr
-            lsr
-            and   #$001F
-            sta   Tmp1                    ; starting offset
+            sta   TileX              ; Tile column of playfield origin
 
+; Check the scroll delta, if it's negative or just large enough, do a whole copy of the current PPU
+; memory into the TileStore
+
+            lda   ROMScrollDelta
+            beq   :queue
+
+            cmp   #32
+            bcc   :partial
+
+            jsr   ClearNTQueue       ; kill any pending updates
+            lda   ROMScreenEdge      ; global tile index
+            and   #$003F             ; mod the mirrored nametable size
+            ldx   #33                ; do the full width
+            ldy   #0
+            jsr   CopyNametable
+            bra   :done
+
+; Calculate the difference between the old and new
+:partial
+            jsr   DrainNTQueue
+
+            lda   #33
+            sec
+            sbc   ROMScrollDelta
+            tay
+
+            ldx   ROMScrollDelta
+            inx
+            inx
+
+            lda   ROMScreenEdge
+            clc
+            adc   #33
+            sec
+            sbc   ROMScrollDelta
+            and   #$003F
+
+            jsr   CopyNametable
+:done
+            pld
+            plb
+            rtl
+
+; Just drain the queue of any on-screen changes and then exit
+:queue
+            jsr   DrainNTQueue
+            pld
+            plb
+            rtl
+
+CopyStatus
 ; Copy the first two rows from $2400 because they don't scroll
 
             ldy   #0
 :yloop
             ldx   #0
-
-            cpy   #2
-            bcs   :offset
-
             tya
             clc
             adc   #2
@@ -346,19 +570,84 @@ CopyNametable
             asl
             asl
             asl
-
             sta   Tmp2
-            lda   #0
-            sta   Tmp3
-            bra   :xloop
+            stz   Tmp3
+:xloop
+            phx                            ; Save X and Y
+            phy
 
-:offset
-            lda   Tmp0                    ; Get the base address for this line
-            ora   Tmp1                    ; Move over to the first horizontal tile
+            phx                            ; x = GTE tile index = PPU tile index
+            phy                            ; No vertical scroll, so screen_y = tile_y
+
+            ldx   Tmp2                     ; Nametable address
+            lda   PPU_MEM+$2000,x
+            and   #$00FF
+            ora   #$0100
+            pha
+
+; Advance to the next tile (no wrapping needed)
+
+            inx
+            stx   Tmp2
+
+            _GTESetTile
+
+            ply
+            plx
+
+            inx
+            cpx   #33
+            bcc   :xloop
+
+            iny
+            cpy   #2
+            bcc   :yloop
+            rts
+
+; Copy the tile and attribute bytes into the GTE buffer
+;
+; A = logical column in mirrored PPU memory (0 - 63)
+; X = number of columns to copy
+; Y = number of GTE tiles to offset
+CopyNametable
+;            cmp   #5
+;            bcc   *+4
+;            brk   $88
+            sta   Tmp2
+            bit   #$0020                  ; Is it >32?
+            beq   *+5
+            ora   #$0400                  ; Move to the next nametable
+            and   #$041F                  ; Mask to the top of a valid column
+
+            clc                           ; Add in the offset since we only copy rows 2 - 27
+            adc   #4*32
+            sta   Tmp0                    ; base address offset into nametable memory
+
+            stx   Tmp4
+
+            tya
+            clc
+            adc   TileX
+            cmp   #41
+            bcc   *+5
+            sbc   #41
+            sta   Tmp5
+
+; NES RAM $6D = page, $86 = player_x_in_page can be used to get a global position in the level, then subtracting the 
+; player's x coordinate will give us the global coordinate of the left edge of the screen and allow us to map between
+; the GTE tile buffer and the PPU nametables
+
+; Skip the first two rows -- call CopyStatus to get those
+
+            ldy   #2
+:yloop
+            ldx   #0
+
+            lda   Tmp0                    ; Get the base address for this row
             sta   Tmp2                    ; coarse x-scroll
 
-            lda   Tmp1
-            sta   Tmp3                    ; Keep a separate count for the GTE tile position
+            lda   Tmp5
+            sta   Tmp3                    ; Keep a separate variable for the GTE tile position
 :xloop
             phx                            ; Save X and Y
             phy
@@ -401,7 +690,7 @@ CopyNametable
             sta   Tmp3
 
             inx
-            cpx   #33
+            cpx   Tmp4
             bcc   :xloop
 
             lda   Tmp0
@@ -766,12 +1055,25 @@ nmiTask
 
             jsr   triggerNMI
 
+; Immediately after the NMI returns, freeze some of the global state variables so we can sync up with this frame when
+; we render the next frame.  Since we're in an interrupt handler here, sno change of the variables changing under
+; our nose
+
+            sep   #$20
+            ldal  ROMBase+$071a
+            xba
+            ldal  ROMBase+$071c
+            rep   #$20
+            sta   ROMScrollEdge
+
             pld
             plb
             plp
 :skip
             rtl
             mx    %00
+            put   App.Msg.s
+            put   font.s
             put   palette.s
             put   ppu.s
 
