@@ -153,6 +153,11 @@ _DoOverlay
 :disp       jsl   $000000
             rts
 
+; Callback structure with pointers to internal rendering functions
+ExtFuncBlock
+            adrl  BltRange
+            adrl  PEISlam
+
 ; Special NES renderer that externalizes the sprite rendering in order to exceed the internal limit of 16 sprites
 _RenderNES
             jsr   _ApplyBG0YPos
@@ -172,7 +177,6 @@ _RenderNES
 :no_tile
 
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
-;            jsr   _ApplyBG0XPos       ; Patch the code field instructions with exit BRA opcode
 
             stz   tmp1                ; virt_line_x2
             lda   #16*2
@@ -194,22 +198,45 @@ _RenderNES
             lda   tmp4
             stal  nesBottomOffset
 
-            ldx   #0                  ; Blit the full virtual buffer to the screen
-            ldy   ScreenHeight
-            jsr   _BltRange
+; This is a tricky part. The NES does not keep sprites sorted, so we need an alternative way to figure out
+; which lines to shadow and which ones not to.  Our compromise is to build a bitmap of lines that the sprite
+; occupy and then scan through that quickly.
+;
+; This is handled by the callback in two phases.  We pass pointers to the internal function the callback needs
+; access to.  If there is no function defined, do nothing
 
             lda   ExtSpriteRenderer
             ora   ExtSpriteRenderer+2
-            beq   :no_sprite
+            beq   :no_render
 
             lda   ExtSpriteRenderer
-            stal  :patch+1
+            stal  :patch1+1
+            stal  :patch2+1
             lda   ExtSpriteRenderer+1
-            stal  :patch+2
-:patch      jsl   $000000
+            stal  :patch1+2
+            stal  :patch2+2
 
-:no_sprite
+; Start the two-phase rendering process.  First turn off shading and invoke the callback to 
+; draw sprite regions
 
+            jsr   _ShadowOff
+
+            lda   #0                  ; Signal we're in phase 1 (shadowing off)
+            ldx   #^ExtFuncBlock
+            ldy   #ExtFuncBlock
+:patch1     jsl   $000000
+
+; Now perform the second phase which renders the whole screen and exposes the sprites that were
+; drawins in the first phase
+
+            jsr   _ShadowOn
+
+            lda   #1                  ; Signal we're in phase 2 (shadowing on)
+            ldx   #^ExtFuncBlock
+            ldy   #ExtFuncBlock
+:patch2     jsl   $000000
+
+:no_render
             stz  tmp1            ; :virt_line_x2
             lda  #16*2
             sta  tmp2            ; :lines_left_x2
@@ -402,7 +429,6 @@ _DrawFinalPass
             ldy    _Sprites+SPRITE_CLIP_TOP,x    ; PEI Slam to the top of the overlay (:bottom is greater than this value)
             ldx    :cursor
             sty    :cursor
-;            brk    $44
             jsr    _PEISlam
             lda    3,s                           ; Retrieve the sprite index
             tax

@@ -2,6 +2,29 @@
 ;
 ; Any read/write to the PPU registers in the ROM is intercepted and passed here.
 
+
+const8  mac
+        db    ]1,]1,]1,]1,]1,]1,]1,]1
+        <<<
+
+const32 mac
+        const8 ]1
+        const8 ]1+1
+        const8 ]1+2
+        const8 ]1+3
+        <<<
+
+rep8    mac
+        db     ]1
+        db     ]1
+        db     ]1
+        db     ]1
+        db     ]1
+        db     ]1
+        db     ]1
+        db     ]1
+        <<<
+
           mx    %11
           dw $a5a5 ; marker to find in memory
 ppuaddr   ds 2     ; 16-bit ppu address
@@ -495,34 +518,409 @@ PPUDMA_WRITE ENT
 y_offset equ 16
 x_offset equ 16
 
-drawOAMSprites
-:tmp    equ  238
+; Scan the OAM memory and copy the values of the sprites that need to be drawn. There are two reasons to do this
+;
+; 1. Freeze the OAM memory at this instanct so that the NES ISR can keep running without changing values
+; 2. We have to scan this list twice -- once to build up the shadow list and once to actually render the sprites
+OAM_COPY    ds 256
+spriteCount ds 0
+            db 0                 ; Pad in case we can to access using 16-bit instructions
 
-; 248 is reserved for the blitter
+        mx   %00
+scanOAMSprites
+        sep  #$30
+
+        ldx  #4                  ; Always skip sprite 0
+        ldy  #0
+
+:loop
+        lda    PPU_OAM,x         ; Y-coordinate
+        cmp    #200+y_offset-9
+        bcs    :skip
+
+        lda    PPU_OAM+1,x       ; $FC is an empty tile, don't draw it
+        cmp    #$FC
+        beq    :skip
+
+        lda    PPU_OAM+3,x       ; If X-coordinate is off the edge skip it, too.
+        cmp    #241
+        bcs    :skip
+
+        rep    #$20
+        lda    PPU_OAM,x
+        sta    OAM_COPY,y
+        lda    PPU_OAM+2,x
+        sta    OAM_COPY+2,y
+        sep    #$20
+
+        iny
+        iny
+        iny
+        iny
+
+:skip
+        inx
+        inx
+        inx
+        inx
+        bne  :loop
+
+        sty  spriteCount                     ; Count * 4
+        rep  #$30
+        rts
+
+; Screen is 200 lines tall. It's worth it be exact when building the list because one extra
+; draw + shadow sequence takes at least 1,000 cycles.
+shadowBitmap    ds 32              ; Provide enough space for the full ppu range (240 lines) + 16 since the y coordinate can be off-screen
+
+; A representation of the list as [top, bot) pairs
+shadowListCount dw 0            ; Pad for 16-bit comparisons
+shadowListTop   ds 64
+shadowListBot   ds 64
+
+        mx  %00
+buildShadowBitmap
+
+; zero out the bitmap (16-bit writes)
+]n      equ   0
+        lup   15
+        stz   shadowBitmap+]n
+]n      =     ]n+2
+        --^
+
+; Run through the list of visible sprites and ORA in the bits that represent them
+        sep   #$30
+
+        ldx   #0
+        cpx   spriteCount
+        beq   :exit
+
+:loop
+        phx
+
+;        ldy   PPU_OAM,x
+        ldy   OAM_COPY,x
+        iny                               ; This is the y-coordinate of the top of the sprite
+
+        ldx   y2idx,y                     ; Get the index into the shadowBitmap array for this y coordinate
+        lda   y2low,y                     ; Get the bit pattern for the first byte
+        ora   shadowBitmap,x
+        sta   shadowBitmap,x
+        lda   y2high,y                    ; Get the bit pattern for the second byte
+        ora   shadowBitmap+1,x
+        sta   shadowBitmap+1,x
+
+        plx
+        inx
+        inx
+        inx
+        inx
+        cpx   spriteCount
+        bcc   :loop
+
+:exit
+        rep   #$30
+        rts
+
+y2idx   const32 $00
+        const32 $04
+        const32 $08
+        const32 $0C                ; 128 bytes
+        const32 $10
+        const32 $14
+        const32 $18
+        const32 $1C
+
+; Repeating pattern of 8 consecutive 1 bits
+y2low   rep8 $FF,$7F,$3F,$1F,$0F,$07,$03,$01
+        rep8 $FF,$7F,$3F,$1F,$0F,$07,$03,$01
+        rep8 $FF,$7F,$3F,$1F,$0F,$07,$03,$01
+        rep8 $FF,$7F,$3F,$1F,$0F,$07,$03,$01
+
+y2high  rep8 $00,$80,$C0,$E0,$F0,$F8,$FC,$FE
+        rep8 $00,$80,$C0,$E0,$F0,$F8,$FC,$FE
+        rep8 $00,$80,$C0,$E0,$F0,$F8,$FC,$FE
+        rep8 $00,$80,$C0,$E0,$F0,$F8,$FC,$FE
+
+; 25 entries to multiple steps in the shadow bitmap to scanlines
+mul8    db   $00,$08,$10,$18,$20,$28,$30,$38
+        db   $40,$48,$50,$58,$60,$68,$70,$78
+        db   $80,$88,$90,$98,$A0,$A8,$B0,$B8
+        db   $C0,$C8,$D0,$D8,$E0,$E8,$F0,$F8
+
+; Given a bit pattern, create a LUT that count to the first set bit (MSB -> LSB), e.g. $0F = 4, $3F = 2
+offset  db   0,7,6,6,5,5,5,5,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3     ; 0, 1, 2, 4, 8, 16
+        db   2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2     ; 32
+        db   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        db   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+; Scan the bitmap list and call BltRange on the ranges
+        mx   %00
+drawShadowList
+        ldx  #0
+        cpx  shadowListCount
+        beq  :exit
+
+:loop
+        phx
+
+        lda  shadowListBot,x
+        and  #$00FF
+        tay
+        cpy  #201
+        bcc  *+4
+        brk  $cc
+
+        lda  shadowListTop,x
+        and  #$00FF
+        tax
+        cpx  #200
+        bcc  *+4
+        brk  $dd
+
+        lda  #0                 ; Invoke the BltRange function
+        jsl  LngJmp
+
+        plx
+        inx
+        cpx  shadowListCount
+        bcc  :loop
+:exit
+        rts
+
+; Altername between BltRange and PEISlam to expose the screen
+exposeShadowList
+:last   equ  Tmp0
+:top    equ  Tmp1
+:bottom equ  Tmp2
+
+        ldx  #0
+        stx  :last
+        cpx  shadowListCount
+        beq  :exit
+
+:loop
+        phx
+
+        lda  shadowListTop,x
+        and  #$00FF
+        sta  :top
+
+        cmp  #200
+        bcc  *+4
+        brk  $44
+
+        lda  shadowListBot,x
+        and  #$00FF
+        sta  :bottom
+
+        cmp  #201
+        bcc  *+4
+        brk   $66
+
+        cmp  :top
+        bcs  *+4
+        brk  $55
+
+        ldx  :last
+        ldy  :top
+        lda  #0
+        jsl  LngJmp             ; Draw the background up to this range
+
+        ldx  :top
+        ldy  :bottom
+        sty  :last              ; This is where we ended
+        lda  #1
+        jsl  LngJmp             ; Expose the already-drawn sprites
+
+        plx
+        inx
+        cpx  shadowListCount
+        bcc  :loop
+
+:exit
+        ldx  :last              ; Expose the final part
+        ldy  #200
+        lda  #0
+        jsl  LngJmp
+        rts
+
+; This routine needs to adjust the y-coordinates based of the offset of the GTE playfield within
+; the PPU RAM
+shadowBitmapToList
+:top    equ  Tmp0
+:bottom equ  Tmp2
+
+        sep  #$30
+
+        ldx  #2               ; Start at he third row (y_offset = 16) walk the bitmap for 25 bytes (200 lines of height)
+        lda  #0
+        sta  shadowListCount  ; zero out the shadow list count
+
+; This loop is called when we are not tracking a sprite range
+:zero_loop
+        ldy  shadowBitmap,x
+        beq  :zero_next
+
+        lda  mul8-2,x           ; This is the scanline we're on (offset by the starting byte)
+        clc
+        adc  offset,y         ; This is the first line defined by the bit pattern
+        sta  :top
+        bra  :one_next
+
+:zero_next
+        inx
+        cpx  #28              ; End at byte 27
+        bcc  :zero_loop
+        bra  :exit           ; ended while not tracking a sprite, so exit the function
+
+:one_loop
+        lda  shadowBitmap,x  ; if the next byte is all sprite, just continue
+        eor  #$FF
+        beq  :one_next
+
+        tay                  ; Use the inverted bitfield in order to re-use the same lookup table
+        lda  mul8-2,x
+        clc
+        adc  offset,y
+
+        ldy  shadowListCount
+        sta  shadowListBot,y
+        lda  :top
+        sta  shadowListTop,y
+        iny
+        sty  shadowListCount
+        bra  :zero_next
+
+:one_next
+        inx
+        cpx  #28
+        bcc  :one_loop
+
+; If we end while tracking a sprite, add to the list as the last item
+
+        ldx  shadowListCount
+        lda  :top
+        sta  shadowListTop,x
+        lda  #200
+        sta  shadowListBot,x
+        inx
+        stx  shadowListCount
+
+:exit
+        rep  #$30
+        lda  shadowListCount
+        cmp  #64
+        bcc  *+4
+        brk  $13
+
+
+        rts
+
+; Helper to bounce into the function in the FTblPtr. See IIgs TN #90
+LngJmp
+        sty  FTblTmp
+        asl
+        asl
+        tay
+        iny
+        lda  [FTblPtr],y
+        pha
+        dey
+        lda  [FTblPtr],y
+        dec
         phb
-        php
+        sta  1,s
+        ldy  FTblTmp          ; Restore the y register
+        rtl
+
+; Callback entrypoint from the GTE renderer
+drawOAMSprites
+        phb
+        phd
 
         phk
         plb
 
+        pha
+
+        lda   DPSave
+        tcd
+
+; Save the pointer to the function table
+
+        sty   FTblPtr
+        stx   FTblPtr+2
+
+        pla
+
+; Check what phase we're in
+;
+; Phase 1: A = 0
+; Phase 2: A = 1
+
+        cmp   #0
+        bne   :phase2
+
+; This is phase 1.  We will build the sprite list and draw the background in the areas covered by
+; sprites.  This phase draws the sprites, too
+
+        ldal  nmiCount
+        pha
+
+; We need to "freeze" the OAM values, otherwise they can change between when we build the rendering pipeline
+
+        sei
+        jsr   scanOAMSprites              ; Filter out any sprites that don't need to be drawn
+        pla
+        cmpl  nmiCount
+        beq   *+4
+        brk   $1F                         ; Should not have serviced the VBL interrupt here....
+        cli
+
+        jsr   buildShadowBitmap           ; Run though and quickly create a bitmap of lines with sprites
+        jsr   shadowBitmapToList          ; Can the bitmap and create (top, bottom) pairs of ranges
+
+        jsr   drawShadowList              ; Draw the background lines that have sprite on them
+        jsr   drawSprites                 ; Draw the sprites on top of the lines they occupy
+
+        bra   :exit
+
+; In Phase 2 we scan the shadow list and alternately blit the background in empty areas and
+; PEI slam the sprite regions
+:phase2
+        jsr   exposeShadowList            ; Show everything on the SHR screen
+
+; Return form the callback
+:exit
+        pld
+        plb
+        rtl
+
+drawSprites
+:tmp    equ   Tmp0
+
         sep   #$30          ; 8-bit cpu
-        ldx   #4            ; Ok to always skip sprite 0
 
-:oam_loop
-        lda   PPU_OAM+3,x   ; remove this test once we can clip sprites
-        cmp   #241
-        bcs   :hidden
+; Run through the copy of the OAM memory
 
-        lda  PPU_OAM+1,x    ; $FC is an empty tile, don't draw it
-        cmp  #$FC
-        beq  :hidden
+        ldx   #0
+        cpx   spriteCount
+        bne   oam_loop
+        rep   #$30
+        rts
 
-        lda   PPU_OAM,x     ; Y-coordinate
-        cmp   #200+y_offset-9
-        bcs   :hidden
+        mx %11
+oam_loop
+        phx                 ; Save x
 
-        phx
+        lda   OAM_COPY,x     ; Y-coordinate
         inc                 ; Compensate for PPU delayed scanline
+
         rep   #$30
         and   #$00FF
         asl
@@ -539,26 +937,26 @@ drawOAMSprites
         adc  #$2000-{y_offset*160}+x_offset
         sta  :tmp
 
-        lda  PPU_OAM+3,x
+        lda  OAM_COPY+3,x
         lsr
         and  #$007F
         clc
         adc  :tmp
         tay
 
-        lda  PPU_OAM+2,x
+        lda  OAM_COPY+2,x
         pha
         bit  #$0040                  ; horizontal flip
         bne  :hflip
 
-        lda  PPU_OAM,x               ; Load the tile index into the high byte (x256)
+        lda  OAM_COPY,x               ; Load the tile index into the high byte (x256)
         and  #$FF00
         lsr                          ; multiple by 128
         tax
         bra  :noflip
 
 :hflip
-        lda  PPU_OAM,x               ; Load the tile index into the high byte (x256)
+        lda  OAM_COPY,x               ; Load the tile index into the high byte (x256)
         and  #$FF00
         lsr                          ; multiple by 128
         adc  #64                     ; horizontal flip
@@ -567,22 +965,20 @@ drawOAMSprites
 :noflip
         pla
         asl
-;        and   #$0080                 ; Set the vflip bit
         and   #$0106                 ; Set the vflip bit and palette select bits
 
 drawTilePatch
         jsl   $000000                ; Draw the tile on the graphics screen
 
         sep   #$30
-        plx
+        plx                          ; Restore the counter
+        inx
+        inx
+        inx
+        inx
+        cpx   spriteCount
+        bcc   oam_loop
 
-:hidden
-        inx
-        inx
-        inx
-        inx
-        bne  :oam_loop
+        rep   #$30
+        rts
 
-        plp
-        plb
-        rtl

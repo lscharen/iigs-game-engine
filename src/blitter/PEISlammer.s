@@ -14,17 +14,19 @@
 ; Y = last line  (exclusive), valid range >X up to 200
 _PEISlam
                  cpx   #200
-                 bcc   *+3
-                 rts
+                 bcc   *+4
+                 brk   $14
+;                 rts
                  cpy   #201
-                 bcc   *+3
-                 rts
+                 bcc   *+4
+                 brk   $15
+;                 rts
 
-                 txa
+                 tya                    ; x must be less than y
                  stal  :screen_width_1
-                 tya
+                 txa
                  cmpl  :screen_width_1
-                 bcs   *+3
+                 bcc   *+3
                  rts
 
 
@@ -74,6 +76,10 @@ _PEISlam
                  adcl  :screen_width_1
                  tcs
 
+                 cmp   #$9D00
+                 bcc   *+4
+                 brk   $85              ; Kill if stack it out of range
+
                  dey                    ; decrement the total counter, if zero then we're done
                  beq   :exit
 
@@ -115,3 +121,21 @@ _PEISlam
 
 :stk_save        ds    2
 :screen_width_1  ds    2
+
+; A stashed memory location just in case we need it.  This is filled in the GTEStartUp()
+tool_direct_page ds    2
+
+; External entry point.  Can be called directly from another bank
+PEISlam
+                phd
+                phb
+
+                ldal   tool_direct_page
+                tcd
+                jsr    _SetDataBank             ; only affects accumulator
+                jsr    _PEISlam
+                plb
+                pld
+                rtl
+
+

@@ -85,6 +85,7 @@ _BltRange
                 lda   BlitterDP      ; Set the direct page to the blitter data
                 tcd
 
+                php                  ; save the current processor flags
                 sei                  ; disable interrupts
                 _R0W1
                 tsc                  ; save the stack pointer
@@ -95,7 +96,7 @@ blt_entry       jml   $000000        ; Jump into the blitter code $XX/YY00
 blt_return      _R0W0
 stk_save        lda   #0000          ; load the stack
                 tcs
-                cli                  ; re-enable interrupts
+                plp                  ; re-enable interrupts (maybe, if interrupts disabled when we are called, they are not re-endabled)
                 pld                  ; restore the direct page
 
                 sep   #$20
@@ -106,3 +107,16 @@ stk_save        lda   #0000          ; load the stack
 
                 plb                  ; restore the bank
                 rts
+
+; External entry point.  Can be called directly from another bank
+BltRange
+                phd
+                phb
+
+                ldal   tool_direct_page
+                tcd
+                jsr    _SetDataBank             ; only affects accumulator
+                jsr    _BltRange
+                plb
+                pld
+                rtl

@@ -144,6 +144,7 @@ zpToUse         =    userId+4
                 lda     zpToUse,s          ; Get the direct page address
                 phd                        ; Save the current direct page
                 tcd                        ; Set to our working direct page space
+                stal    tool_direct_page   ; Stash a copy in memory
 
                 txa
                 and     #$00FF             ; Get just the tool number

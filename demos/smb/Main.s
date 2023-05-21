@@ -37,6 +37,9 @@ Tmp3        equ   246
 Tmp4        equ   248
 Tmp5        equ   250
 
+FTblPtr     equ   224
+FTblTmp     equ   228
+
             phk
             plb
             sta   MyUserId                ; GS/OS passes the memory manager user ID for the application into the program
@@ -1080,6 +1083,6 @@ nmiTask
             ds    \,$00                      ; pad to the next page boundary
 PPU_MEM
 CHR_ROM     put chr2.s         ; 8K of CHR-ROM at PPU memory $0000 - $2000
-PPU_NT      ds  $2000         ; Nametable memory from $2000 - $3000, $3F00 - $3F14 is palette RAM
-PPU_OAM     ds  256           ; 256 bytes of separate OAM RAM
-
+PPU_NT      ds  $2000          ; Nametable memory from $2000 - $3000, $3F00 - $3F14 is palette RAM
+PPU_OAM     ds  256            ; 256 bytes of separate OAM RAM
+ 
