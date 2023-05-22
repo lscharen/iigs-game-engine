@@ -78,7 +78,8 @@ _PEISlam
 
                  cmp   #$9D00
                  bcc   *+4
-                 brk   $85              ; Kill if stack it out of range
+                 beq   :exit
+;                 brk   $85              ; Kill if stack is out of range
 
                  dey                    ; decrement the total counter, if zero then we're done
                  beq   :exit
