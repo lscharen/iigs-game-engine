@@ -237,8 +237,8 @@ PPUDATA_READ ENT
         rtl
 
 nt_queue_front dw 0
-nt_queue_end dw 0
-nt_queue ds 2*{1024}
+nt_queue_end   dw 0
+nt_queue       ds 2*{NT_QUEUE_SIZE}
 
 PPUDATA_WRITE ENT
         php
@@ -272,7 +272,7 @@ PPUDATA_WRITE ENT
         tay
         inc
         inc
-        and  #{2*1024}-1
+        and  #NT_QUEUE_MOD
         cmp  nt_queue_front
         beq  :full
 
@@ -281,6 +281,8 @@ PPUDATA_WRITE ENT
         sta  nt_queue,y
 
 :full
+        lda  #1
+        jsr  setborder
         ply
 
 :nocache
@@ -294,7 +296,17 @@ PPUDATA_WRITE ENT
         plb
         plp
         rtl
-        
+
+
+setborder
+        php
+        sep  #$20
+        eorl $E0C034
+        and  #$F0
+        eorl $E0C034
+        stal $E0C034
+        plp
+        rts
 ; Do some extra work to keep palette data in sync
 ;
 ; Based on the palette data that SMB uses, we map the NES palette entries as
@@ -869,12 +881,12 @@ drawOAMSprites
 ; This is phase 1.  We will build the sprite list and draw the background in the areas covered by
 ; sprites.  This phase draws the sprites, too
 
-        ldal  nmiCount
-        pha
 
 ; We need to "freeze" the OAM values, otherwise they can change between when we build the rendering pipeline
 
         sei
+        ldal  nmiCount
+        pha
         jsr   scanOAMSprites              ; Filter out any sprites that don't need to be drawn
         pla
         cmpl  nmiCount
