@@ -195,11 +195,19 @@ pal_select  dw    $3333,$6666,$9999,$CCCC
 
 _DrawTileToScreen
 :palette    equ    248
+
             phb
             pea    $0101
             plb
             plb
 
+            bit    #$0040
+            beq    :no_prio
+            bit    #$0100
+            jeq    _DrawPriorityToScreen
+            jmp    _DrawPriorityToScreenV
+
+:no_prio
             bit    #$0100
             jne    _DrawTileToScreenV
 
@@ -231,6 +239,73 @@ _DrawTileToScreen
             plb
             rtl                          ; special exit
 
+_DrawPriorityToScreen
+:palette    equ    248
+:p_tmp      equ    144
+
+            phx
+            and    #$0006
+            tax
+            ldal   pal_select,x
+            sta    :palette
+            plx
+            clc
+
+]line       equ   0
+            lup   8
+            ldal  tiledata+{]line*4}+2,x
+            adc   :palette
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
+            sta   :p_tmp
+
+; Convert the screen data to a mask.  Zero in screen = zero in mask, else $F
+            lda:  {]line*SHR_LINE_WIDTH}+2,y
+            bit   #$F000
+            beq   *+5
+            ora   #$F000
+            bit   #$0F00
+            beq   *+5
+            ora   #$0F00
+            bit   #$00F0
+            beq   *+5
+            ora   #$00F0
+            bit   #$000F
+            beq   *+5
+            ora   #$000F
+            eor   #$FFFF
+            and   :p_tmp
+            andl  tiledata+{]line*4}+32+2,x
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
+            sta:  {]line*SHR_LINE_WIDTH}+2,y
+
+            ldal  tiledata+{]line*4},x
+            adc   :palette
+            eor:  {]line*SHR_LINE_WIDTH},y
+            sta   :p_tmp
+
+            lda:  {]line*SHR_LINE_WIDTH},y
+            bit   #$F000
+            beq   *+5
+            ora   #$F000
+            bit   #$0F00
+            beq   *+5
+            ora   #$0F00
+            bit   #$00F0
+            beq   *+5
+            ora   #$00F0
+            bit   #$000F
+            beq   *+5
+            ora   #$000F
+            eor   #$FFFF
+            and   :p_tmp
+            andl  tiledata+{]line*4}+32,x
+            eor:  {]line*SHR_LINE_WIDTH},y
+            sta:  {]line*SHR_LINE_WIDTH},y
+]line       equ   ]line+1
+            --^
+            plb
+            rtl                          ; special exit
+            
 _DrawTileToScreenV
 :palette    equ    248
             phx
@@ -253,6 +328,73 @@ _DrawTileToScreenV
             ldal  tiledata+{{7-]line}*4},x
             eor   :palette
             eor:  {]line*SHR_LINE_WIDTH},y
+            andl  tiledata+{{7-]line}*4}+32,x
+            eor:  {]line*SHR_LINE_WIDTH},y
+            sta:  {]line*SHR_LINE_WIDTH},y
+]line       equ   ]line+1
+            --^
+            plb
+            rtl                          ; special exit
+
+_DrawPriorityToScreenV
+:palette    equ    248
+:p_tmp      equ    144
+
+            phx
+            and    #$0006
+            tax
+            ldal   pal_select,x
+            sta    :palette
+            plx
+            clc
+
+]line       equ   0
+            lup   8
+            ldal  tiledata+{{7-]line}*4}+2,x
+            adc   :palette
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
+            sta   :p_tmp
+
+; Convert the screen data to a mask
+            lda:  {]line*SHR_LINE_WIDTH}+2,y
+            bit   #$F000
+            beq   *+5
+            ora   #$F000
+            bit   #$0F00
+            beq   *+5
+            ora   #$0F00
+            bit   #$00F0
+            beq   *+5
+            ora   #$00F0
+            bit   #$000F
+            beq   *+5
+            ora   #$000F
+            eor   #$FFFF
+            and   :p_tmp
+            andl  tiledata+{{7-]line}*4}+32+2,x
+            eor:  {]line*SHR_LINE_WIDTH}+2,y
+            sta:  {]line*SHR_LINE_WIDTH}+2,y
+
+            ldal  tiledata+{{7-]line}*4},x
+            adc   :palette
+            eor:  {]line*SHR_LINE_WIDTH},y
+            sta   :p_tmp
+
+            lda:  {]line*SHR_LINE_WIDTH},y
+            bit   #$F000
+            beq   *+5
+            ora   #$F000
+            bit   #$0F00
+            beq   *+5
+            ora   #$0F00
+            bit   #$00F0
+            beq   *+5
+            ora   #$00F0
+            bit   #$000F
+            beq   *+5
+            ora   #$000F
+            eor   #$FFFF
+            and   :p_tmp
             andl  tiledata+{{7-]line}*4}+32,x
             eor:  {]line*SHR_LINE_WIDTH},y
             sta:  {]line*SHR_LINE_WIDTH},y

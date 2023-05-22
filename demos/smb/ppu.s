@@ -1025,7 +1025,7 @@ oam_loop
 :noflip
         pla
         asl
-        and   #$0106                 ; Set the vflip bit and palette select bits
+        and   #$0146                 ; Set the vflip bit, priority, and palette select bits
 
 drawTilePatch
         jsl   $000000                ; Draw the tile on the graphics screen
