@@ -15,6 +15,10 @@ RIGHT_ARROW     equ   $15
 UP_ARROW        equ   $0B
 DOWN_ARROW      equ   $0A
 
+; Nametable queue
+NT_QUEUE_SIZE  equ $1000
+NT_QUEUE_MOD   equ {{2*NT_QUEUE_SIZE}-1}
+
             mx    %00
 
 ; Direct page space
@@ -63,23 +67,6 @@ FTblTmp     equ   228
             clc
             adc   #$1FF                   ; Stack starts at the top of the page
             sta   ROMStk
-
-*             ldx   #SMBStart
-*             jsr   romxfer
-
-* ; Call the main loop 23 times
-*             lda   #23
-* :pre        pha
-*             jsr   triggerNMI
-*             pla
-*             dec
-*             bne   :pre
-
-* :gloop
-*             jsr   triggerNMI
-*             bra   :gloop
-
-*             brl   Quit
 
             lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode as a User Tool
             jsr   GTEStartUp              ; Load and install the GTE User Tool
@@ -166,10 +153,17 @@ FTblTmp     equ   228
             ldx   #SMBStart
             jsr   romxfer
 
+; Apply hacks
+;WorldNumber                 =     $075f
+;AreaNumber                  =     $076
+
 EvtLoop
 :spin       lda   nmiCount
             beq   :spin
             stz   nmiCount
+
+;            lda   #$0400
+;            stal  ROMBase+$75F
 
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at
@@ -228,49 +222,6 @@ EvtLoop
             pha
             _GTEReadControl
             pla
-
-; Map the GTE field to the NES controller format: A-B-Select-Start-Up-Down-Left-Right
-
-            pha
-            and   #PAD_BUTTON_A+PAD_BUTTON_B        ; bits 0x200 and 0x100
-            lsr
-            lsr
-            sta   native_joy                        ; Put inputs on both controllers
-            sta   native_joy+1
-            lda   1,s
-            and   #$00FF
-            cmp   #'n'
-            bne   *+7
-            lda   #$0020
-            bra   :nes_merge
-            cmp   #'m'
-            bne   *+7
-            lda   #$0010
-            bra   :nes_merge
-            cmp   #UP_ARROW
-            bne   *+7
-            lda   #$0008
-            bra   :nes_merge
-            cmp   #DOWN_ARROW
-            bne   *+7
-            lda   #$0004
-            bra   :nes_merge
-            cmp   #LEFT_ARROW
-            bne   *+7
-            lda   #$0002
-            bra   :nes_merge
-            cmp   #RIGHT_ARROW
-            bne   :nes_done
-            lda   #$0001
-:nes_merge  ora   native_joy 
-            sta   native_joy 
-            sta   native_joy+1
-:nes_done
-            pla
-;            bit   #PAD_KEY_DOWN
-;            bne   *+5
-;            brl   EvtLoop
-
             and   #$007F
 
             cmp   #'r'         ; Refresh
@@ -296,29 +247,6 @@ EvtLoop
             brl   EvtLoop
 
 :not_v
-
-            cmp   #'t'         ; test by placing markers on screen
-            bne   :not_t
-            pea   0
-            pea   #3
-            pea   $0150
-            _GTESetTile
-            pea   #31
-            pea   #3
-            pea   $0150
-            _GTESetTile
-            pea   #32
-            pea   #3
-            pea   $0150
-            _GTESetTile
-            pea   #39
-            pea   #3
-            pea   $0150
-            _GTESetTile
-
-            brl   EvtLoop
-:not_t
-
             cmp   #'q'
             beq   Exit
             brl   EvtLoop
@@ -479,7 +407,7 @@ DrainNTQueue
             pla                             ; Pop the saved x-register into the accumulator
             inc
             inc
-            and   #{2*1024}-1
+            and   #NT_QUEUE_MOD
             cmp   nt_queue_end
             bne   :loop
 
@@ -1056,6 +984,7 @@ nmiTask
             lda   DPSave
             tcd
 
+            jsr   readInput
             jsr   triggerNMI
 
 ; Immediately after the NMI returns, freeze some of the global state variables so we can sync up with this frame when
@@ -1075,6 +1004,56 @@ nmiTask
 :skip
             rtl
             mx    %00
+
+readInput
+            pha
+            _GTEReadControl
+            pla
+
+; Map the GTE field to the NES controller format: A-B-Select-Start-Up-Down-Left-Right
+
+            pha
+            and   #PAD_BUTTON_A+PAD_BUTTON_B        ; bits 0x200 and 0x100
+            lsr
+            lsr
+            sta  native_joy
+
+            sep   #$20
+            lda   1,s
+            cmp   #'n'
+            bne   *+6
+            lda   #$20
+            bra   :nes_merge
+            cmp   #'m'
+            bne   *+6
+            lda   #$10
+            bra   :nes_merge
+            cmp   #UP_ARROW
+            bne   *+6
+            lda   #$08
+            bra   :nes_merge
+            cmp   #DOWN_ARROW
+            bne   *+6
+            lda   #$04
+            bra   :nes_merge
+            cmp   #LEFT_ARROW
+            bne   *+6
+            lda   #$02
+            bra   :nes_merge
+            cmp   #RIGHT_ARROW
+            bne   *+6
+            lda   #$01
+            bra   :nes_merge
+            lda   #0
+:nes_merge  ora  native_joy 
+            sta  native_joy
+            sta  native_joy+1
+
+:nes_done
+            rep   #$20
+            pla
+            rts
+
             put   App.Msg.s
             put   font.s
             put   palette.s
