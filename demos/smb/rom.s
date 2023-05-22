@@ -3728,12 +3728,12 @@ FrenzyIDData
 AreaFrenzy                  ldy   $00                        ;use area object identifier bit as offset
                             lda   FrenzyIDData-8,y           ;note that it starts at 8, thus weird address here
                             ldx   #$05
-FreCompLoop                 dex                              ;check regular slots of enemy object buffer
-                            bmi   ExitAFrenzy                ;if all slots checked and enemy object not found, branch to store
+:FreCompLoop                dex                              ;check regular slots of enemy object buffer
+                            bmi   :ExitAFrenzy                ;if all slots checked and enemy object not found, branch to store
                             cmp   Enemy_ID,x                 ;check for enemy object in buffer versus frenzy object
-                            bne   FreCompLoop
+                            bne   :FreCompLoop
                             lda   #$00                       ;if enemy object already present, nullify queue and leave
-ExitAFrenzy                 sta   EnemyFrenzyQueue           ;store enemy into frenzy queue
+:ExitAFrenzy                sta   EnemyFrenzyQueue           ;store enemy into frenzy queue
 
                             phx     ; GTE swap registers back
                             tyx
@@ -7226,13 +7226,13 @@ FindEmptyMiscSlot
 ;UseMiscS                    sty   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
                             phx
                             ldx   #$08                       ;start at end of misc objects buffer
-FMiscLoop                   lda   Misc_State,x               ;get misc object state
-                            beq   UseMiscS                   ;branch if none found to use current offset
+:FMiscLoop                  lda   Misc_State,x               ;get misc object state
+                            beq   :UseMiscS                   ;branch if none found to use current offset
                             dex                              ;decrement offset
                             cpx   #$05                       ;do this for three slots
-                            bne   FMiscLoop                  ;do this until all slots are checked
+                            bne   :FMiscLoop                  ;do this until all slots are checked
                             ldx   #$08                       ;if no empty slots found, use last slot
-UseMiscS                    stx   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
+:UseMiscS                   stx   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
                             txy
                             plx
                             rts
@@ -11196,14 +11196,19 @@ DrawEraseRope
                             phx
                             tyx
                             lda   Enemy_Y_Speed,x
-                            plx
-                           bmi   EraseR1                    ;to do something else
+                            bmi   EraseR1                    ;to do something else
+
+                            plx   ; GTE
+
                             lda   #$a2
                             sta   VRAM_Buffer1+3,x           ;otherwise put tile numbers for left
                             lda   #$a3                       ;and right sides of rope in vram buffer
                             sta   VRAM_Buffer1+4,x
                             jmp   OtherRope                  ;jump to skip this part
-EraseR1                     lda   #$24                       ;put blank tiles in vram buffer
+EraseR1                     
+                            plx   ; GTE
+
+                            lda   #$24                       ;put blank tiles in vram buffer
                             sta   VRAM_Buffer1+3,x           ;to erase rope
                             sta   VRAM_Buffer1+4,x
 
