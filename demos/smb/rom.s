@@ -44,6 +44,7 @@ JOYPAD_PORT1                =     $4016
 JOYPAD_PORT2                =     $4017
 
 GTE_TMP                     =     $10       ; No zero page references in the assembly to this location
+;GTE_TMP                     =     $7000       ; No zero page references in the assembly to this location
 ; GAME SPECIFIC DEFINES
 
 ObjectOffset                =     $08
@@ -3733,6 +3734,11 @@ FreCompLoop                 dex                              ;check regular slot
                             bne   FreCompLoop
                             lda   #$00                       ;if enemy object already present, nullify queue and leave
 ExitAFrenzy                 sta   EnemyFrenzyQueue           ;store enemy into frenzy queue
+
+                            phx     ; GTE swap registers back
+                            tyx
+                            ply
+
                             rts
 
 ;--------------------------------
@@ -6814,7 +6820,7 @@ Setup_Vine
                             lda   Block_X_Position,x         ; FIXME
                             pha
                             lda   Block_Y_Position,x         ; FIXME
-                            
+
                             ldx   GTE_TMP
                             sta   Enemy_Y_Position,x         ;copy vertical coordinate from previous object
                             pla
@@ -7148,11 +7154,13 @@ CoinBlock
                             lda   Block_PageLoc,x            ;get page location of block object
                             tyx
                             sta   Misc_PageLoc,x             ;store as page location of misc object
+
                             ldx   GTE_TMP
                             lda   Block_X_Position,x         ;get horizontal coordinate of block object
                             ora   #$05                       ;add 5 pixels
                             tyx
                             sta   Misc_X_Position,x          ;store as horizontal coordinate of misc object
+
                             ldx   GTE_TMP
                             lda   Block_Y_Position,x         ;get vertical coordinate of block object
                             sbc   #$10                       ;subtract 16 pixels
@@ -8799,8 +8807,10 @@ DuplicateEnemyObj
                             lda   Enemy_Flag,x               ;check enemy buffer flag for empty slot
                             bne   :FSLoop                     ;if set, branch and keep checking
                             stx   DuplicateObj_Offset        ;otherwise set offset here
-                            
+
+                            txy             ; GTE put final val back into y
                             ldx   GTE_TMP
+
                             txa                              ;transfer original enemy buffer offset
                             ora   #%10000000                 ;store with d7 set as flag in new enemy
 ;                            sta   Enemy_Flag,y               ;slot as well as enemy offset
@@ -8814,21 +8824,26 @@ DuplicateEnemyObj
 ;                            sta   Enemy_X_Position,y
                             pha
 
+                            lda   Enemy_Y_Position,x
+;                            sta   Enemy_Y_Position,y         ;copy vertical coordinate from original to new
+                            pha
+
                             lda   #$01
                             sta   Enemy_Flag,x               ;set flag as normal for original enemy
 ;                            sta   Enemy_Y_HighPos,y          ;set high vertical byte for new enemy
 
-                            lda   Enemy_Y_Position,x
-;                            sta   Enemy_Y_Position,y         ;copy vertical coordinate from original to new
-
                             tyx
-                            sta   Enemy_Y_Position,x
-                            lda   #$01
                             sta   Enemy_Y_HighPos,x
+
+                            pla
+                            sta   Enemy_Y_Position,x
+
                             pla
                             sta   Enemy_X_Position,x
+
                             pla
                             sta   Enemy_PageLoc,x
+
                             pla
                             sta   Enemy_Flag,x
 
