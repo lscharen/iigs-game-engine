@@ -250,6 +250,9 @@ PPUDATA_WRITE ENT
 
         rep  #$10
         ldx  ppuaddr
+        cmp  PPU_MEM,x
+        beq  :nochange
+
         sta  PPU_MEM,x
 
         rep  #$30
@@ -288,6 +291,14 @@ PPUDATA_WRITE ENT
 :nocache
         cpx  #$3F00
         bcs  :extra
+        bra  :done
+
+:nochange
+        rep  #$30
+        txa
+        clc
+        adc  ppuincr
+        sta  ppuaddr
 
 :done
         sep  #$30
@@ -540,6 +551,8 @@ spriteCount ds 0
 
         mx   %00
 scanOAMSprites
+        stz  Tmp5
+
         sep  #$30
 
         ldx  #4                  ; Always skip sprite 0
@@ -549,6 +562,8 @@ scanOAMSprites
         lda    PPU_OAM,x         ; Y-coordinate
         cmp    #200+y_offset-9
         bcs    :skip
+        cmp    #16
+        bcc    :skip
 
         lda    PPU_OAM+1,x       ; $FC is an empty tile, don't draw it
         cmp    #$FC
@@ -564,6 +579,39 @@ scanOAMSprites
         lda    PPU_OAM+2,x
         sta    OAM_COPY+2,y
         sep    #$20
+
+* ; Debug OAM values
+*         phy
+*         phx
+
+*         rep    #$30
+*         ldx    Tmp5
+*         cpx    #{160*190}
+*         bcs    :nodraw
+
+*         lda    OAM_COPY+2,y
+*         pha
+*         lda    OAM_COPY,y
+*         ldy    #$FFFF
+*         jsr    DrawWord
+
+*         lda    Tmp5
+*         clc
+*         adc    #128+16
+*         tax
+*         ldy    #$FFFF
+*         pla
+*         jsr    DrawWord
+
+*         lda    Tmp5
+*         clc
+*         adc    #8*160
+*         sta    Tmp5
+
+* :nodraw
+*         sep    #$30
+*         plx
+*         ply
 
         iny
         iny
