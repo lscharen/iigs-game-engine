@@ -1676,13 +1676,13 @@ DrawTitleScreen
             sta $01                      ;the indirect at $00
             ldy #$00
             sty $00
-            lda PPU_DATA                 ;do one garbage read
-OutputTScr lda PPU_DATA                 ;get title screen from chr-rom
+            jsr PPU_DATA_R                 ;do one garbage read
+OutputTScr  jsr PPU_DATA_R                 ;get title screen from chr-rom
             sta ($00),y                  ;store 256 bytes into buffer
             iny
             bne ChkHiByte                ;if not past 256 bytes, do not increment
             inc $01                      ;otherwise increment high byte of indirect
-ChkHiByte  lda $01                      ;check high byte?
+ChkHiByte   lda $01                      ;check high byte?
             cmp #$04                     ;at $0400?
             bne OutputTScr               ;if not, loop back and do another
             cpy #$3a                     ;check if offset points past end of data
@@ -10065,22 +10065,22 @@ MoveLakitu
          and #%00100000             ;for d5 set
          beq ChkLS                  ;if not set, continue with code
          jmp MoveD_EnemyVertically  ;otherwise jump to move defeated lakitu downwards
-ChkLS   lda Enemy_State,x          ;if lakitu's enemy state not set at all,
+ChkLS    lda Enemy_State,x          ;if lakitu's enemy state not set at all,
          beq Fr12S                  ;go ahead and continue with code
          lda #$00
          sta LakituMoveDirection,x  ;otherwise initialize moving direction to move to left
          sta EnemyFrenzyBuffer      ;initialize frenzy buffer
          lda #$10
          bne SetLSpd                ;load horizontal speed and do unconditional branch
-Fr12S   lda #Spiny
+Fr12S    lda #Spiny
          sta EnemyFrenzyBuffer      ;set spiny identifier in frenzy buffer
          ldy #$02
-LdLDa   lda LakituDiffAdj,y        ;load values
+LdLDa    lda LakituDiffAdj,y        ;load values
          sta $0001,y                ;store in zero page
          dey
          bpl LdLDa                  ;do this until all values are stired
          jsr PlayerLakituDiff       ;execute sub to set speed and create spinys
-SetLSpd sta LakituMoveSpeed,x      ;set movement speed returned from sub
+SetLSpd  sta LakituMoveSpeed,x      ;set movement speed returned from sub
          ldy #$01                   ;set moving direction to right by default
          lda LakituMoveDirection,x
          and #$01                   ;get LSB of moving direction
@@ -10091,7 +10091,7 @@ SetLSpd sta LakituMoveSpeed,x      ;set movement speed returned from sub
          adc #$01
          sta LakituMoveSpeed,x      ;store as new moving speed
          iny                        ;increment moving direction to left
-SetLMov sty Enemy_MovingDir,x      ;store moving direction
+SetLMov  sty Enemy_MovingDir,x      ;store moving direction
          jmp MoveEnemyHorizontally  ;move lakitu horizontally
 
 PlayerLakituDiff
