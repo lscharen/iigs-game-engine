@@ -684,7 +684,7 @@ PPUDATA_WRITE    EXT
 PPUDMA_WRITE     EXT
 
 ROMBase  ENT
-                            ds    $7800-14-50-14
+                            ds    $7800+$7A9-14-50-14-32
 
 ; Macro to replace sta abs,y instructions that access zero page space with direct page
 ; instruction to actually get the correct data on the direct page _and_ bank memory.
@@ -696,7 +696,8 @@ GteInitMem
             php
             rep  #$30
             ldx  #$015E
-GteLoop                     stz  00,x
+GteLoop
+            stz  00,x
             dex
             dex
             bpl  GteLoop
@@ -2560,6 +2561,7 @@ Save8Bits                   pla
 ;-------------------------------------------------------------------------------------
 ;$00 - vram buffer address table low
 ;$01 - vram buffer address table high
+ppuaddr EXT
 
 WriteBufferToScreen
                             jsr   PPU_ADDRESS_W               ;store high byte of vram address
@@ -2586,6 +2588,19 @@ GetLength                   lsr                              ;shift back to the 
 OutputToVRAM                bcs   RepeatByte                 ;if carry set, repeat loading the same byte
                             iny                              ;otherwise increment Y to load next byte
 RepeatByte                  lda   ($00),y                    ;load more data from buffer and write to vram
+
+; Break on a specific byte in world 1-2
+                            php
+                            cmp   #$47
+                            bne   :nobrk
+                            cpx   #$07
+                            bne   :nobrk
+                            cpy   #$16
+                            bne   :nobrk
+;                            brk   $FE
+;                            ldal  ppuaddr  ; Somehow the ppuaddr is $2320 when it should be $2308
+:nobrk                      plp
+
                             jsr   PPU_DATA_W
                             dex                              ;done writing?
                             bne   OutputToVRAM
@@ -2613,7 +2628,7 @@ InitScroll                  jsr   PPU_SCROLL_W               ;store contents of 
 ;-------------------------------------------------------------------------------------
 
 WritePPUReg1
-                            jsr   PPU_CTRL_W              ;write contents of A to PPU register 1
+                            jsr   PPU_CTRL_W                 ;write contents of A to PPU register 1
                             sta   Mirror_PPU_CTRL_REG1       ;and its mirror
                             rts
 
@@ -5081,7 +5096,7 @@ L_GroundArea5
 L_GroundArea6
                             db    $50,$21
                             db    $07,$81,$47,$24,$57,$00,$63,$01,$77,$01
-                            db    $c9,$71,$68,$f2,$e7,$73,$97,$fb,$06,$83
+                            db    $c9,$71,$68,$f2,$e7,$73,$97,$fb,$06,$83     ; $97 $FB is the pipe (x = 9, y = 7), new page, Type 7, enter, height 3
                             db    $5c,$01,$d7,$22,$e7,$00,$03,$a7,$6c,$02
                             db    $b3,$22,$e3,$01,$e7,$07,$47,$a0,$57,$06
                             db    $a7,$01,$d3,$00,$d7,$01,$07,$81,$67,$20
@@ -5352,7 +5367,7 @@ L_UndergroundArea2
 ;underground bonus rooms area used in many levels
 L_UndergroundArea3
                             db    $48,$01
-                            db    $0e,$01,$00,$5a,$3e,$06,$45,$46,$47,$46
+                            db    $0e,$01,$00,$5a,$3e,$06,$45,$46,$47,$46 ; $0e $01 - change floor pattern to blocks
                             db    $53,$44,$ae,$01,$df,$4a,$4d,$c7,$0e,$81
                             db    $00,$5a,$2e,$04,$37,$28,$3a,$48,$46,$47
                             db    $c7,$07,$ce,$0f,$df,$4a,$4d,$c7,$0e,$81
@@ -6827,7 +6842,7 @@ Setup_Vine
                             sta   Enemy_X_Position,x         ;copy horizontal coordinate from previous object
                             pla
                             sta   Enemy_PageLoc,x            ;copy page location from previous object
-
+                            lda   Enemy_Y_Position,x         ; GTE: reload into accumulator
 
                             ldy   VineFlagOffset             ;load vine flag/offset to next available vine slot
                             bne   NextVO                     ;if set at all, don't bother to store vertical
@@ -7235,6 +7250,8 @@ FindEmptyMiscSlot
 :UseMiscS                   stx   JumpCoinMiscOffset         ;store offset of misc object buffer here (residual)
                             txy
                             plx
+                            phy
+                            ply
                             rts
 
 ;-------------------------------------------------------------------------------------
@@ -7993,16 +8010,16 @@ EnemiesAndLoopsCore
                             lda   Enemy_Flag,x               ;check data here for MSB set
                             pha                              ;save in stack
                             asl
-                            bcs   ChkBowserF                 ;if MSB set in enemy flag, branch ahead of jumps
+                            bcs   :ChkBowserF                 ;if MSB set in enemy flag, branch ahead of jumps
                             pla                              ;get from stack
-                            beq   ChkAreaTsk                 ;if data zero, branch
+                            beq   :ChkAreaTsk                 ;if data zero, branch
                             jmp   RunEnemyObjectsCore        ;otherwise, jump to run enemy subroutines
-ChkAreaTsk                  lda   AreaParserTaskNum          ;check number of tasks to perform
+:ChkAreaTsk                  lda   AreaParserTaskNum          ;check number of tasks to perform
                             and   #$07
                             cmp   #$07                       ;if at a specific task, jump and leave
                             beq   ExitELCore
                             jmp   ProcLoopCommand            ;otherwise, jump to process loop command/load enemies
-ChkBowserF                  pla                              ;get data from stack
+:ChkBowserF                  pla                              ;get data from stack
                             and   #%00001111                 ;mask out high nybble
                             tay
 ;                           lda   Enemy_Flag,y               ;use as pointer and load same place with different offset
@@ -8523,6 +8540,8 @@ ChkLak
                             tyx
                             lda   Enemy_ID,x
                             plx
+                            pha
+                            pla
 
                             cmp   #Lakitu                    ;if lakitu is on one of them
                             beq   CreateSpiny                ;if so, branch out of this loop
@@ -8559,6 +8578,8 @@ CreateSpiny
                             tyx
                             lda   Enemy_State,x
                             ldx   GTE_TMP
+                            pha
+                            pla     ; GTE push/pull to set the BNE flag correctly
 
                             bne   ExLSHand
 ;                            lda   Enemy_PageLoc,y            ;store horizontal coordinates (high and low) of lakitu
@@ -8872,6 +8893,8 @@ InitBowserFlame
                             tyx
                             lda   Enemy_ID,x
                             plx
+                            pha
+                            pla
 
                             cmp   #Bowser
                             beq   SpawnFromMouth             ;branch if found
@@ -10353,13 +10376,16 @@ Fr12S                       lda   #Spiny
 ;                            sta   $0001,y                    ;store in zero page
 ;                            dey
 ;                            bpl   :LdLDa                      ;do this until all values are stired
+                            ldy   #$02
+:LdLDa                      lda   LakituDiffAdj,y
+
                             phx
-                            ldx   #$02
-:LdLDa                      lda   LakituDiffAdj,x            ;load values
+                            tyx
                             sta   $01,x                      ;store in zero page
-                            dex
-                            bpl   :LdLDa                      ;do this until all values are stired
                             plx
+
+                            dey
+                            bpl   :LdLDa                      ;do this until all values are stired
 
                             jsr   PlayerLakituDiff           ;execute sub to set speed and create spinys
 SetLSpd                     sta   LakituMoveSpeed,x          ;set movement speed returned from sub
@@ -10436,6 +10462,8 @@ SubDifAdj
                             tyx
                             lda   $01,x
                             plx
+                            pha
+                            pla
 
                             ldy   $00                        ;get saved horizontal difference
 SPixelLak                   sec                              ;subtract one for each pixel of horizontal difference
