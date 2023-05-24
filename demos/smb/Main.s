@@ -16,8 +16,9 @@ UP_ARROW        equ   $0B
 DOWN_ARROW      equ   $0A
 
 ; Nametable queue
-NT_QUEUE_SIZE  equ $1000
-NT_QUEUE_MOD   equ {{2*NT_QUEUE_SIZE}-1}
+NT_QUEUE_LEN  equ $1000
+NT_QUEUE_SIZE equ {2*NT_QUEUE_LEN}
+NT_QUEUE_MOD   equ {NT_QUEUE_SIZE-1}
 
             mx    %00
 
@@ -33,6 +34,7 @@ ROMScrollEdge equ 16
 ROMScrollDelta equ 18
 OldROMScrollEdge equ 20
 CurrScrollEdge equ 22
+CurrNTQueueEnd equ 40
 
 Tmp0        equ   240
 Tmp1        equ   242
@@ -162,9 +164,6 @@ EvtLoop
             beq   :spin
             stz   nmiCount
 
-;            lda   #$0400
-;            stal  ROMBase+$75F
-
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at
 ;
@@ -177,52 +176,34 @@ EvtLoop
 ; 1. When new column(s) are exposed, set the tiles directly from the PPU nametable memory
 ; 2. When the PPU nametable memory is updated in an area that is already on-screen, set the tile
 
-; Get the current global coordinates
+            lda   singleStepMode
+            bne   :skip_render
+            jsr   RenderFrame
+:skip_render
 
-            sei
-            lda   ROMScrollEdge     ; This is set in the VBL IRQ
-            sta   CurrScrollEdge    ; Freeze it, then we can let the IRQs continue
-            cli
+            lda   lastKey
 
-            lsr
-            lsr
-            lsr
-            sta   ROMScreenEdge
+            bit   #PAD_KEY_DOWN
+            beq   EvtLoop
 
-; Calculate how many blocks have been scrolled into view
-
-            lda   CurrScrollEdge
-            sec
-            sbc   OldROMScrollEdge
-            sta   Tmp1             ; This is the raw number of pixels moved
-
-            lda   OldROMScrollEdge ; This is the number of partial pixels the old scroll position occupied
-            and   #7
-            sta   Tmp0
-            lda   #7
-            sec
-            sbc   Tmp0             ; This account for situations where going from 8 -> 9 reveals a new column
-            clc
-            adc   Tmp1
-            lsr
-            lsr
-            lsr
-            sta   ROMScrollDelta   ; This many columns have been revealed
-
-            lda   CurrScrollEdge
-            sta   OldROMScrollEdge ; Stash a copy for the next round through
-            lsr
-            pha
-            pea   $0000
-            _GTESetBG0Origin
-
-            pea   $FFFF      ; NES mode
-            _GTERender
-
-            pha
-            _GTEReadControl
-            pla
             and   #$007F
+
+; Put the game in single-step mode
+            cmp   #'s'
+            bne   :not_s
+
+            lda   #1                         ; Stop the VBL interrupt from running the game logic
+            sta   singleStepMode
+
+            jsr   triggerNMI
+            jsr   RenderFrame
+            brl   EvtLoop
+:not_s
+
+            cmp   #'g'                       ; Re-enable VBL-drive game logic
+            bne   :not_g
+            stz   singleStepMode
+:not_g
 
             cmp   #'r'         ; Refresh
             bne   :not_1
@@ -262,8 +243,59 @@ Greyscale   dw    $0000,$5555,$AAAA,$FFFF
             dw    $0000,$5555,$AAAA,$FFFF
             dw    $0000,$5555,$AAAA,$FFFF
 
+lastKey     dw    0
+singleStepMode dw 0
 nmiCount    dw    0
 DPSave      dw    0
+
+; Helper to perform the essential functions of rendering a frame
+RenderFrame
+
+; Get the current global coordinates
+
+            sei
+            lda   nt_queue_end
+            sta   CurrNTQueueEnd
+            lda   ROMScrollEdge     ; This is set in the VBL IRQ
+            sta   CurrScrollEdge    ; Freeze it, then we can let the IRQs continue
+            cli
+
+            lsr
+            lsr
+            lsr
+            sta   ROMScreenEdge
+
+; Calculate how many blocks have been scrolled into view
+
+            lda   CurrScrollEdge
+            sec
+            sbc   OldROMScrollEdge
+            sta   Tmp1             ; This is the raw number of pixels moved
+
+            lda   OldROMScrollEdge ; This is the number of partial pixels the old scroll position occupied
+            and   #7
+            sta   Tmp0
+            lda   #7
+            sec
+            sbc   Tmp0             ; This account for situations where going from 8 -> 9 reveals a new column
+            clc
+            adc   Tmp1
+            lsr
+            lsr
+            lsr
+            sta   ROMScrollDelta   ; This many columns have been revealed
+
+            lda   CurrScrollEdge
+            sta   OldROMScrollEdge ; Stash a copy for the next round through
+            lsr
+            pha
+            pea   $0000
+            _GTESetBG0Origin
+
+            pea   $FFFF      ; NES mode
+            _GTERender
+
+            rts
 
 ; Take a PPU address and convert it to a tile store coordinate
 ;
@@ -350,14 +382,19 @@ PPUAddrToTileStore
 
 ; If there is some other reason to draw the full screen, this will empty the queue
 ClearNTQueue
-            stz   nt_queue_front
-            stz   nt_queue_end
+;            stz   nt_queue_front
+;            stz   nt_queue_end
+            lda  CurrNTQueueEnd
+            sta  nt_queue_front
             rts
 
 ; Scan through the queue of tiles that need to be updated before applying the scroll change
 DrainNTQueue
 :GTELeftEdge equ Tmp3
 :PPUAddr     equ Tmp4
+:Count       equ Tmp5
+
+            stz  :Count
 
 ; Prep item -- get the logical block of the left edge of the scroll window
 
@@ -366,7 +403,7 @@ DrainNTQueue
             sta   :GTELeftEdge
 
             lda   nt_queue_front
-            cmp   nt_queue_end
+            cmp   CurrNTQueueEnd
             beq   :out
 
 :loop
@@ -393,7 +430,6 @@ DrainNTQueue
             sbc   #41
 :toprow
             pha                             ; Tile Store horizontal tile coordinate
-
             phy                             ; No translation needed for y
 
             ldx   :PPUAddr
@@ -402,17 +438,24 @@ DrainNTQueue
             ora   #$0100
             pha
             _GTESetTile
+            inc   :Count
 
 :skip
             pla                             ; Pop the saved x-register into the accumulator
             inc
             inc
             and   #NT_QUEUE_MOD
-            cmp   nt_queue_end
+            cmp   CurrNTQueueEnd
             bne   :loop
 
 :out
             sta   nt_queue_front
+
+;            lda   :Count
+;            ldx   #8*160
+;            ldy   #$FFFF
+;            jsr   DrawWord
+
             rts
 
 ; Copy the necessary columns into the TileStore when setting a new scroll position
@@ -436,6 +479,75 @@ UpdateFromPPU
             lsr
             lsr
             sta   TileX              ; Tile column of playfield origin
+
+; Debug the PPU writes
+
+*             ldy   #0
+*             ldx   #0
+*             lda   #0
+* :log_loop
+*             phy
+*             pha
+
+*             cpy   ppu_write_log_len
+*             bcc   :write_val
+
+*             pha
+*             tax
+*             ldy   #$FFFF
+*             jsr   ClearWord
+
+*             pla
+*             clc
+*             adc   #160-16
+*             tax
+*             jsr   ClearWord
+
+*             bra   :next
+
+* :write_val
+*             pha
+*             phy
+
+*             tax
+*             lda   ppu_write_log,y
+*             ldy   #$FFFF
+*             jsr   DrawWord
+
+*             ply
+*             pla
+*             clc
+*             adc   #160-16
+*             tax
+*             lda   ppu_write_log+50,y
+*             ldy   #$FFFF
+*             jsr   DrawWord
+
+* :next       pla
+*             ply
+
+*             iny
+*             iny
+
+*             clc
+*             adc   #8*160
+
+*             cpy   #50
+*             bcc   :log_loop
+
+*             stz   ppu_write_log_len
+
+; Show the queue depth
+
+;            lda   CurrNTQueueEnd
+;            sec
+;            sbc   nt_queue_front
+;            bpl   *+5
+;            adc   #NT_QUEUE_SIZE
+;            lsr                      ; Number of items in the queue
+;            ldx   #0
+;            ldy   #$FFFF
+;            jsr   DrawWord
 
 ; Check the scroll delta, if it's negative or just large enough, do a whole copy of the current PPU
 ; memory into the TileStore
@@ -646,7 +758,19 @@ triggerNMI
             stal  ppustatus
 
             ldx   #NonMaskableInterrupt
-            jmp   romxfer
+            jsr   romxfer
+
+; Immediately after the NMI returns, freeze some of the global state variables so we can sync up with this frame when
+; we render the next frame.  Since we're in an interrupt handler here, sno change of the variables changing under
+; our nose
+
+            sep   #$20
+            ldal  ROMBase+$071a
+            xba
+            ldal  ROMBase+$071c
+            rep   #$20
+            sta   ROMScrollEdge
+
 :skip       rts
 
 ; Expose joypad bits from GTE to the ROM: A-B-Select-Start-Up-Down-Left-Right
@@ -985,18 +1109,11 @@ nmiTask
             tcd
 
             jsr   readInput
+
+            ldal  singleStepMode
+            bne   :no_nmi
             jsr   triggerNMI
-
-; Immediately after the NMI returns, freeze some of the global state variables so we can sync up with this frame when
-; we render the next frame.  Since we're in an interrupt handler here, sno change of the variables changing under
-; our nose
-
-            sep   #$20
-            ldal  ROMBase+$071a
-            xba
-            ldal  ROMBase+$071c
-            rep   #$20
-            sta   ROMScrollEdge
+:no_nmi
 
             pld
             plb
@@ -1009,6 +1126,7 @@ readInput
             pha
             _GTEReadControl
             pla
+            stal  lastKey                          ; Cache for other code
 
 ; Map the GTE field to the NES controller format: A-B-Select-Start-Up-Down-Left-Right
 

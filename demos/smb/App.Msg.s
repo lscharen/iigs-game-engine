@@ -52,6 +52,11 @@ DrawWord       phx                  ; Save register value
                jsr   DrawString
                rts
 
+ClearWord      lda   #EmptyBuff
+               jsr   DrawString
+               rts
+
+EmptyBuff      str   '    '
 WordBuff       str   '0000'
 Addr3Buff      str   '000000'       ; str adds leading length byte
 

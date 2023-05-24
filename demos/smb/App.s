@@ -12,7 +12,7 @@
 
 ; Segment #2 -- ROM
 
-            ASM   rom.s
+            ASM   rom2.s
             KND   #$1100
             SNA   SMBROM
 

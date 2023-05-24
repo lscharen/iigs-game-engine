@@ -44,7 +44,7 @@ JOYPAD_PORT1                =     $4016
 JOYPAD_PORT2                =     $4017
 
 GTE_TMP                     =     $10       ; No zero page references in the assembly to this location
-;GTE_TMP                     =     $7000       ; No zero page references in the assembly to this location
+
 ; GAME SPECIFIC DEFINES
 
 ObjectOffset                =     $08

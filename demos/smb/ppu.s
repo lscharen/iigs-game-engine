@@ -27,7 +27,8 @@ rep8    mac
 
           mx    %11
           dw $a5a5 ; marker to find in memory
-ppuaddr   ds 2     ; 16-bit ppu address
+ppuaddr   ENT
+          ds 2     ; 16-bit ppu address
 w_bit     dw 1     ; currently writing to high or low to the address latch
 vram_buff dw 0     ; latched data when reading VRAM ($0000 - $3EFF)
 
@@ -70,6 +71,7 @@ cond_s  sta ]4
 PPUCTRL_WRITE ENT
         php
         phb
+
         phk
         plb
 
@@ -185,6 +187,10 @@ PPUADDR_WRITE ENT
         eor  #$01
         sta  w_bit
 
+        lda  ppuaddr+1             ; Stay within the mirrored memory space
+        and  #$3F
+        sta  ppuaddr+1
+
         pla
         plx
         plb
@@ -210,6 +216,7 @@ PPUDATA_READ ENT
 
         clc
         adc  ppuincr
+        and  #$3FFF
         sta  ppuaddr
         sep  #$20       ; back to 8-bit acc for the read itself
 
@@ -236,6 +243,11 @@ PPUDATA_READ ENT
         pla
         rtl
 
+
+ppu_write_log_len dw 0
+ppu_write_log  ds 100        ; record the first 50 PPU write addresses in each frame
+
+
 nt_queue_front dw 0
 nt_queue_end   dw 0
 nt_queue       ds 2*{NT_QUEUE_SIZE}
@@ -250,6 +262,36 @@ PPUDATA_WRITE ENT
 
         rep  #$10
         ldx  ppuaddr
+
+*         cpx  #$3F00    ; Just log nametable access, not palette info
+*         bcs  :nolog
+*         phy
+*         pha
+*         ldy  ppu_write_log_len
+*         cpy  #50
+*         bcs  :log_full
+*         rep  #$20
+*         txa
+*         sta  ppu_write_log,y
+*         lda  1,s
+*         and  #$00FF
+*         sta  ppu_write_log+50,y
+*         iny
+*         iny
+*         sty  ppu_write_log_len
+*         sep  #$20
+* :log_full
+*         pla
+*         ply
+* :nolog
+
+;        cmp  #$47
+;        bne  :nobrk
+;        cpx  #$2308
+;        bne  :nobrk
+;        brk  $FD
+;:nobrk
+
         cmp  PPU_MEM,x
         beq  :nochange
 
@@ -259,6 +301,7 @@ PPUDATA_WRITE ENT
         txa
         clc
         adc  ppuincr
+        and  #$3FFF
         sta  ppuaddr
 
 ; Anything between $2000 and $3000, we need to add to the queue.  We can't reject updates here because we may not
@@ -267,7 +310,7 @@ PPUDATA_WRITE ENT
 
         cpx  #$3000
         bcs  :nocache
-        cpx  #$2000
+        cpx  #$2000                ; Change to $2080 to ignore score field updates
         bcc  :nocache
 
         phy
@@ -298,6 +341,7 @@ PPUDATA_WRITE ENT
         txa
         clc
         adc  ppuincr
+        and  #$3FFF
         sta  ppuaddr
 
 :done
@@ -318,6 +362,7 @@ setborder
         stal $E0C034
         plp
         rts
+
 ; Do some extra work to keep palette data in sync
 ;
 ; Based on the palette data that SMB uses, we map the NES palette entries as
@@ -538,7 +583,11 @@ PPUDMA_WRITE ENT
         plp
         rtl
 
-y_offset equ 16
+y_offset_rows equ 2
+y_height_rows equ 25
+y_offset equ {y_offset_rows*8}
+y_height equ {y_height_rows*8}
+
 x_offset equ 16
 
 ; Scan the OAM memory and copy the values of the sprites that need to be drawn. There are two reasons to do this
@@ -560,9 +609,9 @@ scanOAMSprites
 
 :loop
         lda    PPU_OAM,x         ; Y-coordinate
-        cmp    #200+y_offset-9
+        cmp    #y_height+y_offset-9
         bcs    :skip
-        cmp    #16
+        cmp    #y_offset
         bcc    :skip
 
         lda    PPU_OAM+1,x       ; $FC is an empty tile, don't draw it
@@ -731,16 +780,16 @@ drawShadowList
         lda  shadowListBot,x
         and  #$00FF
         tay
-        cpy  #201
-        bcc  *+4
-        brk  $cc
+;        cpy  #201
+;        bcc  *+4
+;        brk  $cc
 
         lda  shadowListTop,x
         and  #$00FF
         tax
-        cpx  #200
-        bcc  *+4
-        brk  $dd
+;        cpx  #200
+;        bcc  *+4
+;        brk  $dd
 
         lda  #0                 ; Invoke the BltRange function
         jsl  LngJmp
@@ -804,7 +853,7 @@ exposeShadowList
 
 :exit
         ldx  :last              ; Expose the final part
-        ldy  #200
+        ldy  #y_height
         lda  #0
         jsl  LngJmp
         rts
@@ -817,7 +866,7 @@ shadowBitmapToList
 
         sep  #$30
 
-        ldx  #2               ; Start at he third row (y_offset = 16) walk the bitmap for 25 bytes (200 lines of height)
+        ldx  #y_offset_rows               ; Start at he third row (y_offset = 16) walk the bitmap for 25 bytes (200 lines of height)
         lda  #0
         sta  shadowListCount  ; zero out the shadow list count
 
@@ -826,7 +875,7 @@ shadowBitmapToList
         ldy  shadowBitmap,x
         beq  :zero_next
 
-        lda  mul8-2,x           ; This is the scanline we're on (offset by the starting byte)
+        lda  mul8-y_offset_rows,x           ; This is the scanline we're on (offset by the starting byte)
         clc
         adc  offset,y         ; This is the first line defined by the bit pattern
         sta  :top
@@ -834,7 +883,7 @@ shadowBitmapToList
 
 :zero_next
         inx
-        cpx  #28              ; End at byte 27
+        cpx  #y_height_rows+y_offset_rows+1              ; End at byte 27
         bcc  :zero_loop
         bra  :exit           ; ended while not tracking a sprite, so exit the function
 
@@ -844,7 +893,7 @@ shadowBitmapToList
         beq  :one_next
 
         tay                  ; Use the inverted bitfield in order to re-use the same lookup table
-        lda  mul8-2,x
+        lda  mul8-y_offset_rows,x
         clc
         adc  offset,y
 
@@ -858,7 +907,7 @@ shadowBitmapToList
 
 :one_next
         inx
-        cpx  #28
+        cpx  #y_height_rows+y_offset_rows+1
         bcc  :one_loop
 
 ; If we end while tracking a sprite, add to the list as the last item
@@ -866,7 +915,7 @@ shadowBitmapToList
         ldx  shadowListCount
         lda  :top
         sta  shadowListTop,x
-        lda  #200
+        lda  #y_height
         sta  shadowListBot,x
         inx
         stx  shadowListCount
