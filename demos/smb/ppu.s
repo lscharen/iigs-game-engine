@@ -619,7 +619,7 @@ scanOAMSprites
         beq    :skip
 
         lda    PPU_OAM+3,x       ; If X-coordinate is off the edge skip it, too.
-        cmp    #241
+        cmp    #255-8
         bcs    :skip
 
         rep    #$20
