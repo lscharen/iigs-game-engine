@@ -3699,16 +3699,31 @@ NoKillE   dex               ;do this until all slots are checked
 FrenzyIDData
       db FlyCheepCheepFrenzy, BBill_CCheep_Frenzy, Stop_Frenzy
 
-AreaFrenzy  ldx $00               ;use area object identifier bit as offset
-             lda FrenzyIDData-8,x  ;note that it starts at 8, thus weird address here
-             ldy #$05
-FreCompLoop dey                   ;check regular slots of enemy object buffer
-             bmi ExitAFrenzy       ;if all slots checked and enemy object not found, branch to store
-             cmp Enemy_ID,y    ;check for enemy object in buffer versus frenzy object
-             bne FreCompLoop
-             lda #$00              ;if enemy object already present, nullify queue and leave
-ExitAFrenzy sta EnemyFrenzyQueue  ;store enemy into frenzy queue
-             rts
+;AreaFrenzy    ldx $00               ;use area object identifier bit as offset
+;              lda FrenzyIDData-8,x  ;note that it starts at 8, thus weird address here
+;              ldy #$05
+;:FreCompLoop  dey                   ;check regular slots of enemy object buffer
+;              bmi :ExitAFrenzy       ;if all slots checked and enemy object not found, branch to store
+;              cmp Enemy_ID,y    ;check for enemy object in buffer versus frenzy object
+;              bne :FreCompLoop
+;              lda #$00              ;if enemy object already present, nullify queue and leave
+;:ExitAFrenzy  sta EnemyFrenzyQueue  ;store enemy into frenzy queue
+;              rts
+
+AreaFrenzy    ldy $00               ;use area object identifier bit as offset
+              lda FrenzyIDData-8,y  ;note that it starts at 8, thus weird address here
+              ldx #$05
+:FreCompLoop  dex                   ;check regular slots of enemy object buffer
+              bmi :ExitAFrenzy       ;if all slots checked and enemy object not found, branch to store
+              cmp Enemy_ID,x    ;check for enemy object in buffer versus frenzy object
+              bne :FreCompLoop
+              lda #$00              ;if enemy object already present, nullify queue and leave
+:ExitAFrenzy  sta EnemyFrenzyQueue  ;store enemy into frenzy queue
+              txa
+              tyx
+              tay
+              lda EnemyFrenzyQueue
+              rts
 
 ;--------------------------------
 ;$06 - used by MushroomLedge to store length
@@ -6774,16 +6789,34 @@ Setup_Vine
         sta Enemy_ID,x           ;store in buffer
         lda #$01
         sta Enemy_Flag,x         ;set flag for enemy object buffer
-        lda Block_PageLoc,y
-        sta Enemy_PageLoc,x      ;copy page location from previous object
-        lda Block_X_Position,y
-        sta Enemy_X_Position,x   ;copy horizontal coordinate from previous object
-        lda Block_Y_Position,y
-        sta Enemy_Y_Position,x   ;copy vertical coordinate from previous object
+
+;        lda Block_PageLoc,y
+;        sta Enemy_PageLoc,x      ;copy page location from previous object
+;        lda Block_X_Position,y
+;        sta Enemy_X_Position,x   ;copy horizontal coordinate from previous object
+;        lda Block_Y_Position,y
+;        sta Enemy_Y_Position,x   ;copy vertical coordinate from previous object
+      stx   GTE_TMP
+      tyx
+
+      lda   Block_PageLoc,x            ; FIXME
+      pha
+      lda   Block_X_Position,x         ; FIXME
+      pha
+      lda   Block_Y_Position,x         ; FIXME
+
+      ldx   GTE_TMP
+      sta   Enemy_Y_Position,x         ;copy vertical coordinate from previous object
+      pla
+      sta   Enemy_X_Position,x         ;copy horizontal coordinate from previous object
+      pla
+      sta   Enemy_PageLoc,x            ;copy page location from previous object
+      lda   Enemy_Y_Position,x         ; GTE: reload into accumulator
+
         ldy VineFlagOffset       ;load vine flag/offset to next available vine slot
         bne NextVO               ;if set at all, don't bother to store vertical
         sta VineStart_Y_Position ;otherwise store vertical coordinate here
-NextVO txa                      ;store object offset to next available vine slot
+NextVO  txa                      ;store object offset to next available vine slot
         sta VineObjOffset,y      ;using vine flag as offset
         inc VineFlagOffset       ;increment vine flag offset
         lda #Sfx_GrowVine
