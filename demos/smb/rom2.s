@@ -10590,7 +10590,7 @@ CopyFToR  tya                      ;move bowser's rear object position value to 
 
           stx GTE_TMP
           tyx
-          sta Enemy_X_Position,y
+          sta Enemy_X_Position,x
           ldx GTE_TMP
 
           lda Enemy_MovingDir,x
