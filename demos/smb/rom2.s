@@ -7004,8 +7004,12 @@ SpawnHammerObj
           bne SetMOfs              ;if any bits are set, branch and use as offset
           lda PseudoRandomBitReg+1
           and #%00001000           ;get d3 from same part of LSFR
-SetMOfs  tay                      ;use either d3 or d2-d0 for offset here
-          lda Misc_State,y         ;if any values loaded in
+SetMOfs   tay                      ;use either d3 or d2-d0 for offset here
+;          lda Misc_State,y         ;if any values loaded in
+          tyx
+          lda   Misc_State,x
+;         x is set immediately on both paths
+
           bne NoHammer             ;$2a-$32 where offset is then leave with carry clear
           ldx HammerEnemyOfsData,y ;get offset of enemy slot to check using Y as offset
           lda Enemy_Flag,x         ;check enemy buffer flag at offset
@@ -7014,7 +7018,12 @@ SetMOfs  tay                      ;use either d3 or d2-d0 for offset here
           txa
           sta HammerEnemyOffset,y  ;save here
           lda #$90
-          sta Misc_State,y         ;save hammer's state here
+;          sta Misc_State,y         ;save hammer's state here
+          phx
+          tyx
+          sta   Misc_State,x
+          plx
+
           lda #$07
           sta Misc_BoundBoxCtrl,y  ;set something else entirely, here
           sec                      ;return with carry set
@@ -7052,25 +7061,47 @@ ProcHammerObj
           jsr MoveObjectHorizontally ;do sub to move it horizontally
           ldx ObjectOffset           ;get original misc object offset
           jmp RunAllH                ;branch to essential subroutines
-SetHSpd  lda #$fe
+SetHSpd   lda #$fe
           sta Misc_Y_Speed,x         ;set hammer's vertical speed
-          lda Enemy_State,y          ;get enemy object state
-          and #%11110111             ;mask out d3
-          sta Enemy_State,y          ;store new state
+
+; No need to preserve x here because it's loaded afterward
+          tyx
+;          lda Enemy_State,y          ;get enemy object state
+          lda   Enemy_State,x
+          and   #%11110111          ;mask out d3
+;          sta Enemy_State,y          ;store new state
+          sta   Enemy_State,x
+
           ldx Enemy_MovingDir,y      ;get enemy's moving direction
           dex                        ;decrement to use as offset
           lda HammerXSpdData,x       ;get proper speed to use based on moving direction
           ldx ObjectOffset           ;reobtain hammer's buffer offset
           sta Misc_X_Speed,x         ;set hammer's horizontal speed
-SetHPos  dec Misc_State,x           ;decrement hammer's state
-          lda Enemy_X_Position,y     ;get enemy's horizontal position
+SetHPos   dec Misc_State,x           ;decrement hammer's state
+
+          stx GTE_TMP
+;          lda Enemy_X_Position,y     ;get enemy's horizontal position
+          tyx
+          lda Enemy_X_Position,x
+          ldx GTE_TMP
+
           clc
           adc #$02                   ;set position 2 pixels to the right
           sta Misc_X_Position,x      ;store as hammer's horizontal position
-          lda Enemy_PageLoc,y        ;get enemy's page location
+
+;          lda Enemy_PageLoc,y        ;get enemy's page location
+          tyx
+          lda Enemy_PageLoc,x
+          ldx GTE_TMP
+
           adc #$00                   ;add carry
           sta Misc_PageLoc,x         ;store as hammer's page location
-          lda Enemy_Y_Position,y     ;get enemy's vertical position
+
+;          lda Enemy_Y_Position,y     ;get enemy's vertical position
+          tyx
+          lda Enemy_Y_Position,x
+          ldx GTE_TMP
+
           sec
           sbc #$0a                   ;move position 10 pixels upward
           sta Misc_Y_Position,x      ;store as hammer's vertical position
