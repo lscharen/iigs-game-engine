@@ -35,6 +35,7 @@ ROMScrollDelta equ 18
 OldROMScrollEdge equ 20
 CurrScrollEdge equ 22
 CurrNTQueueEnd equ 40
+BGToggle    equ   44
 
 Tmp0        equ   240
 Tmp1        equ   242
@@ -58,6 +59,9 @@ FTblTmp     equ   228
             stz   ROMScrollEdge
             stz   ROMScrollDelta
             stz   OldROMScrollEdge
+
+            lda   #1
+            sta   BGToggle
 
 ; The next two direct pages will be used by GTE, so get another 2 pages beyond that for the ROM.  We get
 ; 4K of DP/Stack space by default, so there is plenty to share
@@ -164,6 +168,9 @@ EvtLoop
             beq   :spin
             stz   nmiCount
 
+;            lda   #4
+;            stal  ROMBase+$760
+
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at
 ;
@@ -199,6 +206,14 @@ EvtLoop
             jsr   RenderFrame
             brl   EvtLoop
 :not_s
+            cmp   #'b'                       ; Togget background flag
+            bne   :not_b
+            lda   BGToggle
+            eor   #$0001
+            sta   BGToggle
+            pha
+            _GTEEnableBackground
+:not_b
 
             cmp   #'g'                       ; Re-enable VBL-drive game logic
             bne   :not_g
@@ -291,6 +306,11 @@ RenderFrame
             pha
             pea   $0000
             _GTESetBG0Origin
+
+            lda   ppumask
+            and   #$0008     ; Isolate background enable/disable bit
+            pha
+            _GTEEnableBackground
 
             pea   $FFFF      ; NES mode
             _GTERender
