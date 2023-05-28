@@ -102,6 +102,9 @@ _CallTable
                 adrl  _TSSetAddress-1
                 adrl  _TSUpdateOverlay-1
 
+                adrl  _TSEnableSprites-1
+                adrl  _TSEnableBackground-1
+
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -1028,6 +1031,42 @@ _TSCompileSpriteStamp
                 sta     :output,s
 
                 _TSExit  #0;#4
+
+; EnableSprites(bool)
+_TSEnableSprites
+:enable         equ     FirstParam
+                _TSEntry
+
+                lda     :enable
+                beq     :turn_off
+                lda     #CTRL_SPRITE_DISABLE
+                trb     GTEControlBits
+                bra     :done
+
+:turn_off
+                lda     #CTRL_SPRITE_DISABLE
+                tsb     GTEControlBits
+
+:done
+                _TSExit  #0;#2
+
+; EnableBackground(bool)
+_TSEnableBackground
+:enable         equ     FirstParam
+                _TSEntry
+
+                lda     :enable,s
+                beq     :turn_off
+                lda     #CTRL_BKGND_DISABLE
+                trb     GTEControlBits
+                bra     :done
+
+:turn_off
+                lda     #CTRL_BKGND_DISABLE
+                tsb     GTEControlBits
+
+:done
+                _TSExit  #0;#2
 
 ; Insert the GTE code
 

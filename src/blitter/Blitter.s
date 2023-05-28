@@ -18,6 +18,14 @@ _BltRange
                 bcc   *+3
                 rts
 
+; If the background is disabled, jump to a specialized BG routine
+
+                lda   GTEControlBits
+                bit   #CTRL_BKGND_DISABLE
+                beq   :normal
+                brl   DisabledBG
+:normal
+
                 phb                  ; preserve the bank register
                 clc`
 
@@ -63,17 +71,8 @@ _BltRange
                 bit   #ENGINE_MODE_TWO_LAYER
                 beq   :skip_bank
 
-; TODO: Switch to loading the selected BG1 bank. No special "Alt" bank
-;
-;                lda   RenderFlags
-;                bit   #RENDER_ALT_BG1
-;                beq   :primary
-;
-;                lda   BG1AltBank
-;                bra   :alt
-;
-;:primary        lda   BG1DataBank
-;:alt
+; Load the BG1 data bank
+
                 lda   BG1DataBank
                 pha
                 plb
@@ -107,6 +106,76 @@ stk_save        lda   #0000          ; load the stack
 
                 plb                  ; restore the bank
                 rts
+
+; Specialize routine that just slams a bunch of PHA instructions when background rendering is disabled
+DisabledBG
+                stx  tmp15
+                tya
+                sec
+                sbc  tmp15
+                tay                  ; Put the count in the y register
+
+                lda  ScreenWidth     ; Screen width in bytes (0 - 159)
+                lsr                  ; Convert to number of word
+                eor  #$FFFF
+                adc  #:blkend        ; subtract from the end of the PHA array
+                stal :patch+1
+
+                lda  #8              ; Enable interrups at least this many lines
+                sta  tmp14
+
+                txa                  ; multiply starting line by 2 for indexing
+                asl
+                tax
+
+                php                  ; save the current processor flags
+                sei                  ; disable interrupts
+                tsc                  ; save the stack pointer
+                sta  tmp15
+                _R0W1
+
+:loop
+                lda  RTable,x        ; Load the screen right edge
+                tcs
+                lda  #0
+:patch          jmp  $0000
+                lup  80
+                pha
+                --^
+:blkend
+                dec   tmp14
+                bmi   :enable_int
+
+:next
+                inx
+                inx
+                dey
+                bne  :loop
+
+                _R0W0
+                lda  tmp15
+                tcs
+                plp
+                rts
+
+:enable_int
+                lda   #8             ; Reset the counter
+                sta   tmp14
+
+                lda   tmp15         ; restore the stack
+                tcs
+                sep   #$30                       ; 8-bit mode
+                ldal  STATE_REG
+                tax                              ; Save the value
+                and   #$CF                       ; Read Bank 0 / Write Bank 0
+                stal  STATE_REG
+                cli
+                nop                              ; Give a couple of cycles
+                sei
+                txa                              ; Restore the state
+                stal  STATE_REG
+                rep   #$30
+                bra   :next
 
 ; External entry point.  Can be called directly from another bank
 BltRange

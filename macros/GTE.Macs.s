@@ -138,6 +138,12 @@ _GTESetAddress       MAC
 _GTEUpdateOverlay    MAC
                      UserTool  $2F00+GTEToolNum
                      <<<
+_GTEEnableSprites    MAC
+                     UserTool  $3000+GTEToolNum
+                     <<<
+_GTEEnableBackground MAC
+                     UserTool  $3100+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition

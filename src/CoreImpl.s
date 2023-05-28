@@ -218,8 +218,9 @@ EngineReset
                   stz       TileMapHeight
                   stz       TileMapPtr
                   stz       TileMapPtr+2
-                  stz       FringeMapPtr
-                  stz       FringeMapPtr+2
+;                  stz       FringeMapPtr
+;                  stz       FringeMapPtr+2
+                  stz       GTEControlBits
 
                   stz       BG1TileMapWidth
                   stz       BG1TileMapHeight

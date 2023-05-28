@@ -205,6 +205,10 @@ _RenderNES
 ; This is handled by the callback in two phases.  We pass pointers to the internal function the callback needs
 ; access to.  If there is no function defined, do nothing
 
+            lda   GTEControlBits
+            bit   #CTRL_SPRITE_DISABLE
+            bne   :no_render
+
             lda   ExtSpriteRenderer
             ora   ExtSpriteRenderer+2
             beq   :no_render

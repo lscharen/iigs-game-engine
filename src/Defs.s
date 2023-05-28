@@ -76,7 +76,8 @@ OldBG1TileOriginY      equ   68
 TileMapWidth           equ   70          ; Pointer to memory holding the tile map for the primary background
 TileMapHeight          equ   72
 TileMapPtr             equ   74
-FringeMapPtr           equ   78
+; FringeMapPtr           equ   78
+GTEControlBits         equ   78          ; Enable / disable things
 
 BG1TileMapWidth        equ   82
 BG1TileMapHeight       equ   84
@@ -214,6 +215,10 @@ CALLBACK               equ   $0010
 PAD_BUTTON_B           equ   $0100
 PAD_BUTTON_A           equ   $0200
 PAD_KEY_DOWN           equ   $0400
+
+; GTE Control Bits
+CTRL_SPRITE_DISABLE    equ   $0001
+CTRL_BKGND_DISABLE     equ   $0002
 
 ; Tile constants
 TILE_DAMAGED_BIT       equ   $8000                  ; Mark a tile as damaged (internal only)
