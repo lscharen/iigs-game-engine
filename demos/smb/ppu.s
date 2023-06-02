@@ -361,7 +361,7 @@ PPUDATA_WRITE ENT
         sta  1,s
 
         tya
-        eor  PPU_MEM,x                ; Identify bit that have changed
+        eor  PPU_MEM,x                ; Identify bits that have changed
         and  #$00FF
         bit  #$00C0
         beq  :skip_bot_right
@@ -1122,5 +1122,5 @@ NESTileBlitter
         sta  tmp_tile_data+{]line*4}+2
 ]line   equ  ]line+1
         --^
-        lda  #1                            ; Request tmp_tile_data be copies to tile store
+        lda  #1                            ; Request tmp_tile_data be copied to tile store
         rtl
