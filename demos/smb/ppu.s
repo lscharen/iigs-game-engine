@@ -944,7 +944,11 @@ drawOAMSprites
         phk
         plb
 
-        pha
+        pha                ; Save the phase indicator
+        tdc                ; Keep a copy of the second page of GTE direct page space
+        clc
+        adc   #$0100
+        sta   GTE_DP2+1
 
         lda   DPSave
         tcd
@@ -1014,10 +1018,10 @@ drawSprites
 
         mx %11
 oam_loop
-        phx                 ; Save x
+        phx                  ; Save x
 
         lda   OAM_COPY,x     ; Y-coordinate
-        inc                 ; Compensate for PPU delayed scanline
+        inc                  ; Compensate for PPU delayed scanline
 
         rep   #$30
         and   #$00FF
@@ -1044,31 +1048,35 @@ oam_loop
 
         lda  OAM_COPY+2,x
         pha
-        bit  #$0040                  ; horizontal flip
+        bit  #$0040                   ; horizontal flip
         bne  :hflip
 
         lda  OAM_COPY,x               ; Load the tile index into the high byte (x256)
         and  #$FF00
-        lsr                          ; multiple by 128
+        lsr                           ; multiple by 128
         tax
         bra  :noflip
 
 :hflip
         lda  OAM_COPY,x               ; Load the tile index into the high byte (x256)
         and  #$FF00
-        lsr                          ; multiple by 128
-        adc  #64                     ; horizontal flip
+        lsr                           ; multiple by 128
+        adc  #64                      ; horizontal flip
         tax
 
 :noflip
-;        sta   swizzle                ; store a pointer to the swizzle table to use
-
         pla
         asl
         and   #$0146                 ; Set the vflip bit, priority, and palette select bits
 
-drawTilePatch
-        jsl   $000000                ; Draw the tile on the graphics screen
+        phd
+GTE_DP2 pea   $0000
+        pld
+        jsr   drawTileToScreen
+        pld
+
+;drawTilePatch
+;        jsl   $000000                ; Draw the tile on the graphics screen
 
         sep   #$30
         plx                          ; Restore the counter
@@ -1092,13 +1100,99 @@ drawTilePatch
 ; Temporary tile space on the direct page
 tmp_tile_data      equ 80
 
+DP2_TILEDATA_AND_BANK01_BANKS equ 172
+
 ;USER_TILE_RECORD   equ  178
 USER_TILE_ID       equ  178         ; copy of the tile id in the tile store
 ;USER_TILE_CODE_PTR equ  180         ; pointer to the code bank in which to patch
 USER_TILE_ADDR     equ  184         ; address in the tile data bank (set on entry)
 USER_FREE_SPACE    equ  186         ; a few bytes of scratch space
 
+USER_SCREEN_ADDR   equ  190
+
 LDA_IND_LONG_IDX equ $B7
+ORA_IND_LONG_IDX equ $17
+
+SHR_LINE_WIDTH equ 160
+
+; Draw a tile to the graphics screen
+;
+; D = GTE Page 2
+; X = tile address
+; Y = screen address
+; A = tile control bits; h ($0100), v ($0040) and palette select ($0006)
+jne     mac
+        beq   *+5
+        jmp   ]1
+        <<<
+
+jeq     mac
+        bne   *+5
+        jmp   ]1
+        <<<
+
+drawTileToScreen
+
+        stx   USER_TILE_ADDR
+        sty   USER_SCREEN_ADDR
+
+        phb
+        pei   DP2_TILEDATA_AND_BANK01_BANKS
+        plb
+
+        pha
+        and   #$0006                             ; Isolate the palette selection bits
+        clc
+        adc   #$0008                             ; Sprite palettes are in the second half
+        xba
+        clc
+        adc   #W11_T0
+        sta   USER_FREE_SPACE
+        lda   #^W11_T0
+        sta   USER_FREE_SPACE+2                  ; Set the pointer to the right swizzle table
+
+        pla
+        bit    #$0040
+        beq    :no_prio
+        bit    #$0100
+;        jeq    :drawPriorityToScreen
+;        jmp    :drawPriorityToScreenV
+
+:no_prio
+        bit    #$0100
+;        jne    :drawTileToScreenV
+
+]line   equ   0
+        lup   8
+        ldx   USER_TILE_ADDR
+        ldy:  {]line*4}+2,x                       ; Load the tile data lookup value
+        lda:  {]line*4}+32+2,x                    ; Load the mask value
+        ldx   USER_SCREEN_ADDR
+        andl  $010000+{]line*SHR_LINE_WIDTH}+2,x  ; Mask against the screen
+        db    ORA_IND_LONG_IDX,USER_FREE_SPACE    ; Insert the actual tile data
+        stal  $010000+{]line*SHR_LINE_WIDTH}+2,x
+
+        ldx   USER_TILE_ADDR
+        ldy:  {]line*4},x                       ; Load the tile data lookup value
+        lda:  {]line*4}+32,x                    ; Load the mask value
+        ldx   USER_SCREEN_ADDR
+        andl  $010000+{]line*SHR_LINE_WIDTH},x  ; Mask against the screen
+        db    ORA_IND_LONG_IDX,USER_FREE_SPACE    ; Insert the actual tile data
+        stal  $010000+{]line*SHR_LINE_WIDTH},x
+
+]line   equ   ]line+1
+        --^
+
+        plb
+        plb                        ; Restore initial data bank
+        rts
+
+:drawTileToScreenV
+:drawPriorityToScreen
+:drawPriorityToScreenV
+        plb
+        plb                        ; Restore initial data bank
+        rts
 
 ; Assume that when the tile is updated, it includes a full 10-bit value with the 
 ; palette bits included with the lookup bits

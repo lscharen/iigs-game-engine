@@ -110,14 +110,14 @@ FTblTmp     equ   228
             _GTESetAddress
 
 ; Get the address of a low-level routine that can be used to draw a tile directly to the graphics screen
-            pea   rawDrawTile
-            _GTEGetAddress
-            lda   1,s
-            sta   drawTilePatch+1
-            lda   2,s
-            sta   drawTilePatch+2
-            pla
-            plx
+;            pea   rawDrawTile
+;            _GTEGetAddress
+;            lda   1,s
+;            sta   drawTilePatch+1
+;            lda   2,s
+;            sta   drawTilePatch+2
+;            pla
+;            plx
 
 ; Initialize the graphics screen playfield (256x160).  The NES is 240 lines high, so 160
 ; is a reasonable compromise.
@@ -1268,16 +1268,16 @@ DLUT4       db    $00,$01,$10,$11    ; CHR_ROM[0] = xx, CHR_ROM[8] = 00
             db    $20,$21,$30,$31    ; CHR_ROM[0] = xx, CHR_ROM[8] = 10
             db    $22,$23,$32,$33    ; CHR_ROM[0] = xx, CHR_ROM[8] = 11
 
-;MLUT        dw    $FF,$F0,$0F,$00
-;            dw    $F0,$F0,$00,$00
-;            dw    $0F,$00,$0F,$00
-;            dw    $00,$00,$00,$00
+MLUT4       db    $FF,$F0,$0F,$00
+            db    $F0,$F0,$00,$00
+            db    $0F,$00,$0F,$00
+            db    $00,$00,$00,$00
 
 ; Inverted mask for using eor/and/eor rendering
-MLUT4       db    $00,$0F,$F0,$FF
-            db    $0F,$0F,$FF,$FF
-            db    $F0,$FF,$F0,$FF
-            db    $FF,$FF,$FF,$FF
+;MLUT4       db    $00,$0F,$F0,$FF
+;            db    $0F,$0F,$FF,$FF
+;            db    $F0,$FF,$F0,$FF
+;            db    $FF,$FF,$FF,$FF
 
 ; Extracted tiles
 TileBuff    ds    128
