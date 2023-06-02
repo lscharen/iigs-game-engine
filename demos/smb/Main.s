@@ -536,7 +536,7 @@ GetPaletteSelect
 
             txa
             and   #$2C00
-            ora   #$03C0
+            ora   #$23C0                   ; Make sure to put the addr in the $2xxx range
             sta   Tmp6                     ; Base attribute table address
 
 ; Not calculate the byte within the attribute table
