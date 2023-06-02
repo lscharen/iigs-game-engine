@@ -176,6 +176,7 @@ zpToUse         =    userId+4
 
                 pld                        ; Restore the caller's direct page
 
+:exit
                 ldx     #0                 ; No error
                 ldy     #6                 ; Remove the 6 input bytes
                 jml     ToStrip
@@ -1011,8 +1012,28 @@ _TSSetAddress
                 lda     :ptr+2,s
                 sta     ExtUpdateBG0Tiles+2
                 bra     :out
-:next_5
 
+:next_5         cmp     #userTileCallback
+                bne     :next_6
+
+                lda     :ptr,s
+                ora     :ptr+2,s
+                beq     :utd_restore
+
+                lda     :ptr,s
+                stal    _UTDPatch+1         ; long addressing because we're patching code in the K bank
+                lda     :ptr+1,s
+                stal    _UTDPatch+2
+                brl     :out
+
+:utd_restore
+                lda     #UserHook1
+                stal    _UTDPatch+1
+                lda     #>UserHook1
+                stal    _UTDPatch+2
+                brl     :out
+
+:next_6
 :out
                 _TSExit #0;#6
 

@@ -913,6 +913,10 @@ _CacheSpriteBanks
             ora    #^tiledata
             sta    DP2_TILEDATA_AND_SPRITEDATA_BANKS,x
 
+            lda    #$0100
+            ora    #^tiledata
+            sta    DP2_TILEDATA_AND_BANK01_BANKS,x
+
             lda    #>spritedata
             and    #$FF00
             ora    #^TileStore

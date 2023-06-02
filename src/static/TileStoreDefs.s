@@ -10,8 +10,8 @@ TS_DIRTY              equ  {TILE_STORE_SIZE*1}      ; Flag. Used to prevent a ti
 TS_SPRITE_FLAG        equ  {TILE_STORE_SIZE*2}      ; Bitfield of all sprites that intersect this tile. 0 if no sprites.
 TS_TILE_ADDR          equ  {TILE_STORE_SIZE*3}      ; cached value, the address of the tiledata for this tile
 TS_CODE_ADDR_LOW      equ  {TILE_STORE_SIZE*4}      ; const value, address of this tile in the code fields
-TS_CODE_ADDR_HIGH     equ  {TILE_STORE_SIZE*5}
-TS_WORD_OFFSET        equ  {TILE_STORE_SIZE*6}      ; const value, word offset value for this tile if LDA (dp),y instructions re used
+TS_CODE_ADDR_HIGH     equ  {TILE_STORE_SIZE*5}      ; the top byte of this address holds the GTE data bank for easy restore
+TS_WORD_OFFSET        equ  {TILE_STORE_SIZE*6}      ; const value, word offset value for this tile if LDA (dp),y instructions are used
 TS_JMP_ADDR           equ  {TILE_STORE_SIZE*7}      ; const value, address of the 32-byte snippet space for this tile
 TS_SCREEN_ADDR        equ  {TILE_STORE_SIZE*8}      ; cached value of on-screen location of tile. Used for DirtyRender.
 

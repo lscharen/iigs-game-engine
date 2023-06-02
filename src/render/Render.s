@@ -3,6 +3,7 @@
 _RenderTile
             lda   TileStore+TS_SPRITE_FLAG,x       ; any sprites on this tile?
             bne   _HasSprites
+            jmp   (K_TS_BASE_TILE_DISP,x)          ; go to the tile copy routine
 
 ; Probably best to rework this to just jump to the tile routine directly, even if there
 ; is some boilerplate code because it is useful to be able to access the data bank before

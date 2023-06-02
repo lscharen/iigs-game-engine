@@ -608,11 +608,11 @@ CopyTileToDyn
             tax
 
             tya
-            and   #$001F        ; Maximum of 32 dynamic tiles
+            and   #$001F                  ; Maximum of 32 dynamic tiles
             asl
-            asl                 ; 4 bytes per page
+            asl                           ; 4 bytes per page
             adc   BlitterDP               ; Add to the bank 00 base address
-            adc   #$0100        ; Go to the next page
+            adc   #$0100                  ; Go to the next page
             tay
             jsr   CopyTileDToDyn          ; Copy the tile data
             jmp   CopyTileMToDyn          ; Copy the tile mask

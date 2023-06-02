@@ -13,6 +13,7 @@ _CompileStamp
 :vbuffAddr   equ    tmp5
 :rtnval      equ    tmp6
 
+LDA_IND_LONG_IDX equ $B7
 LDA_IMM_OPCODE   equ $A9
 LDA_ABS_X_OPCODE equ $BD
 AND_IMM_OPCODE   equ $29
@@ -139,7 +140,7 @@ RTL_OPCODE       equ $6B
 
 ; 4 palettes for the sprite data.  Converts 4 pixels at a time from 0000 0000w wxxy yzz0 -> gggg hhhh iiii jjjj
 ; each swizzle table is 512 bytes long, 2048 bytes for all four.  They need to be prec
-swizzle
+
 ; Draw a tile directly to the graphics screen as a sprite
 ;
 ; Y = screen address
@@ -147,49 +148,65 @@ swizzle
 ; A = $0001 = ignore mask
 ;   = $0080 = vflip
 ;   = $0600 = palette select
-* _DrawSwizzleTileToScreen
-* :palette    equ    240
-* ; Tile data must be 0000 000w wxxy yzz0
-* ; Tile mask is normal pixel data
 
-*             and   #$0600
-*             sta   :palette               ; cache the palette bits
+_DrawTileToScreenX
+            rtl
 
-*             lda   #^swizzle
-*             sta   tmp+2
+            phb
+            phd                                    ; Save the curren direct page and bank
 
-*             ldal  tiledata+{]line*4},x
-*             ora   :palette
-*             sta   tmp
-*             lda:  {]line*SHR_LINE_WIDTH},y
-*             andl  tiledata+{]line*4}+32,x
-*             ora   [tmp]
-*             sta:  {]line*SHR_LINE_WIDTH},y
+            ldal  tool_direct_page                 ; Can't assume where we are
+            clc
+            adc   #$100                            ; Sprite space is on the second page
+            tcd
 
-*             tay
-*             lda   swizzle,y
+            pei   DP2_TILEDATA_AND_BANK01_BANKS    ; Push the two bank we need
+            plb                                    ; Pop off the tile data bank
 
+;            lda   #W11_S0
+;            stz   SwizzlePtr
+;            lda   #^W11_S0
+;            sta   SwizzlePtr+2
 
-*             phb
-*             pea    $0101
-*             plb
-*             plb
+]line       equ   0
+            lup   8
+            ldy   tiledata+{]line*4}+2,x           ; load the 8-bit NES tile data
+;            lda   [SwizzlePtr],y                   ; lookup the swizzle value
+;            db    LDA_IND_LONG_IDX,SwizzlePtr
+;            lda   tiledata+{]line*4}+2,x
+            sta   tmp_sprite_data+{]line*4}+2
 
-            
-* ]line       equ   0
-*             lup   8
-*             lda:  {]line*SHR_LINE_WIDTH}+2,y
-*             andl  tiledata+{]line*4}+32+2,x
-*             oral  tiledata+{]line*4}+2,x
-*             sta:  {]line*SHR_LINE_WIDTH}+2,y
-*             lda:  {]line*SHR_LINE_WIDTH},y
-*             andl  tiledata+{]line*4}+32,x
-*             oral  tiledata+{]line*4},x
-*             sta:  {]line*SHR_LINE_WIDTH},y
-* ]line       equ   ]line+1
-*             --^
-*             plb
-*             rtl                          ; special exit
+            ldy   tiledata+{]line*4},x             ; load the 8-bit NES tile data
+;            lda   [SwizzlePtr],y                   ; lookup the swizzle value
+;            db    LDA_IND_LONG_IDX,SwizzlePtr
+;            lda   tiledata+{]line*4},x
+            sta   tmp_sprite_data+{]line*4}
+]line       equ   ]line+1
+            --^
+
+            plb                                    ; Pop off bank 01
+
+]line       equ   0
+            lup   8
+            ldal  tiledata+{]line*4}+32+2,x
+            eor   #$FFFF
+            and:  {]line*SHR_LINE_WIDTH}+2,y
+            ora   tmp_sprite_data+{]line*4}+2
+            sta:  {]line*SHR_LINE_WIDTH}+2,y
+
+            ldal  tiledata+{]line*4}+32,x
+            eor   #$FFFF
+            and:  {]line*SHR_LINE_WIDTH},y
+            ora   tmp_sprite_data+{]line*4}
+            sta:  {]line*SHR_LINE_WIDTH},y
+]line       equ   ]line+1
+            --^
+
+; Restore the direct page and bank
+
+            pld
+            plb
+            rtl
 
 pal_select  dw    $3333,$6666,$9999,$CCCC
 

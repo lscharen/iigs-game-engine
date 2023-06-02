@@ -404,24 +404,66 @@ _SetTile
                  jmp  _PushDirtyTileX
 
 :set_user_tile
+                 and  #$01FF
+                 jsr  _GetTileAddr                 ; The user tile callback needs access to this info, too, but
+                 sta  TileStore+TS_TILE_ADDR,x     ; we just give the base tile address (hflip bit is ignored)
+
                  lda  #UserTileDispatch
                  stal K_TS_BASE_TILE_DISP,x
-                 lda  #UserTileDispatch
                  stal K_TS_SPRITE_TILE_DISP,x
-                 lda  #UserTileDispatch
                  stal K_TS_ONE_SPRITE,x
                  jmp  _PushDirtyTileX
 
-; Trampoline / Dispatch table for user-defined tiles.  If the user calls the GTESetCustomTileCallback toolbox routine,
-; then this value is patched out.  Calling GTESetCustomTileCallback with NULL will disconnect the user's routine.
+; Trampoline / Dispatch table for user-defined tiles.  If the user calls the GTESetAddress toolbox routine,
+; then this value is patched out.  Calling GTESetAddress with NULL will disconnect the user's routine.
+;
+; This hook copies essential information from the TileStore into a local record on the direct page and then
+; passes that record to callback function.  We are in the second direct page of the GTE bank 0 space.
 UserTileDispatch
-                 ldal TileStore+TS_TILE_ID,x      ; Replace the tile data address (unset) with the tile id
-_UTDPatch        jsl  UserHook1                   ; Call the users code
-                 plb                              ; Restore the data bank
+                 lda   TileStore+TS_TILE_ID,x
+                 sta   USER_TILE_ID
+                 lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
+                 sta   USER_TILE_CODE_PTR+2
+                 lda   TileStore+TS_CODE_ADDR_LOW,x
+                 sta   USER_TILE_CODE_PTR
+                 lda   TileStore+TS_TILE_ADDR,x
+                 sta   USER_TILE_ADDR
+
+                 ldx   #USER_TILE_RECORD                ; pass the direct page offset to the user
+                 pei   DP2_TILEDATA_AND_TILESTORE_BANKS ; set the bank to the tiledata bank
+                 plb
+_UTDPatch        jsl   UserHook1                        ; Call the users code
+                 plb                                    ; Restore the curent bank
+
+; When the user's code returns, it can ask GTE to invoke a utility routine to copy data from the 
+; temporary buffer space into the code field
+
+                 cmp  #0
+                 beq  :done
+                 jmp  FastCopyTmpDataA                 ; Non-zero value to continue additional work
+:done
                  rts
 
 ; Stub to have a valid address for initialization / reset
 UserHook1        rtl
+
+; Fast utility function to just copy tile data straight from the tmp_tile_data buffer to the code field.  This is only
+; used by the user callback, so we can assume knowledge of the values on the direct page.
+FastCopyTmpDataA
+                 pei   USER_TILE_CODE_PTR+2
+                 ldy   USER_TILE_CODE_PTR
+                 plb
+
+]line            equ   0
+                 lup   8
+                 lda   tmp_tile_data+{]line*4}
+                 sta:  $0004+{]line*$1000},y
+                 lda   tmp_tile_data+{]line*4}+2
+                 sta:  $0001+{]line*$1000},y
+]line            equ   ]line+1
+                 --^
+                 plb
+                 rts
 
 ; X = Tile Store offset
 ; Y = Engine Mode Base Table address

@@ -4,6 +4,12 @@
 ; not needed to improve rendering speed.
 
 ConstTile0Fast
+            lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
+            pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
+            ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
+;            lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
+            plb
+
             lda   #0
             sta:  $0001,y
             sta:  $0004,y
@@ -273,6 +279,12 @@ FastCopyTileDataAndMaskV
 ; This is called via a JMP (abs,x) with an extra byte on the stack that holds the bank
 ; register value.  This must be restored prior to returning
 CopyTileAFast
+                 lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
+                 pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
+                 ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
+                 lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
+                 plb
+
                  tax
 _CopyTileAFast
 ]line            equ             0
@@ -288,6 +300,12 @@ _CopyTileAFast
 
 
 CopyTileVFast
+                 lda   TileStore+TS_CODE_ADDR_HIGH,x    ; load the bank of the target code field line
+                 pha                                    ; and put on the stack for later. Has TileStore bank in high byte.
+                 ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
+                 lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
+                 plb
+
                  tax
 _CopyTileVFast
 ]src             equ             7

@@ -161,6 +161,14 @@ DP2_TILEDATA_AND_TILESTORE_BANKS   equ 164
 DP2_SPRITEDATA_AND_TILESTORE_BANKS equ 166
 DP2_TILEDATA_AND_SPRITEDATA_BANKS  equ 168
 DP2_BANK01_AND_TILESTORE_BANKS     equ 170
+DP2_TILEDATA_AND_BANK01_BANKS      equ 172
+
+; Tile record passed to user-defined tile callback
+USER_TILE_RECORD        equ  178
+USER_TILE_ID            equ  178         ; copy of the tile id in the tile store
+USER_TILE_CODE_PTR      equ  180         ; pointer to the code bank in which to patch
+USER_TILE_ADDR          equ  184         ; address in the tile data bank
+USER_FREE_SPACE         equ  186         ; a few bytes of scratch space
 
 SPRITE_VBUFF_PTR        equ  224         ; 32 bytes of adjusted pointers to VBuffArray addresses
 ; End direct page values
@@ -197,6 +205,7 @@ vblCallback            equ   $0004        ; User routine to be called by VBL int
 extSpriteRenderer      equ   $0005
 rawDrawTile            equ   $0006
 extBG0TileUpdate       equ   $0007
+userTileCallback       equ   $0008
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
