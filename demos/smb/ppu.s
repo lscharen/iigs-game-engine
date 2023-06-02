@@ -259,42 +259,15 @@ PPUDATA_WRITE ENT
         plb
         pha
         phx
+        phy
 
         rep  #$10
         ldx  ppuaddr
 
-*         cpx  #$3F00    ; Just log nametable access, not palette info
-*         bcs  :nolog
-*         phy
-*         pha
-*         ldy  ppu_write_log_len
-*         cpy  #50
-*         bcs  :log_full
-*         rep  #$20
-*         txa
-*         sta  ppu_write_log,y
-*         lda  1,s
-*         and  #$00FF
-*         sta  ppu_write_log+50,y
-*         iny
-*         iny
-*         sty  ppu_write_log_len
-*         sep  #$20
-* :log_full
-*         pla
-*         ply
-* :nolog
-
-;        cmp  #$47
-;        bne  :nobrk
-;        cpx  #$2308
-;        bne  :nobrk
-;        brk  $FD
-;:nobrk
-
         cmp  PPU_MEM,x
         beq  :nochange
 
+        ldy  PPU_MEM,x                ; Save in case we need to compare later
         sta  PPU_MEM,x
 
         rep  #$30
@@ -307,13 +280,50 @@ PPUDATA_WRITE ENT
 ; Anything between $2000 and $3000, we need to add to the queue.  We can't reject updates here because we may not
 ; actually update the GTE tile store for several game frames and the position of the tile within the tile store
 ; may change if the screen is scrolling
+;
+; There is one special case. We want the nt_queue to only be a queue of tiles to possibly redraw.  If the PPU
+; data that is updated is in the attribute table area, then we do some extra work to decide which of the 16
+; tiles *actually* need to be redrawn
 
         cpx  #$3000
         bcs  :nocache
         cpx  #$2000                ; Change to $2080 to ignore score field updates
         bcc  :nocache
 
-        phy
+        txa
+        and  #$03C0
+        cmp  #$03C0
+        beq  :attrtbl
+
+        jsr  :enqueue              ; Add the address in the X register to the queue
+
+:nocache
+        cpx  #$3F00
+        bcc  :done
+        brl  :extra
+
+;        bcs  :extra
+;        bra  :done
+
+:nochange
+        rep  #$30
+        txa
+        clc
+        adc  ppuincr
+        and  #$3FFF
+        sta  ppuaddr
+
+:done
+        sep  #$30
+        ply
+        plx
+        pla
+        plb
+        plp
+        rtl
+
+        mx   %00
+:enqueue
         lda  nt_queue_end
         tay
         inc
@@ -327,37 +337,98 @@ PPUDATA_WRITE ENT
         sta  nt_queue,y
 
 :full
-        lda  #1
-        jsr  setborder
-        ply
+;        lda  #1
+;        jsr  setborder
+        rts
 
-:nocache
-        cpx  #$3F00
-        bcs  :extra
-        bra  :done
+:attrtbl
+        txa                           ; Calculate the base address in the nametable from the attribute address
+        and  #$2C00
+        pha
+        txa
+        and  #$0007
+        asl
+        asl
+        ora  1,s
+        sta  1,s
+        txa
+        and  #$0038
+        asl
+        asl
+        asl
+        asl
+        ora  1,s
+        sta  1,s
 
-:nochange
-        rep  #$30
+        tya
+        eor  PPU_MEM,x                ; Identify bit that have changed
+        and  #$00FF
+        bit  #$00C0
+        beq  :skip_bot_right
+
+        pha
+        lda  3,s
+        clc
+        adc  #64+2                    ; offset 2 rows an 2 columns
+        tax
+        jsr  :enqueue_blk
+        pla
+:skip_bot_right
+
+        bit  #$0030
+        beq  :skip_bot_left
+
+        pha
+        lda  3,s
+        clc
+        adc  #64                    ; offset 2 rows
+        tax
+        jsr  :enqueue_blk
+        pla
+:skip_bot_left
+
+        bit  #$000C
+        beq  :skip_top_right
+
+        pha
+        lda  3,s
+        tax
+        inx
+        inx
+        tax
+        jsr  :enqueue_blk
+        pla
+:skip_top_right
+
+        bit  #$0003
+        beq  :skip_top_left
+
+        lda  1,s
+        tax
+        jsr  :enqueue_blk
+:skip_top_left
+
+        pla                       ; pop the base address off
+        brl  :done
+
+; Pass in PPU address in X register
+:enqueue_blk
+        jsr  :enqueue
+        inx
+        jsr  :enqueue
         txa
         clc
-        adc  ppuincr
-        and  #$3FFF
-        sta  ppuaddr
-
-:done
-        sep  #$30
-        plx
-        pla
-        plb
-        plp
-        rtl
-
+        adc  #32
+        tax
+        jsr  :enqueue
+        dex
+        jmp  :enqueue
 
 setborder
         php
         sep  #$20
         eorl $E0C034
-        and  #$F0
+        and  #$0F
         eorl $E0C034
         stal $E0C034
         plp
@@ -365,45 +436,13 @@ setborder
 
 ; Do some extra work to keep palette data in sync
 ;
-; Based on the palette data that SMB uses, we map the NES palette entries as
+; Based on the palette data that SMB uses, we remap the NES palette entries
+; based on the AreaType, so most of the PPU writes are ignored.  However,
+; we do update some specific palette entries
 ;
-; NES      Description        IIgs Palette
-; ----------------------------------------
-; BG0      Background color   0
-; BG0,1    Light Green        1
-; BG0,2    Dark Green         2
-; BG0,3    Black              3
-; BG1,1    Peach              4
-; BG1,2    Brown              5
-; BG1,3    Black              3
-; BG2,1    White              6
-; BG2,2    Light Blue         7
-; BG2,3    Black              3
-; BG3,1    Cycle              8          ; Coins / Blocks
-; BG3,2    Brown              5
-; BG3,3    Black              3
-; SP0                         0
-; SP0,1    Red                9
-; SP0,2    Orange            10
-; SP0,3    Olive             11
-; SP1,1    Dark Green         2
-; SP1,2    White              6
-; SP1,3    Orange            10
-; SP2,1    Red                9
-; SP2,2    White              6
-; SP2,3    Orange            10
-; SP3,1    Black              3
-; SP3,2    Peach              4
-; SP3,3    Brown              5
-;
-; There are 4 color to spare in case we need to add more entries.  This mapping table is important because
-; we have to have a custom tile rendering function and custom sprite rendering function that will dynamically
-; map the 2-bit tile data into the proper palette range.  This will likely be implemented with an 8-bit
-; swizzle table.  Possible optimization later on is to pre-swizzle certain tiles assuming that the palette
-; assignments never change.
-;
-; BG Palette 2 can probably be ignored because it's just for the top of the screen and we can use a separate
-; SCB palette for that line
+; BG0,0 maps to IIgs Palette index 0    (Background color)
+; BG3,1 maps to IIgs Palette index 1    (Color cycle for blocks)
+; SP0,1 maps to IIgs Palette index 15   (Player primary color; changes with fire flower)
         mx   %00
 :extra
         txa
@@ -427,91 +466,28 @@ ppu_3F00
         ldx  #0
         brl  extra_out
 
-; Background Palette 0
-ppu_3F01
-        lda  PPU_MEM+$3F01
-        ldx  #2
-        brl  extra_out
-
-ppu_3F02
-        lda  PPU_MEM+$3F02
-        ldx  #4
-        brl  extra_out
-
-ppu_3F03
-        lda  PPU_MEM+$3F03
-        ldx  #6
-        brl  extra_out
-
 ; Shadow for background color
 ppu_3F10
         lda  PPU_MEM+$3F10
         ldx  #0
         brl  extra_out
 
-; Sprite Palette 0
+
+; Tile palette 3, color 1
+ppu_3F0D
+        lda  PPU_MEM+$3F0D
+        ldx  #2
+        brl  extra_out
+
+; Sprite Palette 0, color 1
 ppu_3F11
         lda  PPU_MEM+$3F11
-        ldx  #8
-        brl  extra_out
-
-ppu_3F12
-        lda  PPU_MEM+$3F12
-        ldx  #10
-        brl  extra_out
-
-ppu_3F13
-        lda  PPU_MEM+$3F13
-        ldx  #12
-        brl  extra_out
-
-; Sprite Palette 1
-ppu_3F15
-        lda  PPU_MEM+$3F15
-        ldx  #14
-        brl  extra_out
-
-ppu_3F16
-        lda  PPU_MEM+$3F16
-        ldx  #16
-        brl  extra_out
-
-ppu_3F17
-        lda  PPU_MEM+$3F17
-        ldx  #18
-        brl  extra_out
-
-; Sprite Palette 2
-ppu_3F19
-        lda  PPU_MEM+$3F19
-        ldx  #20
-        brl  extra_out
-
-ppu_3F1A
-        lda  PPU_MEM+$3F1A
-        ldx  #22
-        brl  extra_out
-
-ppu_3F1B
-        lda  PPU_MEM+$3F1B
-        ldx  #24
-        brl  extra_out
-
-; Sprite Palette 3
-ppu_3F1D
-        lda  PPU_MEM+$3F1D
-        ldx  #26
-        brl  extra_out
-
-ppu_3F1E
-        lda  PPU_MEM+$3F1E
-        ldx  #28
-        brl  extra_out
-
-ppu_3F1F
-        lda  PPU_MEM+$3F1F
         ldx  #30
         brl  extra_out
+
+ppu_3F01
+ppu_3F02
+ppu_3F03
 
 ppu_3F04
 ppu_3F05
@@ -524,29 +500,42 @@ ppu_3F0A
 ppu_3F0B
 
 ppu_3F0C
-ppu_3F0D
+
 ppu_3F0E
 ppu_3F0F
 
+ppu_3F12
+ppu_3F13
+
 ppu_3F14
+ppu_3F15
+ppu_3F16
+ppu_3F17
+
 ppu_3F18
+ppu_3F19
+ppu_3F1A
+ppu_3F1B
+
 ppu_3F1C
+ppu_3F1D
+ppu_3F1E
+ppu_3F1F
         brl  no_pal
 ; Exit code to set a IIgs palette entry from the PPU memory
 ;
 ; A = NES palette value
 ; X = IIgs Palette index
 extra_out
-        phy
         and  #$00FF
         asl
         tay
         lda  nesPalette,y
-        ply
         stal $E19E00,x
 
 no_pal
         sep  #$30
+        ply
         plx
         pla
         plb
@@ -1072,6 +1061,8 @@ oam_loop
         tax
 
 :noflip
+;        sta   swizzle                ; store a pointer to the swizzle table to use
+
         pla
         asl
         and   #$0146                 ; Set the vflip bit, priority, and palette select bits
@@ -1091,3 +1082,45 @@ drawTilePatch
         rep   #$30
         rts
 
+; Custom tile blitter
+;
+; D = GTE blitter direct page space
+; X = offset to the tile record
+; 
+        mx    %00
+
+; Temporary tile space on the direct page
+tmp_tile_data      equ 80
+
+;USER_TILE_RECORD   equ  178
+USER_TILE_ID       equ  178         ; copy of the tile id in the tile store
+;USER_TILE_CODE_PTR equ  180         ; pointer to the code bank in which to patch
+USER_TILE_ADDR     equ  184         ; address in the tile data bank (set on entry)
+USER_FREE_SPACE    equ  186         ; a few bytes of scratch space
+
+LDA_IND_LONG_IDX equ $B7
+
+; Assume that when the tile is updated, it includes a full 10-bit value with the 
+; palette bits included with the lookup bits
+NESTileBlitter
+        lda  USER_TILE_ID
+        and  #$0600                        ; Select the tile palette from the tile id
+        clc
+        adc  #W11_T0
+        sta  USER_FREE_SPACE
+        lda  #^W11_T0
+        sta  USER_FREE_SPACE+2
+
+        ldx  USER_TILE_ADDR                ; Get the address of the tile (base only)
+]line   equ  0
+        lup  8
+        ldy: {]line*4},x
+        db   LDA_IND_LONG_IDX,USER_FREE_SPACE
+        sta  tmp_tile_data+{]line*4}
+        ldy: {]line*4}+2,x
+        db   LDA_IND_LONG_IDX,USER_FREE_SPACE
+        sta  tmp_tile_data+{]line*4}+2
+]line   equ  ]line+1
+        --^
+        lda  #1                            ; Request tmp_tile_data be copies to tile store
+        rtl
