@@ -38,6 +38,8 @@ CurrNTQueueEnd equ 40
 BGToggle    equ   44
 LastEnable  equ   46
 
+LastAreaType equ  48
+
 Tmp0        equ   240
 Tmp1        equ   242
 Tmp2        equ   244
@@ -61,6 +63,7 @@ FTblTmp     equ   228
             stz   ROMScrollEdge
             stz   ROMScrollDelta
             stz   OldROMScrollEdge
+            stz   LastAreaType
 
             lda   #1
             sta   BGToggle
@@ -128,7 +131,7 @@ FTblTmp     equ   228
 ;            pea   #144
             _GTESetScreenMode
 
-            ldx   #AreaPalette
+            ldx   #Area1Palette
             lda   #TmpPalette
             jsr   NESColorToIIgs
 
@@ -185,9 +188,6 @@ EvtLoop
 :spin       lda   nmiCount
             beq   :spin
             stz   nmiCount
-
-;            lda   #4
-;            stal  ROMBase+$760
 
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at
@@ -324,6 +324,16 @@ RenderFrame
             lsr
             sta   ROMScreenEdge
 
+; Check the AreaType and see if the palette needs to be changed
+
+            ldal  ROMBase+$074E
+            and   #$00FF
+            cmp   LastAreaType
+            beq   :no_area_change
+            sta   LastAreaType
+            jsr   SetAreaType
+:no_area_change
+
 ; Calculate how many blocks have been scrolled into view
 
             lda   CurrScrollEdge
@@ -364,6 +374,41 @@ RenderFrame
             _GTERender
 
             rts
+
+SetAreaType
+            cmp   #5
+            bcs   :out
+
+            asl
+            tay
+            ldx   AreaPalettes,y      ; First parameter to NESColorToIIgs
+
+            asl
+            tay
+            lda   SwizzleTables,y
+            sta   SwizzlePtr
+            lda   SwizzleTables+2,y
+            sta   SwizzlePtr+2
+
+            lda   #TmpPalette
+            jsr   NESColorToIIgs
+
+; Special copy routine; do not touch color indices 0, 1 or 15 -- we let the NES PPU handle those
+
+            ldx   #4
+:loop
+            lda   TmpPalette,x
+            stal  $E19E00,x
+            inx
+            inx
+            cpx   #14
+            bcc   :loop
+:out
+            rts
+
+AreaPalettes  dw   Area1Palette,Area1Palette,Area2Palette,Area3Palette,Area4Palette
+SwizzleTables adrl AT1_T0,AT1_T0,AT2_T0,AT2_T0,AT2_T0
+SwizzlePtr    adrl AT1_T0
 
 ; Take a PPU address and convert it to a tile store coordinate
 ;
@@ -1012,6 +1057,13 @@ ConvertROMTile2
             sta:   64,x
             asl:   2,x
 
+            lda:   32,x
+            jsr    reverse4
+            sta:   98,x
+            lda:   34,x
+            jsr    reverse4
+            sta:   96,x
+
             inx
             inx
             inx
@@ -1517,8 +1569,9 @@ PPU_NT      ds    $2000          ; Nametable memory from $2000 - $3000, $3F00 - 
 PPU_OAM     ds    256            ; 256 bytes of separate OAM RAM
 
 ; Palettes of NES color indexes
-;AreaPalette dw    $0F, $00, $29, $1A,  $09, $36, $1C, $30,  $21, $16, $27, $18,  $17, $3C, $1D, $37
-AreaPalette dw     $22, $00, $29, $1A, $0F, $36, $17, $30, $21, $16, $27, $18,  $1A, $00, $00, $37
-
+Area1Palette dw     $22, $00, $29, $1A, $0F, $36, $17, $30, $21, $16, $27, $18,  $1A, $00, $00, $37
+Area3Palette
+Area4Palette
+Area2Palette  dw    $0F, $00, $29, $1A, $09, $3C, $1C, $30, $21, $17, $27, $18,  $36, $16, $0C, $16
 ; Palette remapping
             put   pal_w11.s
