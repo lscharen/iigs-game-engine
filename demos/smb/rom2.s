@@ -1118,7 +1118,7 @@ ChkContinue  ldy DemoTimer               ;if timer for demo has expired, reset m
               bcc StartWorld1             ;if not, don't load continue function's world number
               lda ContinueWorld           ;load previously saved world number for secret
               jsr GoContinue              ;continue function when pressing A + start
-StartWorld1  jsr LoadAreaPointer
+StartWorld1   jsr LoadAreaPointer
               inc Hidden1UpFlag           ;set 1-up box flag for both players
               inc OffScr_Hidden1UpFlag
               inc FetchNewGameTimerFlag   ;set fetch new game timer flag
@@ -1134,7 +1134,7 @@ InitScores   sta ScoreAndCoinDisplay,x   ;clear player scores and coin displays
               dex
               bpl InitScores
 ExitMenu     rts
-GoContinue   sta WorldNumber             ;start both players at the first area
+GoContinue    sta WorldNumber             ;start both players at the first area
               sta OffScr_WorldNumber      ;of the previously saved world number
               ldx #$00                    ;note that on power-up using this function
               stx AreaNumber              ;will make no difference
@@ -8231,13 +8231,13 @@ CheckFrenzyBuffer
         cmp #$01
         bne ExEPar               ;if other value <> 1, leave
         lda #VineObject          ;otherwise put vine in enemy identifier
-StrFre sta Enemy_ID,x           ;store contents of frenzy buffer into enemy identifier value
+StrFre  sta Enemy_ID,x           ;store contents of frenzy buffer into enemy identifier value
 
 InitEnemyObject
         lda #$00                 ;initialize enemy state
         sta Enemy_State,x
         jsr CheckpointEnemyID    ;jump ahead to run jump engine and subroutines
-ExEPar rts                      ;then leave
+ExEPar  rts                      ;then leave
 
 DoGroup
         jmp HandleGroupEnemies   ;handle enemy group objects
@@ -8848,6 +8848,7 @@ InitBowserFlame
         ora #Sfx_BowserFlame        ;load bowser's flame sound into queue
         sta NoiseSoundQueue
         ldy BowserFront_Offset      ;get bowser's buffer offset
+
 ;        lda Enemy_ID,y              ;check for bowser
         phx
         tyx
@@ -8904,7 +8905,7 @@ SpawnFromMouth
        sec
        sbc #$0e
        ldx GTE_TMP
-       lda Enemy_X_Position,x
+       sta Enemy_X_Position,x
        pla
        sta Enemy_PageLoc,x
        pla
@@ -10606,12 +10607,12 @@ MakeBJump cmp #$01                   ;if timer not yet about to expire,
            jsr InitVStf               ;initialize movement amount
            lda #$fe
            sta Enemy_Y_Speed,x        ;set vertical speed to move bowser upwards
-ChkFireB  lda WorldNumber            ;check world number here
+ChkFireB   lda WorldNumber            ;check world number here
            cmp #World8                ;world 8?
            beq SpawnFBr               ;if so, execute this part here
            cmp #World6                ;world 6-7?
            bcs BowserGfxHandler       ;if so, skip this part here
-SpawnFBr  lda BowserFireBreathTimer  ;check timer here
+SpawnFBr   lda BowserFireBreathTimer  ;check timer here
            bne BowserGfxHandler       ;if not expired yet, skip all of this
            lda #$20
            sta BowserFireBreathTimer  ;set timer here
@@ -10624,7 +10625,7 @@ SpawnFBr  lda BowserFireBreathTimer  ;check timer here
            beq SetFBTmr               ;if secondary hard mode flag not set, skip this
            sec
            sbc #$10                   ;otherwise subtract from value in A
-SetFBTmr  sta BowserFireBreathTimer  ;set value as timer here
+SetFBTmr   sta BowserFireBreathTimer  ;set value as timer here
            lda #BowserFlame           ;put bowser's flame identifier
            sta EnemyFrenzyBuffer      ;in enemy frenzy buffer
 
@@ -10710,7 +10711,7 @@ SetFlameTimer
       and #%00000111            ;to keep in range of 0-7
       sta BowserFlameTimerCtrl
       lda FlameTimerData,y      ;load value to be used then leave
-ExFl rts
+ExFl  rts
 
 ProcBowserFlame
          lda TimerControl            ;if master timer control flag set,
@@ -10719,7 +10720,7 @@ ProcBowserFlame
          ldy SecondaryHardMode
          beq SFlmX                   ;if secondary hard mode flag not set, use default
          lda #$60                    ;otherwise load alternate movement force to go faster
-SFlmX   sta $00                     ;store value here
+SFlmX    sta $00                     ;store value here
          lda Enemy_X_MoveForce,x
          sec                         ;subtract value from movement force
          sbc $00
@@ -10737,7 +10738,7 @@ SFlmX   sta $00                     ;store value here
          clc
          adc Enemy_Y_MoveForce,x     ;otherwise add value here to coordinate and store
          sta Enemy_Y_Position,x      ;as new vertical coordinate
-SetGfxF jsr RelativeEnemyPosition   ;get new relative coordinates
+SetGfxF  jsr RelativeEnemyPosition   ;get new relative coordinates
          lda Enemy_State,x           ;if bowser's flame not in normal state,
          bne ExFl                    ;branch to leave
          lda #$51                    ;otherwise, continue
