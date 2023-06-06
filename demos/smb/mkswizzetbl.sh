@@ -4,7 +4,7 @@ node swizzle.js AT1_T1 5 6 4
 node swizzle.js AT1_T2 7 8 4
 node swizzle.js AT1_T3 1 6 4
 node swizzle.js AT1_S0 14 9 15
-node swizzle.js AT1_S1 10 7 6
+node swizzle.js AT1_S1 10 7 9
 node swizzle.js AT1_S2 11 7 9
 node swizzle.js AT1_S3 4 5 6
 
