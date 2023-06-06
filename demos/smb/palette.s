@@ -160,7 +160,7 @@ nesPalette
 ; T1: 0 5 6 7
 ; T2: 0 8 9 7
 ; T3: 0 1 9 7
-; S0: 0 F A E
+; S0: 0 E A F
 ; S1: 0 B 8 A
 ; S2: 0 C 8 A
 ; S3: 0 7 8 B

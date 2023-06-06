@@ -29,11 +29,11 @@ node swizzle.js AT3_S2 5 2 7
 node swizzle.js AT3_S3 11 2 3
 
 # Area Type $00, Water
-node swizzle.js ATx_T0 2 3 4
-node swizzle.js ATx_T1 5 6 7
-node swizzle.js ATx_T2 8 9 7
-node swizzle.js ATx_T3 1 9 7
-node swizzle.js ATx_S0 15 10 14
-node swizzle.js ATx_S1 11 8 10
-node swizzle.js ATx_S2 12 8 10
-node swizzle.js ATx_S3 7 8 11
+node swizzle.js AT0_T0 2 3 4
+node swizzle.js AT0_T1 5 6 7
+node swizzle.js AT0_T2 8 9 7
+node swizzle.js AT0_T3 1 9 7
+node swizzle.js AT0_S0 14 10 15
+node swizzle.js AT0_S1 11 8 10
+node swizzle.js AT0_S2 12 8 10
+node swizzle.js AT0_S3 7 8 11

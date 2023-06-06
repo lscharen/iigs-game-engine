@@ -2044,7 +2044,7 @@ ColorRotation
               cpx #$31
               bcs ExitColorRot         ;if offset over 48 bytes, branch to leave
               tay                      ;otherwise use frame counter's 3 LSB as offset here
-GetBlankPal  lda BlankPalette,y       ;get blank palette for palette 3
+GetBlankPal   lda BlankPalette,y       ;get blank palette for palette 3
               sta VRAM_Buffer1,x       ;store it in the vram buffer
               inx                      ;increment offsets
               iny
@@ -2057,7 +2057,7 @@ GetBlankPal  lda BlankPalette,y       ;get blank palette for palette 3
               asl                      ;multiply by 4 to get proper offset
               asl
               tay                      ;save as offset here
-GetAreaPal   lda Palette3Data,y       ;fetch palette to be written based on area type
+GetAreaPal    lda Palette3Data,y       ;fetch palette to be written based on area type
               sta VRAM_Buffer1+3,x     ;store it to overwrite blank palette in vram buffer
               iny
               inx

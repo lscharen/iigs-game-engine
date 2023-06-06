@@ -191,19 +191,19 @@ EvtLoop
             beq   :spin
             stz   nmiCount
 
-;            sep   #$20
-;            lda   #0
-;            stal  ROMBase+$075f
-;            stal  ROMBase+$0766
+            sep   #$20
+            lda   #1
+            stal  ROMBase+$075f
+            stal  ROMBase+$0766
 
-;            lda   #3
-;            stal  ROMBase+$0763
-;            stal  ROMBase+$075c
+            lda   #1
+            stal  ROMBase+$0763
+            stal  ROMBase+$075c
 
-;            lda   #4
-;            stal  ROMBase+$0767
-;            stal  ROMBase+$0760
-;            rep   #$30
+            lda   #2
+            stal  ROMBase+$0767
+            stal  ROMBase+$0760
+            rep   #$30
 
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at
@@ -423,8 +423,8 @@ SetAreaType
 :out
             rts
 
-AreaPalettes  dw   Area1Palette,Area1Palette,Area2Palette,Area3Palette,Area4Palette
-SwizzleTables adrl AT1_T0,AT1_T0,AT2_T0,AT3_T0,AT2_T0
+AreaPalettes  dw   WaterPalette,Area1Palette,Area2Palette,Area3Palette,Area4Palette
+SwizzleTables adrl AT0_T0,AT1_T0,AT2_T0,AT3_T0,AT2_T0
 SwizzlePtr    adrl AT1_T0
 
 ; Take a PPU address and convert it to a tile store coordinate
@@ -1585,6 +1585,8 @@ CHR_ROM     put   chr2.s         ; 8K of CHR-ROM at PPU memory $0000 - $2000
 PPU_NT      ds    $2000          ; Nametable memory from $2000 - $3000, $3F00 - $3F14 is palette RAM
 PPU_OAM     ds    256            ; 256 bytes of separate OAM RAM
 
+; If AreaStyle is 1 then load an alternate palette 'b'
+;
 ; Palettes of NES color indexes
 Area1Palette dw     $22, $00, $29, $1A, $0F, $36, $17, $30, $21, $27, $1A, $16, $00, $00, $16, $18
 Area4Palette
