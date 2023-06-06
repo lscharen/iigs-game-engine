@@ -38,8 +38,6 @@ CurrNTQueueEnd equ 40
 BGToggle    equ   44
 LastEnable  equ   46
 
-LastAreaType equ  48
-
 Tmp0        equ   240
 Tmp1        equ   242
 Tmp2        equ   244
@@ -182,12 +180,30 @@ FTblTmp     equ   228
 
 ; Apply hacks
 ;WorldNumber                 =     $075f
-;AreaNumber                  =     $076
+;LevelNumber                 =     $075c
+;AreaNumber                  =     $0760
+;OffScr_WorldNumber    = $0766
+;OffScr_AreaNumber     = $0767
+; OffScr_LevelNumber    = $0763
 
 EvtLoop
 :spin       lda   nmiCount
             beq   :spin
             stz   nmiCount
+
+;            sep   #$20
+;            lda   #0
+;            stal  ROMBase+$075f
+;            stal  ROMBase+$0766
+
+;            lda   #3
+;            stal  ROMBase+$0763
+;            stal  ROMBase+$075c
+
+;            lda   #4
+;            stal  ROMBase+$0767
+;            stal  ROMBase+$0760
+;            rep   #$30
 
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at
@@ -282,6 +298,7 @@ lastKey     dw    0
 singleStepMode dw 0
 nmiCount    dw    0
 DPSave      dw    0
+LastAreaType dw   0
 
 ; Convert NES palette entries to IIgs
 ; X = NES palette (16 color indices)
@@ -393,7 +410,7 @@ SetAreaType
             lda   #TmpPalette
             jsr   NESColorToIIgs
 
-; Special copy routine; do not touch color indices 0, 1 or 15 -- we let the NES PPU handle those
+; Special copy routine; do not touch color indices 0, 1, 14 or 15 -- we let the NES PPU handle those
 
             ldx   #4
 :loop
@@ -401,13 +418,13 @@ SetAreaType
             stal  $E19E00,x
             inx
             inx
-            cpx   #14
+            cpx   #2*14
             bcc   :loop
 :out
             rts
 
 AreaPalettes  dw   Area1Palette,Area1Palette,Area2Palette,Area3Palette,Area4Palette
-SwizzleTables adrl AT1_T0,AT1_T0,AT2_T0,AT2_T0,AT2_T0
+SwizzleTables adrl AT1_T0,AT1_T0,AT2_T0,AT3_T0,AT2_T0
 SwizzlePtr    adrl AT1_T0
 
 ; Take a PPU address and convert it to a tile store coordinate
@@ -1569,9 +1586,15 @@ PPU_NT      ds    $2000          ; Nametable memory from $2000 - $3000, $3F00 - 
 PPU_OAM     ds    256            ; 256 bytes of separate OAM RAM
 
 ; Palettes of NES color indexes
-Area1Palette dw     $22, $00, $29, $1A, $0F, $36, $17, $30, $21, $16, $27, $18,  $1A, $00, $00, $37
-Area3Palette
+Area1Palette dw     $22, $00, $29, $1A, $0F, $36, $17, $30, $21, $27, $1A, $16, $00, $00, $16, $18
 Area4Palette
-Area2Palette  dw    $0F, $00, $29, $1A, $09, $3C, $1C, $30, $21, $17, $27, $18,  $36, $16, $0C, $16
+
+; Underground
+Area2Palette dw     $0F, $00, $29, $1A, $09, $3C, $1C, $30, $21, $17, $27, $36, $16, $1D, $16, $18
+
+; Castle
+Area3Palette dw     $0F, $00, $30, $10, $00, $16, $17, $27, $1C, $36, $1D, $00,  $00, $00, $16, $18
+
+WaterPalette dw     $22, $00, $15, $12, $25, $3A, $1A, $0F, $30, $12, $27, $10,  $16, $00, $16, $18
 ; Palette remapping
             put   pal_w11.s
