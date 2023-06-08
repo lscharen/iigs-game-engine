@@ -184,26 +184,26 @@ FTblTmp     equ   228
 ;AreaNumber                  =     $0760
 ;OffScr_WorldNumber    = $0766
 ;OffScr_AreaNumber     = $0767
-; OffScr_LevelNumber    = $0763
+;OffScr_LevelNumber    = $0763
 
 EvtLoop
 :spin       lda   nmiCount
             beq   :spin
             stz   nmiCount
 
-            sep   #$20
-            lda   #1
-            stal  ROMBase+$075f
-            stal  ROMBase+$0766
+;            sep   #$20
+;            lda   #1
+;            stal  ROMBase+$075f
+;            stal  ROMBase+$0766
 
-            lda   #1
-            stal  ROMBase+$0763
-            stal  ROMBase+$075c
+;            lda   #2
+;            stal  ROMBase+$0763
+;            stal  ROMBase+$075c
 
-            lda   #2
-            stal  ROMBase+$0767
-            stal  ROMBase+$0760
-            rep   #$30
+;            lda   #$2
+;            stal  ROMBase+$0767
+;            stal  ROMBase+$0760
+;            rep   #$30
 
 ; The GTE playfield is 41 tiles wide, but the NES is 32 tiles wide.  Fortunately, the game
 ; keeps track of the global coordinates of each level at

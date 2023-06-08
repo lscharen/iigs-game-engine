@@ -730,7 +730,7 @@ buildShadowBitmap
         ldy   OAM_COPY,x
         iny                               ; This is the y-coordinate of the top of the sprite
 
-        ldx   y2idx,y                     ; Get the index into the shadowBitmap array for this y coordinate
+        ldx   y2idx,y                     ; Get the index into the shadowBitmap array for this y coordinate (y -> blk_y)
         lda   y2low,y                     ; Get the bit pattern for the first byte
         ora   shadowBitmap,x
         sta   shadowBitmap,x
@@ -747,6 +747,34 @@ buildShadowBitmap
         bcc   :loop
 
 :exit
+        rep   #$30
+        rts
+
+; Set the SCB values equal to the bitmap to visually debug
+        ldx   #0
+        ldy   #0
+:vloop
+        lda   #8
+        sta   Tmp6
+        lda   shadowBitmap+2,y
+:iloop
+        asl
+        pha
+
+        lda   #0
+        bcc   :zero
+        inc
+:zero   stal  $E19D00,x
+        pla
+
+        inx
+        dec   Tmp6
+        bne   :iloop
+
+        iny
+        cpy   #25
+        bcc   :vloop
+
         rep   #$30
         rts
 
@@ -777,14 +805,48 @@ mul8    db   $00,$08,$10,$18,$20,$28,$30,$38
         db   $C0,$C8,$D0,$D8,$E0,$E8,$F0,$F8
 
 ; Given a bit pattern, create a LUT that count to the first set bit (MSB -> LSB), e.g. $0F = 4, $3F = 2
-offset  db   0,7,6,6,5,5,5,5,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3     ; 0, 1, 2, 4, 8, 16
-        db   2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2     ; 32
+offset
+        db   8,7,6,6,5,5,5,5,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+        db   2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
         db   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
         db   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
         db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+invOffset
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        db   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        db   2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+        db   3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,6,6,7,8
+
+; Mask off all of the high 1 bits, keep all of the low bits after the first zero, e.g.
+; offsetMask($E3) = offsetMask(11100011) = $1F.  %11100011 & $1F = $03
+offsetMask
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        db   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF  ; 127 (everything here has a 0 in the high bit)
+
+        db   $7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F  ; $80 - $8F
+        db   $7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F  ; $90 - $9F
+        db   $7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F  ; $A0 - $AF
+        db   $7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F,$7F  ; $B0 - $BF
+
+        db   $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F  ; $C0 - $CF
+        db   $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F  ; $D0 - $DF
+
+        db   $1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F  ; $E0 - $EF
+        db   $0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$07,$07,$07,$07,$03,$03,$01,$00  ; $F0 - $FF
+
 
 ; Scan the bitmap list and call BltRange on the ranges
         mx   %00
@@ -880,8 +942,9 @@ exposeShadowList
 ; This routine needs to adjust the y-coordinates based of the offset of the GTE playfield within
 ; the PPU RAM
 shadowBitmapToList
-:top    equ  Tmp0
-:bottom equ  Tmp2
+:top      equ  Tmp0
+:bottom   equ  Tmp2
+:bitfield equ  Tmp4
 
         sep  #$30
 
@@ -894,9 +957,9 @@ shadowBitmapToList
         ldy  shadowBitmap,x
         beq  :zero_next
 
-        lda  mul8-y_offset_rows,x           ; This is the scanline we're on (offset by the starting byte)
+        lda  {mul8-y_offset_rows},x           ; This is the scanline we're on (offset by the starting byte)
         clc
-        adc  offset,y         ; This is the first line defined by the bit pattern
+        adc  offset,y                         ; This is the first line defined by the bit pattern
         sta  :top
         bra  :one_next
 
@@ -908,13 +971,19 @@ shadowBitmapToList
 
 :one_loop
         lda  shadowBitmap,x  ; if the next byte is all sprite, just continue
-        eor  #$FF
+        cmp  #$FF
         beq  :one_next
 
-        tay                  ; Use the inverted bitfield in order to re-use the same lookup table
-        lda  mul8-y_offset_rows,x
+; The byte has to look like 1...10...0*.  The first step is to mask off the high bits and store the result
+; back into the shadowBitmap
+
+        tay
+        and  offsetMask,y
+        sta  shadowBitmap,x
+
+        lda  {mul8-y_offset_rows},x
         clc
-        adc  offset,y
+        adc  invOffset,y
 
         ldy  shadowListCount
         sta  shadowListBot,y
@@ -922,7 +991,11 @@ shadowBitmapToList
         sta  shadowListTop,y
         iny
         sty  shadowListCount
-        bra  :zero_next
+
+; Loop back to check if there is more sprite data on this byte
+
+        bra  :zero_loop
+
 
 :one_next
         inx
@@ -1015,7 +1088,7 @@ drawOAMSprites
         cli
 
         jsr   buildShadowBitmap           ; Run though and quickly create a bitmap of lines with sprites
-        jsr   shadowBitmapToList          ; Can the bitmap and create (top, bottom) pairs of ranges
+        jsr   shadowBitmapToList          ; Scan the bitmap and create (top, bottom) pairs of ranges
 
         jsr   drawShadowList              ; Draw the background lines that have sprite on them
         jsr   drawSprites                 ; Draw the sprites on top of the lines they occupy

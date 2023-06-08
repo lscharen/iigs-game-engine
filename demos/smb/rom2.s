@@ -682,14 +682,16 @@ PPUDATA_READ     EXT
 PPUDATA_WRITE    EXT
 PPUDMA_WRITE     EXT
 
+APU_PUSLE1_REG1_WRITE EXT
+APU_PUSLE1_REG2_WRITE EXT
+APU_PUSLE1_REG3_WRITE EXT
+APU_PUSLE1_REG4_WRITE EXT
+
 ROMBase     ENT
             ds    $7A00
 
-; Macro to replace sta abs,y instructions that access zero page space with direct page
-; instruction to actually get the correct data on the direct page _and_ bank memory.
-; That way any lda 00,x or lda 0000,y will 
-
-; Hooks to call back to the GTE harness for PPU memory-mapped accesses
+; Define a helper for the ROM InitializeMemory routine to properly deal with the 
+; direct page and stack being in a different bank
             mx    %11
 GteInitMem
             php
@@ -703,6 +705,53 @@ GteLoop
             plp
             rts
 
+; Hooks to call back to the GTE harness for APU register access
+APU_IND_X_REG3_W
+; x is 0, 4 or 8 -- dispatch to the correct underlying routine
+            jmp  (:reg_tbl,x)
+:reg_tbl    dw   APU_PULSE1_REG3_W,APU_PULSE1_REG3_W
+            dw   APU_PULSE2_REG3_W,APU_PULSE2_REG3_W,
+            dw   APU_TRIANGLE_REG3_W,APU_TRIANGLE_REG3_W
+
+APU_IND_X_REG4_W
+            jmp  (:reg_tbl,x)
+:reg_tbl    dw   APU_PULSE1_REG4_W,APU_PULSE1_REG4_W
+            dw   APU_PULSE2_REG4_W,APU_PULSE2_REG4_W,
+            dw   APU_TRIANGLE_REG4_W,APU_TRIANGLE_REG4_W
+
+APU_PULSE1_REG1_W
+;            jsl  APU_PULSE1_REG1_WRITE
+            rts
+APU_PULSE1_REG1_WX
+;            jsl  APU_PULSE1_REG1_WRITE
+            rts
+APU_PULSE1_REG2_W
+;            jsl  APU_PULSE1_REG2_WRITE
+            rts
+APU_PULSE1_REG2_WY
+;            jsl  APU_PULSE1_REG2_WRITE
+            rts
+APU_PULSE1_REG3_W
+;            jsl  APU_PULSE1_REG3_WRITE
+            rts
+APU_PULSE1_REG4_W
+;            jsl  APU_PULSE1_REG4_WRITE
+            rts
+
+APU_PULSE2_REG3_W
+;            jsl  APU_PUSLE2_REG3_WRITE
+            rts
+APU_PULSE2_REG4_W
+;            jsl  APU_PULSE2_REG4_WRITE
+            rts
+
+APU_TRIANGLE_REG3_W
+;            jsl  APU_TRIANGLE_REG3_WRITE
+            rts
+APU_TRIANGLE_REG4_W
+;            jsl  APU_TRIANGLE_REG4_WRITE
+            rts
+; Hooks to call back to the GTE harness for PPU memory-mapped accesses
             mx    %11
 PPU_CTRL_W
             jsl  PPUCTRL_WRITE
@@ -4466,7 +4515,7 @@ AreaDataOfsLoopback
 LoadAreaPointer
              jsr FindAreaPointer  ;find it and store it here
              sta AreaPointer
-GetAreaType and #%01100000       ;mask out all but d6 and d5
+GetAreaType  and #%01100000       ;mask out all but d6 and d5
              asl
              rol
              rol
@@ -4516,7 +4565,7 @@ GetAreaDataAddrs
             bcc StoreFore
             sta BackgroundColorCtrl  ;if 4 or greater, save value here as bg color control
             lda #$00
-StoreFore  sta ForegroundScenery    ;if less, save value here as foreground scenery
+StoreFore   sta ForegroundScenery    ;if less, save value here as foreground scenery
             pla                      ;pull byte from stack and push it back
             pha
             and #%00111000           ;save player entrance control bits
@@ -4554,7 +4603,7 @@ StoreFore  sta ForegroundScenery    ;if less, save value here as foreground scen
             bne StoreStyle           ;and nullify other value
             sta CloudTypeOverride    ;otherwise store value in other place
             lda #$00
-StoreStyle sta AreaStyle
+StoreStyle  sta AreaStyle
             lda AreaDataLow          ;increment area data address by 2 bytes
             clc
             adc #$02
