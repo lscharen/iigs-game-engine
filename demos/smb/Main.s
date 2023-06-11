@@ -81,6 +81,11 @@ FTblTmp     equ   228
             adc   #$1FF                   ; Stack starts at the top of the page
             sta   ROMStk
 
+; Initialize the sound hardware for APU emulation
+
+            jsr   APUStartUp
+
+; Start up GTE to drive the graphics
 ;            brl   :debug
 
             lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode as a User Tool
@@ -192,15 +197,15 @@ EvtLoop
             stz   nmiCount
 
 ;            sep   #$20
-;            lda   #1
+;            lda   #7
 ;            stal  ROMBase+$075f
 ;            stal  ROMBase+$0766
 
-;            lda   #2
+;            lda   #3
 ;            stal  ROMBase+$0763
 ;            stal  ROMBase+$075c
 
-;            lda   #$2
+;            lda   #3
 ;            stal  ROMBase+$0767
 ;            stal  ROMBase+$0760
 ;            rep   #$30
@@ -283,6 +288,7 @@ EvtLoop
 
 Exit
             _GTEShutDown
+            jsr   APUShutDown
 Quit
             _QuitGS    qtRec
 qtRec       adrl  $0000
@@ -1600,3 +1606,4 @@ Area3Palette dw     $0F, $00, $30, $10, $00, $16, $17, $27, $1C, $36, $1D, $00, 
 WaterPalette dw     $22, $00, $15, $12, $25, $3A, $1A, $0F, $30, $12, $27, $10,  $16, $00, $16, $18
 ; Palette remapping
             put   pal_w11.s
+            put   apu.s

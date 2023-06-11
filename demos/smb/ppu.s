@@ -606,6 +606,7 @@ y_offset_rows equ 2
 y_height_rows equ 25
 y_offset equ {y_offset_rows*8}
 y_height equ {y_height_rows*8}
+max_nes_y equ {y_height+y_offset-8}
 
 x_offset equ 16
 
@@ -628,7 +629,7 @@ scanOAMSprites
 
 :loop
         lda    PPU_OAM,x         ; Y-coordinate
-        cmp    #y_height+y_offset-9
+        cmp    #max_nes_y+1      ; Skip anything that is beyond this lint
         bcs    :skip
         cmp    #y_offset
         bcc    :skip
@@ -648,38 +649,7 @@ scanOAMSprites
         sta    OAM_COPY+2,y
         sep    #$20
 
-* ; Debug OAM values
-*         phy
-*         phx
-
-*         rep    #$30
-*         ldx    Tmp5
-*         cpx    #{160*190}
-*         bcs    :nodraw
-
-*         lda    OAM_COPY+2,y
-*         pha
-*         lda    OAM_COPY,y
-*         ldy    #$FFFF
-*         jsr    DrawWord
-
-*         lda    Tmp5
-*         clc
-*         adc    #128+16
-*         tax
-*         ldy    #$FFFF
-*         pla
-*         jsr    DrawWord
-
-*         lda    Tmp5
-*         clc
-*         adc    #8*160
-*         sta    Tmp5
-
-* :nodraw
-*         sep    #$30
-*         plx
-*         ply
+        jsr    debug_values
 
         iny
         iny
@@ -696,6 +666,54 @@ scanOAMSprites
         sty  spriteCount                     ; Count * 4
         rep  #$30
         rts
+
+debug_values
+; Debug APU values
+         phy
+         phx
+
+         rep    #$30
+
+         ldx    #0
+         ldy    #$FFFF
+         lda    APU_STATUS
+         and    #$00FF
+         jsr    DrawWord
+
+         ldx    #8*160
+         ldy    #$FFFF
+         lda    APU_PULSE1_REG1
+         jsr    DrawWord
+
+         ldx    #16*160
+         ldy    #$FFFF
+         lda    APU_PULSE1_REG3
+         jsr    DrawWord
+
+         ldx    #24*160
+         ldy    #$FFFF
+         lda    APU_PULSE2_REG1
+         jsr    DrawWord
+
+         ldx    #32*160
+         ldy    #$FFFF
+         lda    APU_PULSE2_REG3
+         jsr    DrawWord
+
+         ldx    #40*160
+         ldy    #$FFFF
+         lda    APU_TRIANGLE_REG1
+         jsr    DrawWord
+
+         ldx    #48*160
+         ldy    #$FFFF
+         lda    APU_TRIANGLE_REG3
+         jsr    DrawWord
+
+         sep    #$30
+         plx
+         ply
+         rts
 
 ; Screen is 200 lines tall. It's worth it be exact when building the list because one extra
 ; draw + shadow sequence takes at least 1,000 cycles.
@@ -728,7 +746,8 @@ buildShadowBitmap
 
 ;        ldy   PPU_OAM,x
         ldy   OAM_COPY,x
-        iny                               ; This is the y-coordinate of the top of the sprite
+        cpy   #max_nes_y                  ; Don't increment something right on the edge (allows )
+;        iny                               ; This is the y-coordinate of the top of the sprite
 
         ldx   y2idx,y                     ; Get the index into the shadowBitmap array for this y coordinate (y -> blk_y)
         lda   y2low,y                     ; Get the bit pattern for the first byte
@@ -1124,7 +1143,7 @@ oam_loop
         phx                  ; Save x
 
         lda   OAM_COPY,x     ; Y-coordinate
-        inc                  ; Compensate for PPU delayed scanline
+;        inc                  ; Compensate for PPU delayed scanline
 
         rep   #$30
         and   #$00FF
