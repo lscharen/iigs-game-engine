@@ -681,33 +681,72 @@ debug_values
          jsr    DrawWord
 
          ldx    #8*160
-         ldy    #$FFFF
+         ldy    #$EEEE
          lda    APU_PULSE1_REG1
          jsr    DrawWord
 
          ldx    #16*160
-         ldy    #$FFFF
+         ldy    #$EEEE
          lda    APU_PULSE1_REG3
          jsr    DrawWord
 
          ldx    #24*160
-         ldy    #$FFFF
+         ldy    #$DDDD
          lda    APU_PULSE2_REG1
          jsr    DrawWord
 
          ldx    #32*160
-         ldy    #$FFFF
+         ldy    #$DDDD
          lda    APU_PULSE2_REG3
          jsr    DrawWord
 
          ldx    #40*160
-         ldy    #$FFFF
+         ldy    #$BBBB
          lda    APU_TRIANGLE_REG1
          jsr    DrawWord
 
          ldx    #48*160
-         ldy    #$FFFF
+         ldy    #$BBBB
          lda    APU_TRIANGLE_REG3
+         jsr    DrawWord
+
+; Fetch the ensoniq parameters
+
+         sep    #$20
+         ldal   irq_volume
+         stal   $e1c000+sound_control     ; access registers
+         
+         lda    #$80+pulse1_oscillator    ; oscillator address
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+         xba
+
+         lda    #$40+pulse1_oscillator    ; oscillator volume
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+
+         rep    #$30
+         ldx    #{8*160}+{160-16}
+         ldy    #$EEEE
+         jsr    DrawWord
+
+         sep    #$20
+         lda    #$20+pulse1_oscillator    ; oscillator freq high
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+         xba
+
+         lda    #$00+pulse1_oscillator    ; oscillator freq low
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+
+         rep    #$30
+         ldx    #{16*160}+{160-16}
+         ldy    #$EEEE
          jsr    DrawWord
 
          sep    #$30

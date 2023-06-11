@@ -36,7 +36,7 @@ APUStartUp
                         pea $c000
                         pld
                         jsr copy_instruments_to_doc
-;                        jsr setup_doc_registers
+                        jsr setup_doc_registers
                         jsr setup_interrupt
                         pld
                         cli
@@ -218,11 +218,32 @@ setup_doc_registers
 
                         jsr   access_doc_registers
 
+                        ldx   #pulse1_sound_settings
+                        jsr   copy_register_config
+
+                        ldx   #pulse2_sound_settings
+                        jsr   copy_register_config
+
+                        ldx   #triangle_sound_settings
+                        jsr   copy_register_config
+
                         rep #$20
                         mx  %00
 
                         rts
-                           
+copy_register_config
+                        ldy   #0
+:loop                   lda:  0,x                                  ; Set DOC registers for the NES channels
+                        sta   sound_address
+                        inx
+                        lda:  0,x
+                        sta   sound_data
+                        inx
+                        iny
+                        cpy   #6                                   ; 6 pairs to describe this oscillator
+                        bne   :loop
+                        rts
+
 ;--------------------------
 
 setup_interrupt         = *
@@ -246,14 +267,14 @@ setup_interrupt         = *
                         jsr   access_doc_registers
 
                         ldy   #0
-]loop                   lda   timer_sound_settings,y               ; Set DOC registers for the interrupt oscillator
+:loop                   lda   timer_sound_settings,y               ; Set DOC registers for the interrupt oscillator
                         sta   sound_address
                         iny
                         lda   timer_sound_settings,y
                         sta   sound_data
                         iny
                         cpy   #7*2
-                        bne   ]loop
+                        bne   :loop
 
                         rep #$20
                         mx  %00
@@ -274,11 +295,11 @@ timer_sound_settings    =     *                     ; set up oscillator 30 for i
 pulse1_oscillator       =     0
 pulse2_oscillator       =     2
 triangle_oscillator     =     4
-default_freq            =     16384
+default_freq            =     5000
 pulse1_sound_settings   =     *
                         dfb   $00+pulse1_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse1_oscillator,default_freq/256  ; frequency high register
-                        dfb   $40+pulse1_oscillator,0                 ; volume register, volume = 0
+                        dfb   $40+pulse1_oscillator,128                 ; volume register, volume = 0
                         dfb   $80+pulse1_oscillator,3                 ; wavetable pointer register, point to $0300 by default (50% duty cycle)
                         dfb   $c0+pulse1_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+pulse1_oscillator,0                 ; mode register, set to free run
@@ -286,7 +307,7 @@ pulse1_sound_settings   =     *
 pulse2_sound_settings   =     *
                         dfb   $00+pulse2_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse2_oscillator,default_freq/256  ; frequency high register
-                        dfb   $40+pulse2_oscillator,0                 ; volume register, volume = 0
+                        dfb   $40+pulse2_oscillator,120                 ; volume register, volume = 0
                         dfb   $80+pulse2_oscillator,3                 ; wavetable pointer register, point to $0300 by default (50% duty cycle)
                         dfb   $c0+pulse2_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+pulse2_oscillator,0                 ; mode register, set to free run
@@ -321,84 +342,66 @@ interrupt_handler       = *
                         lda #$c000
                         tcd
 
-                        sep #$20
-                        mx  %10
+                        sep #$30
+                        mx  %11
 
                         jsr   access_doc_registers
 
                         ldal  osc_interrupt             ; which oscillator generated the interrupt?
-
-interrupt_handler_loop
                         and   #%00111110
                         lsr
                         cmp   #interrupt_oscillator
-                        bne   :not_timer                ; Only service timer interrupts
+                        beq   *+5
+                        brl   :not_timer                ; Only service timer interrupts
 
 ; Set the parameters for the first square wave channel
 
-                        lda   APU_PULSE1_REG1           ; Get the cycle duty bits
-                        rol
-                        rol
-                        rol
-                        and   #$03
-                        tax
-
                         lda   #$80+pulse1_oscillator
                         sta   sound_address
-                        lda   duty_cycle_page,x
-                        sta   sound_data
+                        lda   APU_PULSE1_REG1           ; Get the cycle duty bits
+                        jsr   set_pulse_duty_cycle
 
-                        lda   APU_PULSE1_REG1           ; Get the volume
-                        and   #$0F
-                        asl
-                        asl
-                        asl
-                        asl
-                        tax
                         lda   #$40+pulse1_oscillator
                         sta   sound_address
-                        txa
-                        sta   sound_data
+                        lda   APU_PULSE1_REG1
+                        jsr   set_pulse_volume
 
                         rep   #$30
-                        mx    %00
                         lda   APU_PULSE1_REG3
-                        and   #$07FF                    ; Load the timer value (11-bits); freq = 1.79MHz / (16 * (t - 1)) = 111860Hz / (t-1)
-                        dec
-                        lsr                             ; Divide top and bottom by 2 -- 55930 / ((t - 1)/2)
-                        sta   divisor
-                        lda   #55930
-                        sta   dividend
+                        jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
+                        sep   #$30
 
-                        lda   #0
-                        ldx   #10                       ; 10 bits of division
-                        asl   dividend
-:dl1                    rol
-                        cmp   divisor
-                        bcc   :dl2
-                        sbc   divisor
-:dl2                    rol   dividend
-                        dex
-                        bne   :dl1
-
-                        lda   dividend
-                        and   #$3FF                     ; This is the NES APU frequence in hertz
-                        sta   dividend
-                        asl
-                        asl
-                        adc   dividend                  ; multiple by 5 to get the approx DOC value (0.2Hz per)
-                        sta   dividend
-
-                        sep #$20
-                        mx  %10
-
-                        lda   #$00+pulse1_oscillator
-                        sta   sound_address
-                        lda   dividend
+                        ldx   #$00+pulse1_oscillator
+                        stx   sound_address
                         sta   sound_data
-                        lda   #$20+pulse1_oscillator
+                        ldx   #$20+pulse1_oscillator
+                        stx   sound_address
+                        xba
+                        sta   sound_data
+
+; Now do the second square wave
+
+                        lda   #$80+pulse2_oscillator
                         sta   sound_address
-                        lda   dividend+1
+                        lda   APU_PULSE2_REG1           ; Get the cycle duty bits
+                        jsr   set_pulse_duty_cycle
+
+                        lda   #$40+pulse2_oscillator
+                        sta   sound_address
+                        lda   APU_PULSE2_REG1
+                        jsr   set_pulse_volume
+
+                        rep   #$30
+                        lda   APU_PULSE2_REG3
+                        jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
+                        sep   #$30
+
+                        ldx   #$00+pulse2_oscillator
+                        stx   sound_address
+                        sta   sound_data
+                        ldx   #$20+pulse2_oscillator
+                        stx   sound_address
+                        xba
                         sta   sound_data
 
 ;                        lda   border_color
@@ -413,6 +416,67 @@ interrupt_handler_loop
                         plb
                         clc
                         rtl
+
+set_pulse_duty_cycle
+                        mx    %11
+                        rol
+                        rol
+                        rol
+                        and   #$03
+                        tax
+
+                        lda   duty_cycle_page,x
+                        sta   sound_data
+                        rts
+
+set_pulse_volume
+                        and   #$0F
+                        asl
+                        asl
+                        asl
+                        asl
+                        sta   sound_data
+                        rts
+
+get_pulse_freq
+                        mx %00
+                        and   #$07FF                    ; Load the timer value (11-bits); freq = 1.79MHz / (16 * (t - 1)) = 111860Hz / (t-1)
+                        dec
+                        lsr                             ; Divide top and bottom by 2 -- 55930 / ((t - 1)/2)
+                        sta   divisor
+                        lda   #55930                    ; $DA7A
+                        sta   dividend
+
+                        lda   #0
+                        ldx   #16                       ; 16 bits of division
+                        asl   dividend
+:dl1                    rol
+                        cmp   divisor
+                        bcc   :dl2
+                        sbc   divisor
+:dl2                    rol   dividend
+                        dex
+                        bne   :dl1
+
+                        lda   dividend
+                        sta   dividend
+                        asl
+;                        asl
+                        asl
+                        asl
+                        adc   dividend                  ; multiple by 5 to get the approx DOC value (0.2Hz per)
+;                        sta   dividend
+                        rts
+
+turn_off_interrupts
+                        php
+                        sep   #$20
+                        lda   #$a0+interrupt_oscillator
+                        sta   sound_address
+                        lda   #0
+                        sta   sound_data
+                        plp
+                        rts
 
 duty_cycle_page dfb $01,$02,$03,$04     ; Page of DOC RAM that holds the different duty cycle wavforms
 border_color    dw 0
@@ -532,13 +596,13 @@ APU_STATUS_WRITE ENT
 :pulse2_end
 
 ; Triangle is OSC 4
-    bit  #$03
-    beq  :triangle_off
-    _SetDOCReg #$40+triangle_oscillator;#128
-    bra  :triangle_end
-:triangle_off
-    _SetDOCReg #$40+triangle_oscillator;#0
-:triangle_end
+;    bit  #$03
+;    beq  :triangle_off
+;    _SetDOCReg #$40+triangle_oscillator;#128
+;    bra  :triangle_end
+;:triangle_off
+;    _SetDOCReg #$40+triangle_oscillator;#0
+;:triangle_end
 
     pla
     rtl
