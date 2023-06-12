@@ -299,7 +299,7 @@ default_freq            =     5000
 pulse1_sound_settings   =     *
                         dfb   $00+pulse1_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse1_oscillator,default_freq/256  ; frequency high register
-                        dfb   $40+pulse1_oscillator,128                 ; volume register, volume = 0
+                        dfb   $40+pulse1_oscillator,0                 ; volume register, volume = 0
                         dfb   $80+pulse1_oscillator,3                 ; wavetable pointer register, point to $0300 by default (50% duty cycle)
                         dfb   $c0+pulse1_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+pulse1_oscillator,0                 ; mode register, set to free run
@@ -307,7 +307,7 @@ pulse1_sound_settings   =     *
 pulse2_sound_settings   =     *
                         dfb   $00+pulse2_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse2_oscillator,default_freq/256  ; frequency high register
-                        dfb   $40+pulse2_oscillator,120                 ; volume register, volume = 0
+                        dfb   $40+pulse2_oscillator,0                 ; volume register, volume = 0
                         dfb   $80+pulse2_oscillator,3                 ; wavetable pointer register, point to $0300 by default (50% duty cycle)
                         dfb   $c0+pulse2_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+pulse2_oscillator,0                 ; mode register, set to free run
@@ -315,7 +315,7 @@ pulse2_sound_settings   =     *
 triangle_sound_settings =     *
                         dfb   $00+triangle_oscillator,default_freq      ; frequency low register
                         dfb   $20+triangle_oscillator,default_freq/256  ; frequency high register
-                        dfb   $40+triangle_oscillator,0                 ; volume register, volume = 0
+                        dfb   $40+triangle_oscillator,128               ; volume register, volume = 0
                         dfb   $80+triangle_oscillator,5                 ; wavetable pointer register, point to $0500
                         dfb   $c0+triangle_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+triangle_oscillator,0                 ; mode register, set to free run
@@ -404,6 +404,22 @@ interrupt_handler       = *
                         xba
                         sta   sound_data
 
+; Now the triangle wave.  This wave needs linear counter support to be silenced
+
+                        rep   #$30
+                        lda   APU_TRIANGLE_REG3
+                        jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
+                        lsr
+                        sep   #$30
+
+                        ldx   #$00+triangle_oscillator
+                        stx   sound_address
+                        sta   sound_data
+                        ldx   #$20+triangle_oscillator
+                        stx   sound_address
+                        xba
+                        sta   sound_data
+
 ;                        lda   border_color
 ;                        inc
 ;                        and   #$03
@@ -438,13 +454,29 @@ set_pulse_volume
                         sta   sound_data
                         rts
 
+; NES freq = f_CPU / (16 * (t + 1))
+;          = 1.789773 MHz / (16 * (t + 1))
+;          = 111860.812 Hz / (t + 1)
+;
+; IIgs freq = 0.200807 * F_HL (for 32 oscillators with DOC RES = 0)
+;
+; Solving for F_HL = (1 / 0.200807) * 111860.812 / (t + 1)
+;                  = 557056.338 / (t + 1)
+;
+; if t < 8 this value is out of range and the scillator should be silenced
+;
+; otherwise, break apart the ratio
+;
+; f_HL = 10 * (55706 / (t + 1))
+; 
 get_pulse_freq
                         mx %00
                         and   #$07FF                    ; Load the timer value (11-bits); freq = 1.79MHz / (16 * (t - 1)) = 111860Hz / (t-1)
-                        dec
-                        lsr                             ; Divide top and bottom by 2 -- 55930 / ((t - 1)/2)
+                        cmp   #8
+                        bcc   :no_sound
+                        inc
                         sta   divisor
-                        lda   #55930                    ; $DA7A
+                        lda   #55706
                         sta   dividend
 
                         lda   #0
@@ -461,11 +493,15 @@ get_pulse_freq
                         lda   dividend
                         sta   dividend
                         asl
-;                        asl
                         asl
+                        clc
+                        adc   dividend                  ; multiple by 10 to get the approx DOC value (0.2Hz per + post-multiple)
                         asl
-                        adc   dividend                  ; multiple by 5 to get the approx DOC value (0.2Hz per)
+
 ;                        sta   dividend
+                        rts
+:no_sound
+                        lda   #0
                         rts
 
 turn_off_interrupts
@@ -483,7 +519,8 @@ border_color    dw 0
 dividend        dw 0
 divisor         dw 0
 
-
+last_phase1_duty_cycle dfb $ff
+last_phase2_duty_cycle dfb $ff
 ; 8-bit mode
 ; A = register number
 ; X = register value
@@ -580,19 +617,19 @@ APU_STATUS_WRITE ENT
 ; Pulse 1 is OSC 0
     bit  #$01
     beq  :pulse1_off
-    _SetDOCReg #$40+pulse1_oscillator;#128
+;    _SetDOCReg #$40+pulse1_oscillator;#128
     bra  :pulse1_end
 :pulse1_off
-    _SetDOCReg #$40+pulse1_oscillator;#0
+;    _SetDOCReg #$40+pulse1_oscillator;#0
 :pulse1_end
 
 ; Pulse 2 is OSC 2
     bit  #$02
     beq  :pulse2_off
-    _SetDOCReg #$40+pulse2_oscillator;#128
+;    _SetDOCReg #$40+pulse2_oscillator;#128
     bra  :pulse2_end
 :pulse2_off
-    _SetDOCReg #$40+pulse2_oscillator;#0
+;    _SetDOCReg #$40+pulse2_oscillator;#0
 :pulse2_end
 
 ; Triangle is OSC 4
