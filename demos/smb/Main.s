@@ -347,16 +347,6 @@ RenderFrame
             lsr
             sta   ROMScreenEdge
 
-; Check the AreaType and see if the palette needs to be changed
-
-            ldal  ROMBase+$074E
-            and   #$00FF
-            cmp   LastAreaType
-            beq   :no_area_change
-            sta   LastAreaType
-            jsr   SetAreaType
-:no_area_change
-
 ; Calculate how many blocks have been scrolled into view
 
             lda   CurrScrollEdge
@@ -395,6 +385,17 @@ RenderFrame
 
             pea   $FFFF      ; NES mode
             _GTERender
+
+; Check the AreaType and see if the palette needs to be changed. We do this after the screen is blitted
+; so the palette does not get changed too eary while old pixels are still on the screen.
+
+            ldal  ROMBase+$074E
+            and   #$00FF
+            cmp   LastAreaType
+            beq   :no_area_change
+            sta   LastAreaType
+            jsr   SetAreaType
+:no_area_change
 
             rts
 
