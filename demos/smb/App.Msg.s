@@ -1,3 +1,4 @@
+               mx %00
 HexToChar      dfb   '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
 
 ; Convert a byte (Acc) into a string and store at (Y)
@@ -42,6 +43,18 @@ Addr2ToString  xba
 
 ; A=Value
 ; X=Screen offset
+DrawByte       phx                  ; Save register value
+               phy
+               ldy   #ByteBuff+1
+               jsr   ByteToString
+               ply
+               plx
+               lda   #ByteBuff
+               jsr   DrawString
+               rts
+
+; A=Value
+; X=Screen offset
 DrawWord       phx                  ; Save register value
                phy
                ldy   #WordBuff+1
@@ -57,6 +70,7 @@ ClearWord      lda   #EmptyBuff
                rts
 
 EmptyBuff      str   '    '
+ByteBuff       str   '00'
 WordBuff       str   '0000'
 Addr3Buff      str   '000000'       ; str adds leading length byte
 

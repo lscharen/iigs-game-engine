@@ -722,30 +722,37 @@ APU_IND_X_REG3_W
 :reg_tbl    dw   APU_PULSE1_REG3_W,APU_PULSE1_REG3_W
             dw   APU_PULSE2_REG3_W,APU_PULSE2_REG3_W,
             dw   APU_TRIANGLE_REG3_W,APU_TRIANGLE_REG3_W
+            dw   NO_OP,NO_OP
 
 APU_IND_X_REG4_W
             jmp  (:reg_tbl,x)
 :reg_tbl    dw   APU_PULSE1_REG4_W,APU_PULSE1_REG4_W
             dw   APU_PULSE2_REG4_W,APU_PULSE2_REG4_W,
             dw   APU_TRIANGLE_REG4_W,APU_TRIANGLE_REG4_W
+            dw   NO_OP,NO_OP
 
 APU_PULSE1_REG1_W
             jsl  APU_PULSE1_REG1_WRITE
+NO_OP
             rts
 APU_PULSE1_REG1_WX
+            phx
             pha
             txa
             jsl  APU_PULSE1_REG1_WRITE
             pla
+            plx
             rts
 APU_PULSE1_REG2_W
             jsl  APU_PULSE1_REG2_WRITE
             rts
 APU_PULSE1_REG2_WY
+            phy
             pha
             tya
             jsl  APU_PULSE1_REG2_WRITE
             pla
+            ply
             rts
 APU_PULSE1_REG3_W
             jsl  APU_PULSE1_REG3_WRITE
@@ -758,25 +765,31 @@ APU_PULSE2_REG1_W
             jsl  APU_PULSE2_REG1_WRITE
             rts
 APU_PULSE2_REG1_WX
+            phx
             pha
             txa
             jsl  APU_PULSE2_REG1_WRITE
             pla
+            plx
             rts
 APU_PULSE2_REG2_W
             jsl  APU_PULSE2_REG2_WRITE
             rts
 APU_PULSE2_REG2_WY
+            phy
             pha
             tya
             jsl  APU_PULSE2_REG2_WRITE
             pla
+            ply
             rts
 APU_PULSE2_REG2_WX
+            phx
             pha
             txa
             jsl  APU_PULSE2_REG2_WRITE
             pla
+            plx
             rts
 APU_PULSE2_REG3_W
             jsl  APU_PULSE2_REG3_WRITE
@@ -802,7 +815,10 @@ APU_STATUS_W
             rts
 APU_STATUS_WX
             phx
+            pha
+            txa
             jsl   APU_STATUS_WRITE
+            pla
             plx
             rts
 ; Hooks to call back to the GTE harness for PPU memory-mapped accesses

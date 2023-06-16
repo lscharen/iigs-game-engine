@@ -11,13 +11,62 @@
 ;  draw char at loc
 ;  update loc
 ;  see if length hit - no? back to draw char
-               rel
+;               rel
                mx    %00
 ]F_Length      ds    2                    ;length of string (only one byte currently used)
 ]F_CharIdx     ds    2                    ;index of current character
 ]F_CurrentPos  ds    2                    ;current top left char position
 ]F_StrPtr      equ   $01                  ;pointer to string (including length byte) / DP
 ]F_StrClr      equ   $03
+
+;x = TopLeft screen pos
+;y = font mask
+;a = 8-bit char
+DrawBottom
+               pha                        ; local variable space
+               pha
+               tsc
+               phd
+               tcd
+
+               sty  ]F_StrClr
+               lda  3,s
+               sec
+               sbc  #' '
+               asl                        ;*2
+               tay
+
+               jsr   drawBottom
+
+               pld
+               pla
+               pla
+               rts
+
+;x = TopLeft screen pos
+;y = font mask
+;a = 8-bit char
+DrawChar
+               pha                        ; local variable space
+               pha
+               tsc
+               phd
+               tcd
+
+               sty  ]F_StrClr
+               lda  3,s
+               sec
+               sbc  #' '
+               asl                        ;*2
+               tay
+
+               jsr   drawChar
+
+               pld
+               pla
+               pla
+               rts
+
 
 DrawString
                pha                        ; local variable space
@@ -52,16 +101,20 @@ NextChar       lda   ]F_CharIdx
                asl                        ;*2
                tay
                ldx   ]F_CurrentPos
-               jsr   :drawChar
+               jsr   drawChar
                inc   ]F_CurrentPos        ;compare to addition time (?)
                inc   ]F_CurrentPos
                inc   ]F_CurrentPos
                inc   ]F_CurrentPos        ;update screen pos (2 words=8 pixels)
                bra   NextChar
 
-;x = TopLeft screen pos
-;y = char table offset
-:drawChar      lda   FontTable,y          ;get real address of char data
+drawBottom     lda   FontTable,y          ;get real address of char data
+               sec
+               sbc   #FontData            ;pivot offset - now a is offset of fontdata
+               tay                        ;so we'll index with that
+               brl   bottom
+
+drawChar       lda   FontTable,y          ;get real address of char data
                sec
                sbc   #FontData            ;pivot offset - now a is offset of fontdata
                tay                        ;so we'll index with that
@@ -106,6 +159,7 @@ NextChar       lda   ]F_CharIdx
                and   ]F_StrClr
                stal  {$E12000+160*4+2},x
 
+bottom
                lda   FontData+20,y
                and   ]F_StrClr
                stal  {$E12000+160*5},x

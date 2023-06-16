@@ -197,15 +197,15 @@ EvtLoop
             stz   nmiCount
 
 ;            sep   #$20
-;            lda   #7
+;            lda   #1
 ;            stal  ROMBase+$075f
 ;            stal  ROMBase+$0766
 
-;            lda   #3
+;            lda   #2
 ;            stal  ROMBase+$0763
 ;            stal  ROMBase+$075c
 
-;            lda   #3
+;            lda   #2
 ;            stal  ROMBase+$0767
 ;            stal  ROMBase+$0760
 ;            rep   #$30
