@@ -326,15 +326,34 @@ backup_interrupt_ptr    ds  4
 ; APU internals
 ;-----------------------------------------------------------------------------------------
                         mx  %11
-clock_length            mac
+clock_length_counter    mac
                         lda   ]1+{APU_PULSE1_REG1-APU_PULSE1}
-                        bit   #PULSE_HALT_FLAG
+                        bit   ]2
                         bne   no_count
                         lda   ]1+{APU_PULSE1_LENGTH_COUNTER-APU_PULSE1}
                         beq   no_count
                         dec
                         sta   ]1+{APU_PULSE1_LENGTH_COUNTER-APU_PULSE1}
 no_count                <<<
+
+clock_linear_counter    mac
+                        lda   ]1+{APU_TRIANGLE_START_FLAG-APU_TRIANGLE}
+                        beq   do_clock
+                        lda   ]1+{APU_TRIANGLE_REG1-APU_TRIANGLE}
+                        and   #$7F
+                        sta   ]1+{APU_TRIANGLE_LINEAR_COUNTER-APU_TRIANGLE}
+                        bra   check_reset
+
+do_clock                lda   ]1+{APU_TRIANGLE_LINEAR_COUNTER-APU_TRIANGLE}
+                        beq   check_reset
+                        dec
+                        sta   ]1+{APU_TRIANGLE_LINEAR_COUNTER-APU_TRIANGLE}
+
+check_reset
+                        lda   ]1+{APU_TRIANGLE_REG1-APU_TRIANGLE}
+                        bmi   no_reset
+                        stz   ]1+{APU_TRIANGLE_START_FLAG-APU_TRIANGLE}
+no_reset                <<<
 
 clock_sweep             mac
                         lda   ]1+{APU_PULSE1_SWEEP_DIVIDER-APU_PULSE1}
@@ -451,6 +470,7 @@ envelope_out            <<<
 apu_frame_steps      equ 5
 PULSE_HALT_FLAG      equ $20
 PULSE_CONST_VOL_FLAG equ $10
+TRIANGLE_HALT_FLAG   equ $80
 
 interrupt_handler       = *
 
@@ -486,8 +506,9 @@ interrupt_handler       = *
 :half_frame
 
 ; clock the length counters
-                        clock_length APU_PULSE1
-                        clock_length APU_PULSE2
+                        clock_length_counter APU_PULSE1;#PULSE_HALT_FLAG
+                        clock_length_counter APU_PULSE2;#PULSE_HALT_FLAG
+                        clock_length_counter APU_TRIANGLE;#TRIANGLE_HALT_FLAG
 
 ; clock the sweep units
                         clock_sweep  APU_PULSE1;0
@@ -497,6 +518,8 @@ interrupt_handler       = *
 :quarter_frame
 
 ; clock the envelopes and triangle linear counter
+                        clock_linear_counter APU_TRIANGLE
+
                         clock_envelope APU_PULSE1
                         clock_envelope APU_PULSE2
 
@@ -584,6 +607,16 @@ interrupt_handler       = *
 
 ; Now the triangle wave.  This wave needs linear counter support to be silenced
 ;                        brl   :not_timer
+
+                        lda   #$40+triangle_oscillator
+                        sta   sound_address
+                        lda   APU_TRIANGLE_LENGTH_COUNTER     ; If the length counter is zero, no output
+                        beq   :set_volume_triangle
+                        lda   APU_TRIANGLE_LENGTH_COUNTER
+                        beq   :set_volume_triangle
+                        lda   #12                             ; Triangle is a bit softer than pulse channels
+:set_volume_triangle
+                        jsr   set_pulse_volume
 
                         rep   #$30
                         lda   APU_TRIANGLE_REG3
@@ -781,6 +814,11 @@ APU_TRIANGLE_REG2 ds 1    ; EPPP NSSS - Sweep unit: enabled, period, negative, s
 APU_TRIANGLE_REG3 ds 1    ; LLLL LLLL - Timer Low
 APU_TRIANGLE_REG4 ds 1    ; llll lHHH - Length counter load, timer high (also resets duty and starts envelope)
 
+APU_TRIANGLE_LENGTH_COUNTER dfb 0
+APU_TRIANGLE_CURRENT_PERIOD dw 0
+APU_TRIANGLE_START_FLAG dfb 0
+APU_TRIANGLE_LINEAR_COUNTER dfb 0
+
 APU_STATUS      ds 1
 
     mx %11
@@ -898,11 +936,38 @@ APU_TRIANGLE_REG2_WRITE ENT
     rtl
 
 APU_TRIANGLE_REG3_WRITE ENT
+    stal  APU_TRIANGLE_CURRENT_PERIOD
     stal  APU_TRIANGLE_REG3
     rtl
 
 APU_TRIANGLE_REG4_WRITE ENT
+    php
+    phx
+    pha
+
     stal  APU_TRIANGLE_REG4
+    and   #$07
+    stal  APU_TRIANGLE_CURRENT_PERIOD+1
+
+    ldal  APU_STATUS
+    bit   #$04
+    beq   :no_reload
+
+    ldal  APU_TRIANGLE_REG4
+    and   #$F8
+    lsr
+    lsr
+    lsr
+    tax
+    ldal  LengthTable,x
+    stal  APU_TRIANGLE_LENGTH_COUNTER  ; Immediately start the counter
+    lda   #1
+    stal  APU_TRIANGLE_START_FLAG
+
+:no_reload
+    pla
+    plx
+    plp
     rtl
 
 
@@ -926,14 +991,11 @@ APU_STATUS_WRITE ENT
     stz  APU_PULSE2_LENGTH_COUNTER
 :pulse2_on
 
-; Triangle is OSC 4
-;    bit  #$03
-;    beq  :triangle_off
-;    _SetDOCReg #$40+triangle_oscillator;#128
-;    bra  :triangle_end
-;:triangle_off
-;    _SetDOCReg #$40+triangle_oscillator;#0
-;:triangle_end
+; Triangle
+    bit  #$04
+    bne  :triangle_on
+    stz  APU_TRIANGLE_LENGTH_COUNTER
+:triangle_on
 
     pla
     rtl
