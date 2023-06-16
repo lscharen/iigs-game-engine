@@ -14,4 +14,5 @@ REM Cadius does not overwrite files, so clear the root folder first
 
 REM Now copy files and folders as needed
 %CADIUS% ADDFILE %IMAGE% %FOLDER% .\SuperMarioGS
+%CADIUS% ADDFILE %IMAGE% %FOLDER% .\APUSim
 %CADIUS% ADDFILE %IMAGE% %FOLDER% ..\..\src\Tool160

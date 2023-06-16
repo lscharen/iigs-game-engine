@@ -15,10 +15,12 @@
     "gsport": "%npm_package_config_gsport%",
     "build:rom": "%npm_package_config_merlin32% -V %npm_package_config_macros% RomOnly.s",
     "build:sys16": "%npm_package_config_merlin32% -V %npm_package_config_macros% App.s",
+    "build:sim": "%npm_package_config_merlin32% -V %npm_package_config_macros% Sim.s",
     "build": "npm run build:tool && npm run build:sys16",
     "build:tool": "%npm_package_config_merlin32% -V %npm_package_config_macros% ../../src/Master.s",
     "build:image": "build-image.bat %npm_package_config_cadius%",
-    "build:swizzle": "",
+    "build:swizzle": "./mkswizzetbl.sh > pal_w11.s",
+    "run:sim": "npm run build:sim && npm run build:image && npm run gsport",
     "debug": "\"%npm_package_config_crossrunner%\" SuperMarioGS -Source SuperMarioGS_S02__Output.txt -Source SuperMarioGS_S03__Output.txt -Debug -CompatibilityLayer"
 
   },
