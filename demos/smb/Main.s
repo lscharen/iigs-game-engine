@@ -336,7 +336,7 @@ RenderFrame
 ; Get the current global coordinates
 
             sei
-            lda   nt_queue_end
+            lda   nt_queue_end      ; Freeze the end of the queue that contains updates up until "now"
             sta   CurrNTQueueEnd
             lda   ROMScrollEdge     ; This is set in the VBL IRQ
             sta   CurrScrollEdge    ; Freeze it, then we can let the IRQs continue
@@ -527,9 +527,9 @@ ClearNTQueue
 DrainNTQueue
 :GTELeftEdge equ Tmp3
 :PPUAddr     equ Tmp4
-:Count       equ Tmp5
+;:Count       equ Tmp5
 
-            stz  :Count
+;            stz  :Count
 
 ; Prep item -- get the logical block of the left edge of the scroll window
 
@@ -567,7 +567,7 @@ DrainNTQueue
 
 :set_tile
 ; Now we have the relative position from the left edge of the tile.  Add the origin
-; tile to it (uless we're in rows 0 or 1)
+; tile to it (unless we're in rows 0 or 1)
 
             txa
             cpy   #2
@@ -591,7 +591,7 @@ DrainNTQueue
             sta   1,s
 
             _GTESetTile
-            inc   :Count
+;            inc   :Count
             brl   :skip
 
 
@@ -871,9 +871,6 @@ CopyStatus
 ; X = number of columns to copy
 ; Y = number of GTE tiles to offset
 CopyNametable
-;            cmp   #5
-;            bcc   *+4
-;            brk   $88
             sta   Tmp2
             bit   #$0020                  ; Is it >32?
             beq   *+5
