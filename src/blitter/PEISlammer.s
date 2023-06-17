@@ -76,13 +76,13 @@ _PEISlam
                  adcl  :screen_width_1
                  tcs
 
-                 cmp   #$9D00
-                 bcc   *+4
-                 beq   :exit
-;                 brk   $85              ; Kill if stack is out of range
-
                  dey                    ; decrement the total counter, if zero then we're done
                  beq   :exit
+
+                 cmp   #$9D00
+                 bcc   *+4
+;                 beq   :exit
+                 brk   $85              ; Kill if stack is out of range
 
                  dex                    ; decrement the inner counter.  Both counters are set
                  beq   :restore         ; up so that they fall-through by default to save a cycle
