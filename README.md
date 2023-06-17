@@ -10,7 +10,10 @@ The Generic Tile Engine (GTE) project is a tile engine built to exploit the uniq
 
 An overview of GTE was presented at [KansasFest 2022](http://www.youtube.com/watch?v=2x65JymFklk).
 
-[![KansasFest 2022 presentation on GTE](http://img.youtube.com/vi/2x65JymFklk/3.jpg | width=400)](http://www.youtube.com/watch?v=2x65JymFklk "KansasFest 2022 25 GTE: A graphic engine for the IIgs - Lucas Scharenbroich")
+<p align="center">
+  <img src="https://raw.githubusercontent.com/lscharen/iigs-game-engine/master/.github/images/armada.gif"/><br/>
+  Parallax scrolling of two full-screen static layers
+</p>
 
 # Building from Source
 
