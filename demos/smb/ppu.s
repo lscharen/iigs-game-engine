@@ -302,9 +302,6 @@ PPUDATA_WRITE ENT
         bcc  :done
         brl  :extra
 
-;        bcs  :extra
-;        bra  :done
-
 :nochange
         rep  #$30
         txa
@@ -649,7 +646,7 @@ scanOAMSprites
         sta    OAM_COPY+2,y
         sep    #$20
 
-        jsr    debug_values
+;        jsr    debug_values
 
         iny
         iny
@@ -747,6 +744,40 @@ debug_values
          rep    #$30
          ldx    #{16*160}+{160-16}
          ldy    #$EEEE
+         jsr    DrawWord
+
+
+         lda    #$80+pulse2_oscillator    ; oscillator address
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+         xba
+
+         lda    #$40+pulse2_oscillator    ; oscillator volume
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+
+         rep    #$30
+         ldx    #{24*160}+{160-16}
+         ldy    #$DDDD
+         jsr    DrawWord
+
+         sep    #$20
+         lda    #$20+pulse2_oscillator    ; oscillator freq high
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+         xba
+
+         lda    #$00+pulse2_oscillator    ; oscillator freq low
+         stal   $e1c000+sound_address
+         ldal   $e1c000+sound_data
+         ldal   $e1c000+sound_data
+
+         rep    #$30
+         ldx    #{32*160}+{160-16}
+         ldy    #$DDDD
          jsr    DrawWord
 
          sep    #$30
