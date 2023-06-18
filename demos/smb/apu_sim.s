@@ -44,6 +44,7 @@ Tmp1        equ   130
             stz   CursorRow
 
             jsr   InitGraphics
+            jsr   DrawStaticUI
             jsr   APUStartUp
 
             sep   #$30
@@ -55,7 +56,7 @@ Tmp1        equ   130
 :update
             jsr   DrawUI
 :evtloop
-            jsr   DrawDynUI             ; Always update to see changing internal APU values
+;            jsr   DrawDynUI             ; Always update to see changing internal APU values
             jsr   _ReadControl
             bit   #PAD_KEY_DOWN      ; Only response to actual key presses
             beq   :evtloop
@@ -107,31 +108,100 @@ Toggle
             asl
             tax
             jmp   (:toggle1,x)
-:toggle1    da    Toggle4000,Toggle4001,Toggle4002,Toggle4003,Toggle4015
+:toggle1    da    Toggle4000,Toggle4001,Toggle4002,Toggle4003
+            da    Toggle4008,Toggle400A,Toggle400B,ToggleNoop
+            da    Toggle4004,Toggle4005,Toggle4006,Toggle4007
+            da    Toggle400C,Toggle400E,Toggle400F,Toggle4015
+ToggleNoop
+            brl   ToggleExit
+
 Toggle4000
             lda   APU_PULSE1_REG1
             ldx   CursorCol
             eor   ToggleTable,x
             jsl   APU_PULSE1_REG1_WRITE
-            bra   ToggleExit
+            brl   ToggleExit
 Toggle4001
             lda   APU_PULSE1_REG2
             ldx   CursorCol
             eor   ToggleTable,x
             jsl   APU_PULSE1_REG2_WRITE
-            bra   ToggleExit
+            brl   ToggleExit
 Toggle4002
             lda   APU_PULSE1_REG3
             ldx   CursorCol
             eor   ToggleTable,x
             jsl   APU_PULSE1_REG3_WRITE
-            bra   ToggleExit
+            brl   ToggleExit
 Toggle4003
             lda   APU_PULSE1_REG4
             ldx   CursorCol
             eor   ToggleTable,x
             jsl   APU_PULSE1_REG4_WRITE
-            bra   ToggleExit
+            brl   ToggleExit
+
+Toggle4004
+            lda   APU_PULSE2_REG1
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_PULSE2_REG1_WRITE
+            brl   ToggleExit
+Toggle4005
+            lda   APU_PULSE2_REG2
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_PULSE2_REG2_WRITE
+            brl   ToggleExit
+Toggle4006
+            lda   APU_PULSE2_REG3
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_PULSE2_REG3_WRITE
+            brl   ToggleExit
+Toggle4007
+            lda   APU_PULSE2_REG4
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_PULSE2_REG4_WRITE
+            brl   ToggleExit
+
+Toggle4008
+            lda   APU_TRIANGLE_REG1
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_TRIANGLE_REG1_WRITE
+            brl   ToggleExit
+Toggle400A
+            lda   APU_TRIANGLE_REG3
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_TRIANGLE_REG3_WRITE
+            brl   ToggleExit
+Toggle400B
+            lda   APU_TRIANGLE_REG4
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_TRIANGLE_REG4_WRITE
+            brl   ToggleExit
+
+Toggle400C
+            lda   APU_NOISE_REG1
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_NOISE_REG1_WRITE
+            brl   ToggleExit
+Toggle400E
+            lda   APU_NOISE_REG3
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_NOISE_REG3_WRITE
+            brl   ToggleExit
+Toggle400F
+            lda   APU_NOISE_REG4
+            ldx   CursorCol
+            eor   ToggleTable,x
+            jsl   APU_NOISE_REG4_WRITE
+            brl   ToggleExit
 
 Toggle4015
             lda   APU_STATUS
@@ -150,36 +220,66 @@ ToggleTable dfb  $80,$40,$20,$10,$08,$04,$02,$01
             mx  %00
 MoveUp 
             lda   CursorRow
+            bne   :not_0
+            lda   #6
+            sta   CursorRow
+            rts
+:not_0
+            cmp   #8
+            bne   :not_8
+            lda   #15
+            sta   CursorRow
+            rts
+:not_8
             dec
-            bpl   *+5
-            lda   #4
             sta   CursorRow
             rts
 
 MoveDown
             lda   CursorRow
+            cmp   #6
+            bne   :not_6
+            stz   CursorRow
+            rts
+:not_6
+            cmp   #15
+            bne   :not_15
+            lda   #8
+            sta   CursorRow
+            rts
+:not_15
             inc
-            cmp   #5
-            bcc   *+5
-            lda   #0
             sta   CursorRow
             rts
 
 MoveLeft
             lda   CursorCol
             dec
-            bpl   *+5
+            bpl   :store
+            lda   CursorRow
+            cmp   #15
+            beq   :skip
+            eor   #8
+            sta   CursorRow
+:skip
             lda   #7
-            sta   CursorCol
+:store      sta   CursorCol
             rts
 
 MoveRight
             lda   CursorCol
             inc
             cmp   #8
-            bcc   *+5
+            bcc   :store
+
+            lda   CursorRow
+            cmp   #15
+            beq   :skip
+            eor   #8
+            sta   CursorRow
+:skip
             lda   #0
-            sta   CursorCol
+:store      sta   CursorCol
             rts
 
 ; Read the keyboard and paddle controls and return in a game-controller-like format
@@ -260,10 +360,24 @@ DefaultPalette   ENT
 
 ; UI string templates
 PULSE1_TITLE     str   'PULSE1'
+PULSE2_TITLE     str   'PULSE2'
+TRIANGLE_TITLE   str   'TRIANGLE'
+NOISE_TITLE      str   'NOISE'
+CONTROL_TITLE    str   'CONTROL'
+
 PULSE_REG1_STR   str   'DDLCVVVV'
 PULSE_REG2_STR   str   'EPPPNSSS'
 PULSE_REG3_STR   str   'TTTTTTTT'
 PULSE_REG4_STR   str   'LLLLLTTT'
+
+TRIANGLE_REG1_STR   str   'CRRRRRRR'
+TRIANGLE_REG3_STR   str   'TTTTTTTT'
+TRIANGLE_REG4_STR   str   'LLLLLTTT'
+
+NOISE_REG1_STR   str   '--LCVVVV'
+NOISE_REG3_STR   str   'L---PPPP'
+NOISE_REG4_STR   str   'LLLLL---'
+
 APU_STATUS_STR   str   '---DNT21'
 
 ROW_SPAN    equ  {8*160}
@@ -289,96 +403,232 @@ DrawDynUI
             lda  APU_PULSE1_CURRENT_PERIOD
             jsr  DrawWord
 
+; Draw stuff that will never be updated
+DrawStaticUI
+            ldx  #{6*4}+{ROW_SPAN*3}
+            ldy  #$1111
+            lda  #PULSE1_TITLE
+            jsr  DrawString
+
+            ldx  #{22*4}+{ROW_SPAN*3}
+            ldy  #$1111
+            lda  #PULSE2_TITLE
+            jsr  DrawString
+
+            ldx  #{6*4}+{ROW_SPAN*10}
+            ldy  #$1111
+            lda  #TRIANGLE_TITLE
+            jsr  DrawString
+
+            ldx  #{22*4}+{ROW_SPAN*10}
+            ldy  #$1111
+            lda  #NOISE_TITLE
+            jsr  DrawString
+
+            ldx  #{22*4}+{ROW_SPAN*16}
+            ldy  #$1111
+            lda  #CONTROL_TITLE
+            jsr  DrawString
 
 DrawUI
-            ldx  #{1*4}+{ROW_SPAN*5}
+            jsr  DrawPulse1
+            jsr  DrawPulse2
+            jsr  DrawTriangle
+            jsr  DrawNoise
+            jsr  DrawControl
+
+            jsr  DrawCursor
+            rts
+
+PULSE1_X   equ  1
+PULSE1_Y   equ  5
+DrawPulse1
+            ldx  #{PULSE1_X*4}+{ROW_SPAN*PULSE1_Y}
             ldy  #$4444
             lda  #$4000
             jsr  DrawWord
 
             ldy  #PULSE_REG1_STR
             lda  APU_PULSE1_REG1
-            ldx  #{6*4}+{ROW_SPAN*5}
+            ldx  #{{PULSE1_X+5}*4}+{ROW_SPAN*PULSE1_Y}
             jsr  DrawBitsHL
 
-            ldx  #{15*4}+{ROW_SPAN*5}
-            ldy  #$5555
-            lda  APU_PULSE1_REG1
-            jsr  DrawByte
 
-
-
-            ldx  #{1*4}+{ROW_SPAN*6}
+            ldx  #{PULSE1_X*4}+{ROW_SPAN*{PULSE1_Y+1}}
             ldy  #$4444
             lda  #$4001
             jsr  DrawWord
 
             ldy  #PULSE_REG2_STR
             lda  APU_PULSE1_REG2
-            ldx  #{6*4}+{ROW_SPAN*6}
+            ldx  #{{PULSE1_X+5}*4}+{ROW_SPAN*{PULSE1_Y+1}}
             jsr  DrawBitsHL
 
-            ldx  #{15*4}+{ROW_SPAN*6}
-            ldy  #$5555
-            lda  APU_PULSE1_REG2
-            jsr  DrawByte
 
-
-
-            ldx  #{1*4}+{ROW_SPAN*7}
+            ldx  #{PULSE1_X*4}+{ROW_SPAN*{PULSE1_Y+2}}
             ldy  #$4444
             lda  #$4002
             jsr  DrawWord
 
             ldy  #PULSE_REG3_STR
             lda  APU_PULSE1_REG3
-            ldx  #{6*4}+{ROW_SPAN*7}
+            ldx  #{{PULSE1_X+5}*4}+{ROW_SPAN*{PULSE1_Y+2}}
             jsr  DrawBitsHL
 
-            ldx  #{15*4}+{ROW_SPAN*7}
-            ldy  #$5555
-            lda  APU_PULSE1_REG3
-            jsr  DrawByte
 
-
-
-            ldx  #{1*4}+{ROW_SPAN*8}
+            ldx  #{PULSE1_X*4}+{ROW_SPAN*{PULSE1_Y+3}}
             ldy  #$4444
             lda  #$4003
             jsr  DrawWord
 
             ldy  #PULSE_REG4_STR
             lda  APU_PULSE1_REG4
-            ldx  #{6*4}+{ROW_SPAN*8}
+            ldx  #{{PULSE1_X+5}*4}+{ROW_SPAN*{PULSE1_Y+3}}
+            jsr  DrawBitsHL
+            rts
+
+PULSE2_X   equ  17
+PULSE2_Y   equ  5
+DrawPulse2
+            ldx  #{PULSE2_X*4}+{ROW_SPAN*PULSE2_Y}
+            ldy  #$4444
+            lda  #$4004
+            jsr  DrawWord
+
+            ldy  #PULSE_REG1_STR
+            lda  APU_PULSE2_REG1
+            ldx  #{{PULSE2_X+5}*4}+{ROW_SPAN*PULSE2_Y}
             jsr  DrawBitsHL
 
-            ldx  #{15*4}+{ROW_SPAN*8}
-            ldy  #$5555
-            lda  APU_PULSE1_REG4
-            jsr  DrawByte
+            ldx  #{PULSE2_X*4}+{ROW_SPAN*{PULSE2_Y+1}}
+            ldy  #$4444
+            lda  #$4005
+            jsr  DrawWord
 
+            ldy  #PULSE_REG2_STR
+            lda  APU_PULSE2_REG2
+            ldx  #{{PULSE2_X+5}*4}+{ROW_SPAN*{PULSE2_Y+1}}
+            jsr  DrawBitsHL
+
+            ldx  #{PULSE2_X*4}+{ROW_SPAN*{PULSE2_Y+2}}
+            ldy  #$4444
+            lda  #$4006
+            jsr  DrawWord
+
+            ldy  #PULSE_REG3_STR
+            lda  APU_PULSE2_REG3
+            ldx  #{{PULSE2_X+5}*4}+{ROW_SPAN*{PULSE2_Y+2}}
+            jsr  DrawBitsHL
+
+            ldx  #{PULSE2_X*4}+{ROW_SPAN*{PULSE2_Y+3}}
+            ldy  #$4444
+            lda  #$4007
+            jsr  DrawWord
+
+            ldy  #PULSE_REG4_STR
+            lda  APU_PULSE2_REG4
+            ldx  #{{PULSE2_X+5}*4}+{ROW_SPAN*{PULSE2_Y+3}}
+            jsr  DrawBitsHL
+
+            rts
+
+
+TRIANGLE_X  equ  1
+TRIANGLE_Y  equ  12
+DrawTriangle
+            ldx  #{TRIANGLE_X*4}+{ROW_SPAN*TRIANGLE_Y}
+            ldy  #$4444
+            lda  #$4008
+            jsr  DrawWord
+
+            ldy  #TRIANGLE_REG1_STR
+            lda  APU_TRIANGLE_REG1
+            ldx  #{{TRIANGLE_X+5}*4}+{ROW_SPAN*TRIANGLE_Y}
+            jsr  DrawBitsHL
+
+
+            ldx  #{TRIANGLE_X*4}+{ROW_SPAN*{TRIANGLE_Y+1}}
+            ldy  #$4444
+            lda  #$400A
+            jsr  DrawWord
+
+            ldy  #TRIANGLE_REG3_STR
+            lda  APU_PULSE2_REG3
+            ldx  #{{TRIANGLE_X+5}*4}+{ROW_SPAN*{TRIANGLE_Y+1}}
+            jsr  DrawBitsHL
+
+
+            ldx  #{TRIANGLE_X*4}+{ROW_SPAN*{TRIANGLE_Y+2}}
+            ldy  #$4444
+            lda  #$400B
+            jsr  DrawWord
+
+            ldy  #TRIANGLE_REG4_STR
+            lda  APU_TRIANGLE_REG4
+            ldx  #{{TRIANGLE_X+5}*4}+{ROW_SPAN*{TRIANGLE_Y+2}}
+            jsr  DrawBitsHL
+
+            rts
+
+NOISE_X  equ  17
+NOISE_Y  equ  12
+DrawNoise
+            ldx  #{NOISE_X*4}+{ROW_SPAN*NOISE_Y}
+            ldy  #$4444
+            lda  #$400C
+            jsr  DrawWord
+
+            ldy  #NOISE_REG1_STR
+            lda  APU_NOISE_REG1
+            ldx  #{{NOISE_X+5}*4}+{ROW_SPAN*NOISE_Y}
+            jsr  DrawBitsHL
+
+
+            ldx  #{NOISE_X*4}+{ROW_SPAN*{NOISE_Y+1}}
+            ldy  #$4444
+            lda  #$400E
+            jsr  DrawWord
+
+            ldy  #NOISE_REG3_STR
+            lda  APU_NOISE_REG3
+            ldx  #{{NOISE_X+5}*4}+{ROW_SPAN*{NOISE_Y+1}}
+            jsr  DrawBitsHL
+
+
+            ldx  #{NOISE_X*4}+{ROW_SPAN*{NOISE_Y+2}}
+            ldy  #$4444
+            lda  #$400F
+            jsr  DrawWord
+
+            ldy  #NOISE_REG4_STR
+            lda  APU_NOISE_REG4
+            ldx  #{{NOISE_X+5}*4}+{ROW_SPAN*{NOISE_Y+2}}
+            jsr  DrawBitsHL
+
+            rts
 
 ; Draw the APU Status byte
-
-            ldx  #{1*4}+{ROW_SPAN*10}
+CONTROL_X   equ  17
+CONTROL_Y   equ  18
+DrawControl
+            ldx  #{CONTROL_X*4}+{ROW_SPAN*CONTROL_Y}
             ldy  #$4444
             lda  #$4015
             jsr  DrawWord
 
             ldy  #APU_STATUS_STR
             lda  APU_STATUS
-            ldx  #{6*4}+{ROW_SPAN*10}
+            ldx  #{{CONTROL_X+5}*4}+{ROW_SPAN*CONTROL_Y}
             jsr  DrawBitsHL
 
-            ldx  #{15*4}+{ROW_SPAN*10}
-            ldy  #$5555
-            lda  APU_STATUS
-            jsr  DrawByte
+            rts
 
+DrawCursor
             lda  CursorRow
             asl
             tax
             lda  row2screen,x             ; Get the physical position of each logical row
+
             asl
             asl
             asl
@@ -393,9 +643,10 @@ DrawUI
             asl
             asl
             sta  1,s
+
             lda  CursorCol
             clc
-            adc  #6
+            adc  col2screen,x
             asl
             asl
             clc
@@ -409,7 +660,8 @@ DrawUI
 
             rts
 
-row2screen  dw   5,6,7,8,10
+row2screen  dw   5,6,7,8,12,13,14,0,5,6,7,8,12,13,14,18     ; 16 logical rows, 0-7 are column 1, 8-15 column 2
+col2screen  dw   6,6,6,6,6, 6, 6, 0,22,22,22,22,22,22,22,22 ; 
 ; Draw a byte as a series of bits using the template strings and
 ; the bit values to set the color
 ;
@@ -448,6 +700,16 @@ DrawBitsHL
             bcc   :loop
             rts
 
+setborder
+        php
+        sep  #$20
+        eorl $E0C034
+        and  #$0F
+        eorl $E0C034
+        stal $E0C034
+        plp
+        rts
+        
             put   App.Msg.s
             put   font.s
 

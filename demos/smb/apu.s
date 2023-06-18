@@ -105,6 +105,9 @@ copy_instruments_to_doc
 
                         lda #$0500
                         jsr copy_triangle
+
+                        lda #$0600
+                        jsr copy_noise
                         rts
 
 ;--------------------------
@@ -190,6 +193,24 @@ copy_triangle
                         mx  %00
                         rts
 
+copy_noise
+                        sep #$30
+                        mx  %11
+
+                        stz sound_address
+                        xba
+                        sta sound_address+1
+
+                        ldx #0
+:loop
+                        lda noise_wave,x
+                        sta sound_data
+                        inx
+                        bne :loop
+
+                        rep #$30
+                        mx  %00
+                        rts
 ;--------------------------
 
 triangle_wave
@@ -210,6 +231,23 @@ triangle_wave
     hex 41424446484a4c4e50525456585a5c5e
     hex 60626466686a6c6e70727476787a7c7e
 
+noise_wave
+    hex 8f968f763e6fd49ab1e564e295a9bcc9
+    hex 717b6629e6970b865dc0e0d840d32a96
+    hex 3bd4c5d407b78923d8c9766bea128e8a
+    hex c9ee5ddbed3119ff14b4d9a44bfbb7c4
+    hex 7a56e26e8aac9ebf1653c0260446231b
+    hex 73431495fc585e943edacf8f5bb970e6
+    hex 118dc361bee99c98f32d25f06a33715a
+    hex 585344f7f3e2f3c36c37cfd78e40147f
+    hex a4b20624ac633b42b3aac5407fac4ba9
+    hex a4d71a1d020a7757ea244b103f0b7a76
+    hex 9b533a60cda31e0fa2ce3491b55c4f26
+    hex ea47a61f661deec128129372c3471a9b
+    hex f85c3c077168d413184a139440460950
+    hex dee3f9bdb65e162b08ed9231a72fb943
+    hex 1ba599be80dc2812afa63cc2317cdb1a
+    hex 8d99d56327bc50dc975bee94754f561b
 ;--------------------------
 
 setup_doc_registers
@@ -225,6 +263,9 @@ setup_doc_registers
                         jsr   copy_register_config
 
                         ldx   #triangle_sound_settings
+                        jsr   copy_register_config
+
+                        ldx   #noise_sound_settings
                         jsr   copy_register_config
 
                         rep #$20
@@ -295,7 +336,8 @@ timer_sound_settings    =     *                     ; set up oscillator 30 for i
 pulse1_oscillator       =     0
 pulse2_oscillator       =     2
 triangle_oscillator     =     4
-default_freq            =     5000
+noise_oscillator        =     6
+default_freq            =     800
 pulse1_sound_settings   =     *
                         dfb   $00+pulse1_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse1_oscillator,default_freq/256  ; frequency high register
@@ -319,6 +361,14 @@ triangle_sound_settings =     *
                         dfb   $80+triangle_oscillator,5                 ; wavetable pointer register, point to $0500
                         dfb   $c0+triangle_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+triangle_oscillator,0                 ; mode register, set to free run
+
+noise_sound_settings =     *
+                        dfb   $00+noise_oscillator,default_freq      ; frequency low register
+                        dfb   $20+noise_oscillator,default_freq/256  ; frequency high register
+                        dfb   $40+noise_oscillator,128                 ; volume register, volume = 0
+                        dfb   $80+noise_oscillator,6                 ; wavetable pointer register, point to $0600
+                        dfb   $c0+noise_oscillator,0                 ; wavetable size register, 256 byte length
+                        dfb   $a0+noise_oscillator,0                 ; mode register, set to free run
 
 backup_interrupt_ptr    ds  4
 
@@ -365,9 +415,9 @@ clock_sweep             mac
                         sta   ]1+{APU_PULSE1_RELOAD_FLAG-APU_PULSE1}
 
                         lda   ]1+{APU_PULSE1_REG2-APU_PULSE1} ; get the barrel shift argument from the register
-                        bpl   no_sweep                 ; if sweep is not enabled, do nothing
+                        bpl   no_sweep                        ; if sweep is not enabled, do nothing
                         and   #$07
-                        beq   no_sweep                 ; shift must be != 0
+                        beq   no_sweep                        ; shift must be != 0
                         asl
                         tax
 
@@ -379,10 +429,7 @@ clock_sweep             mac
                         lda   ]1+{APU_PULSE1_CURRENT_PERIOD-APU_PULSE1}
                         cmp   #8
                         bcc   no_sweep0                 ; current period must be >= 8
-
-                        lda   ]1+{APU_PULSE1_REG3-APU_PULSE1}  ; raw period stored in the register
-                        and   #$7FF
-                        jmp   (bitshift,x)                     ; shift it by the shifter amount
+                        jmp   (bitshift,x)              ; shift it by the shifter amount
 bitshift                da    bitshift_0,bitshift_1,bitshift_2,bitshift_3,bitshift_4,bitshift_5,bitshift_6,bitshift_7
 bitshift_7              lsr
 bitshift_6              lsr
@@ -400,21 +447,9 @@ bitshift_0
                         FIN
 no_negate               clc
                         adc   ]1+{APU_PULSE1_CURRENT_PERIOD-APU_PULSE1}
-                        sta   ]1+{APU_PULSE1_TARGET_PERIOD-APU_PULSE1}
-
-                        stz   ]1+{APU_PULSE1_MUTE-APU_PULSE1}
-                        ldy   #1
                         cmp   #$800
-                        bcc   *+5
-                        sty   ]1+{APU_PULSE1_MUTE-APU_PULSE1}  ; mute the output is the period is too large
-                        bcs   *+5
-                        sta   ]1+{APU_PULSE1_CURRENT_PERIOD-APU_PULSE1} ; set the current period if the target is within a valid range
-
-                        lda   ]1+{APU_PULSE1_CURRENT_PERIOD-APU_PULSE1}
-                        cmp   #8
-                        bcs   *+5
-                        sty   ]1+{APU_PULSE1_MUTE-APU_PULSE1}  ; mute the output if the period is too small
-
+                        bcs   no_sweep0
+                        sta   ]1+{APU_PULSE1_CURRENT_PERIOD-APU_PULSE1}
 no_sweep0
                         sep   #$20
 no_sweep
@@ -469,10 +504,18 @@ envelope_out            <<<
 
 apu_frame_steps      equ 5
 PULSE_HALT_FLAG      equ $20
+NOISE_HALT_FLAG      equ $20     ; noise and pulse channels have halt flagin same bit position in REG1
 PULSE_CONST_VOL_FLAG equ $10
+NOISE_CONST_VOL_FLAG equ $10
 TRIANGLE_HALT_FLAG   equ $80
 
+                        mx %11
 interrupt_handler       = *
+
+                        ldal  $E0C034                    ; save the border color
+                        stal  border_color
+                        lda   #1
+                        jsr   setborder
 
                         phb
                         phd
@@ -482,14 +525,17 @@ interrupt_handler       = *
 
                         clc
                         xce
-                        rep #$30
-                        mx  %00
 
-                        lda #$c000
-                        tcd
+                        pea  $c000
+                        pld
 
-                        sep #$30
-                        mx  %11
+; Make sure it's the oscillator we care about
+
+                        ldal  osc_interrupt             ; which oscillator generated the interrupt?
+                        and   #%00111110
+                        cmp   #2*interrupt_oscillator
+                        beq   *+5
+                        brl   :not_timer                ; Only service timer interrupts
 
 ; Update the frame counter.  We double-count so that frame counter can be used directly to dispatch to the
 ; appropriate tick handler
@@ -509,12 +555,13 @@ interrupt_handler       = *
                         clock_length_counter APU_PULSE1;#PULSE_HALT_FLAG
                         clock_length_counter APU_PULSE2;#PULSE_HALT_FLAG
                         clock_length_counter APU_TRIANGLE;#TRIANGLE_HALT_FLAG
+                        clock_length_counter APU_NOISE;#NOISE_HALT_FLAG
 
 ; clock the sweep units
                         clock_sweep  APU_PULSE1;0
                         clock_sweep  APU_PULSE2;1
 
-; quarter frame updates run every APU frame (for 4-cycle)
+; quarter frame updates run every APU frame
 :quarter_frame
 
 ; clock the envelopes and triangle linear counter
@@ -522,43 +569,24 @@ interrupt_handler       = *
 
                         clock_envelope APU_PULSE1
                         clock_envelope APU_PULSE2
+                        clock_envelope APU_NOISE
 
 :no_frame
                         jsr   access_doc_registers
 
-                        ldal  osc_interrupt             ; which oscillator generated the interrupt?
-                        and   #%00111110
-                        lsr
-                        cmp   #interrupt_oscillator
-                        beq   *+5
-                        brl   :not_timer                ; Only service timer interrupts
-
-; Set the parameters for the first square wave channel
-
-                        lda   #$80+pulse1_oscillator
-                        sta   sound_address
-                        lda   APU_PULSE1_REG1                ; Get the cycle duty bits
-                        jsr   set_pulse_duty_cycle
-
-                        lda   #$40+pulse1_oscillator
-                        sta   sound_address
-
+; Set the parameters for the first square wave channel.
+;
+; First, set the frequency, if the period is <8 then the pulse channel is muted,
+; to test that first
                         lda   APU_PULSE1_MUTE                ; If the sweep muted the channel, no output
-                        beq   :no_mute_pulse1
-                        lda   #0
-                        bra   :set_volume_pulse1
-:no_mute_pulse1
+                        bne   :mute_pulse1
                         lda   APU_PULSE1_LENGTH_COUNTER      ; If the length counter is zero, no output
-                        beq   :set_volume_pulse1
-                        lda   APU_PULSE1_REG1
-                        bit   #PULSE_CONST_VOL_FLAG           ; Check the constant volume bit
-                        bne   :set_volume_pulse1
-                        lda   APU_PULSE1_ENVELOPE
-:set_volume_pulse1
-                        jsr   set_pulse_volume
-
+                        beq   :mute_pulse1
                         rep   #$30
                         lda   APU_PULSE1_CURRENT_PERIOD
+                        cmp   #8
+                        bcc   :mute_pulse1
+
                         jsr   get_pulse_freq                  ; return freq in 16-bit accumulator
                         sep   #$30
                         ldx   #$00+pulse1_oscillator
@@ -569,32 +597,36 @@ interrupt_handler       = *
                         xba
                         sta   sound_data
 
-; Now do the second square wave
-
-                        lda   #$80+pulse2_oscillator
+                        lda   #$80+pulse1_oscillator
                         sta   sound_address
-                        lda   APU_PULSE2_REG1           ; Get the cycle duty bits
+                        lda   APU_PULSE1_REG1                ; Get the cycle duty bits
                         jsr   set_pulse_duty_cycle
 
-                        lda   #$40+pulse2_oscillator
+                        lda   #$40+pulse1_oscillator
                         sta   sound_address
+                        lda   APU_PULSE1_REG1
+                        bit   #PULSE_CONST_VOL_FLAG           ; Check the constant volume bit
+                        bne   :set_volume_pulse1
+                        lda   APU_PULSE1_ENVELOPE
+                        bra   :set_volume_pulse1
 
-                        lda   APU_PULSE2_MUTE           ; If the sweep muted the channel, no output
-                        beq   :no_mute_pulse2
+:mute_pulse1
+                        sep   #$30
+                        lda   #$40+pulse1_oscillator
+                        sta   sound_address
                         lda   #0
-                        bra   :set_volume_pulse2
-:no_mute_pulse2
-                        lda   APU_PULSE2_LENGTH_COUNTER ; If the length counter is zero, no output
-                        beq   :set_volume_pulse2
-                        lda   APU_PULSE2_REG1
-                        bit   #PULSE_CONST_VOL_FLAG      ; Check the constant volume bit
-                        bne   :set_volume_pulse2
-                        lda   APU_PULSE2_ENVELOPE
-:set_volume_pulse2
-                        jsr   set_pulse_volume
+:set_volume_pulse1      jsr   set_pulse_volume
 
+; Now do the second square wave
+                        lda   APU_PULSE2_MUTE                ; If the sweep muted the channel, no output
+                        bne   :mute_pulse2
+                        lda   APU_PULSE2_LENGTH_COUNTER      ; If the length counter is zero, no output
+                        beq   :mute_pulse2
                         rep   #$30
                         lda   APU_PULSE2_CURRENT_PERIOD
+                        cmp   #8
+                        bcc   :mute_pulse2
+
                         jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
                         sep   #$30
                         ldx   #$00+pulse2_oscillator
@@ -605,25 +637,48 @@ interrupt_handler       = *
                         xba
                         sta   sound_data
 
-; Now the triangle wave.  This wave needs linear counter support to be silenced
-;                        brl   :not_timer
-
-                        lda   #$40+triangle_oscillator
+                        lda   #$80+pulse2_oscillator
                         sta   sound_address
-                        lda   APU_TRIANGLE_LENGTH_COUNTER     ; If the length counter is zero, no output
-                        beq   :set_volume_triangle
-                        lda   APU_TRIANGLE_LENGTH_COUNTER
-                        beq   :set_volume_triangle
-                        lda   #12                             ; Triangle is a bit softer than pulse channels
-:set_volume_triangle
-                        jsr   set_pulse_volume
+                        lda   APU_PULSE2_REG1           ; Get the cycle duty bits
+                        jsr   set_pulse_duty_cycle
 
+                        lda   #$40+pulse2_oscillator
+                        sta   sound_address
+                        lda   APU_PULSE2_REG1
+                        bit   #PULSE_CONST_VOL_FLAG      ; Check the constant volume bit
+                        bne   :set_volume_pulse2
+                        lda   APU_PULSE2_ENVELOPE
+                        bra   :set_volume_pulse2
+:mute_pulse2
+                        sep   #$30
+                        lda   #$40+pulse2_oscillator
+                        sta   sound_address
+                        lda   #0
+:set_volume_pulse2      jsr   set_pulse_volume
+
+; Now the triangle wave.  This wave needs linear counter support to be silenced
+
+                        lda   APU_TRIANGLE_LENGTH_COUNTER      ; If the length counter is zero, no output
+                        beq   :mute_triangle
+                        lda   APU_TRIANGLE_LINEAR_COUNTER      ; If the linear counter is zero, no output
+                        beq   :mute_triangle
                         rep   #$30
-                        lda   APU_TRIANGLE_REG3
+                        lda   APU_TRIANGLE_CURRENT_PERIOD
+                        cmp   #2
+                        bcc   :mute_triangle
+
+; NOTE on Triangle channel frequence from https://www.nesdev.org/wiki/APU_Triangle
+;
+; Unlike the pulse channels, the triangle channel supports frequencies up to the maximum frequency the
+; timer will allow, meaning frequencies up to fCPU/32 (about 55.9 kHz for NTSC) are possible - far above
+; the audible range. Some games, e.g. Mega Man 2, "silence" the triangle channel by setting the timer to
+; zero, which produces a popping sound when an audible frequency is resumed, easily heard e.g. in Crash
+; Man's stage. At the expense of accuracy, these can be eliminated in an emulator e.g. by halting the
+; triangle channel when an ultrasonic frequency is set (a timer value less than 2).
+
                         jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
                         lsr
                         sep   #$30
-
                         ldx   #$00+triangle_oscillator
                         stx   sound_address
                         sta   sound_data
@@ -632,14 +687,50 @@ interrupt_handler       = *
                         xba
                         sta   sound_data
 
-;                        lda   border_color
-;                        inc
-;                        and   #$03
-;                        sta   border_color
-;                        jsr   setborder
+                        lda   #$40+triangle_oscillator
+                        sta   sound_address
+                        lda   #12                             ; Triangle is a bit softer than pulse channels
+                        bra   :set_volume_triangle
+
+:mute_triangle
+                        sep   #$30
+                        lda   #$40+triangle_oscillator
+                        sta   sound_address
+                        lda   #0
+:set_volume_triangle    jsr   set_pulse_volume
+
+; Now the noise channel.  It's mixer volume output is ~half of the pulse channels
+
+                        lda   #$40+noise_oscillator
+                        sta   sound_address
+
+                        lda   APU_NOISE_LENGTH_COUNTER     ; If the length counter is zero, no output
+                        beq   :set_volume_noise
+                        lda   APU_NOISE_REG1
+                        bit   #NOISE_CONST_VOL_FLAG        ; Check the constant volume bit
+                        bne   :set_volume_noise
+                        lda   APU_NOISE_ENVELOPE
+:set_volume_noise
+                        jsr   set_pulse_volume
+
+                        rep   #$30
+                        lda   APU_NOISE_CURRENT_PERIOD
+                        jsr   get_pulse_freq               ; return freq in 16-bic accumulator
+                        sep   #$30
+
+                        ldx   #$00+noise_oscillator
+                        stx   sound_address
+                        sta   sound_data
+                        ldx   #$20+noise_oscillator
+                        stx   sound_address
+                        xba
+                        sta   sound_data
 
 :not_timer
                         sep   #$30
+                        lda   #0
+                        jsr   setborder
+
                         pld
                         plb
                         clc
@@ -819,6 +910,23 @@ APU_TRIANGLE_CURRENT_PERIOD dw 0
 APU_TRIANGLE_START_FLAG dfb 0
 APU_TRIANGLE_LINEAR_COUNTER dfb 0
 
+
+APU_NOISE
+APU_NOISE_REG1 ds 1    ; --LC NNNN - length counter halt, constant volume/evelope, envelope period/volume
+APU_NOISE_REG2 ds 1    ; ---- ---- - Unused
+APU_NOISE_REG3 ds 1    ; M--- PPPP - Mode and period lookup
+APU_NOISE_REG4 ds 1    ; llll l--- - Length counter load
+
+APU_NOISE_LENGTH_COUNTER   dfb 0 ; internal register for the length counter
+APU_NOISE_RELOAD_FLAG      dfb 0 ; unused
+APU_NOISE_SWEEP_DIVIDER    dfb 0 ; unused
+APU_NOISE_TARGET_PERIOD    dw  0 ; unused
+APU_NOISE_CURRENT_PERIOD   dw  0 ; internal register to hold the current period driving the oscillator
+APU_NOISE_MUTE             dfb 0 ; unused
+APU_NOISE_START_FLAG       dfb 0 
+APU_NOISE_ENVELOPE_DIVIDER dfb 0
+APU_NOISE_ENVELOPE         dfb 0
+
 APU_STATUS      ds 1
 
     mx %11
@@ -906,7 +1014,7 @@ APU_PULSE2_REG4_WRITE ENT
     stal  APU_PULSE2_CURRENT_PERIOD+1
 
     ldal  APU_STATUS
-    bit   #$01
+    bit   #$02
     beq   :no_reload
 
     ldal  APU_PULSE2_REG4
@@ -971,6 +1079,65 @@ APU_TRIANGLE_REG4_WRITE ENT
     rtl
 
 
+APU_NOISE_REG1_WRITE ENT
+    stal  APU_NOISE_REG1
+    rtl
+
+APU_NOISE_REG2_WRITE ENT
+    stal  APU_NOISE_REG2
+    rtl
+
+APU_NOISE_REG3_WRITE ENT
+    php
+    phx
+    pha
+
+    stal  APU_NOISE_REG3
+    and   #$0F
+    asl
+    tax
+    ldal  NoisePeriodTable,x
+    sta   APU_NOISE_CURRENT_PERIOD
+    ldal  NoisePeriodTable+1,x
+    sta   APU_NOISE_CURRENT_PERIOD+1
+
+    pla
+    plx
+    plp
+    rtl
+
+APU_NOISE_REG4_WRITE ENT
+    php
+    phx
+    pha
+
+    stal  APU_NOISE_REG4
+
+    ldal  APU_STATUS
+    bit   #$08
+    beq   :no_reload
+
+    ldal  APU_NOISE_REG4
+    and   #$F8
+    lsr
+    lsr
+    lsr
+    tax
+    ldal  LengthTable,x
+    stal  APU_NOISE_LENGTH_COUNTER  ; Immediately start the counter
+    lda   #1
+    stal  APU_NOISE_START_FLAG
+
+:no_reload
+    pla
+    plx
+    plp
+    rtl
+
+; Lookup from bottom 4 bits of NOISE_REG3
+NoisePeriodTable dw 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
+
+
 APU_STATUS_WRITE ENT
     stal  APU_STATUS
     pha
@@ -996,6 +1163,12 @@ APU_STATUS_WRITE ENT
     bne  :triangle_on
     stz  APU_TRIANGLE_LENGTH_COUNTER
 :triangle_on
+
+; Noise
+    bit  #$08
+    bne  :noise_on
+    stz  APU_NOISE_LENGTH_COUNTER
+:noise_on
 
     pla
     rtl
