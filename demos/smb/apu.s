@@ -587,6 +587,9 @@ interrupt_handler       = *
                         cmp   #8
                         bcc   :mute_pulse1
 
+                        cmp   _apu_pulse1_last_period         ; it's expensive to recalc frequencies, so avoid it when possible
+                        beq   :freq_end_pulse1
+                        sta   _apu_pulse1_last_period
                         jsr   get_pulse_freq                  ; return freq in 16-bit accumulator
                         sep   #$30
                         ldx   #$00+pulse1_oscillator
@@ -596,6 +599,7 @@ interrupt_handler       = *
                         stx   sound_address
                         xba
                         sta   sound_data
+:freq_end_pulse1        sep   #$30                           ; redundent, but avoids extra branches
 
                         lda   #$80+pulse1_oscillator
                         sta   sound_address
@@ -627,6 +631,9 @@ interrupt_handler       = *
                         cmp   #8
                         bcc   :mute_pulse2
 
+                        cmp   _apu_pulse2_last_period
+                        beq   :freq_end_pulse2
+                        sta   _apu_pulse2_last_period
                         jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
                         sep   #$30
                         ldx   #$00+pulse2_oscillator
@@ -636,6 +643,7 @@ interrupt_handler       = *
                         stx   sound_address
                         xba
                         sta   sound_data
+:freq_end_pulse2        sep   #$30
 
                         lda   #$80+pulse2_oscillator
                         sta   sound_address
@@ -676,6 +684,9 @@ interrupt_handler       = *
 ; Man's stage. At the expense of accuracy, these can be eliminated in an emulator e.g. by halting the
 ; triangle channel when an ultrasonic frequency is set (a timer value less than 2).
 
+                        cmp   _apu_triangle_last_period
+                        beq   :freq_end_triangle
+                        sta   _apu_triangle_last_period
                         jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
                         lsr
                         sep   #$30
@@ -686,6 +697,7 @@ interrupt_handler       = *
                         stx   sound_address
                         xba
                         sta   sound_data
+:freq_end_triangle      sep   #$30
 
                         lda   #$40+triangle_oscillator
                         sta   sound_address
@@ -701,23 +713,17 @@ interrupt_handler       = *
 
 ; Now the noise channel.  It's mixer volume output is ~half of the pulse channels
 
-                        lda   #$40+noise_oscillator
-                        sta   sound_address
-
-                        lda   APU_NOISE_LENGTH_COUNTER     ; If the length counter is zero, no output
-                        beq   :set_volume_noise
-                        lda   APU_NOISE_REG1
-                        bit   #NOISE_CONST_VOL_FLAG        ; Check the constant volume bit
-                        bne   :set_volume_noise
-                        lda   APU_NOISE_ENVELOPE
-:set_volume_noise
-                        jsr   set_pulse_volume
+                        lda   APU_NOISE_LENGTH_COUNTER      ; If the length counter is zero, no output
+                        beq   :mute_noise
 
                         rep   #$30
                         lda   APU_NOISE_CURRENT_PERIOD
+
+                        cmp   _apu_noise_last_period         ; it's expensive to recalc frequencies, so avoid it when possible
+                        beq   :freq_end_noise
+                        sta   _apu_noise_last_period
                         jsr   get_pulse_freq               ; return freq in 16-bic accumulator
                         sep   #$30
-
                         ldx   #$00+noise_oscillator
                         stx   sound_address
                         sta   sound_data
@@ -725,9 +731,23 @@ interrupt_handler       = *
                         stx   sound_address
                         xba
                         sta   sound_data
+:freq_end_noise         sep   #$30
+
+                        lda   #$40+noise_oscillator
+                        sta   sound_address
+                        lda   APU_NOISE_REG1
+                        bit   #NOISE_CONST_VOL_FLAG        ; Check the constant volume bit
+                        bne   :set_volume_noise
+                        lda   APU_NOISE_ENVELOPE
+                        bra   :set_volume_noise
+:mute_noise
+                        sep   #$30
+                        lda   #$40+noise_oscillator
+                        sta   sound_address
+                        lda   #0
+:set_volume_noise       jsr   set_pulse_volume
 
 :not_timer
-                        sep   #$30
                         lda   #0
                         jsr   setborder
 
@@ -817,48 +837,10 @@ turn_off_interrupts
 
 apu_frame_counter dw 0                  ; frame counter, clocked at 240Hz from the interrupt handler
 
-; Internal APU register offsets
-;length_counter_halt  equ 0
-;length_counter       equ 1
-;constant_volume_flag equ 2
-;volume               equ 3
-;current_period       equ 4
-;target_period        equ 6
-
-; Internal APU registers for channel 1
-;apu_pulse1 ds 8
-;apu_pulse2 ds 8
-
-;apu_pulse1_length_counter dfb 0
-;apu_pulse1_decay_level dfb 0
-;apu_pulse1_current_period dw 0
-
-;apu_pulse2_length_counter dfb 0
-;apu_pulse2_decay_level dfb 0
-;apu_pulse2_current_period dw 0
-
 duty_cycle_page dfb $01,$02,$03,$04     ; Page of DOC RAM that holds the different duty cycle wavforms
 border_color    dw 0
-dividend        dw 0
+dividend        dw 0                    ; Used when converting from NES APU values to DOC values
 divisor         dw 0
-
-last_phase1_duty_cycle dfb $ff
-last_phase2_duty_cycle dfb $ff
-; 8-bit mode
-; A = register number
-; X = register value
-    mx  %00
-SetDOCReg
-    stal $E0C03E
-    txa
-    stal $E0C03D
-    rts
-
-_SetDOCReg mac
-    lda  ]1       ; Select the oscillator enable registers
-    ldx  ]2
-    jsr  SetDOCReg
-    <<<
 
 ; Pulse Channel 1
 APU_PULSE1
@@ -877,7 +859,7 @@ APU_PULSE1_START_FLAG       dfb 0
 APU_PULSE1_ENVELOPE_DIVIDER dfb 0
 APU_PULSE1_ENVELOPE         dfb 0
 
-_apu_pulse1_last_period     dw  0 ; optimization
+_apu_pulse1_last_period     dw  $FFFF ; optimization
 
 
 APU_PULSE2
@@ -896,7 +878,7 @@ APU_PULSE2_START_FLAG       dfb 0
 APU_PULSE2_ENVELOPE_DIVIDER dfb 0
 APU_PULSE2_ENVELOPE         dfb 0
 
-_apu_pulse2_last_period   dw  0 ; optimization
+_apu_pulse2_last_period   dw  $FFFF ; optimization
 
 
 APU_TRIANGLE
@@ -909,6 +891,8 @@ APU_TRIANGLE_LENGTH_COUNTER dfb 0
 APU_TRIANGLE_CURRENT_PERIOD dw 0
 APU_TRIANGLE_START_FLAG dfb 0
 APU_TRIANGLE_LINEAR_COUNTER dfb 0
+
+_apu_triangle_last_period   dw  $FFFF ; optimization
 
 
 APU_NOISE
@@ -926,6 +910,9 @@ APU_NOISE_MUTE             dfb 0 ; unused
 APU_NOISE_START_FLAG       dfb 0 
 APU_NOISE_ENVELOPE_DIVIDER dfb 0
 APU_NOISE_ENVELOPE         dfb 0
+
+_apu_noise_last_period   dw  $FFFF ; optimization
+
 
 APU_STATUS      ds 1
 
