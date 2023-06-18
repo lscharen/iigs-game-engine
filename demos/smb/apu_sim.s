@@ -48,8 +48,8 @@ Tmp1        equ   130
             jsr   APUStartUp
 
             sep   #$30
-            lda   #1
-            jsl   APU_STATUS_WRITE              ; turn on the first pulse channel by default
+            lda   #$f
+            jsl   APU_STATUS_WRITE              ; turn on the first four channels by default
             rep   #$30
 
 
