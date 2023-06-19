@@ -737,29 +737,14 @@ interrupt_handler       = *
                         lda   APU_NOISE_LENGTH_COUNTER      ; If the length counter is zero, no output
                         beq   :mute_noise
 
-                        rep   #$30
-                        lda   APU_NOISE_CURRENT_PERIOD
-
-                        cmp   _apu_noise_last_period         ; it's expensive to recalc frequencies, so avoid it when possible
-                        beq   :freq_end_noise
-                        sta   _apu_noise_last_period
-                        jsr   get_pulse_freq               ; return freq in 16-bic accumulator
-
-; Hack??
-;                        lsr
-;                        lsr
-;                        lsr
-;                        lsr                                ; LSFR produces 32768 values 1-bit at a time. We have byte samples
-                                                           ; so 32768 / 8 = 4096 / 256 byte = division factor of 16
-                        sep   #$30
                         ldx   #$00+noise_oscillator
                         stx   sound_address
+                        lda   APU_NOISE_CURRENT_PERIOD
                         sta   sound_data
                         ldx   #$20+noise_oscillator
                         stx   sound_address
-                        xba
+                        lda   APU_NOISE_CURRENT_PERIOD+1
                         sta   sound_data
-:freq_end_noise         sep   #$30
 
                         lda   #$40+noise_oscillator
                         sta   sound_address
@@ -769,7 +754,6 @@ interrupt_handler       = *
                         lda   APU_NOISE_ENVELOPE
                         bra   :set_volume_noise
 :mute_noise
-                        sep   #$30
                         lda   #$40+noise_oscillator
                         sta   sound_address
                         lda   #0
@@ -807,6 +791,20 @@ set_pulse_volume
                         asl
                         sta   sound_data
                         rts
+
+; This is a bit different because we actually calculate a scan rate directly to match the
+; rate at which new samples are read form DOC RAM to the period of the noise channel
+;
+; IIgs Scan Rate (SR) = 894886 Hz / (OSC + 2) = 894886 Hz / 34 = 26320.1765 samples / sec
+; IIgs Sample Rate = 51.406 * F_HL samples / sec
+
+;  We have 256 samples
+; NES Noise Sample Rate = 1789772 Hz / P
+;
+; An as example, let P = 8, so a new sample should be output 
+; Solving for F_HL: F_HL = 1789772 / (51.406 * 8) = 4352
+get_noise_freq
+
 
 ; NES freq = f_CPU / (16 * (t + 1))
 ;          = 1.789773 MHz / (16 * (t + 1))
@@ -1115,10 +1113,12 @@ APU_NOISE_REG3_WRITE ENT
     and   #$0F
     asl
     tax
-    ldal  NoisePeriodTable,x
-    sta   APU_NOISE_CURRENT_PERIOD
-    ldal  NoisePeriodTable+1,x
-    sta   APU_NOISE_CURRENT_PERIOD+1
+;    ldal  NoisePeriodTable,x
+    ldal  EsqNoiseFreqTable,x
+    stal  APU_NOISE_CURRENT_PERIOD
+;    ldal  NoisePeriodTable+1,x
+    ldal  EsqNoiseFreqTable+1,x
+    stal  APU_NOISE_CURRENT_PERIOD+1
 
     pla
     plx
@@ -1153,11 +1153,17 @@ APU_NOISE_REG4_WRITE ENT
     plp
     rtl
 
-; Lookup from bottom 4 bits of NOISE_REG3
-NoisePeriodTable dw 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
+; Lookup from bottom 4 bits of NOISE_REG3 and pre-calculated ensoniq parameters
+NoisePeriodTable  dw 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
+EsqNoiseFreqTable dw 8704, 4352, 2176, 1088, 544, 363, 272, 218, 172, 137, 92, 69, 46, 34, 17, 9
 
+APU_FORCE_OFF dw 0
 
 APU_STATUS_WRITE ENT
+;    ldal  APU_FORCE_OFF
+;    bne   apu_status_exit
+
+APU_STATUS_FORCE
     phb
     phk
     plb
@@ -1194,4 +1200,6 @@ APU_STATUS_WRITE ENT
 
     pla
     plb
+
+apu_status_exit
     rtl

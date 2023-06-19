@@ -86,11 +86,17 @@ Tmp1        equ   130
             brl   :update
 
             cmp   #' '
-            bne   :next
+            bne   :not_spc
             jsr   Toggle
             brl   :update
 
-:next
+:not_spc    cmp   #'a'
+            bne   :not_a
+            lda   show_border
+            eor   #1
+            sta   show_border
+:not_a
+
             brl   :evtloop
 :done
             jsr   APUShutDown
@@ -553,7 +559,7 @@ DrawTriangle
             jsr  DrawWord
 
             ldy  #TRIANGLE_REG3_STR
-            lda  APU_PULSE2_REG3
+            lda  APU_TRIANGLE_REG3
             ldx  #{{TRIANGLE_X+5}*4}+{ROW_SPAN*{TRIANGLE_Y+1}}
             jsr  DrawBitsHL
 
