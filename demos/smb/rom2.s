@@ -691,9 +691,13 @@ APU_PULSE2_REG2_WRITE EXT
 APU_PULSE2_REG3_WRITE EXT
 APU_PULSE2_REG4_WRITE EXT
 APU_TRIANGLE_REG1_WRITE EXT
-APU_TRIANGLE_REG2_WRITE EXT
+;APU_TRIANGLE_REG2_WRITE EXT
 APU_TRIANGLE_REG3_WRITE EXT
 APU_TRIANGLE_REG4_WRITE EXT
+APU_NOISE_REG1_WRITE EXT
+;APU_NOISE_REG2_WRITE EXT
+APU_NOISE_REG3_WRITE EXT
+APU_NOISE_REG4_WRITE EXT
 
 APU_STATUS_WRITE EXT
 
@@ -801,15 +805,46 @@ APU_PULSE2_REG4_W
 APU_TRIANGLE_REG1_W
             jsl  APU_TRIANGLE_REG1_WRITE
             rts
-APU_TRIANGLE_REG2_W
-            jsl  APU_TRIANGLE_REG2_WRITE
-            rts
+;APU_TRIANGLE_REG2_W
+;            jsl  APU_TRIANGLE_REG2_WRITE
+;            rts
 APU_TRIANGLE_REG3_W
             jsl  APU_TRIANGLE_REG3_WRITE
             rts
 APU_TRIANGLE_REG4_W
             jsl  APU_TRIANGLE_REG4_WRITE
             rts
+
+APU_NOISE_REG1_W
+            jsl  APU_NOISE_REG1_WRITE
+            rts
+;APU_TRIANGLE_REG2_W
+;            jsl  APU_TRIANGLE_REG2_WRITE
+;            rts
+APU_NOISE_REG3_W
+            jsl  APU_NOISE_REG3_WRITE
+            rts
+APU_NOISE_REG3_WX
+            phx
+            pha
+            txa
+            jsl  APU_NOISE_REG3_WRITE
+            pla
+            plx
+            rts
+APU_NOISE_REG4_W
+            jsl  APU_NOISE_REG4_WRITE
+            rts
+
+APU_NOISE_REG4_WY
+            phy
+            pha
+            tya
+            jsl  APU_NOISE_REG4_WRITE
+            pla
+            ply
+            rts
+
 APU_STATUS_W
             jsl   APU_STATUS_WRITE
             rts
@@ -16180,16 +16215,20 @@ ContinueBrickShatter
         lda BrickShatterEnvData,y
 
 PlayNoiseSfx
-        sta SND_NOISE_REG        ;play the sfx
-        stx SND_NOISE_REG+2
+;        sta SND_NOISE_REG        ;play the sfx
+;        stx SND_NOISE_REG+2
+        jsr APU_NOISE_REG1_W
+        jsr APU_NOISE_REG3_WX
         lda #$18
-        sta SND_NOISE_REG+3
+;        sta SND_NOISE_REG+3
+        jsr APU_NOISE_REG4_W
 
 DecrementSfx3Length
         dec Noise_SfxLenCounter  ;decrement length of sfx
         bne ExSfx3
         lda #$f0                 ;if done, stop playing the sfx
-        sta SND_NOISE_REG
+;        sta SND_NOISE_REG
+        jsr APU_NOISE_REG1_W
         lda #$00
         sta NoiseSoundBuffer
 ExSfx3 rts
@@ -16534,9 +16573,12 @@ SilentBeat
         lda #$10        ;silence
 
 PlayBeat
-        sta SND_NOISE_REG    ;load beat data into noise regs
-        stx SND_NOISE_REG+2
-        sty SND_NOISE_REG+3
+;        sta SND_NOISE_REG    ;load beat data into noise regs
+;        stx SND_NOISE_REG+2
+;        sty SND_NOISE_REG+3
+        jsr APU_NOISE_REG1_W
+        jsr APU_NOISE_REG3_WX
+        jsr APU_NOISE_REG4_WY
 
 ExitMusicHandler
         rts
