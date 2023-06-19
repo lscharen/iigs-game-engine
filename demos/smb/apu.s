@@ -232,22 +232,40 @@ triangle_wave
     hex 60626466686a6c6e70727476787a7c7e
 
 noise_wave
-    hex 8f968f763e6fd49ab1e564e295a9bcc9
-    hex 717b6629e6970b865dc0e0d840d32a96
-    hex 3bd4c5d407b78923d8c9766bea128e8a
-    hex c9ee5ddbed3119ff14b4d9a44bfbb7c4
-    hex 7a56e26e8aac9ebf1653c0260446231b
-    hex 73431495fc585e943edacf8f5bb970e6
-    hex 118dc361bee99c98f32d25f06a33715a
-    hex 585344f7f3e2f3c36c37cfd78e40147f
-    hex a4b20624ac633b42b3aac5407fac4ba9
-    hex a4d71a1d020a7757ea244b103f0b7a76
-    hex 9b533a60cda31e0fa2ce3491b55c4f26
-    hex ea47a61f661deec128129372c3471a9b
-    hex f85c3c077168d413184a139440460950
-    hex dee3f9bdb65e162b08ed9231a72fb943
-    hex 1ba599be80dc2812afa63cc2317cdb1a
-    hex 8d99d56327bc50dc975bee94754f561b
+;    hex 8f968f763e6fd49ab1e564e295a9bcc9
+;    hex 717b6629e6970b865dc0e0d840d32a96
+;    hex 3bd4c5d407b78923d8c9766bea128e8a
+;    hex c9ee5ddbed3119ff14b4d9a44bfbb7c4
+;    hex 7a56e26e8aac9ebf1653c0260446231b
+;    hex 73431495fc585e943edacf8f5bb970e6
+;    hex 118dc361bee99c98f32d25f06a33715a
+;    hex 585344f7f3e2f3c36c37cfd78e40147f
+;    hex a4b20624ac633b42b3aac5407fac4ba9
+;    hex a4d71a1d020a7757ea244b103f0b7a76
+;    hex 9b533a60cda31e0fa2ce3491b55c4f26
+;    hex ea47a61f661deec128129372c3471a9b
+;    hex f85c3c077168d413184a139440460950
+;    hex dee3f9bdb65e162b08ed9231a72fb943
+;    hex 1ba599be80dc2812afa63cc2317cdb1a
+;    hex 8d99d56327bc50dc975bee94754f561b
+
+   hex 01ffffff0101ffffff01ffff01ff0101
+   hex ffffffffffff0101ff0101ff01ffff01
+   hex 01ff0101ffff01ffff0101ff01ff01ff
+   hex ffffffff0101010101ffff0101ff0101
+   hex ffffff0101ff01ff010101ff01010101
+   hex 0101ffffff01ffff01ff01ffff01ffff
+   hex ff01ffff0101ffff01ffffffffff01ff
+   hex ffffffffffff010101ffff01ff01ffff
+   hex 01ffffffff0101ffffffff0101ffff01
+   hex ff01ff01ff01ffff0101ff01ffffffff
+   hex ffff010101ffffffff01010101ff0101
+   hex ffffffffffffff01ff0101ffffff0101
+   hex 01ff010101ff01ffffffffff01ffffff
+   hex 01ffffffff010101ff01ffff01ff01ff
+   hex ffffffff0101ff010101ff01ffffff01
+   hex 0101010101ffff01ffff01010101ffff
+
 ;--------------------------
 
 setup_doc_registers
@@ -512,10 +530,13 @@ TRIANGLE_HALT_FLAG   equ $80
                         mx %11
 interrupt_handler       = *
 
+                        ldal  show_border
+                        beq   :no_show
                         ldal  $E0C034                    ; save the border color
                         stal  border_color
                         lda   #1
                         jsr   setborder
+:no_show
 
                         phb
                         phd
@@ -723,6 +744,13 @@ interrupt_handler       = *
                         beq   :freq_end_noise
                         sta   _apu_noise_last_period
                         jsr   get_pulse_freq               ; return freq in 16-bic accumulator
+
+; Hack??
+;                        lsr
+;                        lsr
+;                        lsr
+;                        lsr                                ; LSFR produces 32768 values 1-bit at a time. We have byte samples
+                                                           ; so 32768 / 8 = 4096 / 256 byte = division factor of 16
                         sep   #$30
                         ldx   #$00+noise_oscillator
                         stx   sound_address
@@ -748,8 +776,11 @@ interrupt_handler       = *
 :set_volume_noise       jsr   set_pulse_volume
 
 :not_timer
-                        lda   #0
+                        ldal  show_border
+                        beq   :no_show2
+                        ldal  border_color
                         jsr   setborder
+:no_show2
 
                         pld
                         plb
@@ -838,6 +869,7 @@ turn_off_interrupts
 apu_frame_counter dw 0                  ; frame counter, clocked at 240Hz from the interrupt handler
 
 duty_cycle_page dfb $01,$02,$03,$04     ; Page of DOC RAM that holds the different duty cycle wavforms
+show_border     dw 0
 border_color    dw 0
 dividend        dw 0                    ; Used when converting from NES APU values to DOC values
 divisor         dw 0
@@ -1126,8 +1158,11 @@ NoisePeriodTable dw 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 101
 
 
 APU_STATUS_WRITE ENT
-    stal  APU_STATUS
+    phb
+    phk
+    plb
     pha
+    sta   APU_STATUS
 
 ; From NESDev Wiki: When the enabled bit is cleared (via $4015), the length counter is forced to 0
 ;             and cannot be changed until enabled is set again (the length counter's previous value is lost).
@@ -1158,4 +1193,5 @@ APU_STATUS_WRITE ENT
 :noise_on
 
     pla
+    plb
     rtl
