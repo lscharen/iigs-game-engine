@@ -197,15 +197,15 @@ EvtLoop
             stz   nmiCount
 
 ;            sep   #$20
-;            lda   #1
+;            lda   #0
 ;            stal  ROMBase+$075f
 ;            stal  ROMBase+$0766
 
-;            lda   #2
+;            lda   #3
 ;            stal  ROMBase+$0763
 ;            stal  ROMBase+$075c
 
-;            lda   #2
+;            lda   #4
 ;            stal  ROMBase+$0767
 ;            stal  ROMBase+$0760
 ;            rep   #$30
@@ -252,15 +252,59 @@ EvtLoop
             sta   BGToggle
             pha
             _GTEEnableBackground
+            brl   EvtLoop
 :not_b
 
             cmp   #'g'                       ; Re-enable VBL-drive game logic
             bne   :not_g
             stz   singleStepMode
+            brl   EvtLoop
 :not_g
 
-            cmp   #'r'               ; Refresh
+            cmp   #'a'                       ; Show how much time APU simulation is taking
+            bne   :not_a
+            lda   show_border
+            eor   #$0001
+            sta   show_border
+            brl   EvtLoop
+:not_a
+
+            cmp   #'0'
+            bne   :not_0
+            stz   APU_FORCE_OFF
+            brl   EvtLoop
+:not_0
+
+            cmp   #'1'
             bne   :not_1
+            lda   #$01
+            jsr   ToggleAPUChannel
+            brl   EvtLoop
+:not_1
+
+            cmp   #'2'
+            bne   :not_2
+            lda   #$02
+            jsr   ToggleAPUChannel
+            brl   EvtLoop
+:not_2
+
+            cmp   #'3'
+            bne   :not_3
+            lda   #$04
+            jsr   ToggleAPUChannel
+            brl   EvtLoop
+:not_3
+
+            cmp   #'4'
+            bne   :not_4
+            lda   #$08
+            jsr   ToggleAPUChannel
+            brl   EvtLoop
+:not_4
+
+            cmp   #'r'               ; Refresh
+            bne   :not_r
             jsr   CopyStatus
 
             lda   ROMScreenEdge      ; global tile index
@@ -269,8 +313,9 @@ EvtLoop
             ldy   #0
             jsr   CopyNametable
             brl   EvtLoop
-:not_1
-            cmp   #'1'
+:not_r
+
+            cmp   #'v'
             bne   :not_v
             lda   ROMScreenEdge
             clc
@@ -305,6 +350,19 @@ singleStepMode dw 0
 nmiCount    dw    0
 DPSave      dw    0
 LastAreaType dw   0
+
+; Toggle an APU control bit
+ToggleAPUChannel
+            pha
+            lda   #$0001
+            stal  APU_FORCE_OFF
+            pla
+
+            sep   #$30
+            eorl  APU_STATUS
+            jsl   APU_STATUS_FORCE
+            rep   #$30
+            rts
 
 ; Convert NES palette entries to IIgs
 ; X = NES palette (16 color indices)

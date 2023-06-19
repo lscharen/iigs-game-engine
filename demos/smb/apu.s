@@ -108,6 +108,10 @@ copy_instruments_to_doc
 
                         lda #$0600
                         jsr copy_noise
+
+                        lda #$8000
+;                        jsr gen_noise
+
                         rts
 
 ;--------------------------
@@ -193,6 +197,9 @@ copy_triangle
                         mx  %00
                         rts
 
+; Generate random data from the NES APU LFSR. Make it long enough to sound good.
+gen_noise
+
 copy_noise
                         sep #$30
                         mx  %11
@@ -232,39 +239,39 @@ triangle_wave
     hex 60626466686a6c6e70727476787a7c7e
 
 noise_wave
-;    hex 8f968f763e6fd49ab1e564e295a9bcc9
-;    hex 717b6629e6970b865dc0e0d840d32a96
-;    hex 3bd4c5d407b78923d8c9766bea128e8a
-;    hex c9ee5ddbed3119ff14b4d9a44bfbb7c4
-;    hex 7a56e26e8aac9ebf1653c0260446231b
-;    hex 73431495fc585e943edacf8f5bb970e6
-;    hex 118dc361bee99c98f32d25f06a33715a
-;    hex 585344f7f3e2f3c36c37cfd78e40147f
-;    hex a4b20624ac633b42b3aac5407fac4ba9
-;    hex a4d71a1d020a7757ea244b103f0b7a76
-;    hex 9b533a60cda31e0fa2ce3491b55c4f26
-;    hex ea47a61f661deec128129372c3471a9b
-;    hex f85c3c077168d413184a139440460950
-;    hex dee3f9bdb65e162b08ed9231a72fb943
-;    hex 1ba599be80dc2812afa63cc2317cdb1a
-;    hex 8d99d56327bc50dc975bee94754f561b
+    hex 8f968f763e6fd49ab1e564e295a9bcc9
+    hex 717b6629e6970b865dc0e0d840d32a96
+    hex 3bd4c5d407b78923d8c9766bea128e8a
+    hex c9ee5ddbed3119ff14b4d9a44bfbb7c4
+    hex 7a56e26e8aac9ebf1653c0260446231b
+    hex 73431495fc585e943edacf8f5bb970e6
+    hex 118dc361bee99c98f32d25f06a33715a
+    hex 585344f7f3e2f3c36c37cfd78e40147f
+    hex a4b20624ac633b42b3aac5407fac4ba9
+    hex a4d71a1d020a7757ea244b103f0b7a76
+    hex 9b533a60cda31e0fa2ce3491b55c4f26
+    hex ea47a61f661deec128129372c3471a9b
+    hex f85c3c077168d413184a139440460950
+    hex dee3f9bdb65e162b08ed9231a72fb943
+    hex 1ba599be80dc2812afa63cc2317cdb1a
+    hex 8d99d56327bc50dc975bee94754f561b
 
-   hex 01ffffff0101ffffff01ffff01ff0101
-   hex ffffffffffff0101ff0101ff01ffff01
-   hex 01ff0101ffff01ffff0101ff01ff01ff
-   hex ffffffff0101010101ffff0101ff0101
-   hex ffffff0101ff01ff010101ff01010101
-   hex 0101ffffff01ffff01ff01ffff01ffff
-   hex ff01ffff0101ffff01ffffffffff01ff
-   hex ffffffffffff010101ffff01ff01ffff
-   hex 01ffffffff0101ffffffff0101ffff01
-   hex ff01ff01ff01ffff0101ff01ffffffff
-   hex ffff010101ffffffff01010101ff0101
-   hex ffffffffffffff01ff0101ffffff0101
-   hex 01ff010101ff01ffffffffff01ffffff
-   hex 01ffffffff010101ff01ffff01ff01ff
-   hex ffffffff0101ff010101ff01ffffff01
-   hex 0101010101ffff01ffff01010101ffff
+;   hex 01ffffff0101ffffff01ffff01ff0101
+;   hex ffffffffffff0101ff0101ff01ffff01
+;   hex 01ff0101ffff01ffff0101ff01ff01ff
+;   hex ffffffff0101010101ffff0101ff0101
+;   hex ffffff0101ff01ff010101ff01010101
+;   hex 0101ffffff01ffff01ff01ffff01ffff
+;   hex ff01ffff0101ffff01ffffffffff01ff
+;   hex ffffffffffff010101ffff01ff01ffff
+;   hex 01ffffffff0101ffffffff0101ffff01
+;   hex ff01ff01ff01ffff0101ff01ffffffff
+;   hex ffff010101ffffffff01010101ff0101
+;   hex ffffffffffffff01ff0101ffffff0101
+;   hex 01ff010101ff01ffffffffff01ffffff
+;   hex 01ffffffff010101ff01ffff01ff01ff
+;   hex ffffffff0101ff010101ff01ffffff01
+;   hex 0101010101ffff01ffff01010101ffff
 
 ;--------------------------
 
@@ -757,7 +764,21 @@ interrupt_handler       = *
                         lda   #$40+noise_oscillator
                         sta   sound_address
                         lda   #0
-:set_volume_noise       jsr   set_pulse_volume
+:set_volume_noise
+                        and   #$0F
+                        asl
+                        asl
+                        asl
+                        pha
+                        lda   APU_NOISE_REG3               ; Up the volume for low sounds
+                        bit   #$08
+                        beq   :high_pitch
+                        pla
+                        asl
+                        pha
+:high_pitch             pla
+                        sta   sound_data
+
 
 :not_timer
                         ldal  show_border
@@ -1155,19 +1176,30 @@ APU_NOISE_REG4_WRITE ENT
 
 ; Lookup from bottom 4 bits of NOISE_REG3 and pre-calculated ensoniq parameters
 NoisePeriodTable  dw 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
-EsqNoiseFreqTable dw 8704, 4352, 2176, 1088, 544, 363, 272, 218, 172, 137, 92, 69, 46, 34, 17, 9
+;EsqNoiseFreqTable dw 8704, 4352, 2176, 1088, 544, 363, 272, 218, 172, 137, 92, 69, 46, 34, 17, 9
+EsqNoiseFreqTable dw 1088, 544, 272, 136, 68, 45,34,27,22,17,12,9,6,4,2,1
 
 APU_FORCE_OFF dw 0
-
-APU_STATUS_WRITE ENT
-;    ldal  APU_FORCE_OFF
-;    bne   apu_status_exit
 
 APU_STATUS_FORCE
     phb
     phk
     plb
     pha
+    bra   force_entry
+
+APU_STATUS_WRITE ENT
+    phb
+    phk
+    plb
+    pha
+
+    phx
+    ldx   APU_FORCE_OFF
+    bne   force_exit
+    plx
+
+force_entry
     sta   APU_STATUS
 
 ; From NESDev Wiki: When the enabled bit is cleared (via $4015), the length counter is forced to 0
@@ -1200,6 +1232,10 @@ APU_STATUS_FORCE
 
     pla
     plb
+    rtl
 
-apu_status_exit
+force_exit
+    plx
+    pla
+    plb
     rtl
