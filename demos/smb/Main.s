@@ -37,6 +37,9 @@ CurrScrollEdge equ 22
 CurrNTQueueEnd equ 40
 BGToggle    equ   44
 LastEnable  equ   46
+ShowFPS     equ   48
+
+OldOneSec   equ   100
 
 Tmp0        equ   240
 Tmp1        equ   242
@@ -62,6 +65,7 @@ FTblTmp     equ   228
             stz   ROMScrollDelta
             stz   OldROMScrollEdge
             stz   LastAreaType
+            stz   ShowFPS
 
             lda   #1
             sta   BGToggle
@@ -83,7 +87,7 @@ FTblTmp     equ   228
 
 ; Initialize the sound hardware for APU emulation
 
-            jsr   APUStartUp
+;            jsr   APUStartUp
 
 ; Start up GTE to drive the graphics
 ;            brl   :debug
@@ -173,6 +177,12 @@ FTblTmp     equ   228
             cpx  #512*16
             bcc  :tloop
 
+; Start the FPS counter
+            pha
+            _GTEGetSeconds
+            pla
+            sta   OldOneSec
+
 ; Set an internal flag to tell the VBL interrupt handler that it is
 ; ok to start invoking the game logic.  The ROM code has to be run
 ; at 60 Hz because it controls the audio.  Bad audio is way worse
@@ -225,6 +235,26 @@ EvtLoop
             lda   singleStepMode
             bne   :skip_render
             jsr   RenderFrame
+
+            lda   ShowFPS
+            beq   :no_fps
+
+            inc   frameCount
+            pha
+            _GTEGetSeconds
+            pla
+            cmp   OldOneSec
+            beq   :skip_render
+            sta   OldOneSec
+            
+            ldx   #0
+            ldy   #$FFFF
+            lda   frameCount
+            
+            jsr   DrawByte
+            lda   frameCount
+            stz   frameCount
+:no_fps
 :skip_render
 
             lda   lastKey
@@ -245,6 +275,19 @@ EvtLoop
             jsr   RenderFrame
             brl   EvtLoop
 :not_s
+
+            cmp   #'f'
+            bne   :not_f
+            lda   #1
+            eor   ShowFPS
+            sta   ShowFPS
+            bne   :no_clear
+            ldx   #0
+            jsr   ClearWord
+:no_clear
+            brl   EvtLoop
+:not_f
+
             cmp   #'b'                       ; Togget background flag
             bne   :not_b
             lda   BGToggle
@@ -350,7 +393,7 @@ singleStepMode dw 0
 nmiCount    dw    0
 DPSave      dw    0
 LastAreaType dw   0
-
+frameCount  dw    0 
 ; Toggle an APU control bit
 ToggleAPUChannel
             pha
@@ -647,6 +690,10 @@ DrainNTQueue
             jsr   GetPaletteSelect
             ora   1,s                      ; Merge bits 9 and 10 into the Tile ID that's on the stack
             sta   1,s
+
+; NOTE: Better to draw this into the PEA field directly.  Calling GTESetTile queues up the tile and can cause
+;       issues because many frames can pass before Render gets control again.  We need to expose a 
+;       _SetTileImmediate function in the list of function callbacks....
 
             _GTESetTile
 ;            inc   :Count
