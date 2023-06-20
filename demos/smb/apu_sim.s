@@ -12,6 +12,7 @@ RIGHT_ARROW     equ   $15
 UP_ARROW        equ   $0B
 DOWN_ARROW      equ   $0A
 
+SHADOW_REG      equ   $E0C035
 KBD_REG         equ   $E0C000
 KBD_STROBE_REG  equ   $E0C010
 VBL_STATE_REG   equ   $E0C019
@@ -289,7 +290,7 @@ MoveRight
             rts
 
 ; Read the keyboard and paddle controls and return in a game-controller-like format
-                 mx  %00
+                  mx  %00
 _ReadControl      pea       $0000               ; low byte = key code, high byte = %------AB 
 
                   sep       #$20
@@ -330,15 +331,25 @@ _ReadControl      pea       $0000               ; low byte = key code, high byte
 :KbdNotDwn
                   stz       LastKey
 :KbdDown
+                  ldal      KBD_REG
                   rep       #$20
                   pla
                   rts
 
                  mx  %00
 InitGraphics
+                 sep   #$20
+                 lda   #$C1
+                 stal  $E0C029         ; screen on
+
+                 ldal  SHADOW_REG      ; shadow on
+                 and   #$F7
+                 stal  SHADOW_REG
+                 rep   #$20
+
                  lda   #0
                  ldx   #0
-:scbloop         stal  $E12000,x
+:scbloop         stal  $012000,x
                  inx
                  inx
                  cpx   #$7E00
@@ -346,16 +357,11 @@ InitGraphics
 
                  ldx    #0
 :palloop         lda    DefaultPalette,x
-                 stal  $E19E00,x
+                 stal  $019E00,x
                  inx
                  inx
                  cpx   #$20
                  bcc   :palloop
-
-                 sep   #$20
-                 lda   #$C1
-                 stal  $E0C029
-                 rep   #$20
                  rts
 
 DefaultPalette   ENT
