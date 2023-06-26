@@ -107,19 +107,24 @@ SlowSprites     equ   0
 
                 jsr   HandleKeys                   ; Do the generic key handlers
                 bcs   :do_more
-                brl   :do_render
+                bra   :evt_loop
 :do_more
                 and   #$007F
+                cmp   #'a'
+                bne   :not_a
+                dec   ScreenX
+:not_a          cmp   #'s'
+                bne   :not_s
+                inc   ScreenX
+:not_s
  
 :do_render      jsr   :next_frame
                 brl   :evt_loop
 
 :next_frame
-;                inc   ScreenX
-;                inc   ScreenY
-;                pei   ScreenX
-;                pei   ScreenY
-;                _GTESetBG0Origin
+                pei   ScreenX
+                pei   ScreenY
+                _GTESetBG0Origin
 
                 pea    $FFFE
                 _GTERender

@@ -653,7 +653,7 @@ _RenderLite
 ;            jsr   _DrawFinalPass
 
             ldx    #0
-            lda    ScreenHeight
+            ldy    ScreenHeight
             jsr    _BltRange
 
             lda   StartYMod208              ; Restore the fields back to their original state

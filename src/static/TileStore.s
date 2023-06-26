@@ -137,7 +137,7 @@ JTableOffset      ENT
 ; physical word index that each instruction is intended to be placed at is in the comment.
                   bra   *-3         ; wrap around
 CodeFieldEvenBRA  ENT
-                  bra   *+6         ; 81 -- need to skip over the JMP loop that passed control back
+                  bra   *+6         ; 81 -- need to skip over the JMP loop that passes control back
                   bra   *+9         ; 80
                   bra   *+12        ; 79
                   bra   *+15        ; 78
