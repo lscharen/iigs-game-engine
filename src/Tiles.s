@@ -125,7 +125,8 @@ InitTiles
                  bra  :out
 :fast
                  lda  #0                                 ; Initialize with Tile 0
-                 ldy  #FastProcs
+;                 ldy  #FastProcs
+                 ldy  #LiteProcs
                  jsr  _SetTileProcs
                  bra  :out
 
@@ -275,7 +276,8 @@ _SetNormalTileProcs
 ; the tile priority bit is set, and whether this is the special tile 0 or not.
 :setTileFast
                  pla                         ; Throw away tile ID copy
-                 ldy  #FastProcs
+;                 ldy  #FastProcs
+                 ldy  #LiteProcs
                  pla
                  jmp  _SetTileProcs
 
@@ -465,6 +467,22 @@ FastCopyTmpDataA
                  plb
                  rts
 
+LiteCopyTmpDataA
+                 pei   USER_TILE_CODE_PTR+2
+                 ldy   USER_TILE_CODE_PTR
+                 plb
+
+]line            equ   0
+                 lup   8
+                 lda   tmp_tile_data+{]line*4}
+                 sta:  $0004+{]line*_LINE_SIZE},y
+                 lda   tmp_tile_data+{]line*4}+2
+                 sta:  $0001+{]line*_LINE_SIZE},y
+]line            equ   ]line+1
+                 --^
+                 plb
+                 rts
+
 ; X = Tile Store offset
 ; Y = Engine Mode Base Table address
 ; A = Table proc index
@@ -543,6 +561,18 @@ FastUnderZA  dw   ConstTile0Fast,SpriteUnder0Fast,SpriteUnder0Fast
 FastUnderZV  dw   ConstTile0Fast,SpriteUnder0Fast,SpriteUnder0Fast
 FastUnderNA  dw   CopyTileAFast,SpriteUnderAFast,OneSpriteFastUnderA
 FastUnderNV  dw   CopyTileVFast,SpriteUnderVFast,OneSpriteFastUnderV
+
+; "Lite" procs. For when the engine is in GTE Lite mode.  Different
+; stride than the "Fast" procs.
+LiteProcs
+LiteOverZA   dw   ConstTile0Lite,SpriteOver0Lite,OneSpriteLiteOver0
+LiteOverZV   dw   ConstTile0Lite,SpriteOver0Lite,OneSpriteLiteOver0
+LiteOverNA   dw   CopyTileALite,SpriteOverALite,OneSpriteLiteOverA
+LiteOverNV   dw   CopyTileVLite,SpriteOverVLite,OneSpriteLiteOverV
+LiteUnderZA  dw   ConstTile0Lite,SpriteUnder0Lite,SpriteUnder0Lite
+LiteUnderZV  dw   ConstTile0Lite,SpriteUnder0Lite,SpriteUnder0Lite
+LiteUnderNA  dw   CopyTileALite,SpriteUnderALite,OneSpriteLiteUnderA
+LiteUnderNV  dw   CopyTileVLite,SpriteUnderVLite,OneSpriteLiteUnderV
 
 ; "Slow" procs.  These are duplicates of the "Fast" functions, but also
 ; set the PEA opcode in all cases.

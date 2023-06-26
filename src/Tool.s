@@ -1120,6 +1120,7 @@ _TSEnableBackground
                 put     SpriteRender.s
                 put     Render.s
                 put     render/Render.s
+                put     render/Lite.s
                 put     render/Fast.s
                 put     render/Slow.s
                 put     render/Dynamic.s

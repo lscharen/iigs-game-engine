@@ -631,12 +631,8 @@ _RenderLite
             sta   RenderFlags
             jsr   _DoTimers            ; Run any pending timer tasks
 
-;            brk   $65
             jsr   _ApplyBG0YPosLite    ; Set stack addresses for the virtual lines to the physical screen
-;            brk   $66
             jsr   _ApplyBG0XPosPre     ; Lock in certain rendering variables (not lite/non-lite specific)
-;            brk   $67
-
 
             jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
             jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
@@ -652,7 +648,7 @@ _RenderLite
 ;            jsr   _DrawObjShadow            ; Draw the background 
 ;            jsr   _DrawDirectSprites        ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
 ;
-;            jsr   _ShadowOn                 ; Turn shadowing back on
+            jsr   _ShadowOn                 ; Turn shadowing back on
 ;
 ;            jsr   _DrawFinalPass
 

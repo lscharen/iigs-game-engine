@@ -1,8 +1,8 @@
 This folder contains the rendering tuples for the different type of tile rendering modes
 that are defined by both the engine mode and the specific tile attributes.  There are
-a *lot* or variants, so they are cataloged here.
+a *lot* of variants, so they are cataloged here.
 
-The top-level TileRender function in the main entry point that defined the overal tile render
+The top-level TileRender function in the main entry point that defines the overal tile render
 flow as well as the register parameters and calling conventions for each of the modular 
 components.
 
@@ -50,7 +50,7 @@ There are 5 pluggable functions that make up a rendering mode
 
 4. K_TS_COPY_TILE_DATA & K_TS_APPLY_TILE_DATA
 
-   A pair of function that copye tile data (and possible mask information) into a temporary
+   A pair of function that copy tile data (and possible mask information) into a temporary
    direct page space and then render that workspace into the code field.
 
    These functions are used as building blocks by the generic Over/Under multi-sprite

@@ -212,8 +212,8 @@ lite_base      EXT
                ldy       #lite_base
 :loop2
                lda       BTableHigh                  ; This is the same value for the lite blitter
-               sta       BRowTableHigh+2,x
-               sta       BRowTableHigh+{26*2}+2,x
+               sta       BRowTableHigh,x
+               sta       BRowTableHigh+{26*2},x
 
                tya
                sta       BRowTableLow,x

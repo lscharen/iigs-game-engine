@@ -284,7 +284,6 @@ CopyTileAFast
                  ldy   TileStore+TS_CODE_ADDR_LOW,x     ; load the address of the code field
                  lda   TileStore+TS_TILE_ADDR,x         ; load the address of this tile's data (pre-calculated)
                  plb
-
                  tax
 _CopyTileAFast
 ]line            equ             0

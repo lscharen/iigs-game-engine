@@ -81,7 +81,7 @@ _RestoreBG0OpcodesAltLite
                     sta   :exit_address
 
                     sec
-                    CopyXToYPrep  :do_restore
+                    CopyXToYPrep  :do_restore;:draw_count_x6
 
                     ldx   :low_save_addr
                     ldy   :exit_address
@@ -300,7 +300,7 @@ _ApplyBG0XPosAltLite
                     ldal  BTableLow,x                ; Get the address of the code field line
                     sta   :base_address              ; Will use this address a few times
 
-                    adc   #_ENTRY_JMP                ; Add the offsets in order to get absolaute addresses
+                    adc   #_ENTRY_JMP                ; Add the offsets in order to get absolute addresses
                     sta   :entry_jmp_addr
                     adc   #{_LOW_SAVE-_ENTRY_JMP}
                     sta   :low_save_addr
@@ -314,8 +314,8 @@ _ApplyBG0XPosAltLite
 ; then overwrite it with the branch instruction.
 
                     sec                              ; These macros preform subtractions that do not underflow
-                    CopyXToYPrep      :do_save_entry_e
-                    LiteSetConstPrep  :do_set_bra_e
+                    CopyXToYPrep      :do_save_entry_e;:draw_count_x6
+                    LiteSetConstPrep  :do_set_bra_e;:draw_count_x3
                     stal  :do_setopcode_e+1
                     stal  :do_set_rel_e+1
 
@@ -358,6 +358,7 @@ _ApplyBG0XPosAltLite
                     txa                              ; StartXMod164 - 1
                     clc
                     adc   ScreenWidth
+
                     cmp   #164                       ; Keep the value in range
                     bcc   *+5
                     sbc   #164
@@ -429,9 +430,9 @@ _ApplyBG0XPosAltLite
 ; Setup the jumps into the unrolled loops
 
                     sec
-                    CopyXToYPrep      :do_save_entry_o
+                    CopyXToYPrep      :do_save_entry_o;:draw_count_x6
                     stal  :do_save_high_byte+1
-                    LiteSetConstPrep  :do_set_bra_o
+                    LiteSetConstPrep  :do_set_bra_o;:draw_count_x3
                     stal  :do_setopcode_o+1
                     stal  :do_set_rel_o+1
                     stal  :do_odd_code_entry+1
@@ -453,7 +454,7 @@ _ApplyBG0XPosAltLite
                     ldy   :low_save_addr
 :do_save_entry_o    jsr   $0000                      ; Save the low word of the exit into a save location for restore later
 
-                    ldx   :exit_address
+                    ldy   :exit_address
                     lda   :exit_bra
 :do_set_bra_o       jsr   $0000                      ; Insert a BRA instruction over the saved word
 
@@ -623,7 +624,7 @@ _ApplyScanlineBG0XPosLite
 ; X = value
 CopyXToYPrep        mac
                     lda   #x2y_bottom
-                    sbc   blttmp+10             ; Copy from above, :draw_count_x6 equ blttmp+10
+                    sbc   ]2                      ; count_x6
                     stal  ]1+1                    ; A jmp/jsr instruction
                     <<<
 ]line               equ   199
@@ -639,7 +640,7 @@ x2y_bottom          rts
 ; Y = code field offset
 LiteSetConstPrep    mac
                     lda   #lsc_bottom
-                    sbc   blttmp+8             ; Copy from above, :draw_count_x3 equ blttmp+8
+                    sbc   ]2                   ; count_x3
                     stal  ]1+1                 ; A jmp/jsr instruction
                     <<<
 

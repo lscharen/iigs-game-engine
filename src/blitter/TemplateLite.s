@@ -36,7 +36,7 @@ lite_entry_jmp     brl   $0000                      ; If the screen is odd-align
                                                     ; relative offset of the instruction field in the register
                                                     ; and falls through to the next instruction.
 
-                   lda:  $0001,x                    ; Get the low byte and push onto the stack
+                   lda:  *+1,x                    ; Get the low byte and push onto the stack
                    pha
 lite_odd_entry     brl   $0000                      ; unconditionally jump into the "next" instruction in the 
                                                     ; code field.  This is OK, even if the entry point was the
@@ -74,7 +74,7 @@ lite_loop_exit_3   jmp   lite_even_exit             ; +255
                    mx    %10
 lite_odd_exit      lda   #0                         ; get the high byte of the saved PEA operand (odd-case is already in 8-bit mode)
                    pha
-lite_even_exit     jmp   $0000                      ; Jump to the next line.
+lite_even_exit     jmp   *+5                        ; Jump to the next line.
                    dfb   $F4,$00                    ; low-word of the saved PEA instruction
 
 ; Now repeat the code above 207 more times. Loop 206 times and then manually do the last one
@@ -83,7 +83,7 @@ lite_even_exit     jmp   $0000                      ; Jump to the next line.
                    ldx   #0000
                    txs
                    dfb   $82,$00,$00
-                   lda:  1,x
+                   lda:  *+1,x
                    pha
                    dfb   $82,$00,$00
 
@@ -198,7 +198,7 @@ lite_even_exit     jmp   $0000                      ; Jump to the next line.
                    mx    %10
                    lda   #0
                    pha
-                   jmp   $0000
+                   jmp   *+5
                    dfb   $F4,$00
 ]line              equ   ]line+1
                    --^
@@ -206,7 +206,7 @@ lite_even_exit     jmp   $0000                      ; Jump to the next line.
 :entry_207         ldx   #0000
                    txs
                    dfb   $82,$00,$00         ; brl $0000 starts at the next instruction
-                   lda:  1,x
+                   lda:  *+1,x
                    sep   #$20
                    pha
                    dfb   $82,$00,$00

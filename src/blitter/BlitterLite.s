@@ -17,6 +17,8 @@ _BltRangeLite
 :exit_ptr       equ   tmp0
 :jmp_low_save   equ   tmp2
 
+                phb
+
                 clc
                 dey
                 tya                  ; Get the address of the line that we want to return from
@@ -52,7 +54,11 @@ _BltRangeLite
 
                 php                       ; save the current processor flags
                 sep   #$20                ; run the lite blitter in 8-bit accumulator mode
-                brk   $99
+
+                lda   :exit_ptr+2         ; set the bank to the code field
+                pha
+                plb
+
                 sei                       ; disable interrupts
                 _R0W1
                 tsx                       ; save the stack pointer in Y
@@ -72,4 +78,6 @@ blt_return_lite ENT
                 ldy   #_EXIT_EVEN+1
                 lda   :jmp_low_save
                 sta   [:exit_ptr],y
+
+                plb
                 rts
