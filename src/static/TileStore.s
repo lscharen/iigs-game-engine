@@ -102,9 +102,11 @@ TileStoreLookup       ENT
 ;
 ; Remember, because the data is pushed on to the stack, the last instruction, which is
 ; in the highest memory location, pushed data that apepars on the left edge of the screen.
-
+;
+; This table is overwritten by the "Lite" engine intialization code to provide a different set
+; of offsets since the lite blitter has a different offset than the normal one.
 ]step             equ   0
-                  dw    CODE_TOP    ; There is a spot where we load Col2CodeOffet-2,x
+                  dw    CODE_TOP    ; There is a spot where we load Col2CodeOffset-2,x
 Col2CodeOffset    ENT
                   lup   82
                   dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}

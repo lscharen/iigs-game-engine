@@ -238,6 +238,16 @@ EngineReset
 
                   stz       OneSecondCounter
 
+; Fill in the state register values
+
+                  sep       #$20
+                  ldal      STATE_REG
+                  and       #$CF
+                  sta       STATE_REG_OFF              ; Put this value in to return to "normal" blitter
+                  ora       #$10
+                  sta       STATE_REG_BLIT             ; Running the blitter, this is the mode to put us into
+                  rep       #$20
+
                   lda       #13
                   sta       tmp15
                   stz       tmp14

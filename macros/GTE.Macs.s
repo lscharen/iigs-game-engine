@@ -190,6 +190,7 @@ extSpriteRenderer      equ   $0005
 rawDrawTile            equ   $0006
 extBG0TileUpdate       equ   $0007
 userTileCallback       equ   $0008
+liteBlitter            equ   $0009
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000      ; Copy into BG1 buffer in "normal mode"

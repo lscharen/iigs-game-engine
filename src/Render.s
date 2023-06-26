@@ -626,6 +626,64 @@ _RenderWithShadowing
 :no_removal
             rts
 
+; Specail mode for rendering in GTE-lite mode.  No secondary background is possible
+_RenderLite
+            sta   RenderFlags
+            jsr   _DoTimers            ; Run any pending timer tasks
+
+;            brk   $65
+            jsr   _ApplyBG0YPosLite    ; Set stack addresses for the virtual lines to the physical screen
+;            brk   $66
+            jsr   _ApplyBG0XPosPre     ; Lock in certain rendering variables (not lite/non-lite specific)
+;            brk   $67
+
+
+            jsr   _UpdateBG0TileMap   ; and the tile maps.  These subroutines build up a list of tiles
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
+
+            jsr   _ApplyBG0XPosLite   ; Patch the code field instructions with exit BRA opcode
+
+; At this point, everything in the background has been rendered into the code field.  Next, we need
+; to create priority lists of scanline ranges.
+
+;            jsr   _FilterObjectList        ; Walk the sorted list and create an array of objects that need to be rendered
+;
+;            jsr   _ShadowOff                ; Turn off shadowing and draw all the scanlines with sprites on them
+;            jsr   _DrawObjShadow            ; Draw the background 
+;            jsr   _DrawDirectSprites        ; Draw the sprites directly to the Bank $01 graphics buffer (skipping the render-to-tile step)
+;
+;            jsr   _ShadowOn                 ; Turn shadowing back on
+;
+;            jsr   _DrawFinalPass
+
+            ldx    #0
+            lda    ScreenHeight
+            jsr    _BltRange
+
+            lda   StartYMod208              ; Restore the fields back to their original state
+            ldx   ScreenHeight
+            jsr   _RestoreBG0OpcodesLite
+
+            lda   StartY
+            sta   OldStartY
+            lda   StartX
+            sta   OldStartX
+
+            lda   BG1StartY
+            sta   OldBG1StartY
+            lda   BG1StartX
+            sta   OldBG1StartX
+
+            stz   DirtyBits
+            stz   LastRender                    ; Mark that a full render was just performed
+
+            lda   SpriteRemovedFlag             ; If any sprite was removed, set the rebuild flag
+            beq   :no_removal
+            lda   #DIRTY_BIT_SPRITE_ARRAY
+            sta   DirtyBits
+:no_removal
+            rts
+
 ; Run through the list of sprites that are not OFFSCREEN and not OVERLAYS and draw them directly to the graphics screen.  We can use
 ; compiled sprites here, with limitations.
 _DrawDirectSprites

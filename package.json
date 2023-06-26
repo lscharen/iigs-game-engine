@@ -18,7 +18,8 @@
     "test": "npm run build && build-image.bat %npm_package_config_cadius% && %npm_package_config_gsport%",
     "build": "%npm_package_config_merlin32% -V %npm_package_config_macros% ./src/Master.s",
     "build:debug": "%npm_package_config_merlin32% -V %npm_package_config_macros% ./src/Debug.s",
-    "debug": "%npm_package_config_crossrunner% ./src/Debug160 -Source ./src/Debug160_S02__Output.txt -Debug -CompatibilityLayer"
+    "debug": "%npm_package_config_crossrunner% ./src/Debug160 -Source ./src/Debug160_S02__Output.txt -Debug -CompatibilityLayer",
+    "install:header": "copy .\\ORCACDefs\\gte.h C:\\ProgramData\\GoldenGate\\Libraries\\ORCACDefs\\gte.h"
   },
   "repository": {
     "type": "git",

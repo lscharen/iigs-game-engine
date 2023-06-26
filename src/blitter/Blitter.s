@@ -26,8 +26,15 @@ _BltRange
                 brl   DisabledBG
 :normal
 
+; If we are in "lite" mode, defer to that implementation
+                lda  EngineMode
+                bit  #ENGINE_MODE_TWO_LAYER+ENGINE_MODE_DYN_TILES
+                bne  :dark
+                jmp  _BltRangeLite
+
+:dark
                 phb                  ; preserve the bank register
-                clc`
+                clc
 
                 dey
                 tya                  ; Get the address of the line that we want to return from
@@ -98,6 +105,9 @@ stk_save        lda   #0000          ; load the stack
                 plp                  ; re-enable interrupts (maybe, if interrupts disabled when we are called, they are not re-endabled)
                 pld                  ; restore the direct page
 
+:exit_ptr       equ   tmp0
+:jmp_low_save   equ   tmp2
+
                 sep   #$20
                 ldy   #CODE_EXIT+1
                 lda   :jmp_low_save
@@ -164,15 +174,13 @@ DisabledBG
 
                 lda   tmp15         ; restore the stack
                 tcs
+
                 sep   #$30                       ; 8-bit mode
-                ldal  STATE_REG
-                tax                              ; Save the value
-                and   #$CF                       ; Read Bank 0 / Write Bank 0
+                lda   STATE_REG_OFF              ; Could be on the direct page....
                 stal  STATE_REG
                 cli
-                nop                              ; Give a couple of cycles
                 sei
-                txa                              ; Restore the state
+                lda   STATE_REG_BLIT             ; External values 
                 stal  STATE_REG
                 rep   #$30
                 bra   :next

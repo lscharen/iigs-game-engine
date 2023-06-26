@@ -38,7 +38,7 @@ PagePatches        da    {long_0-base+2}
                    da    {long_2-base+2}
                    da    {long_3-base+2}
 ;                   da    {long_4-base+2}
-                   da    {long_5-base+2}
+;                   da    {long_5-base+2}
                    da    {long_6-base+2}
                    da    {odd_entry-base+2}
                    da    {loop_exit_1-base+2}
@@ -63,7 +63,7 @@ BankPatches        da    {long_0-base+3}
                    da    {long_2-base+3}
                    da    {long_3-base+3}
 ;                   da    {long_4-base+3}
-                   da    {long_5-base+3}
+;                   da    {long_5-base+3}
                    da    {long_6-base+3}
 BankPatchNum       equ   *-BankPatches
 
@@ -94,13 +94,13 @@ entry_jmp          jmp   $0100
                                                     ; update the low-byte of the address, the means it takes only
                                                     ; an amortized 4-cycles per line to set the entry point break
 
-                   bit   #$000B                     ; Check the bottom nibble to quickly identify a PEA instruction
-                   bne   r_is_not_pea               ; This costs 5 cycles in the fast-path
+;                   bit   #$000B                     ; Check the bottom nibble to quickly identify a PEA instruction
+;                   bne   r_is_not_pea               ; This costs 5 cycles in the fast-path
 
                    xba                              ; fast code for PEA
 r_jmp_rtn          sep   #$20                       ; shared return code path by all methods
 two_byte_rtn       pha
-                   rep   #$61                       ; Clear Carry, Overflow and M bits #$20
+;                   rep   #$61                       ; Clear Carry, Overflow and M bits #$20
 odd_entry          jmp   $0100                      ; unconditionally jump into the "next" instruction in the 
                                                     ; code field.  This is OK, even if the entry point was the
                                                     ; last instruction, because there is a JMP at the end of
@@ -179,9 +179,9 @@ loop_back          jmp   loop-base                  ; +252 Ensure execution cont
 loop_exit_3        jmp   even_exit-base             ; +255
 
 odd_exit           sep   #$21                       ; 8-bit mode and set the carry just in case we get to a snippet JMP
-long_5             ldal  OPCODE_SAVE                ; Load the opcode that was saved
-                   bit   #$0B
-                   bne   :chk_jmp
+;long_5             ldal  OPCODE_SAVE                ; Load the opcode that was saved
+;                   bit   #$0B
+;                   bne   :chk_jmp
 long_6             ldal  OPCODE_HIGH_SAVE+1         ; get the high byte of the PEA operand
 
 ; Fall-through when we have to push a byte on the left edge. Must be 8-bit on entry.  Optimized

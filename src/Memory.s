@@ -74,6 +74,15 @@ InitMemory     lda       EngineMode
                sta       CompileBank
                stz       CompileBank0
 
+; If ENGINE_MODE_TWO_LAYER and ENGINE_MODE_DYN_TILES are turned off, then
+; we are in "GTE lite" mode and use a blitter template that only requires
+; one bank of memory
+               lda       EngineMode
+               bit       #ENGINE_MODE_DYN_TILES+ENGINE_MODE_TWO_LAYER
+               bne       InitFullBlitter
+               brl       InitLiteBlitter
+
+InitFullBlitter
 ; Allocate the 13 banks of memory we need and store in double-length array
 ]step          equ       0
                lup       13
@@ -153,6 +162,70 @@ InitMemory     lda       EngineMode
                bcs       :exit
                brl       :bloop2
 :exit
+               rts
+
+InitLiteBlitter
+lite_base      EXT
+
+; Overwrite the Col2CodeOffset tables.  This array needs to hold the offset from the start of the line (BTableLow),
+; to each of the PEA words *in logical order*.  This means the actual addresses are reversed.
+
+               lda  #_LOOP
+               sta  Col2CodeOffset-2
+
+               ldx  #0
+               lda  #_LOOP+{81*PER_TILE_SIZE}
+               sta  Col2CodeOffset+{4*82}             ; Store a copy one off the end
+
+:loop0         sta  Col2CodeOffset,x
+               sta  Col2CodeOffset+{2*82},x
+               sec
+               sbc  #PER_TILE_SIZE
+               inx
+               inx
+               cpx  #82*2
+               bcc  :loop0
+
+; Fill in the BTable and BRowTable values
+
+               ldx       #0
+               ldy       #lite_base
+
+:loop1
+               tya
+               sta       BTableLow,x
+               sta       BTableLow+{208*2},x
+               clc
+               adc       #_LINE_SIZE
+               tay
+
+               lda       #^lite_base
+               sta       BTableHigh,x
+               sta       BTableHigh+{208*2},x
+
+               inx
+               inx
+               cpx       #208*2
+               bcc       :loop1
+
+               ldx       #0
+               ldy       #lite_base
+:loop2
+               lda       BTableHigh                  ; This is the same value for the lite blitter
+               sta       BRowTableHigh+2,x
+               sta       BRowTableHigh+{26*2}+2,x
+
+               tya
+               sta       BRowTableLow,x
+               sta       BRowTableLow+{26*2},x
+               clc
+               adc       #{8*_LINE_SIZE}
+               tay
+
+               inx
+               inx
+               cpx       #26*2
+               bcc       :loop2
                rts
 
 ; Bank allocator (for one full, fixed bank of memory. Can be immediately deferenced)

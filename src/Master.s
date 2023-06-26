@@ -2,7 +2,7 @@
 
             TYP   $BA                  ; Tool set file
             DSK   Tool160
-             XPL
+            XPL
 
 ; Main toolbox interface and code
 
@@ -43,6 +43,12 @@
             KND   #$1101               ; Type and Attributes ($11=Static+Bank Relative,$01=Data)
             ALI   BANK
             SNA   ROTDATA
+
+; GTE "Lite" blitter.  One bank of static code, no relocation needed.
+
+            ASM   blitter/TemplateLite.s
+            ALI   BANK
+            SNA   BLTLITE
 
 ; Additional code
 

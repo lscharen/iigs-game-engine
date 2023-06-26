@@ -105,6 +105,9 @@ BG1Scaling             equ   126
 activeSpriteList       equ   128         ; 32 bytes for the active sprite list (can persist across frames)
 
 ; Free space from 160 to 192
+STATE_REG_OFF          equ   160
+STATE_REG_BLIT         equ   161
+STK_SAVE               equ   162         ; Only used by the lite renderer
 
 blttmp                 equ   192         ; 32 bytes of local cache/scratch space for blitter
 
@@ -206,6 +209,7 @@ extSpriteRenderer      equ   $0005
 rawDrawTile            equ   $0006
 extBG0TileUpdate       equ   $0007
 userTileCallback       equ   $0008
+liteBlitter            equ   $0009
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
@@ -329,3 +333,16 @@ ExtUpdateBG0Tiles  EXT
 
 ; Tool error codes
 NO_TIMERS_AVAILABLE  equ  10
+
+; Offsets for the Lite blitter
+_ENTRY_1   equ 0
+_ENTRY_JMP equ 4
+_ENTRY_ODD equ 11
+_LOOP      equ 38
+_EXIT_ODD  equ 290
+_EXIT_EVEN equ 293
+_LOW_SAVE  equ 296
+
+_LINE_BASE equ 4                        ; header size
+_LINE_SIZE equ 298                      ; number of bytes for each blitter line
+

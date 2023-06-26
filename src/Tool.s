@@ -305,6 +305,8 @@ _TSRender
                 lda     :flags,s
                 cmp     #$FFFF                            ; Hack! Special mode...
                 beq     :nes
+                cmp     #$FFFE                            ; Experimental gte-lite mode
+                beq     :lite
 
                 bit     #RENDER_WITH_SHADOWING
                 beq     :no_shadowing
@@ -323,6 +325,10 @@ _TSRender
 
 :nes
                 jsr     _RenderNES
+                bra     :done
+
+:lite
+                jsr     _RenderLite
 
 :done
                 _TSExit #0;#2
@@ -945,7 +951,17 @@ _TSGetAddress
                 lda     #^_DrawTileToScreen
                 sta     :output+2,s
                 bra     :out
-:next_3
+
+:next_3         cmp     #liteBlitter
+                bne     :next_4
+
+                lda     #lite_base
+                sta     :output,s
+                lda     #^lite_base
+                sta     :output+2,s
+                bra     :out
+
+:next_4
 :out
                 _TSExit #0;#2
 
@@ -1114,11 +1130,14 @@ _TSEnableBackground
                 put     tiles/DirtyTileQueue.s
                 put     blitter/SCB.s
                 put     blitter/Horz.s
+                put     blitter/HorzLite.s
                 put     blitter/Vert.s
+                put     blitter/VertLite.s
                 put     blitter/BG0.s
                 put     blitter/BG1.s
                 put     blitter/Rotation.s
                 put     blitter/Template.s
                 put     blitter/TemplateUtils.s
                 put     blitter/Blitter.s
+                put     blitter/BlitterLite.s
                 put     blitter/PEISlammer.s
