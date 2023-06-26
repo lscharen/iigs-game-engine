@@ -233,7 +233,7 @@ lite_even_exit     jmp   *+5                        ; Jump to the next line.
                    mx    %10
 :odd_out_207       lda   #0
                    pha
-:exit_207          jmp   lite_entry_1
+:exit_207          jmp   lite_enable_int
                    dfb   $F4,$00
 
                    ds    3546              ; pad to the end of the bank to make sure we start at address $0000
