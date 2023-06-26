@@ -245,9 +245,9 @@ _ApplyBG0XPosAltLite
 ; to account for the position of the BRL instruction
 
                     tax
-                    lda   Col2CodeOffset-2,x     ; offset from _LOOP (0 to 249 step 3)
+                    lda   Col2CodeOffset-2,x     ; offset from base
                     clc
-                    adc   #-_ENTRY_JMP+3
+                    adc   #-{_ENTRY_JMP+3}
                     sta   :opcode
 
 ; Now update the code field to get ready to execute. We set the bank register to the code
@@ -323,11 +323,13 @@ _ApplyBG0XPosAltLite
                     ldy   :entry_jmp_addr
                     lda   #$82
 :do_setopcode_e     jsr   $0000                       ; Copy in the BRL opcode into the entry point
-                    rep   #$20
 
                     ldx   :exit_address
+                    inx
                     ldy   :low_save_addr
-:do_save_entry_e    jsr   $0000                       ; Copy a word from offset x to y
+                    iny
+:do_save_entry_e    jsr   $0000                       ; Copy a byte from offset x to y
+                    rep   #$20
 
                     ldy   :exit_address
                     lda   :exit_bra
@@ -366,12 +368,12 @@ _ApplyBG0XPosAltLite
                     tax
                     lda   Col2CodeOffset,x
                     clc
-                    adc   #-_ENTRY_JMP+3        ; In this case it gets loaded in the X-register
+                    adc   #-{_ENTRY_JMP+3}        ; In this case it gets loaded in the X-register
                     sta   :opcode
 
                     lda   Col2CodeOffset-2,x
                     clc
-                    adc   #-_ENTRY_ODD+3
+                    adc   #-{_ENTRY_ODD+3}
                     sta   :odd_entry_offset
 
 ; Main loop
@@ -448,11 +450,13 @@ _ApplyBG0XPosAltLite
                     ldy   :exit_odd_addr
                     iny
 :do_save_high_byte  jsr   $0000                      ; Copy high byte of the exit location into the odd handling path
-                    rep   #$20
 
                     ldx   :exit_address
+                    inx
                     ldy   :low_save_addr
-:do_save_entry_o    jsr   $0000                      ; Save the low word of the exit into a save location for restore later
+                    iny
+:do_save_entry_o    jsr   $0000                      ; Save the low byte of the exit operand into a save location for restore later
+                    rep   #$20
 
                     ldy   :exit_address
                     lda   :exit_bra
@@ -629,8 +633,8 @@ CopyXToYPrep        mac
                     <<<
 ]line               equ   199
                     lup   200
-                    lda   {]line*_LINE_SIZE},x
-                    sta   {]line*_LINE_SIZE},y
+                    lda:  {]line*_LINE_SIZE},x
+                    sta:  {]line*_LINE_SIZE},y
 ]line               equ   ]line-1
                     --^
 x2y_bottom          rts
@@ -646,7 +650,7 @@ LiteSetConstPrep    mac
 
 ]line               equ   199
                     lup   200
-                    sta   {]line*_LINE_SIZE},y
+                    sta:  {]line*_LINE_SIZE},y
 ]line               equ   ]line-1
                     --^
 lsc_bottom          rts

@@ -442,7 +442,8 @@ _UTDPatch        jsl   UserHook1                        ; Call the users code
 
                  cmp  #0
                  beq  :done
-                 jmp  FastCopyTmpDataA                 ; Non-zero value to continue additional work
+;                 jmp  FastCopyTmpDataA                 ; Non-zero value to continue additional work
+                 jmp LiteCopyTmpDataA
 :done
                  rts
 

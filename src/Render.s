@@ -160,7 +160,9 @@ ExtFuncBlock
 
 ; Special NES renderer that externalizes the sprite rendering in order to exceed the internal limit of 16 sprites
 _RenderNES
-            jsr   _ApplyBG0YPos
+;            jsr   _ApplyBG0YPos
+;            jsr   _ApplyBG0XPosPre
+            jsr   _ApplyBG0YPosLite
             jsr   _ApplyBG0XPosPre
 
 ; Callback to update the tilestore with any new tiles
@@ -182,7 +184,8 @@ _RenderNES
             lda   #16*2
             sta   tmp2                ; lines_left_x2
             lda   #0                  ; Xmod164
-            jsr   _ApplyBG0XPosAlt
+;            jsr   _ApplyBG0XPosAlt
+            jsr   _ApplyBG0XPosAltLite
             lda   tmp4                ; :exit_offset
             stal  nesTopOffset
 
@@ -194,7 +197,8 @@ _RenderNES
             asl
             sta   tmp2                ; lines_left_x2
             lda   StartXMod164        ; Xmod164
-            jsr   _ApplyBG0XPosAlt
+;            jsr   _ApplyBG0XPosAlt
+            jsr   _ApplyBG0XPosAltLite
             lda   tmp4
             stal  nesBottomOffset
 
@@ -246,7 +250,8 @@ _RenderNES
             sta  tmp2            ; :lines_left_x2
             ldal nesTopOffset
             sta  tmp4            ; :exit_offset
-            jsr   _RestoreBG0OpcodesAlt
+;            jsr   _RestoreBG0OpcodesAlt
+            jsr   _RestoreBG0OpcodesAltLite
 
             lda   #16*2
             sta   tmp1                 ; :virt_line_x2
@@ -257,7 +262,8 @@ _RenderNES
             sta   tmp2                ; lines_left_x2
             ldal  nesBottomOffset
             sta   tmp4                ; :exit_offset
-            jsr   _RestoreBG0OpcodesAlt
+;            jsr   _RestoreBG0OpcodesAlt
+            jsr   _RestoreBG0OpcodesAltLite
 
 ;            lda   StartYMod208              ; Restore the fields back to their original state
 ;            ldx   ScreenHeight
