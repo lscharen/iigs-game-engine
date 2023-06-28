@@ -572,30 +572,18 @@ no_pal
 ; Trigger a copy from a page of memory to OAM.  Since this is a DMA operation, we can cheat and do a 16-bit copy
 PPUDMA_WRITE ENT
         php
-        phb
-        phk
-        plb
-
-        phx
         pha
 
         rep  #$30
-        xba
-        and  #$FF00
-        tax
-
 ]n      equ   0
         lup   128
-        ldal  ROMBase+]n,x
-        sta   PPU_OAM+]n
+        lda   ROMBase+$200+]n
+        stal  PPU_OAM+]n
 ]n      =     ]n+2
         --^
-
         sep #$30
 
         pla
-        plx
-        plb
         plp
         rtl
 
