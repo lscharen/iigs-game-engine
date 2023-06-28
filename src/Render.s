@@ -283,7 +283,7 @@ _RenderNES
             stz   LastRender                    ; Mark that a full render was just performed
             rts
 
-nesTopOffset ds 2
+nesTopOffset    ds 2
 nesBottomOffset ds 2
 
 ; Use the per-scanline tables to set the screen.  This is really meant to be used without the built-in tilemap
