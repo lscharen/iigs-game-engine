@@ -348,6 +348,8 @@ setup_interrupt         = *
                         rts
 
 interrupt_oscillator    =     31
+;reference_freq          =     299                   ; interrupt frequence (60Hz)
+;reference_freq          =     598                   ; interrupt frequence (120Hz)
 reference_freq          =     1195                  ; interrupt frequence (240Hz)
 timer_sound_settings    =     *                     ; set up oscillator 30 for interrupts
                         dfb   $00+interrupt_oscillator,reference_freq     ; frequency low register
@@ -523,6 +525,27 @@ tick_envelope
                         sta   ]1+{APU_PULSE1_ENVELOPE-APU_PULSE1}
 envelope_out            <<<
 
+half_frame_clock
+; clock the length counters
+                        clock_length_counter APU_PULSE1;#PULSE_HALT_FLAG
+                        clock_length_counter APU_PULSE2;#PULSE_HALT_FLAG
+                        clock_length_counter APU_TRIANGLE;#TRIANGLE_HALT_FLAG
+                        clock_length_counter APU_NOISE;#NOISE_HALT_FLAG
+
+; clock the sweep units
+                        clock_sweep  APU_PULSE1;0
+                        clock_sweep  APU_PULSE2;1
+                        rts
+
+quarter_frame_clock
+; clock the envelopes and triangle linear counter
+                        clock_linear_counter APU_TRIANGLE
+
+                        clock_envelope APU_PULSE1
+                        clock_envelope APU_PULSE2
+                        clock_envelope APU_NOISE
+                        rts
+
 ;-----------------------------------------------------------------------------------------
 ; interupt handler
 ;-----------------------------------------------------------------------------------------
@@ -577,29 +600,29 @@ interrupt_handler       = *
                         stx   apu_frame_counter
                         jmp   (:frame_counter_proc,x)
 :frame_counter_proc     da    :quarter_frame,:half_frame,:quarter_frame,:no_frame,:half_frame
-:half_frame
 
-; clock the length counters
-                        clock_length_counter APU_PULSE1;#PULSE_HALT_FLAG
-                        clock_length_counter APU_PULSE2;#PULSE_HALT_FLAG
-                        clock_length_counter APU_TRIANGLE;#TRIANGLE_HALT_FLAG
-                        clock_length_counter APU_NOISE;#NOISE_HALT_FLAG
+; Full speed emulation (240Hz)
+:half_frame             jsr   half_frame_clock
+:quarter_frame          jsr   quarter_frame_clock
 
-; clock the sweep units
-                        clock_sweep  APU_PULSE1;0
-                        clock_sweep  APU_PULSE2;1
+; Half-speed interrupts (120Hz) -- clock twice in each handler
+;:half_frame
+;:quarter_frame
+;                        jsr   half_frame_clock
+;                        jsr   quarter_frame_clock
+;                        jsr   quarter_frame_clock
 
-; quarter frame updates run every APU frame
-:quarter_frame
+; Quarter-speed interrupts (60Hz) -- clock four times in each handler
+;:half_frame
+;:quarter_frame
+;                        jsr   half_frame_clock
+;                        jsr   quarter_frame_clock
+;                        jsr   quarter_frame_clock
+;                        jsr   half_frame_clock
+;                        jsr   quarter_frame_clock
+;                        jsr   quarter_frame_clock
 
-; clock the envelopes and triangle linear counter
-                        clock_linear_counter APU_TRIANGLE
-
-                        clock_envelope APU_PULSE1
-                        clock_envelope APU_PULSE2
-                        clock_envelope APU_NOISE
-
-:no_frame
+; Apply any changes to the DOC registers
                         jsr   access_doc_registers
 
 ; Set the parameters for the first square wave channel.
@@ -779,7 +802,7 @@ interrupt_handler       = *
 :high_pitch             pla
                         sta   sound_data
 
-
+:no_frame
 :not_timer
                         ldal  show_border
                         beq   :no_show2
