@@ -626,7 +626,7 @@ scanOAMSprites
 
 :loop
         lda    PPU_OAM,x         ; Y-coordinate
-        cmp    #max_nes_y+1      ; Skip anything that is beyond this lint
+        cmp    #max_nes_y+1      ; Skip anything that is beyond this line
         bcs    :skip
         cmp    #y_offset
         bcc    :skip
@@ -816,7 +816,7 @@ buildShadowBitmap
 
 ;        ldy   PPU_OAM,x
         ldy   OAM_COPY,x
-        cpy   #max_nes_y                  ; Don't increment something right on the edge (allows )
+;        cpy   #max_nes_y                  ; Don't increment something right on the edge (allows )
 ;        iny                               ; This is the y-coordinate of the top of the sprite
 
         ldx   y2idx,y                     ; Get the index into the shadowBitmap array for this y coordinate (y -> blk_y)
@@ -981,7 +981,6 @@ exposeShadowList
         stx  :last
         cpx  shadowListCount
         beq  :exit
-
 :loop
         phx
 
@@ -1037,7 +1036,7 @@ shadowBitmapToList
 
         sep  #$30
 
-        ldx  #y_offset_rows               ; Start at he third row (y_offset = 16) walk the bitmap for 25 bytes (200 lines of height)
+        ldx  #y_offset_rows               ; Start at the third row (y_offset = 16) walk the bitmap for 25 bytes (200 lines of height)
         lda  #0
         sta  shadowListCount  ; zero out the shadow list count
 
@@ -1054,7 +1053,7 @@ shadowBitmapToList
 
 :zero_next
         inx
-        cpx  #y_height_rows+y_offset_rows+1              ; End at byte 27
+        cpx  #y_height_rows+y_offset_rows ; +1              ; End at byte 27
         bcc  :zero_loop
         bra  :exit           ; ended while not tracking a sprite, so exit the function
 
@@ -1171,9 +1170,6 @@ drawOAMSprites
         pha
         jsr   scanOAMSprites              ; Filter out any sprites that don't need to be drawn
         pla
-        cmpl  nmiCount
-        beq   *+4
-        brk   $1F                         ; Should not have serviced the VBL interrupt here....
         cli
 
         jsr   buildShadowBitmap           ; Run though and quickly create a bitmap of lines with sprites
@@ -1355,6 +1351,28 @@ drawTileToScreen
 :no_prio
         bit    #$0100
         jne    :drawTileToScreenV
+
+; If we compile the sprites, then each word can be implemented as:
+;
+; x = screen address
+;
+; ldy  #LOOKUP_VAL          ; 3 constant 6-bit tile lookup value from NES CHR rom
+; lda: 0,x                  ; 6
+; and  #MASK                ; 3
+; ora  [USER_FREE_SPACE],y  ; 7 lookup and merge in swizzled tile data = *(SwizzlePtr + palbits)
+; sta: 0,x                  ; 6 = 25 cycles / word
+;
+; Current implementation below is 4+6+6+4+6+7+6 = 39 cycles
+;
+; Most tiles don't have 4 consecutive transparent pixels, but there will be some minor savings
+; by avoiding those operations.  For MASK = $FFFF, the simplified code is and solid words are
+; quite common, at least 25 - 30% of the words are solid.  So conservative estimate of
+; 25 * 0.75 + 16 * 0.25 = ~22 cycles/word on average.  Throw in the 100% savings from MASK=0
+; words and it's close to twice the speed of the current routine.
+;
+; ldy  #LOOKUP_VAL          ; 3 constant 6-bit tile lookup value from NES CHR rom
+; lda  [USER_FREE_SPACE],y  ; 7 lookup and merge in swizzled tile data = *(SwizzlePtr + palbits)
+; sta: 0,x                  ; 6 = 16 cycles / word
 
 ]line   equ   0
         lup   8
@@ -1558,6 +1576,17 @@ drawTileToScreen
 
 ; Assume that when the tile is updated, it includes a full 10-bit value with the 
 ; palette bits included with the lookup bits
+;
+; If we could compile all of the tiles, then the code becomes
+; 
+; ldy  #DATA
+; lda  [USER_FREE_SPACE],y
+; sta: code,x
+;
+; And we save _at_least_ 11 cycles / word. 6 + 7 + 4 + 4 + 6 = 27 vs 16.
+;
+; Also, by exposing/short-circuiting the draw_tile stuff to avoid the GTE tile queue, we significantly
+; reduce overhead and probably solve the tile column bug.
 NESTileBlitter
         lda  USER_TILE_ID
         and  #$0600                        ; Select the tile palette from the tile id
