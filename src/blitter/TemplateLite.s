@@ -5,18 +5,7 @@ blt_return_lite    EXT
 
                    mx    %00
 
-LITE_STK_ADDR      equ   lite_entry_1-lite_base+1             ; offset to patch in the stack (SHR) right edge address
-LITE_LYR_ENTRY     equ   lite_entry_1-lite_base
-
-LITE_CODE_ENTRY_OPCODE  equ   lite_entry_jmp-lite_base
-LITE_CODE_ENTRY         equ   lite_entry_jmp-lite_base+1      ; low byte of the page-aligned jump address
-LITE_ODD_ENTRY          equ   lite_odd_entry-lite_base+1
-LITE_CODE_LEN           equ   lite_top-lite_base
-LITE_CODE_EXIT          equ   lite_even_exit-lite_base
-LITE_OPCODE_SAVE        equ   lite_odd_low_save-lite_base          ; spot to save the code field opcode when patching exit BRA
-LITE_OPCODE_HIGH_SAVE   equ   lite_odd_high_save-lite_base         ; save the third byte only
-
-LITE_ENABLE_INT         equ   lite_enable_int-lite_base            ; offset that re-enable interrupts and continues
+REL_BRA            equ   $E0            ; pre-calculated branch back from the interrupt enabler
 
 ; Return to caller -- this is the target address to patch in the JMP instruction on the last rendered line. We
 ; put it at the beginning so the rest of the bank can be replicated line templates.
@@ -82,6 +71,7 @@ lite_even_exit     jmp   *+5                        ; Jump to the next line.
                    lup   206
                    ldx   #0000
                    txs
+
                    dfb   $82,$00,$00
                    lda:  *+1,x
                    pha
@@ -96,10 +86,10 @@ lite_even_exit     jmp   *+5                        ; Jump to the next line.
                    lda   STATE_REG_BLIT
                    stal  STATE_REG
 ;                   bra   *-34
-                   dfb   $80,$E0
+                   dfb   $80,REL_BRA
 
-                   jmp   _LINE_BASE+{_LINE_SIZE*]line}+_EXIT_EVEN
                    jmp   _LINE_BASE+{_LINE_SIZE*]line}+_EXIT_ODD
+                   jmp   _LINE_BASE+{_LINE_SIZE*]line}+_EXIT_EVEN
 
                    pea   $0000
                    pea   $0000
