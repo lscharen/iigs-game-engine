@@ -109,6 +109,9 @@ SlowSprites     equ   0
                 bcs   :do_more
                 bra   :evt_loop
 :do_more
+                bit   #PAD_KEY_DOWN
+                beq   :evt_loop
+
                 and   #$007F
                 cmp   #'a'
                 bne   :not_a
