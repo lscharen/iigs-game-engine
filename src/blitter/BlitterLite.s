@@ -36,7 +36,7 @@ _BltRangeLite
                 tax                  ; this is the offset into the blitter table
 
                 lda   BTableLow,x     ; patch in the address
-                sta   blt_entry_lite+1
+                stal  blt_entry_lite+1
 
 ; The way we patch the exit code is subtle, but very fast.  The CODE_EXIT offset points to
 ; an JMP/JML instruction that transitions to the next line after all of the code has been
