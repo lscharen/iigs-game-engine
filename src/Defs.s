@@ -338,6 +338,7 @@ NO_TIMERS_AVAILABLE  equ  10
 _ENTRY_1   equ 0
 _ENTRY_JMP equ 4
 _ENTRY_ODD equ 11
+_ENTRY_INT equ 14
 _LOOP      equ 38
 _EXIT_ODD  equ 290
 _EXIT_EVEN equ 293
@@ -345,4 +346,3 @@ _LOW_SAVE  equ 296
 
 _LINE_BASE equ 4                        ; header size
 _LINE_SIZE equ 298                      ; number of bytes for each blitter line
-
