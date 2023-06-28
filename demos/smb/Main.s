@@ -87,7 +87,7 @@ FTblTmp     equ   228
 
 ; Initialize the sound hardware for APU emulation
 
-;            jsr   APUStartUp
+            jsr   APUStartUp
 
 ; Start up GTE to drive the graphics
 ;            brl   :debug
