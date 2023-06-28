@@ -112,6 +112,7 @@ Col2CodeOffset    ENT
                   dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
 ]step             equ   ]step+1
                   --^
+]step             equ   0
                   lup   82          ; Make is a double-length table so we can add the ScreenWidth without testing for wrap-around
                   dw    CODE_TOP+{{81-]step}*PER_TILE_SIZE}
 ]step             equ   ]step+1
@@ -222,7 +223,7 @@ CodeFieldEvenBRA  ENT
 
                   bra   *-6         ; wrap around
 CodeFieldOddBRA   ENT
-                  bra   *+9         ; 81 -- need to skip over two JMP instructions
+                  bra   *+9         ; 81 / 0 -- need to skip over two JMP instructions
                   bra   *+12        ; 80
                   bra   *+15        ; 79
                   bra   *+18        ; 78
@@ -232,7 +233,7 @@ CodeFieldOddBRA   ENT
                   bra   *+30        ; 74
                   bra   *+33        ; 73
                   bra   *+36        ; 72
-                  bra   *+39        ; 71
+                  bra   *+39        ; 71 /10
                   bra   *+42        ; 70
                   bra   *+45        ; 69
                   bra   *+48        ; 68
@@ -242,7 +243,7 @@ CodeFieldOddBRA   ENT
                   bra   *+60        ; 64
                   bra   *+63        ; 64
                   bra   *+66        ; 62
-                  bra   *+69        ; 61
+                  bra   *+69        ; 61 / 20
                   bra   *+72        ; 60
                   bra   *+75        ; 59
                   bra   *+78        ; 58
@@ -252,7 +253,7 @@ CodeFieldOddBRA   ENT
                   bra   *+90        ; 54
                   bra   *+93        ; 53
                   bra   *+96        ; 52
-                  bra   *+99        ; 51
+                  bra   *+99        ; 51 / 30
                   bra   *+102       ; 50
                   bra   *+105       ; 49
                   bra   *+108       ; 48
@@ -262,7 +263,7 @@ CodeFieldOddBRA   ENT
                   bra   *+120       ; 44
                   bra   *+123       ; 43
                   bra   *+126       ; 42
-                  bra   *+129       ; 41
+                  bra   *+129       ; 41 / 40
                   bra   *-126       ; 40
                   bra   *-123       ; 39
                   bra   *-120       ; 38
@@ -272,7 +273,7 @@ CodeFieldOddBRA   ENT
                   bra   *-108       ; 34
                   bra   *-105       ; 33
                   bra   *-102       ; 32
-                  bra   *-99        ; 31
+                  bra   *-99        ; 31 / 50
                   bra   *-96        ; 30
                   bra   *-93        ; 29
                   bra   *-90        ; 28
@@ -282,7 +283,7 @@ CodeFieldOddBRA   ENT
                   bra   *-78        ; 24
                   bra   *-75        ; 23
                   bra   *-72        ; 22
-                  bra   *-69        ; 21
+                  bra   *-69        ; 21 / 60
                   bra   *-66        ; 20
                   bra   *-63        ; 19
                   bra   *-60        ; 18
@@ -292,7 +293,7 @@ CodeFieldOddBRA   ENT
                   bra   *-48        ; 14
                   bra   *-45        ; 13
                   bra   *-42        ; 12
-                  bra   *-39        ; 11
+                  bra   *-39        ; 11 / 70
                   bra   *-36        ; 10
                   bra   *-33        ; 9
                   bra   *-30        ; 8
@@ -302,7 +303,7 @@ CodeFieldOddBRA   ENT
                   bra   *-18        ; 4
                   bra   *-15        ; 3
                   bra   *-12        ; 2
-                  bra   *-9         ; 1
+                  bra   *-9         ; 1 / 80
                   bra   *-6         ; 0 -- branch back 6 to skip the JMP even path
 
 ]step             equ   $2000
