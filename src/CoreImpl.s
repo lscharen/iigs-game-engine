@@ -242,17 +242,21 @@ EngineReset
 
                   sep       #$20
                   ldal      STATE_REG
-                  and       #$CF
+                  and       #$CF                       ; R0W0
                   sta       STATE_REG_OFF              ; Put this value in to return to "normal" blitter
-                  ora       #$10
+                  ora       #$10                       ; R0W1
                   sta       STATE_REG_BLIT             ; Running the blitter, this is the mode to put us into
                   rep       #$20
+
+                  lda       EngineMode
+                  bit       #ENGINE_MODE_TWO_LAYER+ENGINE_MODE_DYN_TILES
+                  beq       :lite
 
                   lda       #13
                   sta       tmp15
                   stz       tmp14
 
-; Rebuild all of the bank blitters
+; Rebuild all of the bank blitters if not in fast mode
 :loop
                   ldx       #BlitBuff
                   lda       #^BlitBuff
@@ -266,16 +270,31 @@ EngineReset
 
                   dec       tmp15
                   bne       :loop
+                  bra       :done
 
-; Set the scanline tables to reasonable default values
-;                  ldx       #{416*2}-2
-;                  lda       #0
-;:sxm_loop         
-;                  sta       StartXMod164Arr,x
-;                  dex
-;                  dex
-;                  bpl       :sxm_loop
+; Insert jumps to the interrupt enable code every 16 lines
+:lite
+                  lda       #12
+                  sta       tmp15
 
+                  ldx       #_EXIT_EVEN+{_LINE_SIZE*15}+1     ; Patch the JMP operand here
+                  ldy       #_LINE_BASE+_ENTRY_INT+{_LINE_SIZE*16}       ; Jump to this address on the next line
+:lloop
+                  tya
+                  stal      lite_base,x
+                  clc
+                  adc       #{_LINE_SIZE*16}
+                  tay
+
+                  txa
+                  clc
+                  adc       #{_LINE_SIZE*16}
+                  tax
+
+                  dec       tmp15
+                  bne       :lloop
+
+:done
                   rts
 
 
