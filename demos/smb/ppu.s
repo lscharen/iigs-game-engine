@@ -571,6 +571,7 @@ no_pal
 
 ; Trigger a copy from a page of memory to OAM.  Since this is a DMA operation, we can cheat and do a 16-bit copy
 PPUDMA_WRITE ENT
+        rtl
         php
         pha
 
@@ -613,24 +614,29 @@ scanOAMSprites
         ldy  #0
 
 :loop
-        lda    PPU_OAM,x         ; Y-coordinate
+;        lda    PPU_OAM,x         ; Y-coordinate
+        ldal   ROMBase+$200,x
         cmp    #max_nes_y+1      ; Skip anything that is beyond this line
         bcs    :skip
         cmp    #y_offset
         bcc    :skip
 
-        lda    PPU_OAM+1,x       ; $FC is an empty tile, don't draw it
+;        lda    PPU_OAM+1,x       ; $FC is an empty tile, don't draw it
+        ldal   ROMBase+$201,x
         cmp    #$FC
         beq    :skip
 
-        lda    PPU_OAM+3,x       ; If X-coordinate is off the edge skip it, too.
+;        lda    PPU_OAM+3,x       ; If X-coordinate is off the edge skip it, too.
+        ldal   ROMBase+$203,x
         cmp    #255-8
         bcs    :skip
 
         rep    #$20
-        lda    PPU_OAM,x
+;        lda    PPU_OAM,x
+        ldal   ROMBase+$200,x
         sta    OAM_COPY,y
-        lda    PPU_OAM+2,x
+;        lda    PPU_OAM+2,x
+        ldal   ROMBase+$202,x
         sta    OAM_COPY+2,y
         sep    #$20
 
