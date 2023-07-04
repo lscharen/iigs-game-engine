@@ -988,8 +988,11 @@ ScreenOff      sta Mirror_PPU_CTRL_REG2  ;save bits for later but not in registe
                lda #$00
                jsr InitScroll
                jsr OAM_ADDR_W          ;reset spr-ram address register
-               lda #$02                  ;perform spr-ram DMA access on $0200-$02ff
-               jsr SPR_DMA_W
+
+; PPU harness just reads from $200 before calling the NMI task
+;               lda #$02                  ;perform spr-ram DMA access on $0200-$02ff
+;               jsr SPR_DMA_W
+
                ldx VRAM_Buffer_AddrCtrl  ;load control for pointer to buffer contents
                lda VRAM_AddrTable_Low,x  ;set indirect at $00 to pointer
                sta $00
