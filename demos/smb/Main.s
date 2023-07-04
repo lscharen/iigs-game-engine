@@ -87,6 +87,7 @@ FTblTmp     equ   228
 
 ; Initialize the sound hardware for APU emulation
 
+            lda   #2                      ; 0 = 240Hz, 1 = 120Hz, 2 = 60Hz (external)
             jsr   APUStartUp
 
 ; Start up GTE to drive the graphics
@@ -119,6 +120,12 @@ FTblTmp     equ   228
             pea   #NESTileBlitter
             _GTESetAddress
 
+; Install a custom tile callback to draw tiles directly on the screen w/proper palettes
+;            pea   userTileDirectCallback
+;            pea   #^NESDirectTileBlitter
+;            pea   #NESDirectTileBlitter
+;            _GTESetAddress
+
 ; Get the address of a low-level routine that can be used to draw a tile directly to the graphics screen
 ;            pea   rawDrawTile
 ;            _GTEGetAddress
@@ -132,8 +139,12 @@ FTblTmp     equ   228
 ; Initialize the graphics screen playfield (256x160).  The NES is 240 lines high, so 160
 ; is a reasonable compromise.
 
+;            pea   #128
+;            pea   #184
+
             pea   #128
             pea   #200
+
 ;            pea   #80
 ;            pea   #144
             _GTESetScreenMode
@@ -182,6 +193,9 @@ FTblTmp     equ   228
             _GTEGetSeconds
             pla
             sta   OldOneSec
+
+; Show the configuration screen
+;            jsr   ShowConfig
 
 ; Set an internal flag to tell the VBL interrupt handler that it is
 ; ok to start invoking the game logic.  The ROM code has to be run
@@ -368,8 +382,15 @@ EvtLoop
             ldy   #33
             jsr   CopyNametable
             brl   EvtLoop
-
 :not_v
+            cmp   #'t'             ; show VBL interrupt time
+            bne   :not_t
+            lda   show_vbl_cpu
+            eor   #1
+            sta   show_vbl_cpu
+            brl   EvtLoop
+:not_t
+
             cmp   #'q'
             beq   Exit
             brl   EvtLoop
@@ -393,7 +414,9 @@ singleStepMode dw 0
 nmiCount    dw    0
 DPSave      dw    0
 LastAreaType dw   0
-frameCount  dw    0 
+frameCount  dw    0
+show_vbl_cpu dw   0
+
 ; Toggle an APU control bit
 ToggleAPUChannel
             pha
@@ -472,6 +495,17 @@ RenderFrame
             sta   OldROMScrollEdge ; Stash a copy for the next round through
             lsr
             pha
+
+; Get the player's Y coordinate and determine of we need to adjust the camera based on the physical play field size
+;            sep   #$20
+;            ldal  ROMBase+$b5    ; Player_Y_HighPos
+;            xba
+;            ldal  ROMBase+$ce    ; Player_Y_Position
+;            rep   #$20
+;
+;            sec
+;            sbc   TopClip        ; If we're hiding the 
+
             pea   $0000
             _GTESetBG0Origin
 
@@ -534,6 +568,122 @@ SetAreaType
 AreaPalettes  dw   WaterPalette,Area1Palette,Area2Palette,Area3Palette,Area4Palette
 SwizzleTables adrl AT0_T0,AT1_T0,AT2_T0,AT3_T0,AT2_T0
 SwizzlePtr    adrl AT1_T0
+
+; Draw PPU tiles to the screen for a UI
+;
+; 0 - 9 starts at tile 256
+; A - Z starts at tile 266
+; mushroom is $1CE = 462
+TILE_ZERO   equ 256
+TILE_A      equ 266
+TILE_SHROOM equ 462
+ShowConfig
+            lda #0
+            jsr SetAreaType
+            lda #$0000
+            stal $E19E00
+
+            ldx #TILE_SHROOM+TILE_USER_BIT
+:loop
+            phx
+
+            phx
+            pea $2000
+            pea $0000               ; Bits 1-2, 5 and 7 are valid
+            _GTEDrawTileToScreen
+
+            ldx #msg1
+            ldy #$2000+{8*160}
+            lda #$0000
+            jsr ConfigDrawString
+
+            ldx #msg1
+            ldy #$2000+{16*160}
+            lda #$0001
+            jsr ConfigDrawString
+
+            ldx #msg1
+            ldy #$2000+{24*160}
+            lda #$0002
+            jsr ConfigDrawString
+
+            ldx #msg1
+            ldy #$2000+{32*160}
+            lda #$0003
+            jsr ConfigDrawString
+
+:waitloop
+            pha
+            _GTEReadControl
+            pla
+            bit  #PAD_KEY_DOWN
+            beq  :waitloop
+
+            plx
+            and  #$007F
+            cmp  #LEFT_ARROW
+            beq  :decrement
+            cmp  #RIGHT_ARROW
+            beq  :increment
+            rts
+
+:increment
+            inx
+            inx
+:decrement  dex
+            bra  :loop
+
+; X = string pointer
+; Y = address
+
+ConfigDrawString
+            stx   Tmp0
+            sty   Tmp1
+            sta   Tmp2
+            lda   (Tmp0)
+            and   #$00FF
+            tax
+            ldy   #1
+:loop
+            phx
+            phy
+
+            lda   (Tmp0),y
+            and   #$007F
+            cmp   #'A'
+            bcc   :not_letter
+            sbc   #'A'
+            clc
+            adc   #TILE_A
+            bra   :draw
+:not_letter
+            cmp   #'0'
+            bcc   :skip
+            sbc   #'0'
+            clc
+            adc   #TILE_ZERO
+:draw
+            ora   #TILE_USER_BIT
+            pha
+            pei   Tmp1
+            pei   Tmp2                 ; palette select
+            _GTEDrawTileToScreen
+
+:skip
+            lda   Tmp1
+            clc
+            adc   #4
+            sta   Tmp1
+
+            ply
+            plx
+
+            iny
+            dex
+            bne   :loop
+            rts
+
+msg1        str  'HELLO 123'
 
 ; Take a PPU address and convert it to a tile store coordinate
 ;
@@ -1021,7 +1171,7 @@ CopyNametable
             ldx   Tmp2                     ; Nametable address
             lda   PPU_MEM+$2000,x
             and   #$00FF
-            ora   #$0100+TILE_USER_BIT     ; USe top 256 tiles and set as a user-defined tile
+            ora   #$0100+TILE_USER_BIT     ; Use top 256 tiles and set as a user-defined tile
             pha
             jsr   GetPaletteSelect
             ora   1,s                      ; Merge bits 9 and 10 into the Tile ID that's on the stack
@@ -1072,6 +1222,10 @@ CopyNametable
 
 ; Trigger an NMI in the ROM
 triggerNMI
+            sep   #$30
+            jsl   quarter_speed_driver
+            rep   #$30
+
             ldal  ppuctrl               ; If the ROM has not enabled VBL NMI, also skip
             bit   #$80
             beq   :skip
@@ -1617,20 +1771,25 @@ nmiTask
 
             ldal  singleStepMode
             bne   :no_nmi
-;            lda   #1
-;            jsr   setborder
+
+            ldal  show_vbl_cpu
+            beq   :no_show_1
+            jsr   incborder
+:no_show_1
 
             jsr   triggerNMI
 
-;            lda   #0
-;            jsr   setborder
-:no_nmi
+            ldal  show_vbl_cpu
+            beq   :no_nmi
+            jsr   decborder
 
+:no_nmi
             pld
             plb
             plp
 :skip
             rtl
+
             mx    %00
 
 readInput

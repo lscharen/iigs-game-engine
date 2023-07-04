@@ -31,6 +31,7 @@ access_doc_ram_no_inc   = *
                         mx  %00
 
 APUStartUp
+                        stal apu_mode
                         sei
                         phd
                         pea $c000
@@ -51,11 +52,16 @@ APUShutDown             = *
 
                         jsr   stop_playing
 
+                        ldal  apu_mode
+                        cmp   #2
+                        beq   :no_doc_interrupts
+
                         lda   backup_interrupt_ptr      ; restore old interrupt ptr
                         stal  sound_interrupt_ptr
                         lda   backup_interrupt_ptr+2
                         stal  sound_interrupt_ptr+2
 
+:no_doc_interrupts
                         cli
                         pld
                         clc
@@ -109,7 +115,7 @@ copy_instruments_to_doc
                         lda #$0600
                         jsr copy_noise
 
-                        lda #$8000
+;                        lda #$8000
 ;                        jsr gen_noise
 
                         rts
@@ -313,6 +319,10 @@ copy_register_config
 ;--------------------------
 
 setup_interrupt         = *
+                        ldal  apu_mode
+                        cmp   #2                                   ; mode 2 = external driver at 60Hz
+                        beq   :no_doc_interrupts
+
                         ldal  sound_interrupt_ptr
                         sta   backup_interrupt_ptr
                         ldal  sound_interrupt_ptr+2
@@ -330,6 +340,19 @@ setup_interrupt         = *
                         sep   #$20
                         mx    %10
 
+                        ldal  apu_mode
+                        beq   :do_240hz
+                        lda   #598
+                        ldy   #598/256
+                        bra   :set_timer_freq
+:do_240hz               lda   #1195
+                        ldy   #1195/256
+
+:set_timer_freq
+                        stal  timer_sound_settings+1               ; low byte of timer frequency
+                        tya
+                        stal  timer_sound_settings+3               ; high byte of timer frequency
+                        
                         jsr   access_doc_registers
 
                         ldy   #0
@@ -344,7 +367,7 @@ setup_interrupt         = *
 
                         rep #$20
                         mx  %00
-
+:no_doc_interrupts
                         rts
 
 interrupt_oscillator    =     31
@@ -398,6 +421,7 @@ noise_sound_settings =     *
                         dfb   $a0+noise_oscillator,0                 ; mode register, set to free run
 
 backup_interrupt_ptr    ds  4
+apu_mode                ds  2
 
 ;-----------------------------------------------------------------------------------------
 ; APU internals
@@ -558,6 +582,45 @@ NOISE_CONST_VOL_FLAG equ $10
 TRIANGLE_HALT_FLAG   equ $80
 
                         mx %11
+quarter_speed_driver    = *
+
+                        phb
+                        phd
+
+                        phk
+                        plb
+
+                        pea  $c000
+                        pld
+
+                        ldx   apu_frame_counter
+                        inx
+                        inx
+                        cpx   #2*apu_frame_steps          ; TODO: This is set by MSB in $4017 (4 or 5).  4 = PAL, 5 = NTSC.
+                        bcc   *+4
+                        ldx   #0
+                        stx   apu_frame_counter
+                        jmp   (:frame_counter_proc,x)
+:frame_counter_proc     da    :quarter_frame,:half_frame,:quarter_frame,:no_frame_60,:half_frame
+
+; Quarter-speed interrupts (60Hz) -- clock four times in each handler
+:half_frame
+:quarter_frame
+                        jsr   half_frame_clock
+                        jsr   quarter_frame_clock
+                        jsr   quarter_frame_clock
+                        jsr   half_frame_clock
+                        jsr   quarter_frame_clock
+                        jsr   quarter_frame_clock
+
+                        brl   update_doc_registers
+:no_frame_60
+                        pld
+                        plb
+                        clc
+                        rtl
+
+                        mx %11
 interrupt_handler       = *
 
                         ldal  show_border
@@ -588,9 +651,7 @@ interrupt_handler       = *
                         beq   *+5
                         brl   :not_timer                ; Only service timer interrupts
 
-; Update the frame counter.  We double-count so that frame counter can be used directly to dispatch to the
-; appropriate tick handler
-
+; Update the frame counter and leave the doubled countin x-register for dispatch
                         ldx   apu_frame_counter
                         inx
                         inx
@@ -598,31 +659,30 @@ interrupt_handler       = *
                         bcc   *+4
                         ldx   #0
                         stx   apu_frame_counter
-                        jmp   (:frame_counter_proc,x)
-:frame_counter_proc     da    :quarter_frame,:half_frame,:quarter_frame,:no_frame,:half_frame
+
+; Figure out which speed we are dispatching
+                        lda   apu_mode
+                        beq   :do_240hz_mode
+                        jmp   (:apu_120hz_table,x)
+:do_240hz_mode          jmp   (:apu_240hz_table,x)
+:apu_240hz_table        da    :quarter_frame_240,:half_frame_240,:quarter_frame_240,no_frame,:half_frame_240
+:apu_120hz_table        da    :quarter_frame_120,:half_frame_120,:quarter_frame_120,no_frame,:half_frame_120
 
 ; Full speed emulation (240Hz)
-:half_frame             jsr   half_frame_clock
-:quarter_frame          jsr   quarter_frame_clock
+:half_frame_240         jsr   half_frame_clock
+:quarter_frame_240      jsr   quarter_frame_clock
+                        bra   update_doc_registers
 
 ; Half-speed interrupts (120Hz) -- clock twice in each handler
-;:half_frame
-;:quarter_frame
-;                        jsr   half_frame_clock
-;                        jsr   quarter_frame_clock
-;                        jsr   quarter_frame_clock
-
-; Quarter-speed interrupts (60Hz) -- clock four times in each handler
-;:half_frame
-;:quarter_frame
-;                        jsr   half_frame_clock
-;                        jsr   quarter_frame_clock
-;                        jsr   quarter_frame_clock
-;                        jsr   half_frame_clock
-;                        jsr   quarter_frame_clock
-;                        jsr   quarter_frame_clock
+:half_frame_120
+:quarter_frame_120
+                        jsr   half_frame_clock
+                        jsr   quarter_frame_clock
+                        jsr   quarter_frame_clock
 
 ; Apply any changes to the DOC registers
+update_doc_registers
+
                         jsr   access_doc_registers
 
 ; Set the parameters for the first square wave channel.
@@ -802,8 +862,8 @@ interrupt_handler       = *
 :high_pitch             pla
                         sta   sound_data
 
-:no_frame
 :not_timer
+no_frame
                         ldal  show_border
                         beq   :no_show2
                         ldal  border_color
