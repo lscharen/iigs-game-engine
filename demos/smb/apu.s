@@ -287,16 +287,24 @@ setup_doc_registers
 
                         jsr   access_doc_registers
 
-                        ldx   #pulse1_sound_settings
+                        ldx   #pulse1_sound_settings_l
+                        jsr   copy_register_config
+                        ldx   #pulse1_sound_settings_r
                         jsr   copy_register_config
 
-                        ldx   #pulse2_sound_settings
+                        ldx   #pulse2_sound_settings_l
+                        jsr   copy_register_config
+                        ldx   #pulse2_sound_settings_r
                         jsr   copy_register_config
 
-                        ldx   #triangle_sound_settings
+                        ldx   #triangle_sound_settings_l
+                        jsr   copy_register_config
+                        ldx   #triangle_sound_settings_r
                         jsr   copy_register_config
 
-                        ldx   #noise_sound_settings
+                        ldx   #noise_sound_settings_l
+                        jsr   copy_register_config
+                        ldx   #noise_sound_settings_r
                         jsr   copy_register_config
 
                         rep #$20
@@ -388,7 +396,7 @@ pulse2_oscillator       =     2
 triangle_oscillator     =     4
 noise_oscillator        =     6
 default_freq            =     800
-pulse1_sound_settings   =     *
+pulse1_sound_settings_l =     *
                         dfb   $00+pulse1_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse1_oscillator,default_freq/256  ; frequency high register
                         dfb   $40+pulse1_oscillator,0                 ; volume register, volume = 0
@@ -396,7 +404,15 @@ pulse1_sound_settings   =     *
                         dfb   $c0+pulse1_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+pulse1_oscillator,0                 ; mode register, set to free run
 
-pulse2_sound_settings   =     *
+pulse1_sound_settings_r =     *
+                        dfb   $01+pulse1_oscillator,default_freq      ; frequency low register
+                        dfb   $21+pulse1_oscillator,default_freq/256  ; frequency high register
+                        dfb   $41+pulse1_oscillator,0                 ; volume register, volume = 0
+                        dfb   $81+pulse1_oscillator,3                 ; wavetable pointer register, point to $0300 by default (50% duty cycle)
+                        dfb   $c1+pulse1_oscillator,0                 ; wavetable size register, 256 byte length
+                        dfb   $a1+pulse1_oscillator,$10               ; mode register, set to free run
+
+pulse2_sound_settings_l =     *
                         dfb   $00+pulse2_oscillator,default_freq      ; frequency low register
                         dfb   $20+pulse2_oscillator,default_freq/256  ; frequency high register
                         dfb   $40+pulse2_oscillator,0                 ; volume register, volume = 0
@@ -404,7 +420,15 @@ pulse2_sound_settings   =     *
                         dfb   $c0+pulse2_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+pulse2_oscillator,0                 ; mode register, set to free run
 
-triangle_sound_settings =     *
+pulse2_sound_settings_r =     *
+                        dfb   $01+pulse2_oscillator,default_freq      ; frequency low register
+                        dfb   $21+pulse2_oscillator,default_freq/256  ; frequency high register
+                        dfb   $41+pulse2_oscillator,0                 ; volume register, volume = 0
+                        dfb   $81+pulse2_oscillator,3                 ; wavetable pointer register, point to $0300 by default (50% duty cycle)
+                        dfb   $c1+pulse2_oscillator,0                 ; wavetable size register, 256 byte length
+                        dfb   $a1+pulse2_oscillator,$10                 ; mode register, set to free run
+
+triangle_sound_settings_l =     *
                         dfb   $00+triangle_oscillator,default_freq      ; frequency low register
                         dfb   $20+triangle_oscillator,default_freq/256  ; frequency high register
                         dfb   $40+triangle_oscillator,0               ; volume register, volume = 0
@@ -412,13 +436,30 @@ triangle_sound_settings =     *
                         dfb   $c0+triangle_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+triangle_oscillator,0                 ; mode register, set to free run
 
-noise_sound_settings =     *
+triangle_sound_settings_r =     *
+                        dfb   $01+triangle_oscillator,default_freq      ; frequency low register
+                        dfb   $21+triangle_oscillator,default_freq/256  ; frequency high register
+                        dfb   $41+triangle_oscillator,0               ; volume register, volume = 0
+                        dfb   $81+triangle_oscillator,5                 ; wavetable pointer register, point to $0500
+                        dfb   $c1+triangle_oscillator,0                 ; wavetable size register, 256 byte length
+                        dfb   $a1+triangle_oscillator,$10                 ; mode register, set to free run
+
+noise_sound_settings_l =     *
                         dfb   $00+noise_oscillator,default_freq      ; frequency low register
                         dfb   $20+noise_oscillator,default_freq/256  ; frequency high register
                         dfb   $40+noise_oscillator,128                 ; volume register, volume = 0
                         dfb   $80+noise_oscillator,6                 ; wavetable pointer register, point to $0600
                         dfb   $c0+noise_oscillator,0                 ; wavetable size register, 256 byte length
                         dfb   $a0+noise_oscillator,0                 ; mode register, set to free run
+
+noise_sound_settings_r =     *
+                        dfb   $01+noise_oscillator,default_freq      ; frequency low register
+                        dfb   $21+noise_oscillator,default_freq/256  ; frequency high register
+                        dfb   $41+noise_oscillator,128                 ; volume register, volume = 0
+                        dfb   $81+noise_oscillator,6                 ; wavetable pointer register, point to $0600
+                        dfb   $c1+noise_oscillator,0                 ; wavetable size register, 256 byte length
+                        dfb   $a1+noise_oscillator,$10                 ; mode register, set to free run
+
 
 backup_interrupt_ptr    ds  4
 apu_mode                ds  2
@@ -703,22 +744,25 @@ update_doc_registers
                         sta   _apu_pulse1_last_period
                         jsr   get_pulse_freq                  ; return freq in 16-bit accumulator
                         sep   #$30
+
                         ldx   #$00+pulse1_oscillator
-                        stx   sound_address
-                        sta   sound_data
+                        jsr   set_osc_register_pair
+;                        stx   sound_address
+;                        sta   sound_data
                         ldx   #$20+pulse1_oscillator
-                        stx   sound_address
+;                        stx   sound_address
                         xba
-                        sta   sound_data
+                        jsr   set_osc_register_pair
+;                        sta   sound_data
 :freq_end_pulse1        sep   #$30                           ; redundent, but avoids extra branches
 
-                        lda   #$80+pulse1_oscillator
-                        sta   sound_address
+                        ldx   #$80+pulse1_oscillator
+;                        sta   sound_address
                         lda   APU_PULSE1_REG1                ; Get the cycle duty bits
                         jsr   set_pulse_duty_cycle
 
-                        lda   #$40+pulse1_oscillator
-                        sta   sound_address
+                        ldx   #$40+pulse1_oscillator
+;                        sta   sound_address
                         lda   APU_PULSE1_REG1
                         bit   #PULSE_CONST_VOL_FLAG           ; Check the constant volume bit
                         bne   :set_volume_pulse1
@@ -727,10 +771,11 @@ update_doc_registers
 
 :mute_pulse1
                         sep   #$30
-                        lda   #$40+pulse1_oscillator
-                        sta   sound_address
+                        ldx   #$40+pulse1_oscillator
+;                        sta   sound_address
                         lda   #0
 :set_volume_pulse1      jsr   set_pulse_volume
+
 
 ; Now do the second square wave
                         lda   APU_PULSE2_MUTE                ; If the sweep muted the channel, no output
@@ -748,21 +793,23 @@ update_doc_registers
                         jsr   get_pulse_freq                  ; return freq in 16-bic accumulator
                         sep   #$30
                         ldx   #$00+pulse2_oscillator
-                        stx   sound_address
-                        sta   sound_data
+;                        stx   sound_address
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
                         ldx   #$20+pulse2_oscillator
-                        stx   sound_address
+;                        stx   sound_address
                         xba
-                        sta   sound_data
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
 :freq_end_pulse2        sep   #$30
 
-                        lda   #$80+pulse2_oscillator
-                        sta   sound_address
+                        ldx   #$80+pulse2_oscillator
+;                        sta   sound_address
                         lda   APU_PULSE2_REG1           ; Get the cycle duty bits
                         jsr   set_pulse_duty_cycle
 
-                        lda   #$40+pulse2_oscillator
-                        sta   sound_address
+                        ldx   #$40+pulse2_oscillator
+;                        sta   sound_address
                         lda   APU_PULSE2_REG1
                         bit   #PULSE_CONST_VOL_FLAG      ; Check the constant volume bit
                         bne   :set_volume_pulse2
@@ -770,8 +817,8 @@ update_doc_registers
                         bra   :set_volume_pulse2
 :mute_pulse2
                         sep   #$30
-                        lda   #$40+pulse2_oscillator
-                        sta   sound_address
+                        ldx   #$40+pulse2_oscillator
+;                        sta   sound_address
                         lda   #0
 :set_volume_pulse2      jsr   set_pulse_volume
 
@@ -802,23 +849,25 @@ update_doc_registers
                         lsr
                         sep   #$30
                         ldx   #$00+triangle_oscillator
-                        stx   sound_address
-                        sta   sound_data
+;                        stx   sound_address
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
                         ldx   #$20+triangle_oscillator
-                        stx   sound_address
+;                        stx   sound_address
                         xba
-                        sta   sound_data
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
 :freq_end_triangle      sep   #$30
 
-                        lda   #$40+triangle_oscillator
-                        sta   sound_address
+                        ldx   #$40+triangle_oscillator
+;                        sta   sound_address
                         lda   #12                             ; Triangle is a bit softer than pulse channels
                         bra   :set_volume_triangle
 
 :mute_triangle
                         sep   #$30
-                        lda   #$40+triangle_oscillator
-                        sta   sound_address
+                        ldx   #$40+triangle_oscillator
+;                        sta   sound_address
                         lda   #0
 :set_volume_triangle    jsr   set_pulse_volume
 
@@ -828,24 +877,26 @@ update_doc_registers
                         beq   :mute_noise
 
                         ldx   #$00+noise_oscillator
-                        stx   sound_address
+;                        stx   sound_address
                         lda   APU_NOISE_CURRENT_PERIOD
-                        sta   sound_data
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
                         ldx   #$20+noise_oscillator
-                        stx   sound_address
+;                        stx   sound_address
                         lda   APU_NOISE_CURRENT_PERIOD+1
-                        sta   sound_data
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
 
-                        lda   #$40+noise_oscillator
-                        sta   sound_address
+                        ldx   #$40+noise_oscillator
+;                        sta   sound_address
                         lda   APU_NOISE_REG1
                         bit   #NOISE_CONST_VOL_FLAG        ; Check the constant volume bit
                         bne   :set_volume_noise
                         lda   APU_NOISE_ENVELOPE
                         bra   :set_volume_noise
 :mute_noise
-                        lda   #$40+noise_oscillator
-                        sta   sound_address
+                        ldx   #$40+noise_oscillator
+;                        sta   sound_address
                         lda   #0
 :set_volume_noise
                         and   #$0F
@@ -860,7 +911,8 @@ update_doc_registers
                         asl
                         pha
 :high_pitch             pla
-                        sta   sound_data
+;                        sta   sound_data
+                        jsr   set_osc_register_pair
 
 :not_timer
 no_frame
@@ -875,17 +927,30 @@ no_frame
                         clc
                         rtl
 
+; X = addr
+; A = data
+set_osc_register_pair
+                        mx    %11
+                        stx   sound_address
+                        sta   sound_data
+                        inc   sound_address
+                        sta   sound_data
+                        rts
+
+; X = addr
+; A = duty cycle select
 set_pulse_duty_cycle
                         mx    %11
                         rol
                         rol
                         rol
                         and   #$03
-                        tax
+                        tay
 
-                        lda   duty_cycle_page,x
-                        sta   sound_data
-                        rts
+                        lda   duty_cycle_page,y
+                        jmp   set_osc_register_pair
+;                        sta   sound_data
+;                        rts
 
 set_pulse_volume
                         and   #$0F
@@ -893,8 +958,9 @@ set_pulse_volume
                         asl
                         asl
                         asl
-                        sta   sound_data
-                        rts
+                        jmp   set_osc_register_pair
+;                        sta   sound_data
+;                        rts
 
 ; This is a bit different because we actually calculate a scan rate directly to match the
 ; rate at which new samples are read form DOC RAM to the period of the noise channel
