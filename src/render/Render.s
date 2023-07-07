@@ -1,3 +1,6 @@
+; External entrypoint to render a tile directly into the code field
+RenderTile
+
 ; If there are no sprites, then we copy the tile data into the code field as fast as possible.
 ; If there are sprites, then additional work is required
 _RenderTile

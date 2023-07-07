@@ -105,6 +105,9 @@ _CallTable
                 adrl  _TSEnableSprites-1
                 adrl  _TSEnableBackground-1
 
+                adrl  _TSDrawTileToScreen-1
+                adrl  _TSSetTileImmediate-1
+
 _CTEnd
 _GTEAddSprite        MAC
                      UserTool  $1000+GTEToolNum
@@ -271,19 +274,36 @@ _TSReadControl
 
                 _TSExit  #0;#0
 
-; SetTile(xTile, yTile, tileId)
-_TSSetTile
-tileId          equ     FirstParam
-yTile           equ     FirstParam+2
-xTile           equ     FirstParam+4
+; SetTileImmediate(xTile, yTile, tileId)
+_TSSetTileImmediate
+:tileId          equ     FirstParam
+:yTile           equ     FirstParam+2
+:xTile           equ     FirstParam+4
 
                 _TSEntry
 
-                lda     xTile,s                ; Valid range [0, 40] (41 columns)
+                lda     :xTile,s                ; Valid range [0, 40] (41 columns)
                 tax
-                lda     yTile,s                ; Valid range [0, 25] (26 rows)
+                lda     :yTile,s                ; Valid range [0, 25] (26 rows)
                 tay
-                lda     tileId,s
+                lda     :tileId,s
+                jsr     _SetTileImmediate
+
+                _TSExit #0;#6
+
+; SetTile(xTile, yTile, tileId)
+_TSSetTile
+:tileId          equ     FirstParam
+:yTile           equ     FirstParam+2
+:xTile           equ     FirstParam+4
+
+                _TSEntry
+
+                lda     :xTile,s                ; Valid range [0, 40] (41 columns)
+                tax
+                lda     :yTile,s                ; Valid range [0, 25] (26 rows)
+                tay
+                lda     :tileId,s
                 jsr     _SetTile
 
                 _TSExit #0;#6
@@ -312,6 +332,8 @@ _TSRender
                 beq     :nes
                 cmp     #$FFFE                            ; Experimental gte-lite mode
                 beq     :lite
+                cmp     #$FFFD
+                beq     :nes
 
                 bit     #RENDER_WITH_SHADOWING
                 beq     :no_shadowing
@@ -1054,7 +1076,26 @@ _TSSetAddress
                 stal    _UTDPatch+2
                 brl     :out
 
-:next_6
+:next_6         cmp     #userTileDirectCallback
+                bne     :next_7
+                lda     :ptr,s
+                ora     :ptr+2,s
+                beq     :utd2_restore
+
+                lda     :ptr,s
+                stal    _UTD2Patch+1         ; long addressing because we're patching code in the K bank
+                lda     :ptr+1,s
+                stal    _UTD2Patch+2
+                brl     :out
+
+:utd2_restore
+                lda     #UserHook1
+                stal    _UTD2Patch+1
+                lda     #>UserHook1
+                stal    _UTD2Patch+2
+                brl     :out
+
+:next_7
 :out
                 _TSExit #0;#6
 
@@ -1109,6 +1150,32 @@ _TSEnableBackground
 
 :done
                 _TSExit  #0;#2
+
+; Draw a tile directly to the graphics screen.  Provides an convenient way to immediately draw
+; tile content on the the graphics buffer without having to go through a Render function.
+;
+; DrawTileToScreen(screenAddr, tileId, tileFlags)
+_TSDrawTileToScreen
+:tileId         equ     FirstParam+4      ; fetches the address of the internal tile data buffer
+:screenAddr     equ     FirstParam+2      ; screen address on the SHR
+:userData       equ     FirstParam        ; used in place of :tileId for user callback function
+
+                _TSEntry
+
+                lda     :tileId,s
+                bit     #TILE_USER_BIT
+                bne     :doUserTile
+
+                bra     :done
+:doUserTile
+                jsr     _GetTileAddr
+                tax
+                lda     :screenAddr,s
+                tay
+                lda     :userData,s
+                jsr     UserTileDirectDispatch
+:done
+                _TSExit  #0;#6
 
 ; Insert the GTE code
 

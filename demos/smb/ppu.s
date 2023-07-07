@@ -110,6 +110,7 @@ PPUMASK_WRITE ENT
 
 ; $2002 - PPUSTATUS For "ldx ppustatus"
 PPUSTATUS_READ_X ENT
+        pha                    ; spacefor result
         php
         pha
 
@@ -117,31 +118,29 @@ PPUSTATUS_READ_X ENT
         stal w_bit             ; Reset the address latch used by PPUSCROLL and PPUADDR
 
         ldal ppustatus
-        tax
+        sta  3,s
         and  #$7F              ; Clear the VBL flag
         stal ppustatus
 
         pla                    ; Restore the accumulator (return value in X)
         plp
-        phx                    ; re-read x to set any relevant flags
         plx
 
         rtl
 
 PPUSTATUS_READ ENT
+        pha                  ; space for return value
         php
 
         lda  #1
         stal w_bit           ; Reset the address latch used by PPUSCROLL and PPUADDR
 
         ldal ppustatus
-        pha
+        sta  2,s
         and  #$7F              ; Clear the VBL flag
         stal ppustatus
 
-        pla                  ; pop the return value
         plp
-        pha                  ; re-read accumulator to set any relevant flags
         pla
         rtl
 
@@ -334,8 +333,8 @@ PPUDATA_WRITE ENT
         sta  nt_queue,y
 
 :full
-;        lda  #1
-;        jsr  setborder
+        lda  #1
+        jsr  setborder
         rts
 
 :attrtbl
@@ -420,6 +419,30 @@ PPUDATA_WRITE ENT
         jsr  :enqueue
         dex
         jmp  :enqueue
+
+incborder
+        php
+        sep  #$20
+        ldal $E0C034
+        inc
+        eorl $E0C034
+        and  #$0F
+        eorl $E0C034
+        stal $E0C034
+        plp
+        rts
+
+decborder
+        php
+        sep  #$20
+        ldal $E0C034
+        dec
+        eorl $E0C034
+        and  #$0F
+        eorl $E0C034
+        stal $E0C034
+        plp
+        rts
 
 setborder
         php
@@ -588,25 +611,47 @@ PPUDMA_WRITE ENT
         plp
         rtl
 
-y_offset_rows equ 2
-y_height_rows equ 25
-y_offset equ {y_offset_rows*8}
-y_height equ {y_height_rows*8}
-max_nes_y equ {y_height+y_offset-8}
+;y_offset_rows equ 2
+;y_height_rows equ 25
+;y_offset equ {y_offset_rows*8}
+;y_height equ {y_height_rows*8}
+;max_nes_y equ {y_height+y_offset-8}
 
 x_offset equ 16
 
 ; Scan the OAM memory and copy the values of the sprites that need to be drawn. There are two reasons to do this
 ;
-; 1. Freeze the OAM memory at this instanct so that the NES ISR can keep running without changing values
-; 2. We have to scan this list twice -- once to build up the shadow list and once to actually render the sprites
+; This code has an optimization that it directly scans the NES RAM that would be DMA copied into the PPU
+; OAM space.  This is ok, because
+;
+; 1. The OAM DMA occurs in the NES ROM before running any game logic
+; 2. This code is running after the prior ISR, so it is loically happening at the beginning of the next NMI
+;
+; When scanning the OAM values, sprites that are not visible for any number of reasons are skipped and the
+; sprite's y-position is adjusted based on the GTE camera view.  This allow all of the shadowBitmap and
+; shadow lits work to assume an index value of zero is the top of the active play field.
 OAM_COPY    ds 256
 spriteCount ds 0
             db 0                 ; Pad in case we can to access using 16-bit instructions
 
         mx   %00
 scanOAMSprites
-        stz  Tmp5
+:top_line equ Tmp5
+:bot_line equ Tmp6
+
+; In order for the shadow bitmap to be zeroed based on the active playfield, we need to adjust the NES
+; sprite y-coordinates by the designated top row of the NES graphics screen, and then add an additional
+; adjustment for the position of the GTE rendering window within that vertical space
+
+        lda  NesTop
+        clc
+        adc  YOrigin
+        sta  :top_line
+        
+        lda  NesBottom
+        clc
+        adc  YOrigin
+        sta  :bot_line
 
         sep  #$30
 
@@ -616,15 +661,23 @@ scanOAMSprites
 :loop
 ;        lda    PPU_OAM,x         ; Y-coordinate
         ldal   ROMBase+$200,x
-        cmp    #max_nes_y+1      ; Skip anything that is beyond this line
+        cmp    :bot_line
         bcs    :skip
-        cmp    #y_offset
+        cmp    :top_line
         bcc    :skip
+        sbc    :top_line
+        sta    OAM_COPY,y         ; Keep the adjusted coordinate
+
+;        cmp    #max_nes_y+1      ; Skip sprites that are 
+;        bcs    :skip
+;        cmp    #y_offset
+;        bcc    :skip
 
 ;        lda    PPU_OAM+1,x       ; $FC is an empty tile, don't draw it
         ldal   ROMBase+$201,x
         cmp    #$FC
         beq    :skip
+        sta    OAM_COPY+1,y
 
 ;        lda    PPU_OAM+3,x       ; If X-coordinate is off the edge skip it, too.
         ldal   ROMBase+$203,x
@@ -633,8 +686,8 @@ scanOAMSprites
 
         rep    #$20
 ;        lda    PPU_OAM,x
-        ldal   ROMBase+$200,x
-        sta    OAM_COPY,y
+;        ldal   ROMBase+$200,x
+;        sta    OAM_COPY,y
 ;        lda    PPU_OAM+2,x
         ldal   ROMBase+$202,x
         sta    OAM_COPY+2,y
@@ -834,19 +887,18 @@ buildShadowBitmap
         rts
 
 ; Set the SCB values equal to the bitmap to visually debug
-        ldx   #0
+        ldx   ScreenTop
         ldy   #0
 :vloop
         lda   #8
         sta   Tmp6
-        lda   shadowBitmap+2,y
+        lda   shadowBitmap,y
 :iloop
         asl
         pha
 
         lda   #0
-        bcc   :zero
-        inc
+        rol
 :zero   stal  $E19D00,x
         pla
 
@@ -855,7 +907,7 @@ buildShadowBitmap
         bne   :iloop
 
         iny
-        cpy   #25
+        cpy   ScreenRows
         bcc   :vloop
 
         rep   #$30
@@ -1016,7 +1068,7 @@ exposeShadowList
 
 :exit
         ldx  :last              ; Expose the final part
-        ldy  #y_height
+        ldy  ScreenHeight
         lda  #0
         jsl  LngJmp
         rts
@@ -1030,16 +1082,15 @@ shadowBitmapToList
 
         sep  #$30
 
-        ldx  #y_offset_rows               ; Start at the third row (y_offset = 16) walk the bitmap for 25 bytes (200 lines of height)
-        lda  #0
-        sta  shadowListCount  ; zero out the shadow list count
+        ldx  #0                            ; List is zero-based to the active play field
+        stz  shadowListCount  ; zero out the shadow list count
 
 ; This loop is called when we are not tracking a sprite range
 :zero_loop
         ldy  shadowBitmap,x
         beq  :zero_next
 
-        lda  {mul8-y_offset_rows},x           ; This is the scanline we're on (offset by the starting byte)
+        lda  mul8,x                           ; This is the scanline we're on (offset by the starting byte)
         clc
         adc  offset,y                         ; This is the first line defined by the bit pattern
         sta  :top
@@ -1047,7 +1098,7 @@ shadowBitmapToList
 
 :zero_next
         inx
-        cpx  #y_height_rows+y_offset_rows ; +1              ; End at byte 27
+        cpx  ScreenRows
         bcc  :zero_loop
         bra  :exit           ; ended while not tracking a sprite, so exit the function
 
@@ -1063,7 +1114,8 @@ shadowBitmapToList
         and  offsetMask,y
         sta  shadowBitmap,x
 
-        lda  {mul8-y_offset_rows},x
+;        lda  {mul8-y_offset_rows},x
+        lda  mul8,x
         clc
         adc  invOffset,y
 
@@ -1081,7 +1133,8 @@ shadowBitmapToList
 
 :one_next
         inx
-        cpx  #y_height_rows+y_offset_rows+1
+        cpx  ScreenRows
+
         bcc  :one_loop
 
 ; If we end while tracking a sprite, add to the list as the last item
@@ -1089,7 +1142,7 @@ shadowBitmapToList
         ldx  shadowListCount
         lda  :top
         sta  shadowListTop,x
-        lda  #y_height
+        lda  ScreenHeight
         sta  shadowListBot,x
         inx
         stx  shadowListCount
@@ -1130,6 +1183,8 @@ drawOAMSprites
         plb
 
         pha                ; Save the phase indicator
+        pei   124          ; RenderFlags
+
         tdc                ; Keep a copy of the second page of GTE direct page space
         clc
         adc   #$0100
@@ -1143,6 +1198,8 @@ drawOAMSprites
         sty   FTblPtr
         stx   FTblPtr+2
 
+        pla
+        sta   RenderFlags
         pla
 
 ; Check what phase we're in
@@ -1160,10 +1217,7 @@ drawOAMSprites
 ; We need to "freeze" the OAM values, otherwise they can change between when we build the rendering pipeline
 
         sei
-        ldal  nmiCount
-        pha
         jsr   scanOAMSprites              ; Filter out any sprites that don't need to be drawn
-        pla
         cli
 
         jsr   buildShadowBitmap           ; Run though and quickly create a bitmap of lines with sprites
@@ -1202,7 +1256,7 @@ drawSprites
 oam_loop
         phx                  ; Save x
 
-        lda   OAM_COPY,x     ; Y-coordinate
+        lda   OAM_COPY,x     ; Y-coordinate (zero based to screen)
 ;        inc                  ; Compensate for PPU delayed scanline
 
         rep   #$30
@@ -1218,7 +1272,7 @@ oam_loop
         clc
         adc  :tmp
         clc
-        adc  #$2000-{y_offset*160}+x_offset
+        adc  ScreenBase
         sta  :tmp
 
         lda  OAM_COPY+3,x

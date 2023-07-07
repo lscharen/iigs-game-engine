@@ -160,13 +160,96 @@ ExtFuncBlock
 
 ; Special NES renderer that externalizes the sprite rendering in order to exceed the internal limit of 16 sprites
 _RenderNES
-;            jsr   _ApplyBG0YPos
-;            jsr   _ApplyBG0XPosPre
+            sta   RenderFlags
+            bit   #$0002              ; If this bit is off, don't render the top. If the top *is* rendered, assume full-screen
+            bne   *+5
+            jmp   _RenderNES2
+
+            jsr   _ApplyBG0YPosPreLite
             jsr   _ApplyBG0YPosLite
             jsr   _ApplyBG0XPosPre
 
-; Callback to update the tilestore with any new tiles
+            jsr   _RenderNESTileCallback
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
 
+; Render the status bar area, which is fixed
+
+            stz   tmp1                ; virt_line_x2
+            lda   #16*2
+            sta   tmp2                ; lines_left_x2
+            lda   #0                  ; Xmod164
+            jsr   _ApplyBG0XPosAltLite
+            lda   tmp4                ; :exit_offset
+            stal  nesTopOffset
+
+; Next render the remaining lines, which should have their screen locations adjusted for the
+; vertical offset
+
+            lda   #16*2
+            clc
+            adc   StartYMod208
+            sta   tmp1                ; virt_line_x2
+            lda   ScreenHeight
+            sec
+            sbc   #16
+            asl
+            sta   tmp2                ; lines_left_x2
+            lda   StartXMod164        ; Xmod164
+            jsr   _ApplyBG0XPosAltLite
+            lda   tmp4
+            stal  nesBottomOffset
+
+            jsr  _RenderNESSpritesCallback
+
+            stz  tmp1            ; :virt_line_x2
+            lda  #16*2
+            sta  tmp2            ; :lines_left_x2
+            ldal nesTopOffset
+            sta  tmp4            ; :exit_offset
+            jsr   _RestoreBG0OpcodesAltLite
+
+            lda   #16*2
+            sta   tmp1                 ; :virt_line_x2
+            lda   ScreenHeight
+            sec
+            sbc   #16
+            asl
+            sta   tmp2                ; lines_left_x2
+            ldal  nesBottomOffset
+            sta   tmp4                ; :exit_offset
+            jsr   _RestoreBG0OpcodesAltLite
+            bra   :final_step
+
+:no_status_restore
+            stz   tmp1
+            lda   ScreenHeight
+            sta   tmp2
+            ldal  nesBottomOffset
+            sta   tmp4                ; :exit_offset
+            jsr   _RestoreBG0OpcodesAltLite
+
+:final_step
+            jmp   _RenderNESExit
+
+_RenderNES2
+            jsr   _ApplyBG0YPosPreLite
+            jsr   _ApplyBG0YPosLite
+            jsr   _ApplyBG0XPosPre
+
+            jsr   _RenderNESTileCallback
+            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
+
+            jsr   _ApplyBG0XPosLite   ; Do the full screen
+            jsr   _RenderNESSpritesCallback
+
+            lda   StartYMod208              ; Restore the fields back to their original state
+            ldx   ScreenHeight
+            jsr   _RestoreBG0OpcodesLite
+
+            jmp   _RenderNESExit
+
+; Callback to update the tilestore with any new tiles
+_RenderNESTileCallback
             lda   ExtUpdateBG0Tiles
             ora   ExtUpdateBG0Tiles+2
             beq   :no_tile
@@ -176,31 +259,7 @@ _RenderNES
             lda   ExtUpdateBG0Tiles+1
             stal  :patch0+2
 :patch0     jsl   $000000
-:no_tile
-
-            jsr   _ApplyTiles         ; This function actually draws the new tiles into the code field
-
-            stz   tmp1                ; virt_line_x2
-            lda   #16*2
-            sta   tmp2                ; lines_left_x2
-            lda   #0                  ; Xmod164
-;            jsr   _ApplyBG0XPosAlt
-            jsr   _ApplyBG0XPosAltLite
-            lda   tmp4                ; :exit_offset
-            stal  nesTopOffset
-
-            lda   #16*2
-            sta   tmp1                ; virt_line_x2
-            lda   ScreenHeight
-            sec
-            sbc   #16
-            asl
-            sta   tmp2                ; lines_left_x2
-            lda   StartXMod164        ; Xmod164
-;            jsr   _ApplyBG0XPosAlt
-            jsr   _ApplyBG0XPosAltLite
-            lda   tmp4
-            stal  nesBottomOffset
+:no_tile    rts
 
 ; This is a tricky part. The NES does not keep sprites sorted, so we need an alternative way to figure out
 ; which lines to shadow and which ones not to.  Our compromise is to build a bitmap of lines that the sprite
@@ -208,7 +267,7 @@ _RenderNES
 ;
 ; This is handled by the callback in two phases.  We pass pointers to the internal function the callback needs
 ; access to.  If there is no function defined, do nothing
-
+_RenderNESSpritesCallback
             lda   GTEControlBits
             bit   #CTRL_SPRITE_DISABLE
             bne   :no_render
@@ -243,32 +302,9 @@ _RenderNES
             ldx   #^ExtFuncBlock
             ldy   #ExtFuncBlock
 :patch2     jsl   $000000
+:no_render  rts
 
-:no_render
-            stz  tmp1            ; :virt_line_x2
-            lda  #16*2
-            sta  tmp2            ; :lines_left_x2
-            ldal nesTopOffset
-            sta  tmp4            ; :exit_offset
-;            jsr   _RestoreBG0OpcodesAlt
-            jsr   _RestoreBG0OpcodesAltLite
-
-            lda   #16*2
-            sta   tmp1                 ; :virt_line_x2
-            lda   ScreenHeight
-            sec
-            sbc   #16
-            asl
-            sta   tmp2                ; lines_left_x2
-            ldal  nesBottomOffset
-            sta   tmp4                ; :exit_offset
-;            jsr   _RestoreBG0OpcodesAlt
-            jsr   _RestoreBG0OpcodesAltLite
-
-;            lda   StartYMod208              ; Restore the fields back to their original state
-;            ldx   ScreenHeight
-;            jsr   _RestoreBG0Opcodes
-
+_RenderNESExit
             lda   StartY
             sta   OldStartY
             lda   StartX
@@ -637,6 +673,7 @@ _RenderLite
             sta   RenderFlags
             jsr   _DoTimers            ; Run any pending timer tasks
 
+            jsr   _ApplyBG0YPosPreLite
             jsr   _ApplyBG0YPosLite    ; Set stack addresses for the virtual lines to the physical screen
             jsr   _ApplyBG0XPosPre     ; Lock in certain rendering variables (not lite/non-lite specific)
 

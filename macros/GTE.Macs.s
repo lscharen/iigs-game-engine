@@ -144,6 +144,12 @@ _GTEEnableSprites    MAC
 _GTEEnableBackground MAC
                      UserTool  $3100+GTEToolNum
                      <<<
+_GTEDrawTileToScreen MAC
+                     UserTool  $3200+GTEToolNum
+                     <<<
+_GTESetTileImmediate MAC
+                     UserTool  $3300+GTEToolNum
+                     <<<
 
 ; EngineMode definitions
 ; Script definition
@@ -189,8 +195,9 @@ vblCallback            equ   $0004
 extSpriteRenderer      equ   $0005
 rawDrawTile            equ   $0006
 extBG0TileUpdate       equ   $0007
-userTileCallback       equ   $0008
+userTileCallback       equ   $0008        ; Callback for rendering custom tiles into the code field
 liteBlitter            equ   $0009
+userTileDirectCallback equ   $000A        ; Callback for drawing custom tiles directly to the screen buffer
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000      ; Copy into BG1 buffer in "normal mode"

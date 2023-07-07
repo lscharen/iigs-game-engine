@@ -18,7 +18,7 @@ DOWN_ARROW      equ   $0A
 ; Nametable queue
 NT_QUEUE_LEN  equ $1000
 NT_QUEUE_SIZE equ {2*NT_QUEUE_LEN}
-NT_QUEUE_MOD   equ {NT_QUEUE_SIZE-1}
+NT_QUEUE_MOD  equ {NT_QUEUE_SIZE-1}
 
             mx    %00
 
@@ -38,8 +38,26 @@ CurrNTQueueEnd equ 40
 BGToggle    equ   44
 LastEnable  equ   46
 ShowFPS     equ   48
+HideStatusBar equ 50
+;ROMPlayerY   equ  52
+YOrigin      equ  54
 
-OldOneSec   equ   100
+OldOneSec    equ   100
+RenderFlags  equ   102
+NesTop       equ   104     ; Clip any sprite that has a NES OAM y-coordinate above this line
+NesBottom    equ   106     ; Clip any sprite that has a NES OAM y-coordinate below this line
+ScreenBase   equ   108     ; SHR address of the top-left edge of the play field
+ScreenRows   equ   110     ; Number of 8-line block we are showing on-screen
+ScreenHeight equ   112
+ScreenTop    equ   114     ; SCB line of the top of the play field
+
+MinYScroll   equ   116     ; Smallest YOrigin value: 0 when showing stratus bar, 16 when hiding status bar
+MaxYScroll   equ   118     ; Largest YOrigin value for GTESetBG0Origin
+
+;VirtTop     equ   104     ; The top virtual line that is the top of the active play field (excludes status bar)
+;VirtBottom  equ   106     ; The bottom virtual line that is bottom of the active play field
+;MaxNesY     equ   108     ; This is the largest NES y coordinate that will display in the active play field
+;MinNesY     equ   110     ; This is the smallest NES y coordinate that will display in the active play field
 
 Tmp0        equ   240
 Tmp1        equ   242
@@ -66,12 +84,47 @@ FTblTmp     equ   228
             stz   OldROMScrollEdge
             stz   LastAreaType
             stz   ShowFPS
+            stz   HideStatusBar
+            stz   YOrigin
 
             lda   #1
             sta   BGToggle
 
             lda   #$0008
             sta   LastEnable
+
+            lda   #16
+;            lda   #32
+            sta   NesTop
+
+            lda   #16
+            sta   MinYScroll
+
+            lda   #1
+            sta   HideStatusBar
+
+            lda   #128
+            sta   ScreenHeight
+            lsr
+            lsr
+            lsr
+            sta   ScreenRows
+
+            lda   #200
+            sec
+            sbc   ScreenHeight
+            sta   MaxYScroll
+
+            lda   NesTop
+            clc
+            adc   ScreenHeight
+            sec
+            sbc   #8
+            inc
+            sta   NesBottom
+
+;            lda   #0
+;            sta   ScreenTop
 
 ; The next two direct pages will be used by GTE, so get another 2 pages beyond that for the ROM.  We get
 ; 4K of DP/Stack space by default, so there is plenty to share
@@ -143,11 +196,35 @@ FTblTmp     equ   228
 ;            pea   #184
 
             pea   #128
-            pea   #200
+            pei   ScreenHeight
 
 ;            pea   #80
 ;            pea   #144
             _GTESetScreenMode
+
+            pha                       ; Allocate space for x, y, width, height
+            pha
+            pha
+            pha
+            _GTEGetScreenInfo
+            pla                       ; Discard x
+            pla
+            sta   ScreenTop
+            asl
+            asl
+            asl
+            asl
+            asl
+            sta   ScreenBase
+            asl
+            asl
+            clc
+            adc   ScreenBase
+            clc
+            adc   #$2000+x_offset
+            sta   ScreenBase
+            pla                       ; Discard width and height
+            pla
 
             ldx   #Area1Palette
             lda   #TmpPalette
@@ -391,6 +468,13 @@ EvtLoop
             brl   EvtLoop
 :not_t
 
+            cmp   #'x'             ; break
+            bne   :not_x
+            lda   #1
+            sta   user_break
+            brl   EvtLoop
+:not_x
+
             cmp   #'q'
             beq   Exit
             brl   EvtLoop
@@ -416,6 +500,7 @@ DPSave      dw    0
 LastAreaType dw   0
 frameCount  dw    0
 show_vbl_cpu dw   0
+user_break   dw   0
 
 ; Toggle an APU control bit
 ToggleAPUChannel
@@ -497,16 +582,42 @@ RenderFrame
             pha
 
 ; Get the player's Y coordinate and determine of we need to adjust the camera based on the physical play field size
-;            sep   #$20
-;            ldal  ROMBase+$b5    ; Player_Y_HighPos
-;            xba
-;            ldal  ROMBase+$ce    ; Player_Y_Position
-;            rep   #$20
-;
-;            sec
-;            sbc   TopClip        ; If we're hiding the 
+            ldx   ROMZeroPg
+            ldal  $0000b5,x      ; Player_Y_Page      ; 0 = above screen, 1 = on screen, 2 = below
+            and   #$00FF
+            beq   :max_clamp
+            cmp   #2
+            beq   :min_clamp
 
-            pea   $0000
+            ldal  $0000ce,x      ; Player_Y_Position
+            and   #$00FF
+;            sta   ROMPlayerY
+
+; The "full screen" size is 200 lines that cover NES rows 16 through 216.  If the
+; size of the playfield is less, then we adjust the origin a bit.
+;
+; Y_Origin = min(200 - ScreenHeight, max(0, ROMPlayerY - 16 - ScreenHeight/2))
+
+            sec
+            sbc   NesTop
+            asl
+            sec
+            sbc   ScreenHeight
+            bmi   :max_neg
+            lsr
+            cmp   MinYScroll
+            bcc   :max_clamp
+
+            cmp   MaxYScroll
+            bcc   :set_y
+:min_clamp  lda   MaxYScroll
+            bra   :set_y
+:max_neg
+:max_clamp
+            lda   MinYScroll
+:set_y
+            sta   YOrigin
+            pha
             _GTESetBG0Origin
 
             lda   ppumask
@@ -518,11 +629,21 @@ RenderFrame
             _GTEEnableBackground
 :bghop
 
-            pea   $FFFF      ; NES mode
+;            pea   $FFFF      ; NES mode
+            lda   HideStatusBar
+            beq   :full_screen
+
+            pea   $FFFD
             _GTERender
+            bra   :render_done
+
+:full_screen
+            pea   $FFFF
+            _GTERender
+:render_done
 
 ; Check the AreaType and see if the palette needs to be changed. We do this after the screen is blitted
-; so the palette does not get changed too eary while old pixels are still on the screen.
+; so the palette does not get changed too early while old pixels are still on the screen.
 
             ldal  ROMBase+$074E
             and   #$00FF
@@ -845,7 +966,8 @@ DrainNTQueue
 ;       issues because many frames can pass before Render gets control again.  We need to expose a 
 ;       _SetTileImmediate function in the list of function callbacks....
 
-            _GTESetTile
+            _GTESetTileImmediate
+;            _GTESetTile
 ;            inc   :Count
             brl   :skip
 
@@ -1106,7 +1228,9 @@ CopyStatus
             inx
             stx   Tmp2
 
-            _GTESetTile
+;            _GTESetTile
+            _GTESetTileImmediate
+
 
             ply
             plx
@@ -1193,7 +1317,8 @@ CopyNametable
             stx   Tmp2
 :x_hop
 
-            _GTESetTile
+;            _GTESetTile
+            _GTESetTileImmediate
 
             ply
             plx

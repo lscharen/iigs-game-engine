@@ -352,6 +352,75 @@ _CalcTileProcIndex
 :no_flip_d       lda  #0
                  rts
 
+; Set a tile value in the backing store and immediately render into the code field
+;
+; A = tile id
+; X = tile column [0, 40] (41 columns)
+; Y = tile row    [0, 25] (26 rows)
+;
+; Registers are not preserved
+_SetTileImmediate
+                 sta  newTileId
+                 jsr  _GetTileStoreOffset0          ; Get the address of the X,Y tile position
+                 tax
+
+                 lda  TileStore+TS_TILE_ID,x
+                 cmp  newTileId
+                 bne  :changed
+                 rts
+
+:changed         sta  oldTileId
+                 lda  newTileId
+                 sta  TileStore+TS_TILE_ID,x        ; Value is different, store it.
+
+; If the user bit is set, then skip most of the setup and just fill in the TileProcs with the user callback
+; target
+                 bit  #TILE_USER_BIT
+                 bne  :set_user_tile
+
+                 jsr  _GetTileAddr
+                 sta  TileStore+TS_TILE_ADDR,x      ; Committed to drawing this tile, so get the address of the tile in the tiledata bank for later
+
+; Set the renderer procs for this tile.
+;
+; NOTE: Later on, optimize this to just take the Tile ID & TILE_CTRL_MASK and lookup the right proc
+;       table address from a lookup table....
+;
+;  1. The dirty render proc is always set the same.
+;  2. If BG1 and DYN_TILES are disabled, then the TS_BASE_TILE_DISP is selected from the Fast Renderers, otherwise
+;     it is selected from the full tile rendering functions.
+;  3. The copy process is selected based on the flip bits
+;
+; When a tile overlaps the sprite, it is the responsibility of the Render function to compose the appropriate
+; functionality.  Sometimes it is simple, but in cases of the sprites overlapping Dynamic Tiles and other cases
+; it can be more involved.
+
+; Calculate the base tile proc selector from the tile Id (need X-register set to tile store index)
+
+                 lda  newTileId
+                 jsr  _SetNormalTileProcs
+                 bra  :render_tile
+
+:set_user_tile
+                 and  #$01FF
+                 jsr  _GetTileAddr                 ; The user tile callback needs access to this info, too, but
+                 sta  TileStore+TS_TILE_ADDR,x     ; we just give the base tile address (hflip bit is ignored)
+
+                 lda  #UserTileDispatch
+                 stal K_TS_BASE_TILE_DISP,x
+                 stal K_TS_SPRITE_TILE_DISP,x
+                 stal K_TS_ONE_SPRITE,x
+
+:render_tile
+                 phd                         ; save the current direct page
+                 tdc
+                 clc
+                 adc  #$100                  ; move to the next page
+                 tcd
+                 jsr  _RenderTile
+                 pld
+                 rts
+
 ; Set a tile value in the tile backing store.  Mark dirty if the value changes
 ;
 ; A = tile id
@@ -445,6 +514,27 @@ _UTDPatch        jsl   UserHook1                        ; Call the users code
 ;                 jmp  FastCopyTmpDataA                 ; Non-zero value to continue additional work
                  jmp LiteCopyTmpDataA
 :done
+                 rts
+
+; Provides a direct callback without using the TileStore information
+; A = user data
+; Y = screen address
+; X = tile address
+;
+; Bank will be set to the tiledata bank, so lda $0000,x will load the first word of the tile's data
+UserTileDirectDispatch
+                 phd
+                 pha
+                 tdc
+                 clc
+                 adc   #$100
+                 tcd
+                 pla
+                 pei   DP2_TILEDATA_AND_TILESTORE_BANKS ; set the bank to the tiledata bank
+                 plb
+_UTD2Patch       jsl   UserHook1                        ; Call the user's code
+                 plb                                    ; Restore the curent bank
+                 pld
                  rts
 
 ; Stub to have a valid address for initialization / reset

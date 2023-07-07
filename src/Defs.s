@@ -208,8 +208,9 @@ vblCallback            equ   $0004        ; User routine to be called by VBL int
 extSpriteRenderer      equ   $0005
 rawDrawTile            equ   $0006
 extBG0TileUpdate       equ   $0007
-userTileCallback       equ   $0008
+userTileCallback       equ   $0008        ; Callback for rendering custom tiles into the code field
 liteBlitter            equ   $0009
+userTileDirectCallback equ   $000A        ; Callback for drawing custom tiles directly to the screen buffer
 
 ; CopyPicToBG1 flags
 COPY_PIC_NORMAL        equ   $0000        ; Copy into BG1 buffer in "normal mode" treating the buffer as a 164x208 pixmap with stride of 256
