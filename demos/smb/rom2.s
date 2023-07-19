@@ -2615,11 +2615,11 @@ JumpEngine
               sta   $05
               iny
               lda   ($04),y                    ;load pointer from indirect
-              sta   $06                        ;note that if an RTS is performed in next routine
+;             sta   $06                        ;note that if an RTS is performed in next routine
               sta   :je_patch+1
               iny                              ;it will return to the execution before the sub
               lda   ($04),y                    ;that called this routine
-              sta   $07
+;             sta   $07
               sta   :je_patch+2
 ;             jmp   ($06)                      ;jump to the address we loaded
 
@@ -3020,22 +3020,21 @@ InitializeMemory
               ldx #$07          ;set initial high byte to $0700-$07ff
               lda #$00          ;set initial low byte to start of page (at $00 of page)
               sta $06
-InitPageLoop stx $07
-InitByteLoop cpx #$01          ;check to see if we're on the stack ($0100-$01ff)
+InitPageLoop  stx $07
+InitByteLoop  cpx #$01          ;check to see if we're on the stack ($0100-$01ff)
               bne InitByte      ;if not, go ahead anyway
               cpy #$60          ;otherwise, check to see if we're at $0160-$01ff
               bcs SkipByte      ;if so, skip write
-InitByte     sta ($06),y       ;otherwise, initialize byte with current low byte in Y
-SkipByte     dey
+InitByte      sta ($06),y       ;otherwise, initialize byte with current low byte in Y
+SkipByte      dey
               cpy #$ff          ;do this until all bytes in page have been erased
               bne InitByteLoop
               dex               ;go onto the next page
-;              bpl InitPageLoop  ;do this until all pages of memory have been erased
-;              rts
-
-             cpx   #$02                       ;GTE wrapper -- zero page and stack are in a different
-             bcs   InitPageLoop               ;bank, so we provide a little help here
-             jmp   GteInitMem
+;             bpl InitPageLoop  ;do this until all pages of memory have been erased
+;             rts
+              cpx   #$02          ;GTE wrapper -- zero page and stack are in a different
+              bcs   InitPageLoop  ;bank, so we provide a little help here
+              jmp   GteInitMem
 
 ;-------------------------------------------------------------------------------------
 
@@ -7238,7 +7237,7 @@ SetHSpd   lda #$fe
 SetHPos   dec Misc_State,x           ;decrement hammer's state
 
           stx GTE_TMP
-;          lda Enemy_X_Position,y     ;get enemy's horizontal position
+;         lda Enemy_X_Position,y     ;get enemy's horizontal position
           tyx
           lda Enemy_X_Position,x
           ldx GTE_TMP

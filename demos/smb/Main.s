@@ -38,9 +38,13 @@ CurrNTQueueEnd equ 40
 BGToggle    equ   44
 LastEnable  equ   46
 ShowFPS     equ   48
-HideStatusBar equ 50
+;HideStatusBar equ 50
 ;ROMPlayerY   equ  52
 YOrigin      equ  54
+
+VideoMode    equ  56       ; Configuration parameters
+AudioMode    equ  58
+LastStatusUdt equ  60      ; For good/better video modes
 
 OldOneSec    equ   100
 RenderFlags  equ   102
@@ -53,11 +57,6 @@ ScreenTop    equ   114     ; SCB line of the top of the play field
 
 MinYScroll   equ   116     ; Smallest YOrigin value: 0 when showing stratus bar, 16 when hiding status bar
 MaxYScroll   equ   118     ; Largest YOrigin value for GTESetBG0Origin
-
-;VirtTop     equ   104     ; The top virtual line that is the top of the active play field (excludes status bar)
-;VirtBottom  equ   106     ; The bottom virtual line that is bottom of the active play field
-;MaxNesY     equ   108     ; This is the largest NES y coordinate that will display in the active play field
-;MinNesY     equ   110     ; This is the smallest NES y coordinate that will display in the active play field
 
 Tmp0        equ   240
 Tmp1        equ   242
@@ -84,8 +83,10 @@ FTblTmp     equ   228
             stz   OldROMScrollEdge
             stz   LastAreaType
             stz   ShowFPS
-            stz   HideStatusBar
             stz   YOrigin
+
+            stz   VideoMode
+            stz   AudioMode
 
             lda   #1
             sta   BGToggle
@@ -93,38 +94,7 @@ FTblTmp     equ   228
             lda   #$0008
             sta   LastEnable
 
-            lda   #16
-;            lda   #32
-            sta   NesTop
-
-            lda   #16
-            sta   MinYScroll
-
-            lda   #1
-            sta   HideStatusBar
-
-            lda   #128
-            sta   ScreenHeight
-            lsr
-            lsr
-            lsr
-            sta   ScreenRows
-
-            lda   #200
-            sec
-            sbc   ScreenHeight
-            sta   MaxYScroll
-
-            lda   NesTop
-            clc
-            adc   ScreenHeight
-            sec
-            sbc   #8
-            inc
-            sta   NesBottom
-
-;            lda   #0
-;            sta   ScreenTop
+            stz   LastStatusUdt
 
 ; The next two direct pages will be used by GTE, so get another 2 pages beyond that for the ROM.  We get
 ; 4K of DP/Stack space by default, so there is plenty to share
@@ -138,13 +108,7 @@ FTblTmp     equ   228
             adc   #$1FF                   ; Stack starts at the top of the page
             sta   ROMStk
 
-; Initialize the sound hardware for APU emulation
-
-            lda   #2                      ; 0 = 240Hz, 1 = 120Hz, 2 = 60Hz (external)
-            jsr   APUStartUp
-
 ; Start up GTE to drive the graphics
-;            brl   :debug
 
             lda   #ENGINE_MODE_USER_TOOL  ; Engine in Fast Mode as a User Tool
             jsr   GTEStartUp              ; Load and install the GTE User Tool
@@ -174,96 +138,13 @@ FTblTmp     equ   228
             _GTESetAddress
 
 ; Install a custom tile callback to draw tiles directly on the screen w/proper palettes
-;            pea   userTileDirectCallback
-;            pea   #^NESDirectTileBlitter
-;            pea   #NESDirectTileBlitter
-;            _GTESetAddress
-
-; Get the address of a low-level routine that can be used to draw a tile directly to the graphics screen
-;            pea   rawDrawTile
-;            _GTEGetAddress
-;            lda   1,s
-;            sta   drawTilePatch+1
-;            lda   2,s
-;            sta   drawTilePatch+2
-;            pla
-;            plx
-
-; Initialize the graphics screen playfield (256x160).  The NES is 240 lines high, so 160
-; is a reasonable compromise.
-
-;            pea   #128
-;            pea   #184
-
-            pea   #128
-            pei   ScreenHeight
-
-;            pea   #80
-;            pea   #144
-            _GTESetScreenMode
-
-            pha                       ; Allocate space for x, y, width, height
-            pha
-            pha
-            pha
-            _GTEGetScreenInfo
-            pla                       ; Discard x
-            pla
-            sta   ScreenTop
-            asl
-            asl
-            asl
-            asl
-            asl
-            sta   ScreenBase
-            asl
-            asl
-            clc
-            adc   ScreenBase
-            clc
-            adc   #$2000+x_offset
-            sta   ScreenBase
-            pla                       ; Discard width and height
-            pla
-
-            ldx   #Area1Palette
-            lda   #TmpPalette
-            jsr   NESColorToIIgs
-
-            pea   $0000
-            pea   #^TmpPalette
-            pea   #TmpPalette
-            _GTESetPalette
+            pea   userTileDirectCallback
+            pea   #^NESDirectTileBlitter
+            pea   #NESDirectTileBlitter
+            _GTESetAddress
 
 ; Convert the CHR ROM from the cart into GTE tiles
-:debug
-            ldx   #0
-            ldy   #0
-:tloop
-            phx
-            phy
-
-            lda   #TileBuff
-            jsr  ConvertROMTile2
-
-            lda  1,s
-
-            pha                  ; start
-            inc
-            pha                  ; finish
-            pea   #^TileBuff     ; pointer
-            pea   #TileBuff
-            _GTELoadTileSet
-
-            ply
-            iny
-
-            pla
-            clc
-            adc  #16                         ; NES tiles are 16 bytes
-            tax
-            cpx  #512*16
-            bcc  :tloop
+            jsr   LoadTilesFromROM
 
 ; Start the FPS counter
             pha
@@ -272,7 +153,18 @@ FTblTmp     equ   228
             sta   OldOneSec
 
 ; Show the configuration screen
-;            jsr   ShowConfig
+            jsr   ShowConfig
+            lda   #0
+            jsr   ClearScreen
+            jsr   InitPlayfield
+
+; Initialize the sound hardware for APU emulation
+
+            lda   #4
+            sec
+            sbc   AudioMode               ; 0 = good, 2 = better, 4 = best
+            lsr 
+            jsr   APUStartUp              ; 0 = 240Hz, 1 = 120Hz, 2 = 60Hz (external)
 
 ; Set an internal flag to tell the VBL interrupt handler that it is
 ; ok to start invoking the game logic.  The ROM code has to be run
@@ -293,10 +185,6 @@ FTblTmp     equ   228
 ;OffScr_LevelNumber    = $0763
 
 EvtLoop
-:spin       lda   nmiCount
-            beq   :spin
-            stz   nmiCount
-
 ;            sep   #$20
 ;            lda   #0
 ;            stal  ROMBase+$075f
@@ -330,7 +218,6 @@ EvtLoop
             lda   ShowFPS
             beq   :no_fps
 
-            inc   frameCount
             pha
             _GTEGetSeconds
             pla
@@ -341,7 +228,7 @@ EvtLoop
             ldx   #0
             ldy   #$FFFF
             lda   frameCount
-            
+
             jsr   DrawByte
             lda   frameCount
             stz   frameCount
@@ -495,7 +382,7 @@ TmpPalette  ds    32
 
 lastKey     dw    0
 singleStepMode dw 0
-nmiCount    dw    0
+; nmiCount    dw    0
 DPSave      dw    0
 LastAreaType dw   0
 frameCount  dw    0
@@ -537,6 +424,136 @@ NESColorToIIgs
             sty   Tmp1
             cpy   #32
             bcc   :loop
+            rts
+
+; Loop through the tiles and convert them from the NES ROM format into a custom
+; format that will be stored in the GTE tile buffer and rendered by the custom
+; tile rendering callbacks
+LoadTilesFromROM
+            ldx   #0
+            ldy   #0
+:tloop
+            phx
+            phy
+
+            lda   #TileBuff
+            jsr  ConvertROMTile2
+
+            lda  1,s
+
+            pha                  ; start
+            inc
+            pha                  ; finish
+            pea   #^TileBuff     ; pointer
+            pea   #TileBuff
+            _GTELoadTileSet
+
+            ply
+            iny
+
+            pla
+            clc
+            adc  #16                         ; NES tiles are 16 bytes
+            tax
+            cpx  #512*16
+            bcc  :tloop
+            rts
+
+; Helper to initialize the GTE playfield based on the selected VideoMode
+InitPlayfield
+            lda   #16            ; We render starting at line 16 in the NES video buffer
+            sta   NesTop
+
+            lda   VideoMode
+            cmp   #0
+            beq   :good
+            cmp   #2
+            beq   :better
+
+            lda   #0
+            sta   MinYScroll
+
+            lda   #200
+            sta   ScreenHeight
+            bra   :common
+
+:better
+            lda   #16            ; Keep the GTE playfield below the status bar in PPU RAM
+            sta   MinYScroll
+
+            lda   #160           ; 160 lines high for 'better'
+            sta   ScreenHeight
+            bra   :common
+
+:good
+            lda   #16            ; Keep the GTE playfield below the status bar in PPU RAM
+            sta   MinYScroll
+
+            lda   #128           ; Only 128 lines tall for speed
+            sta   ScreenHeight
+
+; Common follow-on initialization
+:common
+            lda   ScreenHeight
+            lsr
+            lsr
+            lsr
+            sta   ScreenRows
+
+            lda   #200           ; Only display down to this row
+            sec
+            sbc   ScreenHeight
+            sta   MaxYScroll
+
+            lda   NesTop
+            clc
+            adc   ScreenHeight
+            sec
+            sbc   #8
+            inc
+            sta   NesBottom
+
+; Initialize the graphics screen playfield
+
+            pea   #128
+            pei   ScreenHeight
+            _GTESetScreenMode
+
+            pha                       ; Allocate space for x, y, width, height
+            pha
+            pha
+            pha
+            _GTEGetScreenInfo
+            pla                       ; Discard x
+            pla
+            sta   ScreenTop
+            asl
+            asl
+            asl
+            asl
+            asl
+            sta   ScreenBase
+            asl
+            asl
+            clc
+            adc   ScreenBase
+            clc
+            adc   #$2000+x_offset
+            sta   ScreenBase
+            pla                       ; Discard width and height
+            pla
+
+; Set a default palette for the title screen
+
+            ldx   #Area1Palette
+            lda   #TmpPalette
+            jsr   NESColorToIIgs
+
+            pea   $0000
+            pea   #^TmpPalette
+            pea   #TmpPalette
+            _GTESetPalette
+
             rts
 
 ; Helper to perform the essential functions of rendering a frame
@@ -591,20 +608,18 @@ RenderFrame
 
             ldal  $0000ce,x      ; Player_Y_Position
             and   #$00FF
-;            sta   ROMPlayerY
 
 ; The "full screen" size is 200 lines that cover NES rows 16 through 216.  If the
 ; size of the playfield is less, then we adjust the origin a bit.
 ;
-; Y_Origin = min(200 - ScreenHeight, max(0, ROMPlayerY - 16 - ScreenHeight/2))
+; The goal is to only scroll up once the player is in the top third
+; of the screen.  It's better to keep an eye on the ground when jumping
+; 
+; Y_Origin = min(200 - ScreenHeight, max(0, ROMPlayerY - NesTop))
 
             sec
             sbc   NesTop
-            asl
-            sec
-            sbc   ScreenHeight
             bmi   :max_neg
-            lsr
             cmp   MinYScroll
             bcc   :max_clamp
 
@@ -629,16 +644,25 @@ RenderFrame
             _GTEEnableBackground
 :bghop
 
-;            pea   $FFFF      ; NES mode
-            lda   HideStatusBar
+            lda   VideoMode
+            cmp   #4
             beq   :full_screen
 
-            pea   $FFFD
+            pea   $FFFD             ; Render just the playfield area
             _GTERender
+
+            lda   frameCount        ; Update the status area once every 8 renders ~1 time per second
+            sec
+            sbc   LastStatusUdt
+            cmp   #8
+            bcc   :render_done
+            lda   frameCount
+            sta   LastStatusUdt
+            jsr   CopyStatusToScreen
             bra   :render_done
 
 :full_screen
-            pea   $FFFF
+            pea   $FFFF             ; Render the fixed status bar and playfield
             _GTERender
 :render_done
 
@@ -653,6 +677,7 @@ RenderFrame
             jsr   SetAreaType
 :no_area_change
 
+            inc   frameCount       ; Tick over to a new frame
             rts
 
 SetAreaType
@@ -686,9 +711,17 @@ SetAreaType
 :out
             rts
 
-AreaPalettes  dw   WaterPalette,Area1Palette,Area2Palette,Area3Palette,Area4Palette
+AreaPalettes  dw   WaterPalette,Area1Palette,Area2Palette,Area3Palette,Area2Palette
 SwizzleTables adrl AT0_T0,AT1_T0,AT2_T0,AT3_T0,AT2_T0
 SwizzlePtr    adrl AT1_T0
+
+ClearScreen
+            ldx  #$7CFE
+:loop       stal $012000,x
+            dex
+            dex
+            bpl  :loop
+            rts
 
 ; Draw PPU tiles to the screen for a UI
 ;
@@ -698,40 +731,74 @@ SwizzlePtr    adrl AT1_T0
 TILE_ZERO   equ 256
 TILE_A      equ 266
 TILE_SHROOM equ 462
+TILE_BLANK  equ 295
+COL_STEP    equ 4
+ROW_STEP    equ {8*160}
+_PutTile    mac
+            pea {]1}+TILE_USER_BIT
+            pea $2000+{]2*COL_STEP}+{]3*ROW_STEP}
+            pea ]4
+            _GTEDrawTileToScreen
+            <<<
+_PutStr     mac
+            ldx #]1
+            ldy #$2000+{]2*COL_STEP}+{]3*ROW_STEP}
+            jsr ConfigDrawString
+            <<<
+
 ShowConfig
-            lda #0
+            lda #1
             jsr SetAreaType
+
             lda #$0000
             stal $E19E00
 
-            ldx #TILE_SHROOM+TILE_USER_BIT
+            lda #0
+            jsr ClearScreen
+
+            ldx #0                  ; Config setting index
 :loop
             phx
+            cpx #0
+            beq :video
+            cpx #1
+            beq :audio
+            bra :skip_selector
+:video
+            _PutTile TILE_SHROOM;2;2;1
+            _PutTile TILE_BLANK;2;7;1
+            bra :skip_selector
+:audio
+            _PutTile TILE_SHROOM;2;7;1
+            _PutTile TILE_BLANK;2;2;1
+            bra :skip_selector
 
-            phx
-            pea $2000
-            pea $0000               ; Bits 1-2, 5 and 7 are valid
-            _GTEDrawTileToScreen
+:skip_selector
+            lda #2
+            _PutStr  VideoTitle;4;2
 
-            ldx #msg1
-            ldy #$2000+{8*160}
-            lda #$0000
-            jsr ConfigDrawString
+            ldx VideoMode
+            lda GoodPalette,x
+            _PutStr  GoodStr;6;4
+            ldx VideoMode
+            lda BetterPalette,x
+            _PutStr  BetterStr;12;4
+            ldx VideoMode
+            lda BestPalette,x
+            _PutStr  BestStr;20;4
 
-            ldx #msg1
-            ldy #$2000+{16*160}
-            lda #$0001
-            jsr ConfigDrawString
+            lda #2
+            _PutStr  AudioTitle;4;7
 
-            ldx #msg1
-            ldy #$2000+{24*160}
-            lda #$0002
-            jsr ConfigDrawString
-
-            ldx #msg1
-            ldy #$2000+{32*160}
-            lda #$0003
-            jsr ConfigDrawString
+            ldx AudioMode
+            lda GoodPalette,x
+            _PutStr  GoodStr;6;9
+            ldx AudioMode
+            lda BetterPalette,x
+            _PutStr  BetterStr;12;9
+            ldx AudioMode
+            lda BestPalette,x
+            _PutStr  BestStr;20;9
 
 :waitloop
             pha
@@ -742,17 +809,45 @@ ShowConfig
 
             plx
             and  #$007F
-            cmp  #LEFT_ARROW
+            cmp  #UP_ARROW
             beq  :decrement
-            cmp  #RIGHT_ARROW
+            cmp  #DOWN_ARROW
             beq  :increment
+            cmp  #' '
+            beq  :toggle
+            cmp  #13
+            bne  :waitloop
             rts
+:toggle
+            cpx  #0
+            beq  :toggle_video
+            lda  AudioMode
+            inc
+            inc
+            cmp  #6
+            bcc  *+5
+            lda  #0
+            sta  AudioMode
+            brl  :loop
+:toggle_video
+            lda  VideoMode
+            inc
+            inc
+            cmp  #6
+            bcc  *+5
+            lda  #0
+            sta  VideoMode
+            brl  :loop
 
 :increment
-            inx
-            inx
-:decrement  dex
-            bra  :loop
+            ldx   #1
+            brl   :loop
+:decrement  ldx   #0
+            brl   :loop
+
+GoodPalette   dw    0,2,2
+BetterPalette dw    2,0,2
+BestPalette   dw    2,2,0
 
 ; X = string pointer
 ; Y = address
@@ -804,7 +899,14 @@ ConfigDrawString
             bne   :loop
             rts
 
-msg1        str  'HELLO 123'
+VideoTitle  str  'VIDEO QUALITY'
+AudioTitle  str  'AUDIO QUALITY'
+GoodStr     str  'GOOD'
+BetterStr   str  'BETTER'
+BestStr     str  'BEST'
+VOCTitle    str  'ENABLE VOC ACCELERATION'
+YesStr      str  'YES'
+NoStr       str  'NO'
 
 ; Take a PPU address and convert it to a tile store coordinate
 ;
@@ -1227,10 +1329,7 @@ CopyStatus
 
             inx
             stx   Tmp2
-
-;            _GTESetTile
             _GTESetTileImmediate
-
 
             ply
             plx
@@ -1242,6 +1341,46 @@ CopyStatus
             iny
             cpy   #2
             bcc   :yloop
+            rts
+
+; Copy just the tiles that change directly tothe graphics screen
+
+MemOffsets    dw    67,68,69,70
+              dw    71,99,100,101
+              dw    102,103,104
+ScreenOffsets dw    12,16,20,24
+              dw    28,ROW_STEP+12,ROW_STEP+16,ROW_STEP+20
+              dw    ROW_STEP+24,ROW_STEP+28,ROW_STEP+32
+
+CopyStatusToScreen
+
+            lda   ScreenBase
+            sec
+            sbc   #160*16
+            sta   Tmp0
+
+            ldx   #0
+:loop
+            phx                             ; preserve x
+            ldy   MemOffsets,x
+            lda   PPU_MEM+$2000,y
+            and   #$00FF
+            ora   #$0100+TILE_USER_BIT
+            pha
+
+            lda   ScreenOffsets,x
+            clc
+            adc   Tmp0
+            pha
+
+            pea   $8002
+            _GTEDrawTileToScreen
+
+            plx
+            inx
+            inx
+            cpx   #11*2
+            bcc   :loop
             rts
 
 ; Copy the tile and attribute bytes into the GTE buffer
@@ -1347,9 +1486,12 @@ CopyNametable
 
 ; Trigger an NMI in the ROM
 triggerNMI
+            lda   AudioMode
+            bne   :good_audio
             sep   #$30
             jsl   quarter_speed_driver
             rep   #$30
+:good_audio
 
             ldal  ppuctrl               ; If the ROM has not enabled VBL NMI, also skip
             bit   #$80
@@ -1878,9 +2020,9 @@ StkSave     lda   #$0000
 ; VBL Interrupt task (called in native 8-bit mode)
             mx    %11
 nmiTask
-            ldal  nmiCount
-            inc
-            stal  nmiCount
+;            ldal  nmiCount
+;            inc
+;            stal  nmiCount
 
             php
             rep   #$30
@@ -1933,11 +2075,11 @@ readInput
 
             sep   #$20
             lda   1,s
-            cmp   #'n'
+            cmp   #9           ; TAB, was 'n'
             bne   *+6
             lda   #$20
             bra   :nes_merge
-            cmp   #'m'
+            cmp   #13          ; RETURN, was 'm'
             bne   *+6
             lda   #$10
             bra   :nes_merge
@@ -1982,15 +2124,16 @@ PPU_OAM     ds    256            ; 256 bytes of separate OAM RAM
 ;
 ; Palettes of NES color indexes
 Area1Palette dw     $22, $00, $29, $1A, $0F, $36, $17, $30, $21, $27, $1A, $16, $00, $00, $16, $18
-Area4Palette
 
 ; Underground
 Area2Palette dw     $0F, $00, $29, $1A, $09, $3C, $1C, $30, $21, $17, $27, $36, $16, $1D, $16, $18
 
 ; Castle
-Area3Palette dw     $0F, $00, $30, $10, $00, $16, $17, $27, $1C, $36, $1D, $00,  $00, $00, $16, $18
+Area3Palette dw     $0F, $00, $30, $10, $00, $16, $17, $27, $1C, $36, $1D, $00, $00, $00, $16, $18
 
-WaterPalette dw     $22, $00, $15, $12, $25, $3A, $1A, $0F, $30, $12, $27, $10,  $16, $00, $16, $18
+; Water
+WaterPalette dw     $22, $00, $15, $12, $25, $3A, $1A, $0F, $30, $12, $27, $10, $16, $00, $16, $18
+
 ; Palette remapping
             put   pal_w11.s
             put   apu.s
