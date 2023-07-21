@@ -1345,12 +1345,14 @@ CopyStatus
 
 ; Copy just the tiles that change directly tothe graphics screen
 
-MemOffsets    dw    67,68,69,70
-              dw    71,99,100,101
-              dw    102,103,104
-ScreenOffsets dw    12,16,20,24
-              dw    28,ROW_STEP+12,ROW_STEP+16,ROW_STEP+20
-              dw    ROW_STEP+24,ROW_STEP+28,ROW_STEP+32
+MemOffsets    dw    67, 68, 69, 70, 71,                        82, 83, 84, 85, 86,  89, 90, 91, 92
+              dw    99,100,101,102,103,104,  107,108,109,110,     115,116,117,         122,123,124
+
+ScreenOffsets dw    12, 16, 20, 24, 28,                        72, 76, 80, 84, 88,  100,104,108,112
+              dw    ROW_STEP+12,ROW_STEP+16,ROW_STEP+20,ROW_STEP+24,ROW_STEP+28,ROW_STEP+32
+              dw    ROW_STEP+44,ROW_STEP+48,ROW_STEP+52,ROW_STEP+56
+              dw    ROW_STEP+76,ROW_STEP+80,ROW_STEP+84
+              dw    ROW_STEP+104,ROW_STEP+108,ROW_STEP+112
 
 CopyStatusToScreen
 
@@ -1373,13 +1375,17 @@ CopyStatusToScreen
             adc   Tmp0
             pha
 
-            pea   $8002
+            lda   #$8002
+            cpy   #107                      ; This one is palette 3
+            bne   *+5
+            ora   #$0001
+            pha
             _GTEDrawTileToScreen
 
             plx
             inx
             inx
-            cpx   #11*2
+            cpx   #30*2
             bcc   :loop
             rts
 
