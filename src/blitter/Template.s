@@ -114,14 +114,14 @@ odd_entry          jmp   $0100                      ; unconditionally jump into 
 r_is_not_pea       bit   #$0040                     ; Check bit 6 to distinguish between JMP and all of the LDA variants
                    bne   r_is_jmp
 
-long_1             stal  *+6-base                   ; Everything else is a two-byte LDA opcode + PHA
+long_1             sta   >{long_1+6-base}                   ; Everything else is a two-byte LDA opcode + PHA
                    sep   #$20                       ; Lift 8-bit mode here to save a cycle in the LDA
                    dfb   $00,$00
                    bra   two_byte_rtn
 
 r_is_jmp           sep   #$41                       ; Set the C and V flags which tells a snippet to push only the low byte
 long_2             ldal  entry_jmp+1-base
-long_3             stal  *+5-base
+long_3             sta   >{long_3+5-base}
                    jmp   $0000                      ; Jumps into the exception code, which returns to r_jmp_rtn
 
 ; The next labels are special, in that they are entry points into special subroutines.  They are special
